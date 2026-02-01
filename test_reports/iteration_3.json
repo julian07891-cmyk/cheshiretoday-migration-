@@ -1,0 +1,51 @@
+{
+  "summary": "Backend testing completed for Facebook Scheduler Lock Mechanism. 17 tests passed. CRITICAL RACE CONDITION CONFIRMED: The lock mechanism uses separate find_one + update_one operations, allowing concurrent executions. Test showed 5 concurrent requests ALL executed (posting 15 articles instead of 3).",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "scheduled_facebook_post (server.py lines 5428-5443)",
+        "issue": "RACE CONDITION: Lock mechanism uses separate find_one (line 5428) and update_one (line 5439) operations. Between these operations, multiple concurrent requests can all read 'no lock' and proceed. Test confirmed: 5 concurrent requests ALL executed, posting 15 articles instead of 3.",
+        "priority": "CRITICAL",
+        "fix": "Replace separate find_one + update_one with atomic find_one_and_update:\n\nlock_result = await db.scheduler_locks.find_one_and_update(\n    {\"job\": \"facebook_post\", \"$or\": [{\"locked_at\": {\"$exists\": False}}, {\"locked_at\": {\"$lt\": five_minutes_ago}}]},\n    {\"$set\": {\"locked_at\": now}},\n    upsert=True,\n    return_document=ReturnDocument.AFTER\n)\nif lock_result and lock_result.get('locked_at') != now:\n    # Another process acquired the lock\n    return"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_scheduler_lock.py",
+    "/app/test_reports/pytest/pytest_results_iteration3.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Fix race condition in scheduled_facebook_post (server.py lines 5428-5443) - use atomic find_one_and_update instead of separate find_one + update_one",
+    "The fix should use MongoDB's findOneAndUpdate with a condition that checks both job name AND lock age in a single atomic operation"
+  ],
+  "critical_code_review_comments": [
+    "CRITICAL BUG CONFIRMED: Race condition between lines 5428 (find_one) and 5439 (update_one) allows multiple concurrent executions",
+    "Test evidence: 5 concurrent requests ALL executed, 0 were blocked by lock - this caused 15 articles to be posted instead of 3",
+    "24-hour sliding window for duplicate detection (lines 5446-5459) is correctly implemented",
+    "Title pattern matching for duplicate detection (lines 5457-5459) works correctly",
+    "/api/facebook/schedulable-articles endpoint works correctly with auth",
+    "/api/facebook/post-single endpoint works correctly with auth",
+    "FacebookService._filter_duplicates correctly filters by URL and similar titles"
+  ],
+  "updated_files": [
+    "/app/tests/test_scheduler_lock.py"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "admin_username": "news@cheshiretoday.co.uk",
+    "admin_password": "ningab-zipxur-8pibDi"
+  },
+  "seed_data_creation": "None - used existing articles",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CRITICAL: Race condition in scheduler lock mechanism CONFIRMED. The lock uses separate find_one + update_one operations (lines 5428-5443 in server.py). Concurrent test showed ALL 5 requests executed (none blocked). Fix requires atomic find_one_and_update. Other features work: 24-hour sliding window, title pattern duplicate detection, /api/facebook/schedulable-articles, /api/facebook/post-single. Test file at /app/tests/test_scheduler_lock.py can be reused for regression testing after fix."
+}

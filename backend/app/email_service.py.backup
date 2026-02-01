@@ -1,0 +1,588 @@
+"""
+Email Service for Cheshire Today Newsletter
+Handles sending confirmation and newsletter emails via Gmail SMTP
+"""
+
+import smtplib
+import os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from typing import List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class EmailService:
+    def __init__(self):
+        self.smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+        self.smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+        self.smtp_user = os.environ.get('SMTP_USER')
+        self.smtp_password = os.environ.get('SMTP_PASSWORD')
+        self.from_email = os.environ.get('SMTP_FROM_EMAIL')
+        self.from_name = os.environ.get('SMTP_FROM_NAME', 'Cheshire Today')
+        # ALWAYS use production URL for email links - hardcoded to prevent env var issues
+        self.base_url = 'https://cheshiretoday.co.uk'
+        
+    def _send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None) -> bool:
+        """Send an email via SMTP (supports Gmail, GoDaddy, etc.)"""
+        try:
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['Subject'] = subject
+            msg['From'] = f"{self.from_name} <{self.from_email}>"
+            msg['To'] = to_email
+            
+            # Add text and HTML parts
+            if text_content:
+                text_part = MIMEText(text_content, 'plain')
+                msg.attach(text_part)
+            
+            html_part = MIMEText(html_content, 'html')
+            msg.attach(html_part)
+            
+            # Send email using appropriate method based on port
+            if self.smtp_port == 465:
+                # Use SMTP_SSL for port 465 (GoDaddy, etc.)
+                import ssl
+                context = ssl.create_default_context()
+                with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, context=context, timeout=30) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
+            else:
+                # Use SMTP with STARTTLS for port 587 (Gmail, GoDaddy, etc.)
+                import ssl
+                context = ssl.create_default_context()
+                with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30) as server:
+                    server.ehlo()
+                    server.starttls(context=context)
+                    server.ehlo()
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
+            
+            logger.info(f"Email sent successfully to {to_email}")
+            return True
+            
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP AUTHENTICATION FAILED for {to_email}: {str(e)}")
+            logger.error(f"  -> Check SMTP_USER ({self.smtp_user}) and SMTP_PASSWORD are correct")
+            logger.error(f"  -> For GoDaddy: Use your full email as username and email password")
+            return False
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"SMTP CONNECTION FAILED for {to_email}: {str(e)}")
+            logger.error(f"  -> Check SMTP_HOST ({self.smtp_host}) and SMTP_PORT ({self.smtp_port})")
+            logger.error(f"  -> GoDaddy SMTP: smtpout.secureserver.net (port 465 SSL or 587 TLS)")
+            return False
+        except smtplib.SMTPRecipientsRefused as e:
+            logger.error(f"RECIPIENT REFUSED for {to_email}: {str(e)}")
+            return False
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP ERROR for {to_email}: {type(e).__name__}: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"UNEXPECTED ERROR sending to {to_email}: {type(e).__name__}: {str(e)}")
+            return False
+    
+    def send_welcome_email(self, to_email: str) -> bool:
+        """Send welcome/confirmation email to new subscriber"""
+        subject = "Welcome to Cheshire Today! 📰 Your Local News Awaits"
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f3f4f6;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <!-- Header with Logo -->
+                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 35px 25px; text-align: center; border-radius: 16px 16px 0 0;">
+                    <a href="{self.base_url}" style="display: inline-block; margin-bottom: 15px;">
+                        <img src="{self.base_url}/logo.png" alt="Cheshire Today" style="height: 80px; width: auto;" />
+                    </a>
+                    <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #ffffff;">Welcome to the Family!</h1>
+                    <p style="margin: 0; font-size: 14px; color: #E0E7FF; font-weight: 500;">Your trusted source for Cheshire news</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="background: #ffffff; padding: 30px 25px;">
+                    <h2 style="color: #1E3A8A; margin: 0 0 15px 0; font-size: 20px;">Thank you for subscribing! 🎉</h2>
+                    <p style="color: #444; font-size: 15px; margin-bottom: 20px;">
+                        You're now part of the Cheshire Today community. We're thrilled to have you with us and can't wait to keep you informed about everything happening in our beautiful region.
+                    </p>
+                    
+                    <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 25px 0;">
+                        <h3 style="color: #1E3A8A; margin: 0 0 15px 0; font-size: 16px;">📬 What to expect:</h3>
+                        <table cellpadding="0" cellspacing="0" width="100%">
+                            <tr>
+                                <td style="padding: 8px 0;">
+                                    <span style="color: #3B82F6; font-weight: bold;">☀️ 6:00 AM</span>
+                                    <span style="color: #666;"> — Morning briefing to start your day</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0;">
+                                    <span style="color: #3B82F6; font-weight: bold;">🌤️ 12:00 PM</span>
+                                    <span style="color: #666;"> — Midday update with latest stories</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px 0;">
+                                    <span style="color: #3B82F6; font-weight: bold;">🌙 6:00 PM</span>
+                                    <span style="color: #666;"> — Evening roundup of the day's news</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 20px; margin: 25px 0;">
+                        <h3 style="color: #166534; margin: 0 0 10px 0; font-size: 16px;">🏠 We Cover:</h3>
+                        <p style="color: #166534; margin: 0; font-size: 14px;">
+                            <strong>Cheshire</strong> • Crewe • Macclesfield • Wilmslow • Chester • Warrington • Nantwich • Congleton • Northwich • Knutsford & more
+                        </p>
+                    </div>
+                    
+                    <p style="color: #444; font-size: 15px; margin-bottom: 25px;">
+                        Your first news digest will arrive at the next scheduled time. In the meantime, why not explore our latest stories?
+                    </p>
+                    
+                    <div style="text-align: center;">
+                        <a href="{self.base_url}" style="display: inline-block; background: #1E3A8A; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
+                            Read Latest News →
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #1f2937; color: #9ca3af; padding: 25px; text-align: center; border-radius: 0 0 16px 16px;">
+                    <p style="margin: 0 0 10px 0; font-size: 13px;">
+                        Follow us for breaking news and updates
+                    </p>
+                    <div style="margin: 15px 0;">
+                        <a href="https://facebook.com/CheshireTodayUK" style="color: #9ca3af; text-decoration: none; margin: 0 10px;">Facebook</a>
+                        <a href="https://twitter.com/CheshireTodayUK" style="color: #9ca3af; text-decoration: none; margin: 0 10px;">Twitter</a>
+                    </div>
+                    <p style="margin: 15px 0 0 0; font-size: 11px; color: #6b7280;">
+                        © 2026 Cheshire Today. All rights reserved.<br>
+                        To unsubscribe, reply to this email with "Unsubscribe" in the subject line.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Welcome to Cheshire Today! 📰
+        
+        Thank you for subscribing!
+        
+        You're now part of the Cheshire Today community. We're thrilled to have you with us!
+        
+        WHAT TO EXPECT:
+        ☀️ 6:00 AM - Morning briefing to start your day
+        🌤️ 12:00 PM - Midday update with latest stories  
+        🌙 6:00 PM - Evening roundup of the day's news
+        
+        WE COVER:
+        Cheshire, Crewe, Macclesfield, Wilmslow, Chester, Warrington, Nantwich, Congleton, Northwich, Knutsford & more
+        
+        Your first news digest will arrive at the next scheduled time.
+        
+        Read Latest News: {self.base_url}
+        
+        ---
+        Follow us: Facebook & Twitter @CheshireTodayUK
+        To unsubscribe, reply with "Unsubscribe" in the subject line.
+        © 2026 Cheshire Today. All rights reserved.
+        """
+        
+        return self._send_email(to_email, subject, html_content, text_content)
+    
+    def send_verification_code(self, to_email: str, name: str, code: str) -> bool:
+        """Send email verification code for comment login"""
+        subject = "🔐 Cheshire Today - Your Verification Code"
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; text-align: center; }}
+                .code {{ font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #1E3A8A; background: white; padding: 20px 40px; border-radius: 10px; display: inline-block; margin: 20px 0; border: 2px dashed #1E3A8A; }}
+                .footer {{ text-align: center; padding: 20px; color: #666; font-size: 12px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1 style="margin: 0;">🔐 Verification Code</h1>
+                    <p style="margin: 10px 0 0 0;">Cheshire Today Comments</p>
+                </div>
+                <div class="content">
+                    <p>Hi <strong>{name}</strong>!</p>
+                    <p>Use this code to verify your email and start commenting:</p>
+                    
+                    <div class="code">{code}</div>
+                    
+                    <p style="color: #666; font-size: 14px;">This code expires in <strong>10 minutes</strong>.</p>
+                    <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2026 Cheshire Today. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        Hi {name}!
+        
+        Your Cheshire Today verification code is: {code}
+        
+        This code expires in 10 minutes.
+        
+        If you didn't request this, please ignore this email.
+        
+        ---
+        © 2026 Cheshire Today. All rights reserved.
+        """
+        
+        return self._send_email(to_email, subject, html_content, text_content)
+    
+    def send_news_digest(self, to_emails: List[str], articles: List[dict], digest_time: str = "Daily", sponsor: dict = None) -> int:
+        """
+        Send news digest to multiple subscribers
+        
+        Args:
+            to_emails: List of subscriber email addresses
+            articles: List of article dictionaries
+            digest_time: Time label for the digest (Morning, Midday, Evening, Daily, Test)
+            sponsor: Optional sponsor info dict with keys: name, tagline, url, logo_url
+        """
+        if not articles:
+            logger.warning("No articles to send in digest")
+            return 0
+        
+        # Format time labels
+        time_labels = {
+            "Morning": "☀️ Good Morning",
+            "Midday": "🌤️ Midday Update", 
+            "Evening": "🌙 Evening Roundup",
+            "Daily": "📰 Cheshire Today Newsletter",
+            "Test": "📰 Cheshire Today Newsletter"  # Test emails show same as Daily to subscribers
+        }
+        greeting = time_labels.get(digest_time, "📰 Cheshire Today Newsletter")
+        
+        subject = f"{greeting} - {len(articles)} Cheshire Stories | Cheshire Today"
+        
+        # Build sponsor section HTML if sponsor is provided
+        sponsor_html = ""
+        if sponsor and sponsor.get('name'):
+            sponsor_html = f"""
+            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #86efac; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                <p style="color: #166534; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Today's News Brought To You By</p>
+                {f'<img src="{sponsor.get("logo_url")}" alt="{sponsor.get("name")}" style="max-height: 50px; margin-bottom: 10px;" />' if sponsor.get('logo_url') else ''}
+                <h3 style="color: #047857; margin: 0 0 5px 0; font-size: 18px;">{sponsor.get('name')}</h3>
+                <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">{sponsor.get('tagline', '')}</p>
+                {f'<a href="{sponsor.get("url")}" style="display: inline-block; background: #047857; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Learn More</a>' if sponsor.get('url') else ''}
+            </div>
+            """
+        
+        # Build featured article (first article with larger display)
+        featured_article = articles[0] if articles else None
+        featured_html = ""
+        if featured_article:
+            article_id = featured_article.get('id', featured_article.get('_id', ''))
+            article_url = f"{self.base_url}/article/{article_id}"
+            # DEBUG: Log article URL generation
+            logger.info(f"DIGEST DEBUG - Featured article: id={article_id}, url={article_url}, title={featured_article.get('title', '')[:40]}")
+            image_url = featured_article.get('image', '')
+            summary = featured_article.get('content', '')[:250]
+            
+            featured_html = f"""
+            <div style="margin-bottom: 30px;">
+                <p style="color: #1E3A8A; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">⭐ Top Story</p>
+                {f'<a href="{article_url}"><img src="{image_url}" alt="" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 15px;" /></a>' if image_url else ''}
+                <h2 style="color: #1E3A8A; margin: 0 0 10px 0; font-size: 22px; line-height: 1.3;">
+                    <a href="{article_url}" style="color: #1E3A8A; text-decoration: none;">
+                        {featured_article.get('title', 'Untitled')}
+                    </a>
+                </h2>
+                <p style="color: #666; font-size: 13px; margin-bottom: 10px;">
+                    {featured_article.get('category', 'News')} • {featured_article.get('author', 'Cheshire Today')}
+                </p>
+                <p style="color: #444; line-height: 1.6; font-size: 15px;">
+                    {summary}...
+                </p>
+                <a href="{article_url}" style="display: inline-block; background: #1E3A8A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+                    Read Full Story →
+                </a>
+            </div>
+            <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 25px 0;" />
+            """
+        
+        # Build remaining articles HTML (2-column grid style)
+        articles_html = ""
+        remaining_articles = articles[1:10] if len(articles) > 1 else []
+        
+        for i, article in enumerate(remaining_articles):
+            article_id_val = article.get('id', article.get('_id', ''))
+            article_url = f"{self.base_url}/article/{article_id_val}"
+            # DEBUG: Log each article URL
+            logger.info(f"DIGEST DEBUG - Article {i+2}: id={article_id_val}, url={article_url}, title={article.get('title', '')[:30]}")
+            image_url = article.get('image', '')
+            summary = article.get('content', '')[:120]
+            
+            articles_html += f"""
+            <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
+                <table cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        {f'<td width="100" style="vertical-align: top; padding-right: 15px;"><a href="{article_url}"><img src="{image_url}" alt="" style="width: 100px; height: 75px; object-fit: cover; border-radius: 8px;" /></a></td>' if image_url else ''}
+                        <td style="vertical-align: top;">
+                            <p style="color: #1E3A8A; font-size: 11px; margin: 0 0 5px 0; text-transform: uppercase;">
+                                {article.get('category', 'News')}
+                            </p>
+                            <h3 style="color: #333; margin: 0 0 8px 0; font-size: 16px; line-height: 1.3;">
+                                <a href="{article_url}" style="color: #333; text-decoration: none;">
+                                    {article.get('title', 'Untitled')}
+                                </a>
+                            </h3>
+                            <p style="color: #666; font-size: 13px; margin: 0; line-height: 1.4;">
+                                {summary}...
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            """
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f3f4f6;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 35px 25px; text-align: center; border-radius: 16px 16px 0 0;">
+                    <a href="{self.base_url}" style="display: inline-block; margin-bottom: 20px; text-decoration: none;">
+                        <img src="{self.base_url}/logo.png" alt="Cheshire Today" style="height: 80px; width: auto;" />
+                    </a>
+                    <a href="{self.base_url}" style="text-decoration: none; display: block;">
+                        <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #ffffff;">Your Daily Cheshire News Awaits!</h2>
+                        <p style="margin: 0; font-size: 14px; color: #E0E7FF; font-weight: 500;">{len(articles)} handpicked stories just for you</p>
+                    </a>
+                </div>
+                
+                <!-- Content -->
+                <div style="background: #ffffff; padding: 30px 25px;">
+                    {sponsor_html}
+                    
+                    {featured_html}
+                    
+                    <h3 style="color: #1E3A8A; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">
+                        📋 More Stories
+                    </h3>
+                    
+                    {articles_html}
+                    
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px;">
+                        <a href="{self.base_url}" style="display: inline-block; background: #1E3A8A; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
+                            View All Stories →
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #1f2937; text-align: center; padding: 25px; color: #9ca3af; font-size: 12px; border-radius: 0 0 16px 16px;">
+                    <p style="margin: 0 0 10px 0;">
+                        <a href="{self.base_url}" style="color: #60a5fa; text-decoration: none;">Cheshire Today</a> • 
+                        Your Local News Source
+                    </p>
+                    <p style="margin: 0; color: #6b7280;">
+                        © 2026 Cheshire Today. All rights reserved.<br/>
+                        <a href="{self.base_url}/privacy" style="color: #9ca3af;">Privacy Policy</a> • 
+                        <a href="{self.base_url}/terms" style="color: #9ca3af;">Terms of Service</a>
+                    </p>
+                    <p style="margin: 15px 0 0 0; font-size: 11px; color: #6b7280;">
+                        To unsubscribe, reply with "Unsubscribe" in the subject line.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send to each subscriber
+        success_count = 0
+        for email in to_emails:
+            if self._send_email(email, subject, html_content):
+                success_count += 1
+        
+        logger.info(f"News digest sent to {success_count}/{len(to_emails)} subscribers")
+        return success_count
+
+    def send_job_approved_email(self, to_email: str, contact_name: str, job_title: str, company: str) -> bool:
+        """Send notification when a job listing is approved"""
+        subject = f"✅ Your Job Listing is Now Live - {job_title}"
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #059669 0%, #0d9488 100%); padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">🎉 Great News!</h1>
+                    <p style="color: #a7f3d0; margin: 10px 0 0 0;">Your job listing has been approved</p>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px;">
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                        Hi {contact_name},
+                    </p>
+                    
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                        Your job listing for <strong>{job_title}</strong> at <strong>{company}</strong> has been reviewed and approved. It's now live on the Cheshire Jobs board!
+                    </p>
+                    
+                    <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                        <p style="margin: 0; color: #065f46; font-weight: 600;">{job_title}</p>
+                        <p style="margin: 5px 0 0 0; color: #047857;">{company}</p>
+                    </div>
+                    
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                        Your listing is now visible to thousands of job seekers across Cheshire. We hope you find the perfect candidate!
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{self.base_url}/jobs" style="display: inline-block; background: #059669; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                            View Job Board →
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #1f2937; text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+                    <p style="margin: 0;">
+                        <a href="{self.base_url}" style="color: #60a5fa; text-decoration: none;">Cheshire Today</a> • Cheshire Jobs
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #6b7280;">
+                        © 2026 Cheshire Today. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+Hi {contact_name},
+
+Great news! Your job listing for {job_title} at {company} has been approved and is now live on the Cheshire Jobs board.
+
+View the job board: {self.base_url}/jobs
+
+We hope you find the perfect candidate!
+
+Best regards,
+Cheshire Today Jobs Team
+        """
+        
+        return self._send_email(to_email, subject, html_content, text_content)
+
+    def send_job_rejected_email(self, to_email: str, contact_name: str, job_title: str, company: str, reason: str = None) -> bool:
+        """Send notification when a job listing is rejected"""
+        subject = f"Update on Your Job Listing - {job_title}"
+        
+        reason_text = reason if reason else "The listing did not meet our guidelines or contained incomplete information."
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; margin-top: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">Job Listing Update</h1>
+                </div>
+                
+                <!-- Content -->
+                <div style="padding: 30px;">
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                        Hi {contact_name},
+                    </p>
+                    
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                        Thank you for submitting your job listing for <strong>{job_title}</strong> at <strong>{company}</strong>. Unfortunately, we were unable to approve it at this time.
+                    </p>
+                    
+                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                        <p style="margin: 0; color: #92400e; font-weight: 600;">Reason:</p>
+                        <p style="margin: 5px 0 0 0; color: #a16207;">{reason_text}</p>
+                    </div>
+                    
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                        You're welcome to submit a new listing with updated information. If you have any questions, please reply to this email.
+                    </p>
+                    
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{self.base_url}/jobs/post" style="display: inline-block; background: #059669; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                            Submit New Listing →
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background: #1f2937; text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+                    <p style="margin: 0;">
+                        <a href="{self.base_url}" style="color: #60a5fa; text-decoration: none;">Cheshire Today</a> • Cheshire Jobs
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #6b7280;">
+                        © 2026 Cheshire Today. All rights reserved.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+Hi {contact_name},
+
+Thank you for submitting your job listing for {job_title} at {company}. Unfortunately, we were unable to approve it at this time.
+
+Reason: {reason_text}
+
+You're welcome to submit a new listing with updated information at: {self.base_url}/jobs/post
+
+If you have any questions, please reply to this email.
+
+Best regards,
+Cheshire Today Jobs Team
+        """
+        
+        return self._send_email(to_email, subject, html_content, text_content)
+
+
+# Global email service instance
+email_service = EmailService()

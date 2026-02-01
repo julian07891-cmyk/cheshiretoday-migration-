@@ -1,0 +1,54 @@
+{
+  "summary": "Backend testing completed for Most Read Widget, Push Notifications, and Smart Content Prioritization features. 16 tests passed, 6 skipped due to CRITICAL route order bug in /api/articles/most-read endpoint.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/articles/most-read",
+        "issue": "Route returns 404 - 'most-read' is matched as article_id by /api/articles/{article_id} route. The route @api_router.get('/articles/most-read') at line 3165 is defined AFTER @api_router.get('/articles/{article_id}') at line 2281. FastAPI matches routes in order, so 'most-read' is treated as an article_id.",
+        "priority": "CRITICAL",
+        "fix": "Move the /api/articles/most-read route definition BEFORE /api/articles/{article_id} in server.py (move lines 3165-3242 to before line 2281)"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Most Read Widget",
+        "issue": "MostReadWidget.jsx will fail to load data because backend /api/articles/most-read returns 404",
+        "affected_selectors": ["[data-testid='most-read-*']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/tests/test_most_read_push_features.py",
+    "/app/test_reports/pytest/pytest_results_iteration2.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Fix route order in server.py - move /api/articles/most-read route (lines 3165-3242) BEFORE /api/articles/{article_id} route (line 2281)",
+    "After fix, retest Most Read Widget functionality"
+  ],
+  "critical_code_review_comments": [
+    "CRITICAL BUG: FastAPI route order issue - /api/articles/most-read defined after /api/articles/{article_id} causes 404",
+    "Push Notifications: VAPID keys properly configured, subscribe/unsubscribe/stats endpoints working correctly",
+    "Smart Content Prioritization: /api/facebook/smart-articles returns scored articles with proper prioritization logic",
+    "Article View Tracking: POST /api/articles/{id}/view works correctly with IP-based deduplication"
+  ],
+  "updated_files": [
+    "/app/tests/test_most_read_push_features.py"
+  ],
+  "success_rate": {
+    "backend": "73% (16/22 passed, 6 skipped due to route bug)",
+    "frontend": "N/A - backend only testing"
+  },
+  "test_credentials": {
+    "admin_username": "news@cheshiretoday.co.uk",
+    "admin_password": "ningab-zipxur-8pibDi"
+  },
+  "seed_data_creation": "None - used existing articles",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "CRITICAL: /api/articles/most-read endpoint has route order bug - returns 404. All other new features work: Push notifications (VAPID configured), Smart articles scoring, Article view tracking. Test file at /app/tests/test_most_read_push_features.py covers all new endpoints. Previous Facebook features from iteration_1 still working."
+}

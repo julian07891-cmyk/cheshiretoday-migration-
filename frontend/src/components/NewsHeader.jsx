@@ -1,0 +1,233 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Menu, X, Loader2 } from 'lucide-react';
+import { Button } from './ui/button';
+import FestiveBanner from './FestiveBanner';
+import WeatherWidget from './WeatherWidget';
+import DarkModeToggle from './DarkModeToggle';
+import { articleService } from '../services/api';
+
+const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange, onArticleClick }) => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isFestive, setIsFestive] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    const now = new Date();
+    const endDate = new Date('2026-01-01T00:00:00');
+    setIsFestive(now < endDate);
+  }, []);
+
+  // Close search when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setSearchOpen(false);
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Search functionality with debounce
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.length >= 2) {
+        setSearchLoading(true);
+        try {
+          const results = await articleService.searchArticles(searchQuery);
+          setSearchResults(results.slice(0, 5));
+        } catch (error) {
+          console.error('Search error:', error);
+          setSearchResults([]);
+        }
+        setSearchLoading(false);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const handleSearchResultClick = (article) => {
+    if (onArticleClick) {
+      onArticleClick(article);
+    }
+    setSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  return (
+    <>
+      {/* Festive Banner */}
+      <FestiveBanner />
+      {/* Top Bar - Hidden on mobile for cleaner look */}
+      <div className="hidden sm:block bg-[#1E3A8A] text-white">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between py-2 text-xs">
+            {/* Date - left */}
+            <span>
+              {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+            
+            {/* Weather - center/right */}
+            <div className="hidden md:block">
+              <WeatherWidget compact />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Header - Simplified on mobile */}
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 backdrop-blur-md bg-white/95 dark:bg-gray-800/95">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between py-3 md:py-4">
+            {/* Logo - Compact on mobile */}
+            <div className="flex items-center space-x-2 md:space-x-3">
+              <img 
+                src="/logo.png" 
+                alt="Cheshire Today" 
+                className="h-8 md:h-10 w-auto"
+              />
+              <div>
+                <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white">Cheshire Today</h1>
+                <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400">Local News & Updates</p>
+              </div>
+            </div>
+
+            {/* Desktop Search & Controls */}
+            <div className="hidden md:flex items-center space-x-4">
+              <div className="relative" ref={searchRef}>
+                <input
+                  type="text"
+                  placeholder="Search news..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchOpen(true)}
+                  className="w-64 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+                {searchLoading ? (
+                  <Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
+                ) : (
+                  <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                )}
+                
+                {/* Search Results Dropdown */}
+                {searchOpen && searchResults.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                    {searchResults.map((article) => (
+                      <div
+                        key={article.id}
+                        onClick={() => handleSearchResultClick(article)}
+                        className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
+                      >
+                        <img 
+                          src={article.image} 
+                          alt={article.title}
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+                            {article.title}
+                          </h4>
+                          <span className="text-xs text-[#1E3A8A] dark:text-blue-400">
+                            {article.category}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Dark Mode Toggle */}
+              <DarkModeToggle />
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="flex items-center gap-2 md:hidden">
+              <DarkModeToggle />
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? <X className="h-6 w-6 dark:text-white" /> : <Menu className="h-6 w-6 dark:text-white" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:block border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-1 py-2 overflow-x-auto">
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => onCategoryChange(category.id)}
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
+                    activeCategory === category.id
+                      ? 'bg-[#1E3A8A] text-white rounded'
+                      : 'text-gray-700 dark:text-gray-300 hover:text-[#1E3A8A] dark:hover:text-blue-400'
+                  }`}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Mobile Category Bar - REMOVED, using new CategoryTabs component in App.js */}
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div className="container mx-auto px-4 py-4">
+              {/* Mobile Search */}
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  placeholder="Search news..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+                />
+                <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+              </div>
+              
+              {/* Mobile Weather */}
+              <div className="mb-4">
+                <WeatherWidget compact />
+              </div>
+              
+              <div className="space-y-2">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    onClick={() => {
+                      onCategoryChange(category.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`block w-full text-left px-4 py-2 rounded transition-colors ${
+                      activeCategory === category.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+    </>
+  );
+};
+
+export default NewsHeader;

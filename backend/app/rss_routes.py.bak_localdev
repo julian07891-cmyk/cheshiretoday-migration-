@@ -1,0 +1,191 @@
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import List, Optional
+import os
+from datetime import datetime, timezone
+import logging
+from feedgen.feed import FeedGenerator
+from fastapi.responses import Response
+from pymongo import MongoClient
+
+from app.rss_service import RSSService
+from app.rss_sources import get_rss_sources, get_sources_by_category
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api", tags=["rss"])
+
+def get_database():
+    """Get database instance"""
+    mongo_url = os.environ['MONGO_URL']
+    client = MongoClient(mongo_url)
+    return client[os.environ['DB_NAME']]
+
+def get_rss_service():
+    """Dependency to create RSS service"""
+    api_key = os.getenv('PERPLEXITY_API_KEY')
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Perplexity API key not configured")
+    return RSSService(api_key)
+
+@router.get("/rss-sources")
+async def list_rss_sources(category: Optional[str] = Query(None)):
+    """List available RSS sources"""
+    if category:
+        sources = get_sources_by_category(category)
+    else:
+        sources = get_rss_sources()
+    return {"sources": sources, "count": len(sources)}
+
+@router.post("/import-rss")
+async def import_rss_articles(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    max_per_source: int = Query(3, ge=1, le=10),
+    use_ai: bool = Query(True, description="Use Perplexity AI to rewrite articles"),
+    db = Depends(get_database),
+    rss_service: RSSService = Depends(get_rss_service)
+):
+    """Import articles from RSS sources"""
+    try:
+        # Get sources to import from
+        sources = get_sources_by_category(category) if category else get_rss_sources()
+        
+        if not sources:
+            raise HTTPException(status_code=404, detail="No RSS sources found")
+        
+        # Import articles
+        articles = rss_service.import_from_sources(sources, max_per_source, use_ai)
+        
+        if not articles:
+            return {
+                "message": "No articles imported",
+                "imported_count": 0,
+                "sources_checked": len(sources)
+            }
+        
+        # Store in database
+        # Batch check for existing articles to avoid N+1 query problem
+        existing_titles = set(
+            article['title']
+            for article in db.articles.find(
+                {"title": {"$in": [a['title'] for a in articles]}},
+                {"title": 1}
+            )
+        )
+        
+        imported_count = 0
+        for article_data in articles:
+            # Check if article already exists (by title) using pre-fetched set
+            if article_data['title'] in existing_titles:
+                logger.info(f"Article already exists: {article_data['title']}")
+                continue
+            
+            # Add metadata
+            article_data['created_at'] = datetime.now(timezone.utc)
+            article_data['updated_at'] = datetime.now(timezone.utc)
+            article_data['tags'] = ['imported', 'rss', article_data['category'].lower()]
+            
+            # Insert into database
+            result = db.articles.insert_one(article_data)
+            if result.inserted_id:
+                imported_count += 1
+        
+        return {
+            "message": f"Successfully imported {imported_count} new articles",
+            "imported_count": imported_count,
+            "total_processed": len(articles),
+            "sources_checked": len(sources),
+            "ai_processed": use_ai
+        }
+        
+    except Exception as e:
+        logger.error(f"Error importing RSS articles: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error importing articles: {str(e)}")
+
+@router.get("/feed.xml", response_class=Response)
+async def generate_rss_feed(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    limit: int = Query(20, ge=1, le=100),
+    db = Depends(get_database)
+):
+    """Generate RSS feed from our articles"""
+    try:
+        # Get base URL from environment
+        base_url = os.environ.get('SITEMAP_BASE_URL', 'https://cheshiretoday.co.uk')
+        
+        # Create feed generator
+        fg = FeedGenerator()
+        fg.id(base_url)
+        fg.title('Cheshire Today')
+        fg.subtitle('Your trusted source for Cheshire local stories')
+        fg.link(href=base_url, rel='alternate')
+        fg.link(href=f'{base_url}/api/feed.xml', rel='self')
+        fg.language('en')
+        fg.author({'name': 'Cheshire Today', 'email': 'contact@cheshiretoday.co.uk'})
+        fg.description('Latest news and updates from Cheshire, Manchester, Liverpool & Northwest UK')
+        
+        # Query articles from database with projection for performance
+        query = {}
+        if category and category != 'all':
+            query['category'] = category
+        
+        articles = list(
+            db.articles.find(
+                query,
+                {
+                    '_id': 1,
+                    'title': 1,
+                    'content': 1,
+                    'published_date': 1,
+                    'created_at': 1,
+                    'source': 1,
+                    'category': 1,
+                    'image': 1
+                }
+            )
+            .sort('created_at', -1)
+            .limit(limit)
+        )
+        
+        # Add articles to feed
+        for article in articles:
+            fe = fg.add_entry()
+            fe.id(str(article['_id']))
+            fe.title(article.get('title', 'Untitled'))
+            fe.description(article.get('content', '')[:500] + '...')
+            fe.content(article.get('content', ''), type='text')
+            
+            # Add link - always use our site, not external source
+            article_link = f"{base_url}/article/{article['_id']}"
+            fe.link(href=article_link)
+            
+            # Add image if available
+            if article.get('image'):
+                fe.enclosure(article['image'], 0, 'image/jpeg')
+            
+            # Add published date
+            pub_date = article.get('published_date') or article.get('created_at')
+            if pub_date:
+                # Ensure timezone aware datetime
+                if hasattr(pub_date, 'tzinfo') and pub_date.tzinfo is None:
+                    pub_date = pub_date.replace(tzinfo=timezone.utc)
+                fe.pubDate(pub_date)
+            
+            # Add author
+            source = article.get('source', 'Cheshire News')
+            fe.author({'name': source})
+            
+            # Add category
+            if 'category' in article:
+                fe.category(term=article['category'])
+        
+        # Generate RSS XML
+        rss_xml = fg.rss_str(pretty=True)
+        
+        return Response(
+            content=rss_xml,
+            media_type='application/rss+xml',
+            headers={'Content-Disposition': 'inline; filename="feed.xml"'}
+        )
+        
+    except Exception as e:
+        logger.error(f"Error generating RSS feed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating RSS feed: {str(e)}")

@@ -1,0 +1,117 @@
+To: support@emergent.sh
+
+Subject: URGENT: Production Deployment Not Syncing - Code Changes Not Being Applied (Cheshire Today)
+
+---
+
+Hi Emergent Support Team,
+
+I am experiencing a critical deployment issue where my production environment is not receiving code updates despite multiple deployment attempts. This is causing a serious bug where subscribers are receiving 3 duplicate emails every morning instead of 1.
+
+---
+
+ISSUE SUMMARY
+
+Code changes made in the preview environment are NOT being deployed to production. Both frontend and backend are affected.
+
+Project: Cheshire Today News Website
+Preview URL: https://cheshire-fix.preview.emergentagent.com
+Production URL: https://cheshiretoday.co.uk
+
+---
+
+EVIDENCE
+
+1. Frontend Bundle - NOT DEPLOYED
+
+| Feature                  | Production Bundle      | Preview/Local Code |
+|--------------------------|------------------------|-------------------|
+| JS Bundle                | main.b6e2cc28.js (OLD) | Different (NEW)   |
+| pendingScrollRef         | 0 occurrences          | 5 occurrences     |
+| HOMEPAGE_ARTICLE_COUNTS  | 0 occurrences          | 2 occurrences     |
+| handleCategoryChange     | 0 occurrences          | 13 occurrences    |
+
+Verification command:
+curl -s "https://cheshiretoday.co.uk/static/js/main.b6e2cc28.js" | grep -c "pendingScrollRef"
+# Returns: 0 (should be 5)
+
+
+2. Backend Code - NOT DEPLOYED
+
+The deployment logs show these warnings on startup:
+
+"Could not create digest_log index: ... E11000 duplicate key error ... dup key: { digest_time: "DailyBrief", date_key: "20260126" }"
+"Could not create index: ... scheduler_locks ... dup key: { job: "article_gen_2026012018" }"
+
+This proves the old code is running because:
+- The NEW code includes logic to clean up duplicates BEFORE creating indexes
+- The NEW code would NOT show these errors
+- The NEW code drops and recreates the index with a new name
+
+
+3. Database Shows Duplicate Entries (Causing 3x Emails)
+
+Production digest_log collection shows duplicates that should have been cleaned:
+
+2026-01-31T07:30:00 | DailyBrief | 20260131 | sent    <- DUPLICATE
+2026-01-31T07:30:00 | DailyBrief | 20260131 | sent    <- DUPLICATE
+2026-01-30T07:30:00 | DailyBrief | 20260130 | sending <- DUPLICATE
+2026-01-30T07:30:00 | DailyBrief | 20260130 | sent    <- DUPLICATE
+
+The new backend code would have:
+1. Removed these duplicates on startup
+2. Created a proper unique index to prevent future duplicates
+3. Used atomic insert to ensure only ONE email is sent
+
+---
+
+TIMELINE
+
+| Date    | Event                                              |
+|---------|----------------------------------------------------|
+| Jan 29-30 | Implemented View All scroll feature + highlight  |
+| Jan 30    | Implemented duplicate email prevention fix       |
+| Jan 31    | Implemented database cleanup + index fix         |
+| Jan 31    | Multiple deployments attempted                   |
+| Jan 31    | Production still running OLD code                |
+
+---
+
+IMPACT
+
+1. Subscribers receiving 3 duplicate emails every morning at 7:30 AM
+2. New features not reaching users (scroll behavior, highlight animation)
+3. Performance optimizations not live (skeleton loader, caching)
+4. Bug fixes not applied (location categorization, admin UI)
+
+---
+
+WHAT WE NEED
+
+Please investigate why the deployment pipeline is not syncing the latest code:
+
+1. Is the frontend being rebuilt? (yarn build should generate a new JS bundle hash)
+2. Is the new build being uploaded to production?
+3. Is the backend code being updated in the container?
+4. Are there multiple pods serving different versions?
+5. Is there a caching layer (CDN/proxy) serving stale files?
+
+---
+
+FILES MODIFIED THAT SHOULD BE IN PRODUCTION
+
+Frontend:
+- frontend/src/App.js - Scroll logic, highlight animation
+- frontend/src/App.css - Highlight animation CSS
+- frontend/src/components/CompactArticleCard.jsx - data-testid fix
+
+Backend:
+- backend/server.py - Duplicate cleanup logic, index fixes, atomic insert protection
+
+---
+
+This is an urgent issue as subscribers continue to receive duplicate emails daily. Please advise on next steps or any actions I can take to help resolve this.
+
+Thank you,
+[Your Name]
+Cheshire Today

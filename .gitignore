@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.venv/
+venv/
+.env
+.env.*
+.DS_Store
+
+# Node / React
+node_modules/
+build/
+dist/
+.cache/
+
+# Tests / reports / misc
+*.sqlite3
+*.db
+coverage/
+
+# OS / editor
+.idea/
+.vscode/
