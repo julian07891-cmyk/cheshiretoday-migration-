@@ -7320,26 +7320,60 @@ async def send_digest_now():
                     }
         
         # Log SMTP config at start for debugging
-        import os
-        logger.info(f"SMTP Config Check - Host: {os.environ.get('SMTP_HOST')}, Port: {os.environ.get('SMTP_PORT')}, User: {os.environ.get('SMTP_USER')}")
-        
-        # Get all subscribers
-        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(1000)
+        logger.info(
+            f"SMTP Config Check - Host: {os.environ.get('SMTP_HOST')}, "
+            f"Port: {os.environ.get('SMTP_PORT')}, "
+            f"User: {os.environ.get('SMTP_USER')}"
+        )
+
+        # Get subscribers with daily_brief preference (or all if no preference set - backwards compatibility)
+        subscribers = await db.subscribers.find(
+            {"$or": [
+                {"daily_brief": True},
+                {"daily_brief": {"$exists": False}}
+            ]},
+            {"_id": 0, "email": 1}
+        ).to_list(1000)
+
         if not subscribers:
-            return {"success": False, "message": "No subscribers found"}
-        
-        # Deduplicate emails (case-insensitive)
+            logger.info("No subscribers found with daily_brief preference - skipping")
+            return
+
+        # Deduplicate emails (case-insensitive) + basic validation
+        import re
+        email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
         seen_emails = set()
         unique_emails = []
+
         for s in subscribers:
-            email = s.get('email', '').lower().strip()
-            if email and email not in seen_emails:
-                seen_emails.add(email)
-                unique_emails.append(s.get('email'))  # Keep original case
-        
+            email_raw = (s.get("email") or "").strip()
+            email_norm = email_raw.lower()
+
+            if not email_raw:
+                continue
+            if email_norm in seen_emails:
+                continue
+            if not email_regex.match(email_norm) or email_norm.endswith("@example.com"):
+                continue
+
+            seen_emails.add(email_norm)
+            unique_emails.append(email_raw)  # keep original case
+
         subscriber_emails = unique_emails
-        logger.info(f"DIGEST: Found {len(subscriber_emails)} unique subscriber emails (from {len(subscribers)} total)")
-        
+        logger.info(
+            f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief "
+            f"(from {len(subscribers)} candidate records)"
+        )
+
+        # ============================================================
+        # TEST MODE: During migration, send digest ONLY to one email
+        # Set DIGEST_TEST_EMAIL in Render env to enable
+        # ============================================================
+        test_digest_email = os.environ.get("DIGEST_TEST_EMAIL", "").strip()
+        if test_digest_email:
+            subscriber_emails = [test_digest_email]
+            logger.warning(f"🧪 TEST MODE ENABLED: Digest will be sent ONLY to {test_digest_email}")
         # Get latest articles with deduplication by title
         pipeline = [
             {"$sort": {"publishedDate": -1}},
@@ -9734,7 +9768,14 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         
         subscriber_emails = unique_emails
         logger.info(f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief")
-        
+        # ============================================================
+        # TEST MODE (migration): send digest ONLY to one email address
+        # Set DIGEST_TEST_EMAIL in Render env to enable this
+        # ============================================================
+        test_digest_email = os.environ.get("DIGEST_TEST_EMAIL", "").strip()
+        if test_digest_email:
+            subscriber_emails = [test_digest_email]
+            logger.warning(f"🧪 TEST MODE ENABLED: Digest will be sent ONLY to {test_digest_email}")
         # Get latest articles (published in last 24 hours for variety)
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         
