@@ -11,7 +11,7 @@ const TrendingTopics = ({ onTopicClick }) => {
   useEffect(() => {
     const fetchTopics = async () => {
       try {
-        const response = await fetch(`${API_URL}/trending-topics?limit=8`);
+        const response = await fetch(`/api/trending-topics?limit=8`);
         if (!response.ok) throw new Error('Failed to fetch topics');
         const data = await response.json();
         setTopics(data.topics || []);
