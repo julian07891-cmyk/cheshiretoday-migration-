@@ -1,0 +1,244 @@
+{
+    "page": "home",
+    "version": "1.0",
+    "strategy": "hybrid_social_to_loyalty_funnel",
+    "globals": {
+      "theme": "dark",
+      "gridUnitPx": 8,
+      "contentMaxWidthPx": 720,
+      "cardImageAspectRatio": "16:9",
+      "typography": {
+        "fontFamily": "system",
+        "headlineClampLines": 2,
+        "summaryClampLines": 2
+      },
+      "rules": {
+        "minEditorialCardsBeforePromo": 8,
+        "maxPromosPerEditorialCards": {
+          "promoCount": 1,
+          "editorialCount": 10
+        },
+        "localDominanceFirstScroll": 0.65
+      }
+    },
+    "dataSources": {
+      "hero": { "type": "query", "query": "top_local_lead" },
+      "topLocal": { "type": "query", "query": "top_local", "limit": 4 },
+      "latest": { "type": "query", "query": "latest_mixed_with_local_bias", "limit": 24 },
+      "mostRead": { "type": "query", "query": "most_read_today", "limit": 5 },
+      "trendingTags": { "type": "query", "query": "trending_tags_local", "limit": 12 },
+      "ukNews": { "type": "query", "query": "uk_national", "limit": 4 },
+      "towns": {
+        "type": "static",
+        "items": ["Chester", "Crewe", "Macclesfield", "Wilmslow", "Warrington", "Northwich", "Congleton", "Knutsford"]
+      },
+      "utilityLinks": {
+        "type": "static",
+        "items": [
+          { "label": "Weather", "route": "/weather" },
+          { "label": "Travel", "route": "/travel" },
+          { "label": "Police", "route": "/police" },
+          { "label": "Council", "route": "/planning" }
+        ]
+      },
+      "jobs": { "type": "query", "query": "jobs_featured", "limit": 1 },
+      "deals": { "type": "query", "query": "deals_featured", "limit": 1 },
+      "breaking": { "type": "query", "query": "breaking_active", "limit": 10 }
+    },
+    "layout": [
+      {
+        "id": "header",
+        "component": "StickyHeader",
+        "props": {
+          "showThemeToggle": true,
+          "showJobsButton": false,
+          "showAlertsButton": false,
+          "sticky": true,
+          "heightVariant": "compact"
+        }
+      },
+      {
+        "id": "breaking",
+        "component": "BreakingTicker",
+        "props": {
+          "source": "breaking",
+          "renderIfEmpty": false,
+          "heightVariant": "slim",
+          "tapRoute": "/breaking"
+        }
+      },
+  
+      {
+        "id": "hero",
+        "component": "HeroStoryCard",
+        "props": {
+          "source": "hero",
+          "showCategoryPill": true,
+          "showTownTag": true,
+          "showReadTime": true,
+          "headlineClampLines": 2,
+          "imageAspectRatio": "globals.cardImageAspectRatio",
+          "preloadImage": true
+        },
+        "constraints": {
+          "noPromosAdjacent": true
+        }
+      },
+  
+      {
+        "id": "topLocalGrid",
+        "component": "TopStoriesGrid",
+        "props": {
+          "source": "topLocal",
+          "cardComponent": "StoryCardStandard",
+          "grid": { "mobile": "2x2", "tablet": "2x2", "desktop": "4x1" },
+          "showViewAll": false
+        }
+      },
+  
+      {
+        "id": "latestRun1",
+        "component": "LatestFeed",
+        "props": {
+          "source": "latest",
+          "startIndex": 0,
+          "count": 8,
+          "cardComponent": "StoryCardCompact",
+          "injectPromos": false,
+          "showCategoryPill": true,
+          "showTownTag": true,
+          "headlineClampLines": 2,
+          "summaryClampLines": 2
+        }
+      },
+  
+      {
+        "id": "mostRead",
+        "component": "MostReadList",
+        "props": {
+          "source": "mostRead",
+          "rows": 5,
+          "showRankNumbers": true,
+          "tapRoute": "/most-read"
+        }
+      },
+  
+      {
+        "id": "trendingTags",
+        "component": "TrendingTags",
+        "props": {
+          "source": "trendingTags",
+          "chipStyle": "pill",
+          "tapRouteTemplate": "/topic/{tagSlug}"
+        }
+      },
+  
+      {
+        "id": "latestRun2",
+        "component": "LatestFeed",
+        "props": {
+          "source": "latest",
+          "startIndex": 8,
+          "count": 8,
+          "cardComponent": "StoryCardCompact",
+          "injectPromos": false
+        }
+      },
+  
+      {
+        "id": "ukSection",
+        "component": "SectionBlock",
+        "props": {
+          "title": "UK / National",
+          "source": "ukNews",
+          "minStories": 4,
+          "cardComponent": "StoryCardStandard",
+          "viewAllRoute": "/uk"
+        }
+      },
+  
+      {
+        "id": "utilityStrip",
+        "component": "UtilityStrip",
+        "props": {
+          "source": "utilityLinks",
+          "layout": "compact_rows",
+          "iconStyle": "simple"
+        }
+      },
+  
+      {
+        "id": "townSelector",
+        "component": "TownSelector",
+        "props": {
+          "source": "towns",
+          "layout": { "mobile": "chips_wrap", "desktop": "row" },
+          "tapRouteTemplate": "/town/{townSlug}",
+          "rememberSelection": true
+        }
+      },
+  
+      {
+        "id": "newsletterFull",
+        "component": "NewsletterFull",
+        "props": {
+          "title": "Daily Brief",
+          "subtitle": "Top Cheshire stories in your inbox.",
+          "privacyNote": "Unsubscribe anytime.",
+          "submitRoute": "/api/newsletter/subscribe"
+        }
+      },
+  
+      {
+        "id": "jobsCard",
+        "component": "JobsCard",
+        "props": {
+          "source": "jobs",
+          "tapRoute": "/jobs",
+          "style": "compact_single"
+        }
+      },
+  
+      {
+        "id": "dealsCard",
+        "component": "DealsCard",
+        "props": {
+          "source": "deals",
+          "tapRoute": "/deals",
+          "style": "single_promo"
+        },
+        "constraints": {
+          "promoFrequency": {
+            "maxPromos": 1,
+            "perEditorialCards": 10,
+            "neverAbove": ["hero", "topLocalGrid", "latestRun1"]
+          }
+        }
+      },
+  
+      {
+        "id": "footer",
+        "component": "Footer",
+        "props": {
+          "links": [
+            { "label": "Editorial Policy", "route": "/editorial-policy" },
+            { "label": "How We Select Stories", "route": "/how-we-select-stories" },
+            { "label": "Source Transparency", "route": "/sources" },
+            { "label": "Contact", "route": "/contact" }
+          ]
+        }
+      }
+    ],
+    "analytics": {
+      "enabled": true,
+      "events": [
+        { "name": "home_hero_click", "selector": "#hero a" },
+        { "name": "home_story_click", "selector": ".StoryCard a" },
+        { "name": "home_most_read_click", "selector": "#mostRead a" },
+        { "name": "home_trending_tag_click", "selector": "#trendingTags button" },
+        { "name": "home_newsletter_submit", "selector": "#newsletterFull form" },
+        { "name": "home_town_select", "selector": "#townSelector button" },
+        { "name": "home_promo_click", "selector": ".PromoCard a" }
+      ]
+    }
+  }
