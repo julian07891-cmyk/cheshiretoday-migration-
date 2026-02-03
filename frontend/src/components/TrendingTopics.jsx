@@ -34,7 +34,7 @@ const TrendingTopics = ({ onTopicClick }) => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4" data-testid="trending-topics-loading">
         <div className="flex items-center mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
           <TrendingUp className="h-4 w-4 text-emerald-600 mr-2" />
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Trending in Cheshire</h3>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Trending in Cheshire — DEBUG</h3>
         </div>
         <div className="animate-pulse space-y-2">
           {[1, 2, 3, 4].map((i) => (
