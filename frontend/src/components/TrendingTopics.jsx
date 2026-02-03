@@ -53,7 +53,7 @@ const TrendingTopics = ({ onTopicClick }) => {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4" data-testid="trending-topics">
       <div className="flex items-center mb-3 pb-3 border-b-2 border-emerald-600">
         <TrendingUp className="h-4 w-4 text-emerald-600 mr-2" />
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white">Trending in Cheshire</h3>
+        <h3 className="text-sm font-bold text-gray-900 dark:text-white">Trending in Cheshire — DEBUG</h3>
       </div>
       <div className="flex flex-wrap gap-2">
         {topics.map((topic, index) => (
