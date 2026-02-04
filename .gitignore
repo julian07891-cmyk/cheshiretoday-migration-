@@ -24,3 +24,5 @@ coverage/
 # OS / editor
 .idea/
 .vscode/
+
+frontend/warmup.sh
