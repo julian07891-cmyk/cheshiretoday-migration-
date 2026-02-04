@@ -1,0 +1,30 @@
+services:
+  - type: static_site
+    name: cheshiretoday-frontend-migration
+    rootDir: frontend
+    buildCommand: yarn install && yarn build
+    staticPublishPath: build
+    headers:
+      # Cache hashed build assets forever (CRA outputs content-hashed filenames)
+      - path: /static/*
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+      # Also cache common build artifacts
+      - path: /asset-manifest.json
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /manifest.json
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+      - path: /favicon.ico
+        name: Cache-Control
+        value: public, max-age=31536000, immutable
+
+      # Never long-cache HTML (so deployments show immediately)
+      - path: /
+        name: Cache-Control
+        value: no-cache
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache
