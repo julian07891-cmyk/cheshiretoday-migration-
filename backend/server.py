@@ -56,6 +56,30 @@ else:
     client = AsyncIOMotorClient(mongo_url)
     db = client[os.environ["DB_NAME"]]
 # -------------------------------
+# Ensure MongoDB indexes (performance)
+# -------------------------------
+async def ensure_indexes():
+    try:
+        await db.articles.create_index(
+            [("publishedDate", -1)],
+            name="publishedDate_desc"
+        )
+        await db.articles.create_index(
+            [("category", 1), ("publishedDate", -1)],
+            name="category_publishedDate"
+        )
+        await db.articles.create_index(
+            [("is_local_source", 1), ("publishedDate", -1)],
+            name="local_publishedDate"
+        )
+        await db.articles.create_index(
+            [("archived", 1)],
+            name="archived_flag"
+        )
+        print("✅ MongoDB indexes ensured")
+    except Exception as e:
+        print("⚠️ MongoDB index creation failed:", e)
+# -------------------------------
 # LOCAL DEV: in-memory articles
 # -------------------------------
 LOCAL_DEV_ARTICLES = []
@@ -238,7 +262,9 @@ def get_gemini_chat(session_id: str, system_message: str) -> LlmChat:
 
 # Create the main app without a prefix
 app = FastAPI()
-
+@app.on_event("startup")
+async def startup_event():
+    await ensure_indexes()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
