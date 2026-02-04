@@ -2786,8 +2786,15 @@ async def get_articles(
             
             unique_articles.append(article)
         
-        # Cache the result for homepage requests
-        if not search and skip == 0 and limit == 20 and not category:
+        # Cache the result for common homepage requests
+        if (
+            not search
+            and skip == 0
+            and limit in (10, 20)
+            and (not category or category == "all")
+            and not source_type
+            and include_archived is False
+        ):
             api_cache.set(cache_key, unique_articles)
         
         return unique_articles
