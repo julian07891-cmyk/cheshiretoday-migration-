@@ -122,6 +122,46 @@ def seed_local_articles_if_needed():
             "location": locations[i % len(locations)],
             "is_local_source": True,
         })
+
+# =====================================================================================
+# NICHE SILOS (AI/Tech + Money/Property) — section inference (safe, non-persistent)
+# =====================================================================================
+
+SECTION_RULES = [
+    ("ai-policy", ["regulation", "bill", "parliament", "gov", "government", "whitehall", "ofcom", "ico", "ai act", "safety", "ethics", "policy"]),
+    ("ai-tools", ["tool", "app", "plugin", "copilot", "chatgpt", "gemini", "claude", "midjourney", "notion", "microsoft", "google", "openai", "launch", "update", "release", "feature"]),
+    ("ai-guides", ["how to", "guide", "tutorial", "explainer", "step-by-step", "what is", "tips", "for beginners", "small business", "use cases"]),
+    ("ai-news", ["ai", "artificial intelligence", "machine learning", "llm", "model", "robot", "automation"]),
+    ("mortgages", ["mortgage", "remortgage", "fixed rate", "tracker", "lender", "apr", "interest rate", "affordability", "broker"]),
+    ("tax", ["tax", "hmrc", "self assessment", "allowance", "national insurance", "vat", "capital gains", "cg", "stamp duty"]),
+    ("property", ["property", "house price", "rent", "landlord", "tenant", "letting", "buy-to-let", "rightmove", "zoopla", "housing market"]),
+    ("money", ["inflation", "budget", "savings", "isa", "pension", "credit", "loan", "debt", "cost of living", "energy bills"]),
+]
+
+def infer_section(title: str = "", summary: str = "", category: str = "", tags=None, scope: str = "") -> str:
+    """
+    Returns one of:
+      ai-news, ai-guides, ai-tools, ai-policy,
+      money, property, mortgages, tax,
+      or "general"
+    """
+    tags = tags or []
+    blob = " ".join([
+        str(title or ""),
+        str(summary or ""),
+        str(category or ""),
+        " ".join([str(t) for t in tags if t]),
+        str(scope or ""),
+    ]).lower()
+
+    # First match wins (more specific rules first in SECTION_RULES)
+    for section, kws in SECTION_RULES:
+        for kw in kws:
+            if kw in blob:
+                return section
+
+    return "general"
+
 # =====================================================================================
 # IN-MEMORY CACHE FOR PERFORMANCE (reduces TTFB)
 # =====================================================================================
@@ -2599,6 +2639,7 @@ async def get_articles(
     limit: int = 20,
     source_type: Optional[str] = None,  # "local", "national", or None for all
     include_archived: bool = False,  # By default, exclude archived articles
+    section: Optional[str] = None,  # ai-news, ai-guides, ai-tools, ai-policy, money, property, mortgages, tax
     search: Optional[str] = None  # Search query for title and content
 ):
     """Get all articles with optional filtering by category, source type, and search"""
@@ -2610,7 +2651,7 @@ async def get_articles(
             seed_local_articles_if_needed()
             return LOCAL_DEV_ARTICLES
         # Check cache for default homepage request (most common)
-        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{search}"
+        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{search}:{section}"
 
         # Cache the most common homepage patterns (limit 10/20, no search, first page, not archived, no source_type)
         if (
@@ -2620,6 +2661,7 @@ async def get_articles(
             and (not category or category == "all")
             and not source_type
             and include_archived is False
+            and not section
         ):
             cached = api_cache.get(cache_key, ttl_seconds=60)  # 60 second cache
             if cached:
@@ -2684,7 +2726,9 @@ async def get_articles(
         elif source_type == 'national':
             query['is_local_source'] = False
         
-        # For "all" category (Latest News), use interleaved ordering: Local, Local, UK, UK
+        
+        # Section silo filtering (AI/Tech + Money/Property)
+        # This is computed on-the-fly from title/summary/category/tags/scope.
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
             local_articles = await db.articles.find(
@@ -2783,9 +2827,23 @@ async def get_articles(
             article['is_priority_cheshire'] = is_priority_cheshire_article(title, content)
             article['is_secondary_cheshire'] = is_secondary_cheshire_article(title, content)
             article['priority_location'] = get_article_priority_location(title, content)
+
+            # Compute section for niche silos
+            article['section'] = infer_section(
+                title=article.get('title',''),
+                summary=article.get('summary',''),
+                category=article.get('category',''),
+                tags=article.get('tags') or [],
+                scope=article.get('scope',''),
+            )
             
             unique_articles.append(article)
         
+
+        # Apply section filter (computed)
+        if section and section != "all":
+            unique_articles = [a for a in unique_articles if a.get("section") == section]
+
         # Cache the result for common homepage requests
         if (
             not search
@@ -2794,6 +2852,7 @@ async def get_articles(
             and (not category or category == "all")
             and not source_type
             and include_archived is False
+            and not section
         ):
             api_cache.set(cache_key, unique_articles)
         
