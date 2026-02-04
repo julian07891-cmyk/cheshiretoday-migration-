@@ -2491,7 +2491,7 @@ async def get_cheshire_general_articles(
         articles = await db.articles.find(
             query,
             {
-                '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                 'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                 'location': 1
@@ -2565,7 +2565,7 @@ async def get_articles_by_location(
         articles = await db.articles.find(
             query,
             {
-                '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                 'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                 'location': 1
@@ -2610,9 +2610,18 @@ async def get_articles(
             seed_local_articles_if_needed()
             return LOCAL_DEV_ARTICLES
         # Check cache for default homepage request (most common)
-        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}"
-        if not search and skip == 0 and limit == 20 and not category:
-            cached = api_cache.get(cache_key, ttl_seconds=30)  # 30 second cache
+        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{search}"
+
+        # Cache the most common homepage patterns (limit 10/20, no search, first page, not archived, no source_type)
+        if (
+            not search
+            and skip == 0
+            and limit in (10, 20)
+            and (not category or category == "all")
+            and not source_type
+            and include_archived is False
+        ):
+            cached = api_cache.get(cache_key, ttl_seconds=60)  # 60 second cache
             if cached:
                 return cached
         
@@ -2642,7 +2651,7 @@ async def get_articles(
             articles = await db.articles.find(
                 query,
                 {
-                    '_id': 1, 'id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                    '_id': 1, 'id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
                 }
@@ -2681,7 +2690,7 @@ async def get_articles(
             local_articles = await db.articles.find(
                 {'is_local_source': True},
                 {
-                    '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                    '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
                 }
@@ -2690,7 +2699,7 @@ async def get_articles(
             uk_articles = await db.articles.find(
                 {'is_local_source': {'$ne': True}},
                 {
-                    '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                    '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
                 }
@@ -2723,9 +2732,7 @@ async def get_articles(
                 query,
                 {
                     '_id': 1,
-                    'title': 1,
-                    'content': 1,
-                    'summary': 1,
+                    'title': 1, 'summary': 1,
                     'category': 1,
                     'author': 1,
                     'publishedDate': 1,
@@ -8169,7 +8176,7 @@ async def generate_rss_feed():
         # Get latest 50 articles
         articles = await db.articles.find(
             {}, 
-            {'_id': 0, 'id': 1, 'title': 1, 'content': 1, 'publishedDate': 1, 'category': 1, 'author': 1, 'image': 1}
+            {'_id': 0, 'id': 1, 'title': 1,'publishedDate': 1, 'category': 1, 'author': 1, 'image': 1}
         ).sort('publishedDate', -1).limit(50).to_list(50)
         
         # Build RSS XML
