@@ -242,6 +242,10 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+@api_router.get("/health")
+async def health():
+    return {"status": "ok"}
+
 # Define Models
 class Article(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
