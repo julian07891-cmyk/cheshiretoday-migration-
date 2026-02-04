@@ -26,7 +26,7 @@ services:
       # Never long-cache HTML (so deployments show immediately)
       - path: /
         name: Cache-Control
-        value: no-cache
+        value: no-store
       - path: /index.html
         name: Cache-Control
-        value: no-cache
+        value: no-store
