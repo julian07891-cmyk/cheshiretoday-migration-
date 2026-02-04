@@ -38,6 +38,35 @@ RSS_FEEDS = {
         'category': 'Business',
         'priority': 2
     },
+
+    # Money / Personal Finance (UK)
+    'guardian_money': {
+        'url': 'https://www.theguardian.com/uk/money/rss',
+        'source': 'The Guardian',
+        'category': 'Business',
+        'priority': 2
+    },
+    'ft_personal_finance': {
+        'url': 'https://www.ft.com/personal-finance?format=rss',
+        'source': 'Financial Times',
+        'category': 'Business',
+        'priority': 2
+    },
+
+    # Property / Housing (UK)
+    'guardian_housing': {
+        'url': 'https://www.theguardian.com/money/housing/rss',
+        'source': 'The Guardian',
+        'category': 'Business',
+        'priority': 2
+    },
+    'ft_property': {
+        'url': 'https://www.ft.com/property-sector?format=rss',
+        'source': 'Financial Times',
+        'category': 'Business',
+        'priority': 2
+    },
+
     'bbc_technology': {
         'url': 'https://feeds.bbci.co.uk/news/technology/rss.xml',
         'source': 'BBC News',

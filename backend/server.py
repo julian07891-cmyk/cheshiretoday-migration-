@@ -146,15 +146,31 @@ def infer_section(title: str = "", summary: str = "", category: str = "", tags=N
       or "general"
     """
     tags = tags or []
+    category_l = (category or "").lower()
+
+    # FAST CATEGORY → SECTION MAPPING (RSS-friendly)
+    if category_l in ("tech", "technology"):
+        return "ai-news"
+    if category_l in ("business",):
+        return "money"
+
+    # Category-to-section mapping (gives immediate coverage for RSS categories)
+    cat = (category or "").strip().lower()
+    if cat in ("business",):
+        return "money"
+    if cat in ("tech", "technology"):
+        return "ai-news"
+    # You can expand later: e.g. "uk news" -> "general"
+
     blob = " ".join([
         str(title or ""),
         str(summary or ""),
-        str(category or ""),
+        category_l,
         " ".join([str(t) for t in tags if t]),
         str(scope or ""),
     ]).lower()
 
-    # First match wins (more specific rules first in SECTION_RULES)
+    # Keyword rules (first match wins)
     for section, kws in SECTION_RULES:
         for kw in kws:
             if kw in blob:
