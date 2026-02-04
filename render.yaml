@@ -1,9 +1,11 @@
 services:
-  - type: static_site
+  - type: web
     name: cheshiretoday-frontend-migration
+    runtime: static
     rootDir: frontend
     buildCommand: yarn install && yarn build
     staticPublishPath: build
+
     headers:
       # Cache hashed build assets forever (CRA outputs content-hashed filenames)
       - path: /static/*
