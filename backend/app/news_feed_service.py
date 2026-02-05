@@ -414,6 +414,14 @@ def is_secondary_cheshire_article(title: str, content: str = '') -> bool:
 # Keyword-based category override rules
 # If an article title/content contains these keywords, override its category
 # More specific keywords should be used to avoid false positives
+
+# Limit RSS categories to reduce noise + DB growth (monetisation-first)
+ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business"}
+
+def _rss_category_guard(cat: str) -> str:
+    c = (cat or "").strip()
+    return c if c in ALLOWED_RSS_CATEGORIES else "UK News"
+
 CATEGORY_KEYWORD_OVERRIDES = {
     'Sports': [
         'football', 'rugby', 'cricket', 'tennis', 'golf', 'boxing', 'darts',
@@ -789,8 +797,7 @@ class NewsFeedService:
                                 'summary': description[:200] + '...' if len(description) > 200 else description,
                                 'source': source,
                                 'source_url': link,
-                                'category': category,
-                                'image': image,
+                                'category': category_guard(category),                                'image': image,
                                 'publishedDate': self._parse_date(pub_date),
                                 'author': source,
                                 'is_real_news': True,
@@ -880,8 +887,7 @@ class NewsFeedService:
                         'summary': description[:200] + '...' if len(description) > 200 else description,
                         'source': source,
                         'source_url': link,
-                        'category': category,
-                        'image': image,
+                                'category': category_guard(category),                        'image': image,
                         'publishedDate': self._parse_date(pub_date),
                         'author': source,
                         'is_real_news': True,
