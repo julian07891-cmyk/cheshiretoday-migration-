@@ -15,6 +15,27 @@ logger = logging.getLogger(__name__)
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
 
 
+
+# =========================
+# HARD DAILY AI SPEND GUARD
+# =========================
+from datetime import date
+
+DAILY_AI_SPEND_GBP = 0.65  # ~£20/month hard cap
+_ai_usage = {"date": date.today().isoformat(), "calls": 0}
+
+def ai_call_allowed(cost_estimate_gbp: float = 0.05) -> bool:
+    today = date.today().isoformat()
+    if _ai_usage["date"] != today:
+        _ai_usage["date"] = today
+        _ai_usage["calls"] = 0
+
+    if (_ai_usage["calls"] + 1) * cost_estimate_gbp > DAILY_AI_SPEND_GBP:
+        return False
+
+    _ai_usage["calls"] += 1
+    return True
+
 class PerplexityService:
     """Service for searching Cheshire-specific news using Perplexity API"""
     
@@ -187,6 +208,22 @@ class PerplexityService:
         return articles
 
     async def generate_article_content(self, title: str, summary: str, source: str, source_url: str = "") -> str:
+
+        # =========================
+        # HARD COST GUARD (DEFAULT OFF)
+        # Set PERPLEXITY_ENABLED=true to allow paid generation.
+        # =========================
+        import os
+        enabled = os.getenv("PERPLEXITY_ENABLED", "false").strip().lower() in ("1", "true", "yes", "y")
+        if not enabled:
+            # Return a free fallback (RSS summary + link) instead of calling Perplexity
+            fallback = (summary or "").strip()
+            if source_url:
+                if fallback:
+                    fallback = f"{fallback}\n\nRead the full story at the source: {source_url}"
+                else:
+                    fallback = f"Read the full story at the source: {source_url}"
+            return fallback or "Read the full story at the source."
         """
         Generate detailed article content using Perplexity's web search.
         Searches for real information about the news topic and creates a summary.

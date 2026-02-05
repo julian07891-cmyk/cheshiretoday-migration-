@@ -62,4 +62,4 @@ class AdminLoginResponse(BaseModel):
 class HybridNewsRequest(BaseModel):
     cheshire_articles: int = 8
     uk_articles: int = 4
-    use_perplexity: bool = True
+    use_perplexity: bool = False

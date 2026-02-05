@@ -178,6 +178,29 @@ def infer_section(title: str = "", summary: str = "", category: str = "", tags=N
 
     return "general"
 
+
+# =====================================================================================
+# PERPLEXITY AI COST GUARD (HARD MONTHLY CAP)
+# =====================================================================================
+PERPLEXITY_MONTHLY_BUDGET_GBP = 20.0
+PERPLEXITY_COST_PER_ARTICLE = 0.005  # conservative estimate
+_ai_spend_state = {"month": None, "spent": 0.0}
+
+from datetime import datetime
+
+def can_use_perplexity() -> bool:
+    now = datetime.utcnow()
+    month_key = f"{now.year}-{now.month}"
+
+    if _ai_spend_state["month"] != month_key:
+        _ai_spend_state["month"] = month_key
+        _ai_spend_state["spent"] = 0.0
+
+    return _ai_spend_state["spent"] < PERPLEXITY_MONTHLY_BUDGET_GBP
+
+def record_perplexity_use():
+    _ai_spend_state["spent"] += PERPLEXITY_COST_PER_ARTICLE
+
 # =====================================================================================
 # IN-MEMORY CACHE FOR PERFORMANCE (reduces TTFB)
 # =====================================================================================
@@ -1248,7 +1271,6 @@ Start writing the article now:"""
         logger.info(f"Generated clean article: '{title[:40]}...' ({len(content)} chars)")
         
         return {
-            'title': title,
             'content': content,
             'category': category,
             'tags': tags,
@@ -1654,7 +1676,7 @@ class HybridNewsRequest(BaseModel):
     tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
     science_articles: int = 2    # 2 Science articles (FREE from RSS)
     entertainment_articles: int = 2  # 2 Entertainment articles (FREE from RSS)
-    use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
+    use_perplexity: bool = False  # ENABLED - Hybrid model with AI content generation
 
 
 @api_router.post("/import-hybrid-news")
@@ -1718,6 +1740,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
+                request.use_perplexity = False  # HARD DISABLE AI (budget guard)
+
+
                 nonlocal perplexity_cost_estimate
                 imported_count = 0
                 for article in articles_list:
@@ -9418,14 +9443,42 @@ async def sync_rss_now():
                 source = article.get('source', 'News Source')
                 source_url = article.get('source_url', '')
                 
-                # Generate detailed content using Perplexity
-                logger.info(f"Generating content for: {title[:50]}...")
-                detailed_content = await perplexity_service.generate_article_content(
+                # Budget guard (hybrid): Perplexity ONLY for AI sections + monthly cap (default £20)
+                section = infer_section(
                     title=title,
                     summary=original_content,
-                    source=source,
-                    source_url=source_url
-                )
+                    category=article.get('category',''),
+                    tags=article.get('tags') or [],
+                    scope=article.get('scope','')
+                ).strip()
+
+                # Default: use RSS content (free)
+                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
+
+                # Only allow Perplexity for AI sections, within monthly quota
+                if section.startswith("ai-"):
+                    import os
+                    from datetime import datetime
+
+                    month_key = datetime.utcnow().strftime("%Y-%m")
+                    budget_gbp = float(os.getenv("PERPLEXITY_MONTHLY_BUDGET_GBP", "20"))
+                    cost_per_article = float(os.getenv("PERPLEXITY_COST_PER_ARTICLE_GBP", "0.02"))  # conservative default
+                    max_ai_articles = int(budget_gbp / cost_per_article) if cost_per_article > 0 else 0
+
+                    usage = await db.ai_usage.find_one({"_id": month_key}) or {"count": 0}
+                    used = int(usage.get("count", 0))
+
+                    if used < max_ai_articles and max_ai_articles > 0:
+                        logger.info(f"Perplexity enabled (usage {used}/{max_ai_articles}) for: {title[:50]}...")
+                        detailed_content = await perplexity_service.generate_article_content(
+                            title=title,
+                            summary=original_content,
+                            source=source,
+                            source_url=source_url
+                        )
+                        await db.ai_usage.update_one({"_id": month_key}, {"$inc": {"count": 1}}, upsert=True)
+                    else:
+                        logger.info(f"Perplexity cap reached for {month_key} ({used}/{max_ai_articles}). Using RSS content.")
                 
                 # Create article document
                 article_doc = {
