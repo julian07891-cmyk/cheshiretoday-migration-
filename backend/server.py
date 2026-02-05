@@ -2561,7 +2561,7 @@ async def get_cheshire_general_articles(
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
-        ).sort('publishedDate', -1).skip(skip).limit(fetch_limit).to_list(fetch_limit)
+        ).sort('publishedDate', -1).skip(skip).limit(max(fetch_limit, 200)).to_list(fetch_limit)
         
         total_count = await db.articles.count_documents(query)
         
@@ -2635,7 +2635,7 @@ async def get_articles_by_location(
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
-        ).sort('publishedDate', -1).skip(skip).limit(fetch_limit).to_list(fetch_limit)
+        ).sort('publishedDate', -1).skip(skip).limit(max(fetch_limit, 200)).to_list(fetch_limit)
         
         # Get total count for this location
         total_count = await db.articles.count_documents(query)
@@ -2764,7 +2764,7 @@ async def get_articles(
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
-            ).sort('publishedDate', -1).limit(fetch_limit).to_list(fetch_limit)
+            ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
             
             uk_articles = await db.articles.find(
                 {'is_local_source': {'$ne': True}},
@@ -2773,23 +2773,24 @@ async def get_articles(
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
-            ).sort('publishedDate', -1).limit(fetch_limit).to_list(fetch_limit)
+            ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
             
             # Interleave: 2 local, 2 UK, repeat
+            target_limit = fetch_limit if (section and section != 'all') else limit
             articles = []
             local_idx = 0
             uk_idx = 0
             
-            while len(articles) < limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
+            while len(articles) < target_limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
                 # Add 2 local articles
                 for _ in range(2):
-                    if local_idx < len(local_articles) and len(articles) < limit:
+                    if local_idx < len(local_articles) and len(articles) < target_limit:
                         articles.append(local_articles[local_idx])
                         local_idx += 1
                 
                 # Add 2 UK articles
                 for _ in range(2):
-                    if uk_idx < len(uk_articles) and len(articles) < limit:
+                    if uk_idx < len(uk_articles) and len(articles) < target_limit:
                         articles.append(uk_articles[uk_idx])
                         uk_idx += 1
             
