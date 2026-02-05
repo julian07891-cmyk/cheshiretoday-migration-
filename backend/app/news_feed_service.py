@@ -790,6 +790,7 @@ class NewsFeedService:
                             detected_location = get_article_priority_location(title, description)
                             article_location = feed_location or detected_location
                             
+                            
                             article = {
                                 'id': str(uuid4()),
                                 'title': title,
@@ -797,13 +798,14 @@ class NewsFeedService:
                                 'summary': description[:200] + '...' if len(description) > 200 else description,
                                 'source': source,
                                 'source_url': link,
-                                'category': category_guard(category),                                'image': image,
+                                'category': guarded_category,
+                                'image': image,
                                 'publishedDate': self._parse_date(pub_date),
                                 'author': source,
                                 'is_real_news': True,
                                 'is_cheshire_related': is_local,
                                 'is_local_source': is_local_source,  # From feed config
-                                'tags': [source, category],
+                                'tags': [source, guarded_category],
                                 'created_at': datetime.now(timezone.utc).isoformat()
                             }
                             
@@ -880,6 +882,7 @@ class NewsFeedService:
                     if override_category:
                         category = override_category
                     
+                    
                     article = {
                         'id': str(uuid4()),
                         'title': title,
@@ -887,13 +890,14 @@ class NewsFeedService:
                         'summary': description[:200] + '...' if len(description) > 200 else description,
                         'source': source,
                         'source_url': link,
-                                'category': category_guard(category),                        'image': image,
+                                'category': guarded_category,
+                                'image': image,
                         'publishedDate': self._parse_date(pub_date),
                         'author': source,
                         'is_real_news': True,
                         'is_cheshire_related': is_local,
                         'is_local_source': is_local_source,  # From feed config
-                        'tags': [source, category],
+                        'tags': [source, guarded_category],
                         'created_at': datetime.now(timezone.utc).isoformat()
                     }
                     
