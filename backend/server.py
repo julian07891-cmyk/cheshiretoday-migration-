@@ -2561,7 +2561,7 @@ async def get_cheshire_general_articles(
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
-        ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
+        ).sort('publishedDate', -1).skip(skip).limit(fetch_limit).to_list(fetch_limit)
         
         total_count = await db.articles.count_documents(query)
         
@@ -2635,7 +2635,7 @@ async def get_articles_by_location(
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
-        ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
+        ).sort('publishedDate', -1).skip(skip).limit(fetch_limit).to_list(fetch_limit)
         
         # Get total count for this location
         total_count = await db.articles.count_documents(query)
@@ -2753,6 +2753,7 @@ async def get_articles(
         
         
         # Section silo filtering (AI/Tech + Money/Property)
+        fetch_limit = max(limit * 12, 60) if (section and section != 'all') else limit
         # This is computed on-the-fly from title/summary/category/tags/scope.
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
@@ -2763,7 +2764,7 @@ async def get_articles(
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
-            ).sort('publishedDate', -1).limit(limit).to_list(limit)
+            ).sort('publishedDate', -1).limit(fetch_limit).to_list(fetch_limit)
             
             uk_articles = await db.articles.find(
                 {'is_local_source': {'$ne': True}},
@@ -2772,7 +2773,7 @@ async def get_articles(
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
-            ).sort('publishedDate', -1).limit(limit).to_list(limit)
+            ).sort('publishedDate', -1).limit(fetch_limit).to_list(fetch_limit)
             
             # Interleave: 2 local, 2 UK, repeat
             articles = []
@@ -2882,6 +2883,8 @@ async def get_articles(
         # Apply section filter (computed)
         if section and section != "all":
             unique_articles = [a for a in unique_articles if a.get("section") == section]
+            # After filtering, apply pagination
+            unique_articles = unique_articles[skip: skip + limit]
 
         # Cache the result for common homepage requests
         if (
@@ -10098,7 +10101,11 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             # Affiliate disclosure (if applicable)
             if article.get("affiliate_type"):
                 article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"])
-            return article
+            # Affiliate disclosure (single article)
+        if article.get('affiliate_type'):
+            article['affiliate_disclosure'] = AFFILIATE_DISCLOSURES.get(article.get('affiliate_type'))
+
+        return article
         
         # Sort: Local News first, then other categories, Sports LAST
         local_news = [a for a in unique_articles if is_local(a)]
