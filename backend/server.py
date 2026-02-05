@@ -2997,8 +2997,10 @@ async def get_article(article_id: str):
             article = next((a for a in LOCAL_DEV_ARTICLES if a.get("id") == article_id), None)
             if not article:
                 raise HTTPException(status_code=404, detail="Article not found")
-            if (article.get("affiliate_type")) { article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"]) }
-        return article
+            # Affiliate disclosure (if applicable)
+            if article.get("affiliate_type"):
+                article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"])
+            return article
 
         article = None
         
@@ -3031,6 +3033,9 @@ async def get_article(article_id: str):
         if 'created_at' in article:
             del article['created_at']
         
+        # Affiliate disclosure (DB articles)
+        if article and article.get('affiliate_type'):
+            article['affiliate_disclosure'] = AFFILIATE_DISCLOSURES.get(article['affiliate_type'])
         return article
     except HTTPException:
         # Re-raise HTTP exceptions as-is (don't wrap 404 in 500)
@@ -9054,6 +9059,8 @@ async def clean_duplicate_articles(authorized: bool = Depends(get_admin_auth)):
             if pattern in seen_patterns:
                 to_remove.append({
                     'id': str(article['_id']),
+                    'section': getattr(request, 'section', None),
+                    'affiliate_type': getattr(request, 'affiliate_type', None),
                     'title': title[:60]
                 })
             else:
@@ -10088,7 +10095,10 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             return False
         
         def is_sports(article):
-            return article.get('category', '').lower() == 'sports'
+            # Affiliate disclosure (if applicable)
+            if article.get("affiliate_type"):
+                article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"])
+            return article
         
         # Sort: Local News first, then other categories, Sports LAST
         local_news = [a for a in unique_articles if is_local(a)]
