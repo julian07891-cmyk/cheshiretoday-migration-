@@ -15,6 +15,11 @@ from uuid import uuid4
 import xml.etree.ElementTree as ET
 from html import unescape
 
+# Alias for RSS category guard
+def category_guard(cat: str) -> str:
+    return _rss_category_guard(cat)
+
+
 logger = logging.getLogger(__name__)
 
 # UK News RSS Feed Sources
