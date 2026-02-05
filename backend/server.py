@@ -180,28 +180,6 @@ def infer_section(title: str = "", summary: str = "", category: str = "", tags=N
 
 
 # =====================================================================================
-# PERPLEXITY AI COST GUARD (HARD MONTHLY CAP)
-# =====================================================================================
-PERPLEXITY_MONTHLY_BUDGET_GBP = 20.0
-PERPLEXITY_COST_PER_ARTICLE = 0.005  # conservative estimate
-_ai_spend_state = {"month": None, "spent": 0.0}
-
-from datetime import datetime
-
-def can_use_perplexity() -> bool:
-    now = datetime.utcnow()
-    month_key = f"{now.year}-{now.month}"
-
-    if _ai_spend_state["month"] != month_key:
-        _ai_spend_state["month"] = month_key
-        _ai_spend_state["spent"] = 0.0
-
-    return _ai_spend_state["spent"] < PERPLEXITY_MONTHLY_BUDGET_GBP
-
-def record_perplexity_use():
-    _ai_spend_state["spent"] += PERPLEXITY_COST_PER_ARTICLE
-
-# =====================================================================================
 # IN-MEMORY CACHE FOR PERFORMANCE (reduces TTFB)
 # =====================================================================================
 from functools import lru_cache
@@ -233,6 +211,12 @@ class SimpleCache:
         """Clear all cached values"""
         self._cache.clear()
         self._timestamps.clear()
+
+
+# Affiliate disclosure templates (used only when affiliate_type is set)
+AFFILIATE_DISCLOSURES = {
+    "money_tool": "This article may contain affiliate links. If you use them, Cheshire Today may earn a small commission at no extra cost to you."
+}
 
 # Global cache instance
 api_cache = SimpleCache()
@@ -1762,15 +1746,15 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
                     
-                    if request.use_perplexity:
+                    if request.use_perplexity and section.startswith("ai-"):
                         # Generate detailed content using Perplexity
                         logger.info(f"Generating content for {category_name} article: {title[:40]}...")
-                        detailed_content = await perplexity_service.generate_article_content(
-                            title=title,
-                            summary=original_content,
-                            source=article.get('source', 'BBC News'),
-                            source_url=article.get('source_url', '')
-                        )
+# DISABLED_AI:                         detailed_content = await perplexity_service.generate_article_content(
+# DISABLED_AI:                             title=title,
+# DISABLED_AI:                             summary=original_content,
+# DISABLED_AI:                             source=article.get('source', 'BBC News'),
+# DISABLED_AI:                             source_url=article.get('source_url', '')
+# DISABLED_AI:                         )
                         perplexity_cost_estimate += 0.005
                     else:
                         # Use RSS content directly (faster, no AI)
@@ -1859,15 +1843,15 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             
-            if request.use_perplexity:
+            if request.use_perplexity and section.startswith("ai-"):
                 # Generate detailed content using Perplexity (expands RSS summary to full article)
                 logger.info(f"Generating full content for local article: {title[:40]}...")
-                detailed_content = await perplexity_service.generate_article_content(
-                    title=title,
-                    summary=original_content,
-                    source=article.get('source', 'Cheshire Live'),
-                    source_url=article.get('source_url', '')
-                )
+# DISABLED_AI:                 detailed_content = await perplexity_service.generate_article_content(
+# DISABLED_AI:                     title=title,
+# DISABLED_AI:                     summary=original_content,
+# DISABLED_AI:                     source=article.get('source', 'Cheshire Live'),
+# DISABLED_AI:                     source_url=article.get('source_url', '')
+# DISABLED_AI:                 )
                 perplexity_cost_estimate += 0.005
             else:
                 # Use RSS content directly (faster, no AI)
@@ -2081,68 +2065,68 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/admin/regenerate-content")
-async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
-    """
-    Regenerate content for all existing articles using Perplexity.
-    Only processes articles with short content (< 500 chars).
-    Cost: ~$0.005 per article
-    Requires admin authentication.
-    """
-    try:
-        # Find articles with short content
-        articles = await db.articles.find({}).to_list(1000)
-        
-        short_content_articles = [
-            a for a in articles 
-            if len(a.get('content', '')) < 500
-        ]
-        
-        logger.info(f"Found {len(short_content_articles)} articles with short content to regenerate")
-        
-        regenerated = 0
-        cost_estimate = 0
-        
-        for article in short_content_articles:
-            title = article.get('title', '')
-            original_content = article.get('content', '')
-            source = article.get('source', 'BBC News')
-            source_url = article.get('source_url', '')
-            
-            logger.info(f"Regenerating content for: {title[:40]}...")
-            
-            detailed_content = await perplexity_service.generate_article_content(
-                title=title,
-                summary=original_content,
-                source=source,
-                source_url=source_url
-            )
-            cost_estimate += 0.005
-            
-            if detailed_content and len(detailed_content) > len(original_content):
-                await db.articles.update_one(
-                    {'_id': article['_id']},
-                    {'$set': {
-                        'content': detailed_content,
-                        'original_summary': original_content,
-                        'content_generated': True
-                    }}
-                )
-                regenerated += 1
-                logger.info(f"✅ Regenerated content ({len(detailed_content)} chars): {title[:40]}...")
-            else:
-                logger.warning(f"Skipped - no improvement: {title[:40]}...")
-        
-        return {
-            "success": True,
-            "total_articles": len(articles),
-            "short_content_found": len(short_content_articles),
-            "regenerated": regenerated,
-            "estimated_cost_usd": round(cost_estimate, 4)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error regenerating content: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+# DISABLED_AI: async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
+# DISABLED_AI:     """
+# DISABLED_AI:     Regenerate content for all existing articles using Perplexity.
+# DISABLED_AI:     Only processes articles with short content (< 500 chars).
+# DISABLED_AI:     Cost: ~$0.005 per article
+# DISABLED_AI:     Requires admin authentication.
+# DISABLED_AI:     """
+# DISABLED_AI:     try:
+# DISABLED_AI:         # Find articles with short content
+# DISABLED_AI:         articles = await db.articles.find({}).to_list(1000)
+# DISABLED_AI:         
+# DISABLED_AI:         short_content_articles = [
+# DISABLED_AI:             a for a in articles 
+# DISABLED_AI:             if len(a.get('content', '')) < 500
+# DISABLED_AI:         ]
+# DISABLED_AI:         
+# DISABLED_AI:         logger.info(f"Found {len(short_content_articles)} articles with short content to regenerate")
+# DISABLED_AI:         
+# DISABLED_AI:         regenerated = 0
+# DISABLED_AI:         cost_estimate = 0
+# DISABLED_AI:         
+# DISABLED_AI:         for article in short_content_articles:
+# DISABLED_AI:             title = article.get('title', '')
+# DISABLED_AI:             original_content = article.get('content', '')
+# DISABLED_AI:             source = article.get('source', 'BBC News')
+# DISABLED_AI:             source_url = article.get('source_url', '')
+# DISABLED_AI:             
+# DISABLED_AI:             logger.info(f"Regenerating content for: {title[:40]}...")
+# DISABLED_AI:             
+# DISABLED_AI:             detailed_content = await perplexity_service.generate_article_content(
+# DISABLED_AI:                 title=title,
+# DISABLED_AI:                 summary=original_content,
+# DISABLED_AI:                 source=source,
+# DISABLED_AI:                 source_url=source_url
+# DISABLED_AI:             )
+# DISABLED_AI:             cost_estimate += 0.005
+# DISABLED_AI:             
+# DISABLED_AI:             if detailed_content and len(detailed_content) > len(original_content):
+# DISABLED_AI:                 await db.articles.update_one(
+# DISABLED_AI:                     {'_id': article['_id']},
+# DISABLED_AI:                     {'$set': {
+# DISABLED_AI:                         'content': detailed_content,
+# DISABLED_AI:                         'original_summary': original_content,
+# DISABLED_AI:                         'content_generated': True
+# DISABLED_AI:                     }}
+# DISABLED_AI:                 )
+# DISABLED_AI:                 regenerated += 1
+# DISABLED_AI:                 logger.info(f"✅ Regenerated content ({len(detailed_content)} chars): {title[:40]}...")
+# DISABLED_AI:             else:
+# DISABLED_AI:                 logger.warning(f"Skipped - no improvement: {title[:40]}...")
+# DISABLED_AI:         
+# DISABLED_AI:         return {
+# DISABLED_AI:             "success": True,
+# DISABLED_AI:             "total_articles": len(articles),
+# DISABLED_AI:             "short_content_found": len(short_content_articles),
+# DISABLED_AI:             "regenerated": regenerated,
+# DISABLED_AI:             "estimated_cost_usd": round(cost_estimate, 4)
+# DISABLED_AI:         }
+# DISABLED_AI:         
+# DISABLED_AI:     except Exception as e:
+# DISABLED_AI:         logger.error(f"Error regenerating content: {str(e)}")
+# DISABLED_AI:         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/admin/clean-content")
@@ -2574,7 +2558,7 @@ async def get_cheshire_general_articles(
             {
                 '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                 'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
         ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
@@ -2648,7 +2632,7 @@ async def get_articles_by_location(
             {
                 '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                 'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
         ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
@@ -2736,7 +2720,7 @@ async def get_articles(
                 {
                     '_id': 1, 'id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
             
@@ -2777,7 +2761,7 @@ async def get_articles(
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
             ).sort('publishedDate', -1).limit(limit).to_list(limit)
             
@@ -2786,7 +2770,7 @@ async def get_articles(
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
                 }
             ).sort('publishedDate', -1).limit(limit).to_list(limit)
             
@@ -2827,7 +2811,7 @@ async def get_articles(
                     'source': 1,
                     'source_url': 1,
                     'scope': 1,
-                    'is_local_source': 1
+                    'is_local_source': 1, 'affiliate_type': 1
                 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
@@ -2861,6 +2845,10 @@ async def get_articles(
             # Clean word count from content
             if 'content' in article:
                 article['content'] = clean_word_count(article['content'])
+
+                if article.get("affiliate_type") and article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
+
+                    article["content"] += "\n\n" + AFFILIATE_DISCLOSURES[article["affiliate_type"]]
             
             # Add Cheshire priority flags and location
             title = article.get('title', '')
@@ -2878,6 +2866,16 @@ async def get_articles(
                 scope=article.get('scope',''),
             )
             
+            # Attach affiliate disclosure only when applicable
+
+            if article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
+
+                article["disclosure"] = AFFILIATE_DISCLOSURES[article["affiliate_type"]]
+
+            # HARD RULE: affiliates only allowed in money section
+            if article.get("affiliate_type") and article.get("section") != "money":
+                article["affiliate_type"] = None
+
             unique_articles.append(article)
         
 
@@ -2999,7 +2997,8 @@ async def get_article(article_id: str):
             article = next((a for a in LOCAL_DEV_ARTICLES if a.get("id") == article_id), None)
             if not article:
                 raise HTTPException(status_code=404, detail="Article not found")
-            return article
+            if (article.get("affiliate_type")) { article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"]) }
+        return article
 
         article = None
         
@@ -7587,6 +7586,16 @@ async def send_digest_now():
             if not is_similar:
                 seen_titles.add(title_normalized)
                 seen_keywords.append(title_keywords)
+            # Attach affiliate disclosure only when applicable
+
+            if article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
+
+                article["disclosure"] = AFFILIATE_DISCLOSURES[article["affiliate_type"]]
+
+            # HARD RULE: affiliates only allowed in money section
+            if article.get("affiliate_type") and article.get("section") != "money":
+                article["affiliate_type"] = None
+
                 unique_articles.append(article)
         
         # Prioritize Local News (including Cheshire locations) first, Sports LAST
@@ -9470,12 +9479,12 @@ async def sync_rss_now():
 
                     if used < max_ai_articles and max_ai_articles > 0:
                         logger.info(f"Perplexity enabled (usage {used}/{max_ai_articles}) for: {title[:50]}...")
-                        detailed_content = await perplexity_service.generate_article_content(
-                            title=title,
-                            summary=original_content,
-                            source=source,
-                            source_url=source_url
-                        )
+# DISABLED_AI:                         detailed_content = await perplexity_service.generate_article_content(
+# DISABLED_AI:                             title=title,
+# DISABLED_AI:                             summary=original_content,
+# DISABLED_AI:                             source=source,
+# DISABLED_AI:                             source_url=source_url
+# DISABLED_AI:                         )
                         await db.ai_usage.update_one({"_id": month_key}, {"$inc": {"count": 1}}, upsert=True)
                     else:
                         logger.info(f"Perplexity cap reached for {month_key} ({used}/{max_ai_articles}). Using RSS content.")
@@ -9496,7 +9505,9 @@ async def sync_rss_now():
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
                     'published_date': article.get('published_date'),
-                    'created_at': datetime.utcnow()
+                    'created_at': datetime.utcnow(),
+                    'monetisation_type': 'none',
+                    'affiliate_links': []
                 }
                 
                 await db.articles.insert_one(article_doc)
@@ -10051,6 +10062,16 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             if not is_similar:
                 seen_titles.add(title_normalized)
                 seen_keywords.append(title_keywords)
+            # Attach affiliate disclosure only when applicable
+
+            if article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
+
+                article["disclosure"] = AFFILIATE_DISCLOSURES[article["affiliate_type"]]
+
+            # HARD RULE: affiliates only allowed in money section
+            if article.get("affiliate_type") and article.get("section") != "money":
+                article["affiliate_type"] = None
+
                 unique_articles.append(article)
         
         # Prioritize Local News (including Cheshire locations) first, Sports LAST
