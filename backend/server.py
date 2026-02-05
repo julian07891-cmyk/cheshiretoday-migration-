@@ -9426,6 +9426,7 @@ async def sync_rss_now():
         from app.news_feed_service import news_feed_service
         from app.perplexity_service import perplexity_service
         from uuid import uuid4
+        import os
         
         logger.info("Starting manual RSS sync...")
         
@@ -9477,7 +9478,6 @@ async def sync_rss_now():
 
                 # Only allow Perplexity for AI sections, within monthly quota
                 if section.startswith("ai-"):
-                    import os
                     from datetime import datetime
 
                     month_key = datetime.utcnow().strftime("%Y-%m")

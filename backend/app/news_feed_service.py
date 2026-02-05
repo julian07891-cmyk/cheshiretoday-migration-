@@ -798,14 +798,14 @@ class NewsFeedService:
                                 'summary': description[:200] + '...' if len(description) > 200 else description,
                                 'source': source,
                                 'source_url': link,
-                                'category': guarded_category,
+                                'category': category_guard(category),
                                 'image': image,
                                 'publishedDate': self._parse_date(pub_date),
                                 'author': source,
                                 'is_real_news': True,
                                 'is_cheshire_related': is_local,
                                 'is_local_source': is_local_source,  # From feed config
-                                'tags': [source, guarded_category],
+                                'tags': [source, category_guard(category)],
                                 'created_at': datetime.now(timezone.utc).isoformat()
                             }
                             
@@ -890,14 +890,14 @@ class NewsFeedService:
                         'summary': description[:200] + '...' if len(description) > 200 else description,
                         'source': source,
                         'source_url': link,
-                                'category': guarded_category,
+                                'category': category_guard(category),
                                 'image': image,
                         'publishedDate': self._parse_date(pub_date),
                         'author': source,
                         'is_real_news': True,
                         'is_cheshire_related': is_local,
                         'is_local_source': is_local_source,  # From feed config
-                        'tags': [source, guarded_category],
+                        'tags': [source, category_guard(category)],
                         'created_at': datetime.now(timezone.utc).isoformat()
                     }
                     
