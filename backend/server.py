@@ -1758,7 +1758,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         perplexity_cost_estimate += 0.005
                     else:
                         # Use RSS content directly (faster, no AI)
-                        detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
+                        detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nThis is an excerpt. Read the full story at the source."
                     
                     # Use RSS image (guaranteed perfect match)
                     article['image'] = rss_image
@@ -1855,7 +1855,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 perplexity_cost_estimate += 0.005
             else:
                 # Use RSS content directly (faster, no AI)
-                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
+                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nThis is an excerpt. Read the full story at the source."
             
             article['image'] = rss_image
             article['image_source'] = 'rss_feed'
@@ -9473,7 +9473,7 @@ async def sync_rss_now():
                 ).strip()
 
                 # Default: use RSS content (free)
-                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
+                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nThis is an excerpt. Read the full story at the source."
 
                 # Only allow Perplexity for AI sections, within monthly quota
                 if section.startswith("ai-"):
