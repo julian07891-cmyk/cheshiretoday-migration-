@@ -9454,7 +9454,7 @@ async def sync_rss_now():
         # Import up to 10 new articles
         imported_count = 0
         imported_titles = []
-        max_import = 10
+        max_import = int(os.getenv("RSS_SYNC_MAX_IMPORT","10"))
         
         for article in new_articles[:max_import]:
             try:
