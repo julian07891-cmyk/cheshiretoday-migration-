@@ -749,7 +749,7 @@ function HomePage() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-[#1E3A8A]">
                           <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <MapPin className="h-6 w-6 text-[#1E3A8A]" />
-                            Local News
+                            Local News Highlights
                           </h2>
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             Macclesfield • Wilmslow • Knutsford & more
@@ -771,7 +771,7 @@ function HomePage() {
                             to="/cheshire-general"
                             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1E3A8A] hover:bg-[#16306f] text-white font-medium rounded-full transition-colors"
                           >
-                            View All Local News
+                            View All Local News (20+)
                             <ChevronRight className="h-4 w-4" />
                           </Link>
                         </div>
