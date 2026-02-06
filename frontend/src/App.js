@@ -101,14 +101,9 @@ function HomePage() {
 
   // Track how many articles each category shows on homepage
   const HOMEPAGE_ARTICLE_COUNTS = {
-    'Local News': 4,  // Cheshire News section
-    'UK News': 2,
-    'Business': 2,
-    'Health': 2,
-    'Sports': 2,
-    'Tech': 2,
-    'Science': 2,
-    'Entertainment': 2
+    'Local News': 6,  // Cheshire News section
+    'UK News': 4,
+    'Business': 4
   };
 
   // Helper function to change category and scroll to first new article
