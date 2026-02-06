@@ -280,13 +280,9 @@ function HomePage() {
   
   // For homepage (all categories), use category-based layout
   // For specific category, show all articles from that category
-  const localNewsOffset = HOMEPAGE_ARTICLE_COUNTS['Local News'] || 0;
-
   const regularArticles = activeCategory === 'all'
     ? articles.filter(article => article !== featuredArticle)
-    : activeCategory === 'Local News'
-      ? articles.filter(a => a.category === 'Local News').slice(localNewsOffset)
-      : articles.filter(article => article.category === activeCategory);
+    : articles.filter(article => article.category === activeCategory);
 
   const handleArticleClick = async (article) => {
     const articleId = article.id || article._id;
