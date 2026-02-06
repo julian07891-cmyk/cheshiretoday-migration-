@@ -4,17 +4,8 @@ import axios from 'axios';
 // Always determine the API URL at runtime based on the current page location
 // This ensures the frontend works correctly on any domain (production, preview, or custom)
 const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    // Check if we're on localhost (development mode)
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      // In development, always use localhost:8001 for the local backend
-      return 'http://localhost:8001';
-    }
-    // In production/preview, use the current origin (Ingress routes /api to backend)
-    return window.location.origin;
-  }
-  // SSR fallback
-  return process.env.REACT_APP_BACKEND_URL || '';
+  // Frontend and backend are separate Render services
+  return "https://cheshiretoday-migration.onrender.com";
 };
 
 const API_BASE_URL = getApiBaseUrl();
