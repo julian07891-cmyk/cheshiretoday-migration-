@@ -148,6 +148,7 @@ function HomePage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
   const [articles, setArticles] = useState([]);
+  const [homepageLocalNews, setHomepageLocalNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchFilter, setSearchFilter] = useState("");
@@ -242,17 +243,20 @@ function HomePage() {
       // Fetch more articles for 'all' view to ensure we get articles from all categories
       const limit = activeCategory === "all" ? 100 : 20;
 
-      // When user opens Local News category, skip the homepage Local News items
-      const offset =
-        activeCategory === "Local News"
-          ? HOMEPAGE_ARTICLE_COUNTS["Local News"] || 0
-          : 0;
-
+      // API always starts from 0; UI hides homepage duplicates for Local News
+      const offset = 0;
       const fetchedArticles = await articleService.fetchArticles(
         activeCategory === "all" ? null : activeCategory,
         offset,
         limit,
       );
+      if (activeCategory === "all") {
+        setHomepageLocalNews(
+          fetchedArticles
+            .filter((a) => a.category === "Local News")
+            .slice(0, HOMEPAGE_ARTICLE_COUNTS["Local News"]),
+        );
+      }
       setArticles(fetchedArticles);
     } catch (err) {
       setError("Failed to load articles. Please try again.");
@@ -283,7 +287,6 @@ function HomePage() {
   };
 
   const filteredArticles = articles;
-
   // Priority locations in order - we want 1 article from each
   const PRIORITY_LOCATIONS = [
     "macclesfield",
@@ -381,6 +384,12 @@ function HomePage() {
     activeCategory === "all"
       ? articles.filter((article) => article !== featuredArticle)
       : articles.filter((article) => article.category === activeCategory);
+
+  const homepageLocalNewsIds = new Set((homepageLocalNews || []).map((a) => a.id));
+  const categoryArticles =
+    activeCategory === "Local News"
+      ? regularArticles.filter((a) => !homepageLocalNewsIds.has(a.id))
+      : regularArticles;
 
   const handleArticleClick = async (article) => {
     const articleId = article.id || article._id;
@@ -857,7 +866,7 @@ function HomePage() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {regularArticles.map((article) => (
+                          {categoryArticles.map((article) => (
                             <CompactArticleCard
                               key={article.id}
                               article={article}
