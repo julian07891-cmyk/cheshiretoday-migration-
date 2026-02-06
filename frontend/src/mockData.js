@@ -99,6 +99,5 @@ export const categories = [
   { id: 'Sports', name: 'Sports', icon: 'Trophy' },
   { id: 'Tech', name: 'Tech', icon: 'Laptop' },
   { id: 'Science', name: 'Science', icon: 'Beaker' },
-  { id: 'Entertainment', name: 'Entertainment', icon: 'Film' },
-  { id: 'Education', name: 'Education', icon: 'GraduationCap' }
+  { id: 'Entertainment', name: 'Entertainment', icon: 'Film' }
 ];
