@@ -698,7 +698,26 @@ function HomePage() {
                       </div>
                     </section>
                   )}
+                {/* Category View – show full list when not on homepage */}
+{activeCategory !== 'all' && (
+  <section>
+    <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-300 dark:border-gray-700">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        {activeCategory}
+      </h1>
+    </div>
 
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {regularArticles.map((article) => (
+        <CompactArticleCard
+          key={article.id}
+          article={article}
+          onClick={handleArticleClick}
+        />
+      ))}
+    </div>
+  </section>
+)}
                 </div>
 
 <div className="lg:col-span-1 space-y-6">
