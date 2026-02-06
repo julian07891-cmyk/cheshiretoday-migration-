@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import RedirectResponse
@@ -325,6 +326,23 @@ def get_gemini_chat(session_id: str, system_message: str) -> LlmChat:
 
 # Create the main app without a prefix
 app = FastAPI()
+
+# -------------------------------
+# Serve React (CRA) build
+# -------------------------------
+from fastapi.responses import FileResponse
+
+FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
+
+# Serve static assets (JS/CSS/media)
+if FRONTEND_BUILD_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(FRONTEND_BUILD_DIR / "static")), name="static")
+
+@app.get("/", include_in_schema=False)
+async def serve_spa_root():
+        index_path = FRONTEND_BUILD_DIR / "index.html"
+        return FileResponse(str(index_path))
+
 @app.on_event("startup")
 async def startup_event():
     await ensure_indexes()
