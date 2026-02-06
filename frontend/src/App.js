@@ -148,7 +148,6 @@ function HomePage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
   const [articles, setArticles] = useState([]);
-  const [homepageLocalNews, setHomepageLocalNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchFilter, setSearchFilter] = useState("");
@@ -384,12 +383,7 @@ function HomePage() {
     activeCategory === "all"
       ? articles.filter((article) => article !== featuredArticle)
       : articles.filter((article) => article.category === activeCategory);
-
-  const homepageLocalNewsIds = new Set((homepageLocalNews || []).map((a) => a.id));
-  const categoryArticles =
-    activeCategory === "Local News"
-      ? regularArticles.filter((a) => !homepageLocalNewsIds.has(a.id))
-      : regularArticles;
+  const categoryArticles = regularArticles;
 
   const handleArticleClick = async (article) => {
     const articleId = article.id || article._id;
