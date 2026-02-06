@@ -1,32 +1,12 @@
 services:
   - type: web
-    name: cheshiretoday-frontend-migration
-    runtime: static
-    rootDir: frontend
-    buildCommand: yarn install && yarn build
-    staticPublishPath: build
-
-    headers:
-      # Cache hashed build assets forever (CRA outputs content-hashed filenames)
-      - path: /static/*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-
-      # Also cache common build artifacts
-      - path: /asset-manifest.json
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-      - path: /manifest.json
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-      - path: /favicon.ico
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-
-      # Never long-cache HTML (so deployments show immediately)
-      - path: /
-        name: Cache-Control
-        value: no-store
-      - path: /index.html
-        name: Cache-Control
-        value: no-store
+    name: cheshiretoday
+    env: python
+    plan: free
+    buildCommand: |
+      cd frontend
+      yarn install
+      yarn build
+    startCommand: |
+      cd backend
+      uvicorn server:app --host 0.0.0.0 --port $PORT
