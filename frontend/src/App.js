@@ -604,13 +604,13 @@ function HomePage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Articles Column */}
                 <div className="lg:col-span-2 space-y-8">
-                  {/* Cheshire News Section - 4 Articles First (1 from each location) */}
+                  {/* Local News Section - 4 Articles First (1 from each location) */}
                   {activeCategory === 'all' && (
                     <section>
-                      <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-emerald-600">
+                      <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-[#1E3A8A]">
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                          <MapPin className="h-6 w-6 text-emerald-600" />
-                          Cheshire News
+                          <MapPin className="h-6 w-6 text-[#1E3A8A]" />
+                          Local News
                         </h2>
                         <span className="text-sm text-gray-500 dark:text-gray-400">Macclesfield • Wilmslow • Knutsford & more</span>
                       </div>
@@ -628,9 +628,9 @@ function HomePage() {
                       <div className="mt-6 text-center">
                         <Link 
                           to="/cheshire-general" 
-                          className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-full transition-colors"
+                          className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1E3A8A] hover:bg-[#16306f] text-white font-medium rounded-full transition-colors"
                         >
-                          View All Cheshire News
+                          View All Local News
                           <ChevronRight className="h-4 w-4" />
                         </Link>
                       </div>
@@ -670,83 +670,14 @@ function HomePage() {
                       </div>
                     </section>
                   )}
-
-                  {/* Random Promo #2 - After UK News */}
-                  {activeCategory === 'all' && (
-                    <Suspense fallback={null}>
-                      <RandomPromoWidget seed={2} />
-                    </Suspense>
-                  )}
-
-                  {/* Business & Health Row - 2 each */}
-                  {activeCategory === 'all' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <section>
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-amber-600">
-                          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Business</h2>
-                        </div>
-                        <div className="space-y-4">
-                          {regularArticles.filter(a => a.category === 'Business').slice(0, 2).map((article) => (
-                            <CompactArticleCard
-                              key={article.id}
-                              article={article}
-                              onClick={handleArticleClick}
-                              horizontal={true}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <button 
-                            onClick={() => handleCategoryChange('Business')}
-                            className="inline-flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-full transition-colors"
-                          >
-                            View All
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </section>
-                      <section>
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-red-600">
-                          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Health</h2>
-                        </div>
-                        <div className="space-y-4">
-                          {regularArticles.filter(a => a.category === 'Health').slice(0, 2).map((article) => (
-                            <CompactArticleCard
-                              key={article.id}
-                              article={article}
-                              onClick={handleArticleClick}
-                              horizontal={true}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <button 
-                            onClick={() => handleCategoryChange('Health')}
-                            className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-full transition-colors"
-                          >
-                            View All
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </section>
-                    </div>
-                  )}
-
-                  {/* Random Promo #3 - After Business/Health */}
-                  {activeCategory === 'all' && (
-                    <Suspense fallback={null}>
-                      <RandomPromoWidget seed={3} />
-                    </Suspense>
-                  )}
-
-                  {/* Sports Section - 2 Articles */}
+                  {/* Business Section - 2 Articles */}
                   {activeCategory === 'all' && (
                     <section>
-                      <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-green-600">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sports</h2>
+                      <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-amber-600">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Business</h2>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {regularArticles.filter(a => a.category === 'Sports').slice(0, 2).map((article) => (
+                        {regularArticles.filter(a => a.category === 'Business').slice(0, 2).map((article) => (
                           <CompactArticleCard
                             key={article.id}
                             article={article}
@@ -755,154 +686,20 @@ function HomePage() {
                         ))}
                       </div>
                       <div className="mt-6 text-center">
-                        <button 
-                          onClick={() => handleCategoryChange('Sports')}
-                          className="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded-full transition-colors"
+                        <button
+                          onClick={() => handleCategoryChange('Business')}
+                          className="inline-flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-full transition-colors"
                         >
-                          View All Sports
+                          View All Business
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
                     </section>
                   )}
 
-                  {/* Random Promo #4 - After Sports */}
-                  {activeCategory === 'all' && (
-                    <Suspense fallback={null}>
-                      <RandomPromoWidget seed={4} />
-                    </Suspense>
-                  )}
-
-                  {/* Tech & Science Row - 2 each */}
-                  {activeCategory === 'all' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <section>
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-purple-600">
-                          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Tech</h2>
-                        </div>
-                        <div className="space-y-4">
-                          {regularArticles.filter(a => a.category === 'Tech').slice(0, 2).map((article) => (
-                            <CompactArticleCard
-                              key={article.id}
-                              article={article}
-                              onClick={handleArticleClick}
-                              horizontal={true}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <button 
-                            onClick={() => handleCategoryChange('Tech')}
-                            className="inline-flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-full transition-colors"
-                          >
-                            View All
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </section>
-                      <section>
-                        <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-cyan-600">
-                          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Science</h2>
-                        </div>
-                        <div className="space-y-4">
-                          {regularArticles.filter(a => a.category === 'Science').slice(0, 2).map((article) => (
-                            <CompactArticleCard
-                              key={article.id}
-                              article={article}
-                              onClick={handleArticleClick}
-                              horizontal={true}
-                            />
-                          ))}
-                        </div>
-                        <div className="mt-4 text-center">
-                          <button 
-                            onClick={() => handleCategoryChange('Science')}
-                            className="inline-flex items-center gap-2 px-5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium rounded-full transition-colors"
-                          >
-                            View All
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </section>
-                    </div>
-                  )}
-
-                  {/* Random Promo #5 - After Tech/Science */}
-                  {activeCategory === 'all' && (
-                    <Suspense fallback={null}>
-                      <RandomPromoWidget seed={5} />
-                    </Suspense>
-                  )}
-
-                  {/* Entertainment Section - 2 Articles */}
-                  {activeCategory === 'all' && (
-                    <section>
-                      <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-pink-600">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Entertainment</h2>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {regularArticles.filter(a => a.category === 'Entertainment').slice(0, 2).map((article) => (
-                          <CompactArticleCard
-                            key={article.id}
-                            article={article}
-                            onClick={handleArticleClick}
-                          />
-                        ))}
-                      </div>
-                      <div className="mt-6 text-center">
-                        <button 
-                          onClick={() => handleCategoryChange('Entertainment')}
-                          className="inline-flex items-center gap-2 px-6 py-2.5 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-full transition-colors"
-                        >
-                          View All Entertainment
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </section>
-                  )}
-
-                  {/* Random Promo #6 - After Entertainment */}
-                  {activeCategory === 'all' && (
-                    <Suspense fallback={null}>
-                      <RandomPromoWidget seed={6} />
-                    </Suspense>
-                  )}
-
-                  {/* Subscribe Section - With id for scroll targeting */}
-                  <Suspense fallback={<LoadingFallback />}>
-                    <SubscribeSection />
-                  </Suspense>
-
-                  {/* Specific Category View */}
-                  {activeCategory !== 'all' && (
-                    <section>
-                      <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-emerald-600">
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                          {categories.find(c => c.id === activeCategory)?.name || activeCategory}
-                        </h2>
-                      </div>
-                      
-                      {regularArticles.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {regularArticles.slice(0, 12).map((article) => (
-                            <CompactArticleCard
-                              key={article.id}
-                              article={article}
-                              onClick={handleArticleClick}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-                          <p className="text-gray-500 dark:text-gray-400">No articles found in this category.</p>
-                        </div>
-                      )}
-                    </section>
-                  )}
                 </div>
 
-                {/* Sidebar */}
-                <div className="lg:col-span-1 space-y-6">
+<div className="lg:col-span-1 space-y-6">
                   {/* Amazon Affiliate Widget - Top */}
                   <Suspense fallback={<LoadingFallback />}>
                     <AffiliateWidgetSidebar category={activeCategory !== 'all' ? activeCategory : 'default'} />
