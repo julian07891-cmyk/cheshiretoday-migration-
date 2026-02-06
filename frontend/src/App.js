@@ -73,13 +73,9 @@ const LoadingFallback = () => <div className="animate-pulse bg-gray-200 dark:bg-
 
 // Get API URL at runtime
 const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    return isLocalhost ? 'http://localhost:8001' : window.location.origin;
-  }
-  return '';
+  return 'https://cheshiretoday-migration.onrender.com';
 };
+
 
 function HomePage() {
   const navigate = useNavigate();
