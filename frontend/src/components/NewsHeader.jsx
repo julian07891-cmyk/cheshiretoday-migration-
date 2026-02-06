@@ -7,6 +7,9 @@ import DarkModeToggle from './DarkModeToggle';
 import { articleService } from '../services/api';
 
 const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange, onArticleClick }) => {
+  // Top-nav should be minimal (homepage focus). Keep other categories available elsewhere.
+  const NAV_CATEGORY_IDS = new Set(['all', 'Local News', 'UK News', 'Business']);
+  const navCategories = (categories || []).filter(c => NAV_CATEGORY_IDS.has(c.id));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -164,7 +167,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
           {/* Desktop Navigation */}
           <nav className="hidden md:block border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center space-x-1 py-2 overflow-x-auto">
-              {categories.map((category) => (
+              {navCategories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => onCategoryChange(category.id)}
@@ -205,7 +208,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
               </div>
               
               <div className="space-y-2">
-                {categories.map((category) => (
+                {navCategories.map((category) => (
                   <button
                     key={category.id}
                     onClick={() => {
