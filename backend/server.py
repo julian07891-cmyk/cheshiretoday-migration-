@@ -340,8 +340,11 @@ if FRONTEND_BUILD_DIR.exists():
 
 @app.get("/", include_in_schema=False)
 async def serve_spa_root():
-        index_path = FRONTEND_BUILD_DIR / "index.html"
+    index_path = FRONTEND_BUILD_DIR / "index.html"
+    if index_path.exists():
         return FileResponse(str(index_path))
+    return {"detail": "Frontend build not found"}
+
 
 @app.on_event("startup")
 async def startup_event():
