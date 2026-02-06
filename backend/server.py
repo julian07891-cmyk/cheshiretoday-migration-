@@ -332,7 +332,7 @@ app = FastAPI()
 # -------------------------------
 from fastapi.responses import FileResponse
 
-FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
+FRONTEND_BUILD_DIR = (ROOT_DIR / "frontend_build").resolve()
 
 # Serve static assets (JS/CSS/media)
 if FRONTEND_BUILD_DIR.exists():
