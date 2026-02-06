@@ -66,7 +66,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
   return (
     <>
       {/* Festive Banner */}
-      <FestiveBanner />
+      {isFestive && <FestiveBanner />}
       {/* Top Bar - Hidden on mobile for cleaner look */}
       <div className="hidden sm:block bg-[#1E3A8A] text-white">
         <div className="container mx-auto px-4">
@@ -214,7 +214,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
                     }}
                     className={`block w-full text-left px-4 py-2 rounded transition-colors ${
                       activeCategory === category.id
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-[#1E3A8A] text-white'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
