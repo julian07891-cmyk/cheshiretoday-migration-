@@ -166,9 +166,15 @@ function HomePage() {
       setError(null);
       // Fetch more articles for 'all' view to ensure we get articles from all categories
       const limit = activeCategory === 'all' ? 100 : 20;
+
+      // When user opens Local News category, skip the homepage Local News items
+      const offset = activeCategory === 'Local News'
+        ? (HOMEPAGE_ARTICLE_COUNTS['Local News'] || 0)
+        : 0;
+
       const fetchedArticles = await articleService.fetchArticles(
         activeCategory === 'all' ? null : activeCategory,
-        0,
+        offset,
         limit
       );
       setArticles(fetchedArticles);
