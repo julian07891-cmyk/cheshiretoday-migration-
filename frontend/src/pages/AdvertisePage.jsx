@@ -1,4 +1,5 @@
 import React from "react";
+import { trackEvent } from "../utils/trackEvent";
 
 const PRICING = [
   {
@@ -76,14 +77,21 @@ const AdvertisePage = () => {
               </ul>
 
               <a
-                className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 transition"
-                href={`mailto:${email}?subject=${encodeURIComponent(
-                  tier.subject
-                )}`}
-              >
-                Enquire about {tier.name}
-              </a>
-
+  className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 transition"
+  href={`mailto:${email}?subject=${encodeURIComponent(
+    tier.subject
+  )}`}
+  onClick={() =>
+    trackEvent("monetisation_click", {
+      placement: "advertise_tier_cta",
+      tier: tier.name,
+      price: tier.price,
+      destination: "mailto",
+    })
+  }
+>
+  Enquire about {tier.name}
+</a>
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
                 Prices exclude VAT (if applicable). Packages can be paused or changed monthly.
               </p>

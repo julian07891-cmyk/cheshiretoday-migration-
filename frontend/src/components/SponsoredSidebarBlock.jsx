@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { trackEvent } from "../utils/trackEvent";
 
 const SponsoredSidebarBlock = () => {
   return (
@@ -8,10 +9,7 @@ const SponsoredSidebarBlock = () => {
         Sponsored
       </div>
 
-      <Link
-        to="/advertise"
-        className="block hover:opacity-90 transition"
-      >
+      <Link to="/advertise" className="block hover:opacity-90 transition" onClick={() => trackEvent("monetisation_click", { placement: "sidebar_sponsored", destination: "/advertise" })}>
         <h3 className="font-bold text-gray-900 dark:text-white mb-1">
           Promote Your Business Here
         </h3>

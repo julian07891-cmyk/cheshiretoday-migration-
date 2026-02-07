@@ -171,7 +171,7 @@ const NewsFooter = () => {
                   if (href) {
                     return (
                       <li key={link}>
-                        <Link to={href} className="text-sm hover:text-emerald-400 transition-colors">
+                        <Link to={href} className="text-sm hover:text-emerald-400 transition-colors" onClick={() => { if (href === "/advertise") trackEvent("monetisation_click", { placement: "footer_advertise", destination: "/advertise" }); }}> 
                           {link}
                         </Link>
                       </li>
