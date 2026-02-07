@@ -249,6 +249,7 @@ function HomePage() {
         offset,
         limit,
       );
+      console.log("[fetchArticles]", "category=", activeCategory, "count=", fetchedArticles?.length);
       setArticles(fetchedArticles);
     } catch (err) {
       setError("Failed to load articles. Please try again.");
