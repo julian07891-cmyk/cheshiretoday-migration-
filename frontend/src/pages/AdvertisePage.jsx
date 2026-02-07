@@ -96,6 +96,73 @@ const AdvertisePage = () => {
           ))}
         </div>
 
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-lg border border-gray-200 dark:border-gray-700 shadow-xl">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Enquire about {selectedTier?.name}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="text-gray-500 hover:text-gray-800 dark:hover:text-white"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                className="mt-4 space-y-3"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const form = e.target;
+
+                  const payload = {
+                    name: form.name.value,
+                    business: form.business.value,
+                    email: form.email.value,
+                    budget: form.budget.value,
+                    message: form.message.value,
+                    tier: selectedTier?.name,
+                    source: "advertise_page",
+                  };
+
+                  await fetch("/api/leads/advertise", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                  });
+
+                  trackEvent("lead_submit", { tier: selectedTier?.name });
+                  setShowForm(false);
+                }}
+              >
+                <input name="name" required placeholder="Your name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="business" placeholder="Business name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="email" type="email" required placeholder="Email" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <select name="budget" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <option value="">Estimated budget</option>
+                  <option>£100–£300</option>
+                  <option>£300–£600</option>
+                  <option>£600+</option>
+                </select>
+                <textarea name="message" placeholder="Tell us about your goals" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg py-3 font-semibold">
+                    Send enquiry
+                  </button>
+                  <button type="button" onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg py-3">
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <div className="mt-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow max-w-3xl">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">
             Not sure which package fits?
