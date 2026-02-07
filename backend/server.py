@@ -11210,3 +11210,41 @@ async def submit_advertise_lead(lead: AdvertiseLead):
         logging.error(f"Failed to save advertise lead: {e}")
         raise HTTPException(status_code=500, detail="Failed to save lead")
 
+
+# -------------------------------
+# Admin: View Advertise Leads (Basic Auth)
+# -------------------------------
+
+security = HTTPBasic()
+
+def require_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    admin_user = os.getenv("ADMIN_USER", "")
+    admin_pass = os.getenv("ADMIN_PASS", "")
+
+    # If not configured, deny by default (safe)
+    if not admin_user or not admin_pass:
+        raise HTTPException(status_code=403, detail="Admin access not configured")
+
+    ok_user = secrets.compare_digest(credentials.username, admin_user)
+    ok_pass = secrets.compare_digest(credentials.password, admin_pass)
+
+    if not (ok_user and ok_pass):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return True
+
+@app.get("/api/leads/advertise")
+async def list_advertise_leads(limit: int = 50, _admin: bool = Depends(require_admin)):
+    limit = max(1, min(limit, 200))
+
+    if LOCAL_DEV_NO_DB or db is None:
+        return {"success": False, "message": "DB not enabled; no persisted leads"}
+
+    try:
+        cursor = db.advertise_leads.find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
+        items = await cursor.to_list(length=limit)
+        return {"success": True, "leads": items}
+    except Exception as e:
+        logging.error(f"Failed to fetch advertise leads: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch leads")
+
