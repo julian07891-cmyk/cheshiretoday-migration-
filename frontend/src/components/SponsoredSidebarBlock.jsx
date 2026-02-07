@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const SponsoredSidebarBlock = () => {
   return (
@@ -7,10 +8,8 @@ const SponsoredSidebarBlock = () => {
         Sponsored
       </div>
 
-      <a
-        href="#"
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        to="/advertise"
         className="block hover:opacity-90 transition"
       >
         <h3 className="font-bold text-gray-900 dark:text-white mb-1">
@@ -22,7 +21,7 @@ const SponsoredSidebarBlock = () => {
         <p className="mt-2 text-sm font-semibold text-amber-600">
           Enquire today →
         </p>
-      </a>
+      </Link>
     </div>
   );
 };

@@ -25,6 +25,7 @@ import NewsHeader from "./components/NewsHeader";
 import HeroArticle from "./components/HeroArticle";
 import CompactArticleCard from "./components/CompactArticleCard";
 import HomeSkeleton from "./components/HomeSkeleton";
+import AdvertisePage from "./pages/AdvertisePage";
 import SponsoredSidebarBlock from "./components/SponsoredSidebarBlock";
 
 // Lazy load non-critical components to reduce initial bundle
@@ -1680,6 +1681,7 @@ function App() {
               }
             />
             {/* Location-specific pages for Local SEO */}
+            <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/:location" element={<LocationRouteWrapper />} />
           </Routes>
         </BrowserRouter>
