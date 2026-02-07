@@ -11193,6 +11193,7 @@ class AdvertiseLead(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+@app# Deploy bump: ensure latest routes are live
 @app.post("/api/leads/advertise")
 async def submit_advertise_lead(lead: AdvertiseLead):
     data = lead.dict()
