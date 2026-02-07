@@ -1,11 +1,32 @@
 import React, { useEffect, useMemo, useState } from "react";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
+import CompactArticleCard from "../components/CompactArticleCard";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
-import LatestFeed from "../components/homepage/LatestFeed";
 import NewsFooter from "../components/NewsFooter";
 
+/* ---------- helpers ---------- */
+function safeDateMs(d) {
+  const t = Date.parse(d);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function articleKey(a, fallback = "x") {
+  return a?.id || a?._id || fallback;
+}
+
+function isLocal(a) {
+  const cat = (a?.category || "").toLowerCase();
+  const scope = (a?.scope || "").toLowerCase();
+  return cat.includes("local") || scope.includes("cheshire");
+}
+
+function isFeatured(a) {
+  return Boolean(a?.featured);
+}
+
+/* ---------- page ---------- */
 export default function HomePageV1() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +40,7 @@ export default function HomePageV1() {
         setLoading(true);
         setErr("");
 
-        const res = await fetch("/api/articles?limit=20");
+        const res = await fetch("/api/articles?limit=50");
         if (!res.ok) throw new Error(`API ${res.status}`);
 
         const data = await res.json();
@@ -38,72 +59,107 @@ export default function HomePageV1() {
     };
   }, []);
 
-  const hero = articles?.[0] || null;
+  /* ---------- ordering ---------- */
+  const newestFirst = useMemo(() => {
+    return [...(articles || [])].sort(
+      (a, b) => safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate),
+    );
+  }, [articles]);
 
+  /* ---------- hero ---------- */
+  const hero = useMemo(() => {
+    return newestFirst.find(isLocal) || newestFirst[0] || null;
+  }, [newestFirst]);
+
+  /* ---------- top stories (4) ---------- */
   const topStories = useMemo(() => {
-    return (articles || []).slice(1, 5).map((a, idx) => ({
-      id: a?.id || a?._id || `top-${idx}`,
-      title: a?.title || "Untitled",
-      image: a?.image || "",
-      category: a?.category || "Local News",
-      town: a?.location || "Cheshire",
-      url: "/article/" + (a?.id || a?._id || `top-${idx}`),
-      publishedDate: a?.publishedDate,
-      readTime: 3,
-    }));
-  }, [articles]);
+    const heroId = hero ? articleKey(hero) : null;
 
-  const latest = useMemo(() => {
-    return (articles || []).slice(5, 9).map((a, idx) => ({
-      id: a?.id || a?._id || `latest-${idx}`,
-      title: a?.title || "Untitled",
-      summary: a?.summary || "",
-      image: a?.image || "",
-      category: a?.category || "Local News",
-      town: a?.location || "Cheshire",
-      url: "/article/" + (a?.id || a?._id || `latest-${idx}`),
-      publishedDate: a?.publishedDate,
-      readTime: 3,
-    }));
-  }, [articles]);
+    return newestFirst
+      .filter((a) => articleKey(a) !== heroId)
+      .filter(isFeatured)
+      .slice(0, 4)
+      .map((a, i) => ({
+        id: articleKey(a, `top-${i}`),
+        title: a?.title || "Untitled",
+        image: a?.image || "",
+        category: a?.category || "Local News",
+        town: a?.location || "Cheshire",
+        publishedDate: a?.publishedDate || "",
+        url: `/article/${articleKey(a)}`,
+        readTime: 3,
+      }));
+  }, [newestFirst, hero]);
+
+  /* ---------- latest feed (4) ---------- */
+  const latestFeed = useMemo(() => {
+    const exclude = new Set([
+      hero ? articleKey(hero) : null,
+      ...topStories.map((s) => s.id),
+    ]);
+
+    return newestFirst
+      .filter((a) => !exclude.has(articleKey(a)))
+      .slice(0, 4)
+      .map((a, i) => ({
+        id: articleKey(a, `latest-${i}`),
+        title: a?.title || "Untitled",
+        image: a?.image || "",
+        category: a?.category || "Local News",
+        town: a?.location || "Cheshire",
+        publishedDate: a?.publishedDate || "",
+        url: `/article/${articleKey(a)}`,
+        readTime: 3,
+      }));
+  }, [newestFirst, hero, topStories]);
 
   return (
     <HomepageLayout>
       <HomepageHeader breakingStories={[]} />
 
-      {loading && (
-        <div className="py-6 text-gray-600 dark:text-gray-300">
-          Loading homepage…
-        </div>
-      )}
-
-      {!loading && err && (
-        <div className="py-6 text-red-600">Failed to load articles: {err}</div>
-      )}
+      {loading && <div className="py-6">Loading…</div>}
+      {!loading && err && <div className="py-6 text-red-600">{err}</div>}
 
       {!loading && !err && hero && (
-        <>
-          {/* HERO */}
-          <HeroStoryCard
-            image={hero.image}
-            category={hero.category || "Local News"}
-            town={hero.location || "Cheshire"}
-            headline={hero.title || "Untitled"}
-            publishedTime={hero.publishedDate || ""}
-            readTime={3}
-            url={"/article/" + (hero.id || hero._id || "preview")}
-          />
-
-          {/* TOP STORIES (4) */}
-          <TopStoriesGrid stories={topStories} />
-
-          {/* LATEST FEED (4) */}
-          <LatestFeed stories={latest} />
-
-          {/* FOOTER */}
-          <NewsFooter />
-        </>
+        <HeroStoryCard
+          image={hero.image}
+          category={hero.category || "Local News"}
+          town={hero.location || "Cheshire"}
+          headline={hero.title || "Untitled"}
+          publishedTime={hero.publishedDate || ""}
+          readTime={3}
+          url={`/article/${articleKey(hero)}`}
+        />
       )}
+
+      {!loading && !err && topStories.length > 0 && (
+        <TopStoriesGrid stories={topStories} />
+      )}
+
+      {!loading && !err && latestFeed.length > 0 && (
+        <section className="mt-6">
+          <h2 className="text-lg font-bold mb-3">Latest</h2>
+          <div className="space-y-3">
+            {latestFeed.map((a, idx) => (
+              <CompactArticleCard
+        article={{
+          title: a.title,
+          content: a.summary || a.content || "",
+          summary: a.summary || "",
+          image: a.image,
+          category: a.category,
+          location: a.town || a.location || "Cheshire",
+          publishedDate: a.publishedDate,
+          readTime: a.readTime || 3,
+          url: (a.url || ("/article/" + (a.id || a._id || ""))),
+        }}
+      />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <NewsFooter />
     </HomepageLayout>
   );
 }

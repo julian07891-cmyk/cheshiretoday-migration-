@@ -1,16 +1,42 @@
 import React from "react";
-import CompactArticleCard from "../CompactArticleCard";
+import { Link } from "react-router-dom";
 
 export default function TopStoriesGrid({ stories = [] }) {
+  if (!stories.length) return null;
+
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-      {stories.slice(0, 4).map((story) => (
-        <CompactArticleCard
-          key={story.id}
-          article={story}
-          variant="standard"
-        />
-      ))}
+    <section className="mt-8">
+      <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+        Top Stories
+      </h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {stories.slice(0, 2).map((story) => (
+          <Link
+            key={story.id}
+            to={story.url}
+            className="group block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800"
+          >
+            {story.image && (
+              <img
+                src={story.image}
+                alt={story.title}
+                className="h-48 w-full object-cover"
+              />
+            )}
+
+            <div className="p-4">
+              <div className="mb-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                {story.category}
+              </div>
+
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:underline">
+                {story.title}
+              </h3>
+            </div>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
