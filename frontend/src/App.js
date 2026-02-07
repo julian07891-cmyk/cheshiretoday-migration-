@@ -708,7 +708,7 @@ function HomePage() {
           {loading && <HomeSkeleton />}
 
           {/* Main Content */}
-          {!loading && !error && (
+          {(!loading && !error) && (
             <>
               {/* Search Filter Indicator */}
               {searchFilter && (
