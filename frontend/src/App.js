@@ -249,13 +249,6 @@ function HomePage() {
         offset,
         limit,
       );
-      if (activeCategory === "all") {
-        setHomepageLocalNews(
-          fetchedArticles
-            .filter((a) => a.category === "Local News")
-            .slice(0, HOMEPAGE_ARTICLE_COUNTS["Local News"]),
-        );
-      }
       setArticles(fetchedArticles);
     } catch (err) {
       setError("Failed to load articles. Please try again.");
@@ -383,7 +376,16 @@ function HomePage() {
     activeCategory === "all"
       ? articles.filter((article) => article !== featuredArticle)
       : articles.filter((article) => article.category === activeCategory);
-  const categoryArticles = regularArticles;
+  // When user opens Local News, hide the homepage “Highlights” to avoid duplicates
+  const homepageLocalNewsHighlightIds = new Set([
+    ...cheshireSectionArticles.map((a) => a.id),
+    ...(featuredArticle && featuredArticle.category === "Local News" ? [featuredArticle.id] : []),
+  ]);
+
+  const categoryArticles =
+    activeCategory === "Local News"
+      ? regularArticles.filter((a) => !homepageLocalNewsHighlightIds.has(a.id))
+      : regularArticles;
 
   const handleArticleClick = async (article) => {
     const articleId = article.id || article._id;
