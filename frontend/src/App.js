@@ -26,6 +26,9 @@ import HeroArticle from "./components/HeroArticle";
 import CompactArticleCard from "./components/CompactArticleCard";
 import HomeSkeleton from "./components/HomeSkeleton";
 import AdvertisePage from "./pages/AdvertisePage";
+import HomePageV1 from "./pages/HomePageV1";
+
+
 import SponsoredSidebarBlock from "./components/SponsoredSidebarBlock";
 
 // Lazy load non-critical components to reduce initial bundle
@@ -1682,6 +1685,7 @@ function App() {
             />
             {/* Location-specific pages for Local SEO */}
             <Route path="/advertise" element={<AdvertisePage />} />
+            <Route path="/home-v1" element={<HomePageV1 />} />
             <Route path="/:location" element={<LocationRouteWrapper />} />
           </Routes>
         </BrowserRouter>
