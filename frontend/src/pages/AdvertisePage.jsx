@@ -53,7 +53,7 @@ const AdvertisePage = () => {
           Reach local readers across Cheshire with sponsored placements. Choose a package below and we’ll set it up within 24–48 hours.
         </p>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {PRICING.map((tier) => (
             <div
               key={tier.name}
