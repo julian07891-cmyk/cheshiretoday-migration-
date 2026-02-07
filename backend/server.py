@@ -11177,3 +11177,36 @@ async def startup_event():
 async def shutdown_db_client():
     scheduler.shutdown()
     client.close()
+
+# -------------------------------
+# Advertise Leads
+# -------------------------------
+
+class AdvertiseLead(BaseModel):
+    name: str = Field(..., min_length=2)
+    business: Optional[str] = None
+    email: EmailStr
+    budget: Optional[str] = None
+    message: Optional[str] = None
+    tier: Optional[str] = None
+    source: str = "advertise_page"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+@app.post("/api/leads/advertise")
+async def submit_advertise_lead(lead: AdvertiseLead):
+    data = lead.dict()
+    data["id"] = str(uuid4())
+
+    if LOCAL_DEV_NO_DB or db is None:
+        # In-memory fallback
+        print("📩 Advertise lead (LOCAL):", data)
+        return {"success": True}
+
+    try:
+        await db.advertise_leads.insert_one(data)
+        return {"success": True}
+    except Exception as e:
+        logging.error(f"Failed to save advertise lead: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save lead")
+
