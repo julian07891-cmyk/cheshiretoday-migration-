@@ -25,6 +25,7 @@ import NewsHeader from "./components/NewsHeader";
 import HeroArticle from "./components/HeroArticle";
 import CompactArticleCard from "./components/CompactArticleCard";
 import HomeSkeleton from "./components/HomeSkeleton";
+import SponsoredSidebarBlock from "./components/SponsoredSidebarBlock";
 
 // Lazy load non-critical components to reduce initial bundle
 const TrendingSidebar = lazy(() => import("./components/TrendingSidebar"));
@@ -884,6 +885,9 @@ function HomePage() {
                         }
                       />
                     </Suspense>
+
+                    <SponsoredSidebarBlock />
+
 
                     {/* Most Read Widget */}
                     <Suspense fallback={<LoadingFallback />}>
