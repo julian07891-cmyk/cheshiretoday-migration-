@@ -27,12 +27,9 @@ const BreakingNewsTicker = ({ onHeadlineClick }) => {
 
   const fetchHeadlines = async () => {
     try {
-      // Runtime URL detection - use current origin in production, env var in dev
-      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const API_URL = isLocalhost 
-        ? (process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001')
-        : window.location.origin;
-      const response = await fetch(`${API_URL}/api/trending-headlines`);
+      // API base URL (backend Render service)
+      const API_URL = "https://cheshiretoday-migration.onrender.com";
+      const response = await fetch(API_URL + "/api/trending-headlines");
       const data = await response.json();
       if (data.headlines && data.headlines.length > 0) {
         setHeadlines(data.headlines);
