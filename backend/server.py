@@ -11253,3 +11253,11 @@ async def list_advertise_leads(limit: int = 50, _admin: bool = Depends(require_a
         logging.error(f"Failed to fetch advertise leads: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch leads")
 
+
+.get("/api/admin/env-check")
+async def admin_env_check():
+    return {
+        "ADMIN_USER_set": bool(os.getenv("ADMIN_USER")),
+        "ADMIN_PASS_set": bool(os.getenv("ADMIN_PASS")),
+    }
+
