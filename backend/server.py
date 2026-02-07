@@ -53,9 +53,14 @@ JOB_POSTING_PACKAGES = {
 if LOCAL_DEV_NO_DB:
     db = None
 else:
-    mongo_url = os.environ["MONGO_URL"]
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[os.environ["DB_NAME"]]
+    mongo_url = os.getenv("MONGO_URL")
+    db_name = os.getenv("DB_NAME")
+    if not mongo_url or not db_name:
+        print("⚠️ MONGO_URL/DB_NAME missing - DB disabled")
+        db = None
+    else:
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[db_name]
 # -------------------------------
 # Ensure MongoDB indexes (performance)
 # -------------------------------
@@ -11193,8 +11198,7 @@ class AdvertiseLead(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
-# Deploy bump: ensure latest routes are live
-@app.post("/api/leads/advertise")@app.post("/api/leads/advertise")
+@app.post("/api/leads/advertise")
 async def submit_advertise_lead(lead: AdvertiseLead):
     data = lead.dict()
     data["id"] = str(uuid4())
