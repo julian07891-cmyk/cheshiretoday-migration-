@@ -164,6 +164,7 @@ const NewsFooter = () => {
                     'Privacy': '/privacy',
                     'Terms': '/terms',
                     'Affiliates': '/affiliate-disclosure',
+                    'Advertise': '/advertise',
                   };
                   const href = linkMap[link];
                   
