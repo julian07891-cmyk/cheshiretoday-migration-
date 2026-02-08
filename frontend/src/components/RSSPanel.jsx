@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Rss, RefreshCw, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
-const BACKEND_URL = window.location.origin;
+const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : ""));
 
 const RSSPanel = ({ onArticlesImported }) => {
   const [importing, setImporting] = useState(false);
