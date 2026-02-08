@@ -35,7 +35,16 @@ const NewsFooter = () => {
     setErrorMessage('');
     
     try {
-      const response = await newsletterService.subscribe(email);
+      const cleanedEmail = (email || "").trim().replace(/\s+/g, "");
+      setEmail(cleanedEmail);
+      if (!cleanedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanedEmail)) {
+        setErrorMessage("Please enter a valid email address.");
+        setLoading(false);
+        setTimeout(() => setErrorMessage(""), 3000);
+        return;
+      }
+      const response = await newsletterService.subscribe(cleanedEmail);
+
       if (response.success) {
         setSubscribed(true);
         setTimeout(() => {
