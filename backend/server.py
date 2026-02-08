@@ -25,6 +25,8 @@ from apscheduler.triggers.cron import CronTrigger
 import asyncio
 from app import rss_routes
 
+PUBLIC_BASE_URL = (os.environ.get("PUBLIC_URL") or os.environ.get("SITEMAP_BASE_URL") or "https://cheshiretoday.co.uk").rstrip("/")
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
@@ -3111,12 +3113,12 @@ async def get_article_share_page(article_id: str, request: Request):
         title = article.get('title', 'Cheshire Today')
         description = article.get('content', '')[:200].replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
         image = article.get('image', '')
-        article_url = f"https://cheshiretoday.co.uk/article/{article_id}"
-        share_url = f"https://cheshiretoday.co.uk/api/share/{article_id}"
+        article_url = f"{PUBLIC_BASE_URL}/article/{article_id}"
+        share_url = f"{PUBLIC_BASE_URL}/api/share/{article_id}"
         
         # Use default social share image if no article image
         if not image or len(image) < 10:
-            image = 'https://cheshiretoday.co.uk/social-share.jpg'
+            image = f"{PUBLIC_BASE_URL}/social-share.jpg"
         
         # Check if request is from a social media crawler (don't redirect them)
         user_agent = request.headers.get('user-agent', '').lower()
@@ -3240,11 +3242,11 @@ async def get_seo_article_page(article_id: str, request: Request):
         title = article.get('title', 'Cheshire Today Article')
         content = article.get('content', '')
         description = content[:160].replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;') if content else title
-        image = article.get('image', 'https://cheshiretoday.co.uk/social-share.jpg')
+        image = article.get("image") or f"{PUBLIC_BASE_URL}/social-share.jpg"
         category = article.get('category', 'News')
         author = article.get('author', 'Cheshire Today')
         published_date = article.get('publishedDate', article.get('created_at', ''))
-        canonical_url = f"https://cheshiretoday.co.uk/article/{article_id_str}"
+        canonical_url = f"{PUBLIC_BASE_URL}/article/{article_id_str}"
         
         # Format content for HTML (basic paragraph handling)
         formatted_content = content.replace('\n\n', '</p><p>').replace('\n', '<br>')
