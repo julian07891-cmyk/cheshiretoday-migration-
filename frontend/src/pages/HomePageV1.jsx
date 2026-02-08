@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
@@ -31,6 +32,8 @@ export default function HomePageV1() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -142,19 +145,24 @@ export default function HomePageV1() {
           <div className="space-y-3">
             {latestFeed.map((a, idx) => (
               <CompactArticleCard
-        article={{
-          title: a.title,
-          content: a.summary || a.content || "",
-          summary: a.summary || "",
-          image: a.image,
-          category: a.category,
-          location: a.town || a.location || "Cheshire",
-          publishedDate: a.publishedDate,
-          readTime: a.readTime || 3,
-          url: (a.url || ("/article/" + (a.id || a._id || ""))),
-        }}
-      />
+                key={a?.id || a?._id || idx}
+                onClick={() =>
+                  navigate(a.url || ("/article/" + (a.id || a._id || "")))
+                }
+                article={{
+                  title: a.title,
+                  content: a.summary || a.content || "",
+                  summary: a.summary || "",
+                  image: a.image,
+                  category: a.category,
+                  location: a.town || a.location || "Cheshire",
+                  publishedDate: a.publishedDate,
+                  readTime: a.readTime || 3,
+                  url: a.url || ("/article/" + (a.id || a._id || "")),
+                }}
+              />
             ))}
+        
           </div>
         </section>
       )}

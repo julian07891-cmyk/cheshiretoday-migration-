@@ -1633,7 +1633,8 @@ function App() {
       <PromoWidgetProvider>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<HomePageV1 />} />
+            <Route path="/home-old" element={<HomePage />} />
             <Route path="/article/:articleId" element={<ArticlePage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/admin" element={<AdminPage />} />

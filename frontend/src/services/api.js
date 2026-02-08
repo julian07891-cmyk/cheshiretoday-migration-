@@ -4,8 +4,14 @@ import axios from 'axios';
 // Always determine the API URL at runtime based on the current page location
 // This ensures the frontend works correctly on any domain (production, preview, or custom)
 const getApiBaseUrl = () => {
-  // Frontend and backend are separate Render services
-  return "https://cheshiretoday-migration.onrender.com";
+  // 1) Explicit override (works for Render + local)
+  if (process.env.REACT_APP_BACKEND_URL) return process.env.REACT_APP_BACKEND_URL;
+
+  // 2) Local dev: use CRA proxy => relative /api
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") return "";
+
+  // 3) Fallback: same-origin (if backend is served with frontend)
+  return typeof window !== "undefined" ? window.location.origin : "";
 };
 
 const API_BASE_URL = getApiBaseUrl();

@@ -2989,7 +2989,7 @@ async def get_most_read_articles(period: str = "today", limit: int = 5):
                 pass
             
             if not article:
-                article = await db.articles.find_one({"id": article_id})
+                article = await db.articles.find_one({"_id": ObjectId(article_id)})
             
             if article:
                 articles.append({
@@ -3034,15 +3034,16 @@ async def get_article(article_id: str):
 
         article = None
         
-        # First try to find by custom 'id' field (UUID format) in main collection
-        article = await db.articles.find_one({'id': article_id})
-        
-        # If not found, try MongoDB ObjectId in main collection
+        # First try MongoDB _id (PRIMARY)
+        try:
+            article = await db.articles.find_one({"_id": ObjectId(article_id)})
+        except:
+            article = None
+
+        # Fallback: custom id field (legacy)
         if not article:
-            try:
-                article = await db.articles.find_one({'_id': ObjectId(article_id)})
-            except:
-                pass  # Invalid ObjectId format, that's fine
+            article = await db.articles.find_one({"id": article_id})
+
         
         # If still not found, search in archived_articles collection
         # This ensures old shared links (e.g., Facebook posts) continue to work
@@ -3058,7 +3059,7 @@ async def get_article(article_id: str):
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        article['id'] = str(article.get('id', article['_id']))
+        article['id'] = str(article['_id'])
         del article['_id']
         if 'created_at' in article:
             del article['created_at']
@@ -4455,7 +4456,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         from app.news_feed_service import get_article_priority_location
         
         # Check if article exists
-        existing = await db.articles.find_one({"id": article_id})
+        existing = await db.articles.find_one({"_id": ObjectId(article_id)})
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
         
@@ -4559,7 +4560,7 @@ async def archive_article(article_id: str, auth: bool = Depends(get_admin_auth))
             except:
                 pass
         if not article:
-            article = await db.articles.find_one({"id": article_id})
+            article = await db.articles.find_one({"_id": ObjectId(article_id)})
         
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
@@ -4617,7 +4618,7 @@ async def unarchive_article(article_id: str, auth: bool = Depends(get_admin_auth
                 pass
         
         if not archived_article:
-            archived_article = await db.archived_articles.find_one({"id": article_id})
+            archived_article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
         
         if not archived_article:
             raise HTTPException(status_code=404, detail="Article not found in archive")
@@ -4659,7 +4660,7 @@ async def get_archived_articles(
         ).to_list(None)
         
         for article in legacy_archived:
-            article['id'] = str(article.get('id', article['_id']))
+            article['id'] = str(article['_id'])
             article['archive_source'] = 'legacy'
             if '_id' in article:
                 del article['_id']
@@ -4672,7 +4673,7 @@ async def get_archived_articles(
         ).to_list(None)
         
         for article in new_archived:
-            article['id'] = str(article.get('id', article['_id']))
+            article['id'] = str(article['_id'])
             article['archive_source'] = 'collection'
             if '_id' in article:
                 del article['_id']
@@ -4755,7 +4756,7 @@ async def get_articles_by_date_range(
         total = await db.articles.count_documents(query)
         
         for article in articles:
-            article['id'] = str(article.get('id', article['_id']))
+            article['id'] = str(article['_id'])
             if '_id' in article:
                 del article['_id']
         
@@ -6785,7 +6786,7 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
                 # Try to get article to find category
                 article = await db.articles.find_one({"_id": ObjectId(article_id)}) if ObjectId.is_valid(article_id) else None
                 if not article:
-                    article = await db.articles.find_one({"id": article_id})
+                    article = await db.articles.find_one({"_id": ObjectId(article_id)})
                 
                 if article:
                     category = article.get("category", "Unknown")
@@ -11254,7 +11255,7 @@ async def list_advertise_leads(limit: int = 50, _admin: bool = Depends(require_a
         raise HTTPException(status_code=500, detail="Failed to fetch leads")
 
 
-.get("/api/admin/env-check")
+@app.get("/api/admin/env-check")
 async def admin_env_check():
     return {
         "ADMIN_USER_set": bool(os.getenv("ADMIN_USER")),
