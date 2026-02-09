@@ -77,7 +77,7 @@ const NewsFooter = () => {
             </p>
             
             {!subscribed ? (
-              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
+              <form onSubmit={handleSubscribe} noValidate className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
                 <input
                   type="email"
                   value={email}

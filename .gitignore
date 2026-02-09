@@ -26,3 +26,6 @@ coverage/
 .vscode/
 
 frontend/warmup.sh
+
+# local dev proxy disabled copy
+frontend/src/setupProxy.js.DISABLED

@@ -146,7 +146,10 @@ const LoadingFallback = () => (
 
 // Get API URL at runtime
 const getApiUrl = () => {
-  return "https://cheshiretoday-migration.onrender.com";
+  return (
+    process.env.REACT_APP_BACKEND_URL ||
+    "https://cheshiretoday-migration.onrender.com"
+  );
 };
 
 function HomePage() {

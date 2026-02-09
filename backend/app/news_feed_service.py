@@ -60,7 +60,7 @@ RSS_FEEDS = {
 
     # Property / Housing (UK)
     'guardian_housing': {
-        'url': 'https://www.theguardian.com/money/housing/rss',
+        'url': 'https://www.theguardian.com/uk/money/property/rss',
         'source': 'The Guardian',
         'category': 'Business',
         'priority': 2

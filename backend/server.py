@@ -333,7 +333,29 @@ def get_gemini_chat(session_id: str, system_message: str) -> LlmChat:
 
 # Create the main app without a prefix
 app = FastAPI()
+# -------------------------------
+# CORS
+# -------------------------------
+from fastapi.middleware.cors import CORSMiddleware
 
+CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "https://cheshiretoday.co.uk",
+    "https://www.cheshiretoday.co.uk",
+    "https://cheshiretoday-migration.onrender.com",
+    "https://cheshiretoday-frontend-migration.onrender.com",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # -------------------------------
 # Serve React (CRA) build
 # -------------------------------
@@ -2205,6 +2227,7 @@ async def clean_article_content(authorized: bool = Depends(get_admin_auth)):
 
 @api_router.post("/admin/remove-duplicates")
 async def _remove_duplicates_internal():
+    _db_required(db)
     """
     Internal helper function to remove duplicate articles.
     Called automatically after imports and by the admin endpoint.
@@ -3496,6 +3519,7 @@ async def delete_article(article_id: str):
 
 @api_router.post("/subscribe", response_model=SubscribeResponse)
 async def subscribe_newsletter(request: SubscribeRequest):
+    _db_required(db)
     """Subscribe to newsletter with optional preferences"""
     try:
         email = request.email.lower().strip()
@@ -4178,90 +4202,6 @@ async def unsubscribe_newsletter(request: UnsubscribeRequest):
     except Exception as e:
         logger.error(f"Error unsubscribing: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process unsubscribe request")
-
-
-@api_router.get("/newsletter/preferences/{email}")
-async def get_newsletter_preferences(email: str):
-    """
-    Get current newsletter preferences for an email.
-    Returns preferences if found, or defaults if not.
-    """
-    try:
-        email = email.lower().strip()
-        subscriber = await db.subscribers.find_one({"email": email})
-        
-        if not subscriber:
-            return {
-                "found": False,
-                "email": email,
-                "message": "Email not found in subscriber list",
-                "preferences": None
-            }
-        
-        return {
-            "found": True,
-            "email": email,
-            "preferences": {
-                "daily_brief": subscriber.get("daily_brief", True),
-                "weekly_roundup": subscriber.get("weekly_roundup", False),
-                "breaking_news": subscriber.get("breaking_news", False)
-            },
-            "subscribed_at": str(subscriber.get("subscribed_at")) if subscriber.get("subscribed_at") else None
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to get preferences")
-
-
-@api_router.post("/newsletter/preferences")
-async def update_newsletter_preferences(request: PreferencesUpdateRequest):
-    """
-    Update newsletter preferences for a subscriber.
-    If all preferences are disabled, effectively unsubscribes them from all emails.
-    """
-    try:
-        email = request.email.lower().strip()
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email is required")
-        
-        # Check if subscriber exists
-        subscriber = await db.subscribers.find_one({"email": email})
-        
-        if not subscriber:
-            raise HTTPException(status_code=404, detail="Email not found. Please subscribe first.")
-        
-        # Update preferences
-        await db.subscribers.update_one(
-            {"email": email},
-            {"$set": {
-                "daily_brief": request.daily_brief,
-                "weekly_roundup": request.weekly_roundup,
-                "breaking_news": request.breaking_news,
-                "preferences_updated_at": datetime.now(timezone.utc)
-            }}
-        )
-        
-        # If ALL preferences are False, log it (user might as well unsubscribe)
-        if not request.daily_brief and not request.weekly_roundup and not request.breaking_news:
-            logger.info(f"Subscriber {email[:3]}*** disabled all email preferences")
-        
-        return {
-            "success": True,
-            "message": "Your email preferences have been updated.",
-            "preferences": {
-                "daily_brief": request.daily_brief,
-                "weekly_roundup": request.weekly_roundup,
-                "breaking_news": request.breaking_news
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update preferences")
 
 
 @api_router.post("/admin/backfill-locations")
@@ -9775,14 +9715,6 @@ app.include_router(rss_routes.router)
 
 # Add GZip compression middleware for faster response delivery
 app.add_middleware(GZipMiddleware, minimum_size=500)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Configure logging
 logging.basicConfig(

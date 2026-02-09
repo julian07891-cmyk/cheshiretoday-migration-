@@ -81,7 +81,7 @@ const getApiUrl = () => {
     
     if (isLocalhost) {
       // In development, API is on port 8001
-      return 'http://localhost:8001';
+      return (process.env.REACT_APP_BACKEND_URL || window.location.origin);
     } else {
       // In production, API is on the same origin
       return window.location.origin;

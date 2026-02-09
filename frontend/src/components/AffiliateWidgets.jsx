@@ -200,11 +200,10 @@ export const ProductCard = ({ product, compact = false }) => {
 // Helper to fetch products from database - exported for use in parent components
 export const fetchDatabaseProducts = async () => {
   try {
-    const apiUrl = typeof window !== 'undefined' 
-      ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:8001' 
-        : window.location.origin)
-      : '';
+    const apiUrl = (
+      process.env.REACT_APP_BACKEND_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
+    );
     
     const response = await fetch(`${apiUrl}/api/affiliates/public`);
     if (response.ok) {

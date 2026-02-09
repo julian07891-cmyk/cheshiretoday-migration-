@@ -42,14 +42,11 @@ StatCard.displayName = 'StatCard';
 
 // Runtime URL detection - always use window.location.origin in production
 const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    return isLocalhost ? 'http://localhost:8001' : window.location.origin;
-  }
-  return '';
+  return (
+    process.env.REACT_APP_BACKEND_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "")
+  );
 };
-
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
 
@@ -105,7 +102,7 @@ const AdminDashboard = ({ onBack }) => {
   // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [authChecking, setAuthChecking] = useState(true);
 
@@ -367,13 +364,34 @@ const AdminDashboard = ({ onBack }) => {
         });
         
         console.log('[Admin] Login response status:', response.status);
-        
+
+        if (response.status === 401 || response.status === 403) {
+          // read body once for message
+          const raw = await response.text();
+          let data = {};
+          try { data = raw ? JSON.parse(raw) : {}; } catch { data = { message: raw }; }
+
+          toast({
+            title: "❌ Login Failed",
+            description: data.detail || data.message || "Invalid username or password",
+            variant: "destructive"
+          });
+
+          setLoginLoading(false);
+          return; // IMPORTANT: stop here, no retries, no catch
+        }
+
         if (!response.ok && response.status >= 500) {
-          // Server error - retry
           throw new Error(`Server error: ${response.status}`);
         }
-        
-        const data = await response.json();
+
+        const raw = await response.text();
+        let data = {};
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch (err) {
+          data = { success: false, message: raw };
+        }
         console.log('[Admin] Login response:', data.success ? 'SUCCESS' : 'FAILED', data.token ? '(has token)' : '(no token)');
         
         if (response.ok && data.success && data.token) {
@@ -1888,13 +1906,13 @@ const AdminDashboard = ({ onBack }) => {
                   Username / Email
                 </label>
                 <Input
-                  type="email"
+                  type="text"
                   name="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="Enter your username (e.g. admin)"
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck="false"
@@ -2954,7 +2972,7 @@ const AdminDashboard = ({ onBack }) => {
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                   <div className="flex gap-2">
                     <Input
-                      type="email"
+                      type="text"
                       placeholder="your@email.com"
                       defaultValue="news@cheshiretoday.co.uk"
                       className="flex-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -4545,7 +4563,7 @@ const AdminDashboard = ({ onBack }) => {
                 <Label htmlFor="job-apply-email">Apply Email (optional)</Label>
                 <Input
                   id="job-apply-email"
-                  type="email"
+                  type="text"
                   value={jobForm.apply_email}
                   onChange={(e) => setJobForm({...jobForm, apply_email: e.target.value})}
                   placeholder="hr@company.com"

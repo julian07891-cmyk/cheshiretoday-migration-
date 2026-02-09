@@ -37,7 +37,11 @@ const RSSPanel = ({ onArticlesImported }) => {
   const importRSSArticles = async (category = null) => {
     try {
       setImporting(true);
-      const url = new URL(`${BACKEND_URL}/api/import-rss`);
+
+      const url = new URL(
+        "/api/import-rss",
+        BACKEND_URL || window.location.origin
+      );
       if (category) {
         url.searchParams.append('category', category);
       }
