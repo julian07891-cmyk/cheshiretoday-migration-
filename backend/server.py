@@ -355,7 +355,9 @@ async def serve_spa_root():
 
 @app.on_event("startup")
 async def startup_event():
-    await ensure_indexes()
+    if not (LOCAL_DEV_NO_DB or db is None):
+
+        await ensure_indexes()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
@@ -4348,6 +4350,8 @@ async def backfill_article_locations(authorized: bool = Depends(get_admin_auth))
 @api_router.get("/admin/subscribers")
 async def get_subscribers(authorized: bool = Depends(get_admin_auth)):
     """Get all subscribers for admin dashboard. Requires admin authentication."""
+    _db_required(db)
+
     try:
         subscribers = await db.subscribers.find({}, {"_id": 0}).to_list(1000)
         return {"subscribers": subscribers, "total": len(subscribers)}
@@ -4358,6 +4362,7 @@ async def get_subscribers(authorized: bool = Depends(get_admin_auth)):
 @api_router.delete("/admin/subscribers/{email}")
 async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_auth)):
     """Delete a subscriber by email. Requires admin authentication."""
+    _db_required(db)
     try:
         result = await db.subscribers.delete_one({"email": email})
         if result.deleted_count == 0:
@@ -6920,6 +6925,16 @@ async def track_article_view(article_id: str, request: Request):
 # ============================================================================
 
 from app.push_service import push_service
+
+
+def _db_required(db):
+    # DB is disabled in LOCAL_DEV_NO_DB mode
+    if db is None:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=503,
+            detail="Database disabled (LOCAL_DEV_NO_DB=1). Configure MONGO_URL/DB_NAME and set LOCAL_DEV_NO_DB=0."
+        )
 
 @api_router.get("/push/vapid-public-key")
 async def get_vapid_public_key():
