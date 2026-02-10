@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from "../utils/api";
 import { Clock } from 'lucide-react';
 
 const RelatedArticles = ({ articleId, onArticleClick }) => {
@@ -14,8 +15,8 @@ const RelatedArticles = ({ articleId, onArticleClick }) => {
   const fetchRelatedArticles = async () => {
     try {
       setLoading(true);
-      const API_URL = process.env.REACT_APP_BACKEND_URL;
-      const response = await fetch(`${API_URL}/api/related-articles/${articleId}?limit=4`);
+      const API_URL = getApiUrl();
+      const response = await fetch(API_URL + "/api/related-articles/" + encodeURIComponent(articleId) + "?limit=4");
       const data = await response.json();
       setRelated(data);
     } catch (error) {

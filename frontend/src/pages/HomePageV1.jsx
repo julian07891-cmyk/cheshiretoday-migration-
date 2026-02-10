@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getApiUrl } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
@@ -43,7 +44,7 @@ export default function HomePageV1() {
         setLoading(true);
         setErr("");
 
-        const res = await fetch("/api/articles?limit=50");
+        const res = await fetch(getApiUrl() + "/api/articles?limit=50");
         if (!res.ok) throw new Error(`API ${res.status}`);
 
         const data = await res.json();
