@@ -333,6 +333,8 @@ def get_gemini_chat(session_id: str, system_message: str) -> LlmChat:
 
 # Create the main app without a prefix
 app = FastAPI()
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 # -------------------------------
 # CORS
 # -------------------------------
@@ -361,7 +363,7 @@ app.add_middleware(
 # -------------------------------
 from fastapi.responses import FileResponse
 
-FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
+FRONTEND_BUILD_DIR = (ROOT_DIR / "frontend_build").resolve()
 
 # Serve static assets (JS/CSS/media)
 if FRONTEND_BUILD_DIR.exists():
