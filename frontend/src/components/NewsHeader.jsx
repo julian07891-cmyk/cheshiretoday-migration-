@@ -100,7 +100,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
               />
               <div>
                 <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white">Cheshire Today</h1>
-                <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400">Local News & Updates</p>
+                <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400">Local News · AI · Money</p>
               </div>
             </div>
 
