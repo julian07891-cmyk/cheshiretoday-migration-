@@ -95,7 +95,11 @@ export default function HomePageV1() {
       }));
   }, [newestFirst, hero]);
 
-  /* ---------- latest feed (4) ---------- */
+  /* ---------- buckets ---------- */
+  const aiFeed = useMemo(() => newestFirst.filter(a => (a.section || "").startsWith("ai")).slice(0,4), [newestFirst]);
+  const financeFeed = useMemo(() => newestFirst.filter(a => a.category === "Business" || (a.section || "").includes("money") || (a.section || "").includes("tax")).slice(0,4), [newestFirst]);
+
+/* ---------- latest feed (4) ---------- */
   const latestFeed = useMemo(() => {
     const exclude = new Set([
       hero ? articleKey(hero) : null,
@@ -140,7 +144,57 @@ export default function HomePageV1() {
         <TopStoriesGrid stories={topStories} />
       )}
 
-      {!loading && !err && latestFeed.length > 0 && (
+      
+      {!loading && !err && aiFeed.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-bold mb-3">AI & Tech</h2>
+          <div className="space-y-3">
+            {aiFeed.map((a, i) => (
+              <CompactArticleCard
+                key={a.id || a._id || i}
+                onClick={() => navigate("/article/" + (a.id || a._id))}
+                article={{
+                  title: a.title,
+                  content: a.summary || a.content || "",
+                  summary: a.summary || "",
+                  image: a.image,
+                  category: a.category,
+                  location: a.location || "Cheshire",
+                  publishedDate: a.publishedDate,
+                  readTime: 3,
+                  url: "/article/" + (a.id || a._id),
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && !err && financeFeed.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-bold mb-3">Money & Finance</h2>
+          <div className="space-y-3">
+            {financeFeed.map((a, i) => (
+              <CompactArticleCard
+                key={a.id || a._id || i}
+                onClick={() => navigate("/article/" + (a.id || a._id))}
+                article={{
+                  title: a.title,
+                  content: a.summary || a.content || "",
+                  summary: a.summary || "",
+                  image: a.image,
+                  category: a.category,
+                  location: a.location || "Cheshire",
+                  publishedDate: a.publishedDate,
+                  readTime: 3,
+                  url: "/article/" + (a.id || a._id),
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+{!loading && !err && latestFeed.length > 0 && (
         <section className="mt-6">
           <h2 className="text-lg font-bold mb-3">Latest</h2>
           <div className="space-y-3">
