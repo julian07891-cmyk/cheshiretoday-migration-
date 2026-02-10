@@ -1,4 +1,5 @@
 import React from "react";
+import { getApiUrl } from "../utils/api";
 import { trackEvent } from "../utils/trackEvent";
 
 const PRICING = [
@@ -129,7 +130,7 @@ const AdvertisePage = () => {
                     source: "advertise_page",
                   };
 
-                  await fetch("/api/leads/advertise", {
+                  await fetch(getApiUrl() + "/api/leads/advertise", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),

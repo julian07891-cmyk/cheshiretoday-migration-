@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getApiUrl } from "../../utils/api";
 import { trackEvent } from "../../utils/trackEvent";
 
 export default function NewsletterFull() {
@@ -13,7 +14,7 @@ export default function NewsletterFull() {
       setStatus("loading");
       trackEvent("newsletter_submit", { placement: "homepage_full" });
 
-      const res = await fetch("/api/newsletter/subscribe", {
+      const res = await fetch(getApiUrl() + "/api/newsletter/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

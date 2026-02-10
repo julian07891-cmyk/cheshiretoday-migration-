@@ -4,8 +4,9 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Rss, RefreshCw, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
+import { getApiUrl } from '../utils/api';
 
-const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || (typeof window !== "undefined" ? window.location.origin : ""));
+const BACKEND_URL = getApiUrl();
 
 const RSSPanel = ({ onArticlesImported }) => {
   const [importing, setImporting] = useState(false);
@@ -40,7 +41,7 @@ const RSSPanel = ({ onArticlesImported }) => {
 
       const url = new URL(
         "/api/import-rss",
-        BACKEND_URL || window.location.origin
+        BACKEND_URL
       );
       if (category) {
         url.searchParams.append('category', category);

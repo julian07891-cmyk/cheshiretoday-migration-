@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from '../utils/api';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
@@ -6,7 +7,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+const API_URL = getApiUrl();
 
 const UnsubscribePage = () => {
   const [searchParams] = useSearchParams();

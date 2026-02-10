@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getApiUrl } from '../utils/api';
 import { Search, X, Clock, TrendingUp, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+const API_URL = getApiUrl();
 
 const MobileSearch = ({ open, onClose, onArticleSelect }) => {
   const [query, setQuery] = useState('');
