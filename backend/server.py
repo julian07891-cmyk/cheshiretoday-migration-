@@ -9681,12 +9681,25 @@ async def sync_rss_now():
         
         # Filter for new articles with images
         new_articles = []
+        seen_urls = set()
+        seen_titles = set()
         for article in rss_articles:
             title = article.get('title', '').strip()
             if not title:
                 continue
             if title.lower() in existing_titles:
                 continue
+
+            url = (article.get('source_url') or '').strip()
+            tkey = title.lower().strip()
+            if url:
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+            else:
+                if tkey in seen_titles:
+                    continue
+                seen_titles.add(tkey)
             #             if not article.get('image'):
             #                 continue
             new_articles.append(article)
@@ -9796,6 +9809,8 @@ async def sync_rss_now():
                 imported_count += 1
                 imported_titles.append(title[:60] + "...")
                 existing_titles.add(title.lower())
+                if source_url:
+                    seen_urls.add(source_url)
                 logger.info(f"✅ Imported: {title[:50]}...")
                 
             except Exception as e:
