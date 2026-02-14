@@ -3047,7 +3047,7 @@ async def get_articles(
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
             local_articles = await db.articles.find(
-                { 'is_local_source': True, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 },
+                {'is_local_source': True},
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -3056,7 +3056,7 @@ async def get_articles(
             ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
             
             uk_articles = await db.articles.find(
-                { 'is_local_source': {'$ne': True, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 }},
+                {'is_local_source': {'$ne': True}},
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
