@@ -241,9 +241,10 @@ return {
                 <h2 className="text-lg font-bold mb-3">Latest</h2>
                 <div className="space-y-3">
                   {latestFeed.map((a, idx) => (
-                    <div key={a?.id || a?._id || idx}>
+                    <>
 <CompactArticleCard
-onClick={() =>
+                      key={a?.id || a?._id || idx}
+                      onClick={() =>
                         navigate(a.url || ("/article/" + (a.id || a._id || "")))
                       }
                       article={{
@@ -276,9 +277,11 @@ onClick={() =>
                         </div>
                       )}
 
-</div>
-))}
-</div>
+</>
+
+                      
+                  ))}
+                </div>
               </section>
             )}
           </main>

@@ -8,6 +8,7 @@ import React, {
   useMemo,
 } from "react";
 import "./App.css";
+import { getApiUrl } from "./utils/api";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import {
   BrowserRouter,
@@ -19,6 +20,7 @@ import {
   useLocation,
   Link,
 } from "react-router-dom";
+import ArticlePageV2 from "./pages/ArticlePageV2";
 
 // Critical components - load immediately
 import NewsHeader from "./components/NewsHeader";
@@ -143,14 +145,6 @@ import LocationPage from "./components/LocationPage";
 const LoadingFallback = () => (
   <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-20 w-full"></div>
 );
-
-// Get API URL at runtime
-const getApiUrl = () => {
-  return (
-    process.env.REACT_APP_BACKEND_URL ||
-    "https://cheshiretoday-migration.onrender.com"
-  );
-};
 
 function HomePage() {
   const navigate = useNavigate();
@@ -1383,7 +1377,7 @@ function ArticlePage() {
                 <RelatedArticles
                   articleId={articleId}
                   onArticleClick={(article) =>
-                    navigate(`/article/${article.id}`)
+                    navigate(`/article/${article._id || article.id}`)
                   }
                 />
 
@@ -1485,7 +1479,7 @@ function SearchPage() {
         );
         const bestMatch = exactMatch || articles[0];
         // Navigate to the article page
-        navigate(`/article/${bestMatch.id || bestMatch._id}`);
+        navigate(`/article/${bestMatch._id || bestMatch.id}`);
       }
     } catch (error) {
       console.error("Error searching:", error);
@@ -1638,7 +1632,7 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePageV1 />} />
             <Route path="/home-old" element={<HomePage />} />
-            <Route path="/article/:articleId" element={<ArticlePage />} />
+            <Route path="/article/:articleId" element={<ArticlePageV2 categories={categories} />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route

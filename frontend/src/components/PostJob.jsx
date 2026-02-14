@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from "../utils/api";
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Briefcase, Building2, MapPin, Mail, Phone, User,
@@ -20,13 +21,6 @@ import {
 } from './ui/select';
 import { toast } from '../hooks/use-toast';
 import { Badge } from './ui/badge';
-
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    return process.env.REACT_APP_BACKEND_URL || window.location.origin;
-  }
-  return '';
-};
 
 const PostJob = () => {
   const navigate = useNavigate();

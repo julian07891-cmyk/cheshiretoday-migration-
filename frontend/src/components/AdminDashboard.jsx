@@ -12,7 +12,8 @@ import {
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
-import { toast } from '../hooks/use-toast';
+import { toast } from "../hooks/use-toast";
+import { getApiUrl } from "../utils/api";
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
@@ -39,14 +40,6 @@ const StatCard = memo(({ title, value, icon: Icon, color }) => (
 ));
 
 StatCard.displayName = 'StatCard';
-
-// Runtime URL detection - always use window.location.origin in production
-const getApiUrl = () => {
-  return (
-    process.env.REACT_APP_BACKEND_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "")
-  );
-};
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
 
@@ -494,7 +487,7 @@ const AdminDashboard = ({ onBack }) => {
   }, [isAuthenticated, activeTab]);
 
   const fetchAllData = async (token = null) => {
-    const authToken = token || localStorage.getItem(TOKEN_KEY);
+    const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
     if (!authToken) {
       console.log('[Admin] No token available for fetchAllData');
       return;
@@ -574,7 +567,7 @@ const AdminDashboard = ({ onBack }) => {
   };
 
   const fetchFacebookData = async (token = null) => {
-    const authToken = token || localStorage.getItem(TOKEN_KEY);
+    const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
     if (!authToken) return;
     
     const authHeaders = { 'Authorization': `Bearer ${authToken}` };
@@ -1339,7 +1332,7 @@ const AdminDashboard = ({ onBack }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
         },
         body: JSON.stringify({
           cheshire_articles: 8,
@@ -1405,7 +1398,7 @@ const AdminDashboard = ({ onBack }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+          'Authorization': `Bearer ${localStorage.getItem(TOKEN_KEY)}`
         }
       });
       
@@ -2013,7 +2006,7 @@ const AdminDashboard = ({ onBack }) => {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={fetchAllData}
+                onClick={() => fetchAllData()}
                 className="flex items-center gap-2"
                 data-testid="admin-refresh-button"
               >
@@ -2482,7 +2475,7 @@ const AdminDashboard = ({ onBack }) => {
                     })
                     .map((article) => (
                     <div 
-                      key={article.id} 
+                      key={article._id || article.id} 
                       className={`flex items-center gap-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border ${
                         selectedArticles.has(article.id) 
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700' 
@@ -2554,7 +2547,7 @@ const AdminDashboard = ({ onBack }) => {
                               cancelText: 'Cancel'
                             });
                             if (confirmed) {
-                              handleArchiveArticle(article.id);
+                              handleArchiveArticle(article._id || article.id);
                             }
                           }}
                           disabled={actionLoading === `archive-${article.id}`}
@@ -2805,7 +2798,7 @@ const AdminDashboard = ({ onBack }) => {
                   <div className="space-y-3 max-h-[350px] overflow-y-auto">
                     {smartArticles.slice(0, 5).map((article, index) => (
                       <div 
-                        key={article.id}
+                        key={article._id || article.id}
                         className={`flex items-center gap-3 p-3 rounded-lg border ${
                           index === 0 ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-100'
                         }`}
@@ -3596,9 +3589,9 @@ const AdminDashboard = ({ onBack }) => {
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {archivedArticles.map((article) => (
                       <div 
-                        key={article.id} 
+                        key={article._id || article.id} 
                         className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                        onClick={() => window.open(`/article/${article.id}`, '_blank')}
+                        onClick={() => window.open(`/article/${article._id || article.id}`, '_blank')}
                         title="Click to view article"
                       >
                         {article.image && (
@@ -3621,7 +3614,7 @@ const AdminDashboard = ({ onBack }) => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={(e) => { e.stopPropagation(); handleUnarchiveArticle(article.id); }}
+                          onClick={(e) => { e.stopPropagation(); handleUnarchiveArticle(article._id || article.id); }}
                           disabled={actionLoading === `unarchive-${article.id}`}
                           className="text-green-600 hover:text-green-700 hover:bg-green-50"
                           title="Restore article"
@@ -3891,7 +3884,7 @@ const AdminDashboard = ({ onBack }) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={fetchAllData}
+                      onClick={() => fetchAllData()}
                     >
                       <RefreshCw className="h-4 w-4" />
                     </Button>

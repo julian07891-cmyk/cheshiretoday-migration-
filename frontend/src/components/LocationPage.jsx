@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from "../utils/api";
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { MapPin, Loader2, Clock, User, ArrowLeft } from 'lucide-react';
@@ -74,22 +75,6 @@ const LOCATION_DATA = {
 };
 
 // Runtime URL detection - must work at runtime, not build time
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
-    
-    if (isLocalhost) {
-      // In development, API is on port 8001
-      return (process.env.REACT_APP_BACKEND_URL || window.location.origin);
-    } else {
-      // In production, API is on the same origin
-      return window.location.origin;
-    }
-  }
-  return '';
-};
-
 const LocationPage = () => {
   const { location } = useParams();
   const navigate = useNavigate();

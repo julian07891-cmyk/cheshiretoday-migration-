@@ -11,10 +11,10 @@ export default function TopStoriesGrid({ stories = [] }) {
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {stories.slice(0, 2).map((story) => (
+        {stories.slice(0,4).map((story, idx) => (
           <Link
-            key={story.id}
-            to={story.url}
+            key={story.id || story.url || story.title || idx}
+            to={story.url || `/article/${story._id || story.id}` }
             className="group block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800"
           >
             {story.image && (

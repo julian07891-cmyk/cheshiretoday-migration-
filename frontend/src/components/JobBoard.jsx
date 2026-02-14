@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from "../utils/api";
 import { Link } from 'react-router-dom';
 import { 
   Briefcase, MapPin, Clock, Building2, Search, Filter,
@@ -16,13 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    return process.env.REACT_APP_BACKEND_URL || window.location.origin;
-  }
-  return '';
-};
 
 const JobBoard = () => {
   const [jobs, setJobs] = useState([]);

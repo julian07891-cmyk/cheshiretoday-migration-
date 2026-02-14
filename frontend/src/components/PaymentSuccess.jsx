@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { getApiUrl } from "../utils/api";
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, Loader2, XCircle, ArrowLeft, Briefcase, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-
-const getApiUrl = () => {
-  if (typeof window !== 'undefined') {
-    return process.env.REACT_APP_BACKEND_URL || window.location.origin;
-  }
-  return '';
-};
 
 const PaymentSuccess = () => {
   const [searchParams] = useSearchParams();
