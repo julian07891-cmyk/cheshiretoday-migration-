@@ -13,7 +13,6 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
 
   useEffect(() => {
     if (articleId) fetchRelatedArticles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId, limit]);
 
   const fetchRelatedArticles = async () => {
