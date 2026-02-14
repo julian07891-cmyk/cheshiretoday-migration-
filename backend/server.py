@@ -9756,6 +9756,16 @@ async def sync_rss_now():
                     else:
                         logger.info(f"Perplexity cap reached for {month_key} ({used}/{max_ai_articles}). Using RSS content.")
                 
+                # Normalize publish datetime (RSS feeds vary by field name)
+                published_dt = (
+                    article.get("publishedDate")
+                    or article.get("published_date")
+                    or article.get("published")
+                    or article.get("pubDate")
+                )
+                if not published_dt:
+                    published_dt = datetime.utcnow().isoformat()
+
                 # Create article document
                 article_doc = {
                     'id': str(uuid4()),
@@ -9775,7 +9785,8 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'published_date': article.get('published_date'),
+                    'publishedDate': published_dt,
+                    'published_date': published_dt,
                     'created_at': datetime.utcnow(),
                     'monetisation_type': 'none',
                     'affiliate_links': []
