@@ -5,12 +5,25 @@ import { Helmet, HelmetProvider } from "react-helmet-async";
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
 import FestiveTheme from "../components/FestiveTheme";
+import RelatedArticles from "../components/RelatedArticles";
 
 import { Toaster } from "../components/ui/toaster";
 import { toast } from "../hooks/use-toast.js";
-import { Loader2 } from "lucide-react";
 
+import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
+
+function formatDateTime(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function safeText(s) {
   return (s || "").toString();
@@ -22,18 +35,22 @@ function buildDescription(article) {
   return safeText(article?.content).trim().slice(0, 200);
 }
 
-function formatDateTime(dateString) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+// Shrink the “originally published by …” block so it doesn’t distract.
+// Works whether backend appended it as plain text lines or a paragraph.
+function splitAttribution(rawContent) {
+  const content = safeText(rawContent);
+
+  const marker = "This article was originally published by";
+  const idx = content.indexOf(marker);
+
+  if (idx === -1) {
+    return { main: content, attribution: "" };
+  }
+
+  const main = content.slice(0, idx).trim();
+  const attribution = content.slice(idx).trim();
+
+  return { main, attribution };
 }
 
 export default function ArticlePageV2({ categories }) {
@@ -42,13 +59,18 @@ export default function ArticlePageV2({ categories }) {
 
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const API_BASE = useMemo(() => getApiUrl().replace(/\/$/, ""), []);
   const publicUrl =
     process.env.REACT_APP_PUBLIC_URL ||
     (typeof window !== "undefined" ? window.location.origin : "");
 
   const description = useMemo(() => buildDescription(article), [article]);
+
+  const { main: mainContent, attribution } = useMemo(
+    () => splitAttribution(article?.content),
+    [article]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -56,15 +78,22 @@ export default function ArticlePageV2({ categories }) {
     async function fetchArticle() {
       try {
         setLoading(true);
-        const res = await fetch(`${API_BASE}/api/articles/${articleId}`);
+        setErrorMsg("");
+
+        const API_BASE = getApiUrl().replace(/\/$/, "");
+        const res = await fetch(`${API_BASE}/api/articles/${encodeURIComponent(articleId)}`);
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const data = await res.json();
         if (!mounted) return;
+
         setArticle(data);
       } catch (e) {
         if (!mounted) return;
         console.error("Error fetching article:", e);
         setArticle(null);
+        setErrorMsg("Article not found");
       } finally {
         if (!mounted) return;
         setLoading(false);
@@ -75,15 +104,16 @@ export default function ArticlePageV2({ categories }) {
     return () => {
       mounted = false;
     };
-  }, [API_BASE, articleId]);
+  }, [articleId]);
 
-  const handleShare = async () => {
+  const handleShare = () => {
     const shareUrl = `${publicUrl}/article/${articleId}`;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast({ title: "Link Copied!", description: "Article link copied to clipboard!" });
-    } catch {
-      // ignore
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link Copied!",
+        description: "Article link copied to clipboard!",
+      });
     }
   };
 
@@ -96,6 +126,7 @@ export default function ArticlePageV2({ categories }) {
             categories={categories}
             activeCategory="all"
             onCategoryChange={() => navigate("/")}
+            onSearch={() => {}}
           />
           <div className="container mx-auto px-4 py-20">
             <div className="flex flex-col items-center justify-center">
@@ -112,8 +143,9 @@ export default function ArticlePageV2({ categories }) {
   if (!article) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-gray-50">
           <FestiveTheme />
+
           <Helmet>
             <title>Article Not Found | Cheshire Today</title>
             <meta name="robots" content="noindex, nofollow" />
@@ -122,26 +154,20 @@ export default function ArticlePageV2({ categories }) {
           <NewsHeader
             categories={categories}
             activeCategory="all"
-            onCategoryChange={() => {}}
+            onCategoryChange={() => navigate("/")}
             onSearch={() => {}}
           />
 
-          <main className="flex-1 flex items-center justify-center">
-            <div className="text-center px-4">
-              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-800 mb-4">
-                Article Not Found
-              </h1>
-              <p className="text-gray-600 mb-6">
-                Sorry, this article may have been removed or the link is incorrect.
-              </p>
-              <button
-                onClick={() => navigate("/")}
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-white font-semibold hover:bg-emerald-700"
-                data-testid="go-home-btn"
-              >
-                Go to Homepage
-              </button>
-            </div>
+          <main className="container mx-auto px-4 py-16 max-w-3xl">
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-3">Article Not Found</h1>
+            <p className="text-gray-600 mb-6">{errorMsg || "Sorry, this link may be incorrect."}</p>
+            <button
+              onClick={() => navigate("/")}
+              className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-white font-medium hover:bg-emerald-700"
+              data-testid="go-home-btn"
+            >
+              Go to Homepage
+            </button>
           </main>
 
           <NewsFooter />
@@ -180,7 +206,8 @@ export default function ArticlePageV2({ categories }) {
           onSearch={() => {}}
         />
 
-        <main className="container mx-auto px-4 py-10 max-w-3xl">
+        {/* Layout B: content + right sidebar */}
+        <main className="container mx-auto px-4 py-10 max-w-6xl">
           <div className="mb-6">
             <button
               onClick={() => navigate(-1)}
@@ -190,30 +217,69 @@ export default function ArticlePageV2({ categories }) {
             </button>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
-            {article.title}
-          </h1>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Main article */}
+            <article className="lg:col-span-8">
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
+                {article.title}
+              </h1>
 
-          <div className="mt-3 text-sm text-gray-600 flex items-center gap-3">
-            <span>{formatDateTime(article.publishedDate || article.published_at || article.created_at)}</span>
-            <button
-              onClick={handleShare}
-              className="ml-auto text-emerald-700 hover:underline text-sm"
-            >
-              Share
-            </button>
-          </div>
+              <div className="mt-3 text-sm text-gray-600 flex items-center gap-3">
+                <span>
+                  {formatDateTime(
+                    article.publishedDate || article.published_at || article.created_at
+                  )}
+                </span>
+                <button
+                  onClick={handleShare}
+                  className="ml-auto text-emerald-700 hover:underline text-sm"
+                >
+                  Share
+                </button>
+              </div>
 
-          {article.image && (
-            <img
-              src={article.image}
-              alt={article.title}
-              className="w-full rounded-xl mt-6 mb-6 object-cover"
-            />
-          )}
+              {article.image && (
+                <img
+                  src={article.image}
+                  alt={article.title}
+                  className="w-full rounded-xl mt-6 mb-6 object-cover"
+                />
+              )}
 
-          <div className="prose prose-lg max-w-none whitespace-pre-wrap">
-            {article.content}
+              <div className="prose prose-lg max-w-none whitespace-pre-wrap">
+                {mainContent}
+              </div>
+
+              {/* Make source attribution smaller + less prominent */}
+              {attribution && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    {attribution}
+                  </p>
+                </div>
+              )}
+            </article>
+
+            {/* Sidebar */}
+            <aside className="lg:col-span-4">
+              <div className="sticky top-6 space-y-6">
+                {/* Related articles in sidebar format */}
+                <RelatedArticles
+                  articleId={articleId}
+                  variant="sidebar"
+                  limit={4}
+                  onArticleClick={(a) => navigate(`/article/${a.id}`)}
+                />
+
+                {/* Placeholder blocks for later (ads/newsletter/jobs/etc) */}
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Coming soon</h3>
+                  <p className="text-sm text-gray-600">
+                    Sidebar modules (newsletter, local offers, sponsor spot) will go here.
+                  </p>
+                </div>
+              </div>
+            </aside>
           </div>
         </main>
 
