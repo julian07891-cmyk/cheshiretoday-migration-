@@ -1,3 +1,4 @@
+from app.full_article_extractor import fetch_full_article
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -132,62 +133,270 @@ def seed_local_articles_if_needed():
         })
 
 # =====================================================================================
+# =====================================================================================
 # NICHE SILOS (AI/Tech + Money/Property) — section inference (safe, non-persistent)
 # =====================================================================================
 
+import re
+
 SECTION_RULES = [
-    ("ai-policy", ["regulation", "bill", "parliament", "gov", "government", "whitehall", "ofcom", "ico", "ai act", "safety", "ethics", "policy"]),
-    ("ai-tools", ["tool", "app", "plugin", "copilot", "chatgpt", "gemini", "claude", "midjourney", "notion", "microsoft", "google", "openai", "launch", "update", "release", "feature"]),
-    ("ai-guides", ["how to", "guide", "tutorial", "explainer", "step-by-step", "what is", "tips", "for beginners", "small business", "use cases"]),
-    ("ai-news", ["ai", "artificial intelligence", "machine learning", "llm", "model", "robot", "automation"]),
+    # IMPORTANT: keep AI rules strict to avoid misclassification
+    ("ai-policy", [
+        "ai act", "artificial intelligence act", "ofcom", "ico",
+        "regulation", "regulator", "whitehall", "data protection",
+        "online safety", "algorithmic accountability"
+    ]),
+    ("ai-tools", [
+        "chatgpt", "openai", "gemini", "claude", "anthropic", "midjourney",
+        "copilot", "github copilot", "notion ai"
+    ]),
+    ("ai-guides", [
+        "how to use chatgpt", "prompt", "prompting", "tutorial", "guide",
+        "explainer", "step-by-step", "what is ai", "ai for beginners"
+    ]),
+    # NOTE: avoid generic words like "model" that appear in non-tech stories
+    ("ai-news", [
+        "artificial intelligence", "machine learning", "deep learning",
+        "large language model", "generative ai", "neural network",
+        "chatgpt", "openai", "gpt-", "llm",
+        "automation", "nvidia", "semiconductor", "chip"
+    ]),
+
     ("mortgages", ["mortgage", "remortgage", "fixed rate", "tracker", "lender", "apr", "interest rate", "affordability", "broker"]),
-    ("tax", ["tax", "hmrc", "self assessment", "allowance", "national insurance", "vat", "capital gains", "cg", "stamp duty"]),
+    ("tax", ["hmrc", "self assessment", "allowance", "national insurance", "vat", "capital gains", "cgt", "stamp duty"]),
     ("property", ["property", "house price", "rent", "landlord", "tenant", "letting", "buy-to-let", "rightmove", "zoopla", "housing market"]),
-    ("money", ["inflation", "budget", "savings", "isa", "pension", "credit", "loan", "debt", "cost of living", "energy bills"]),
+    ("money", ["inflation", "cost of living", "energy bills", "council tax", "fuel", "petrol", "diesel", "salary sacrifice", "wages", "pay rise", "pension", "isa", "savings", "debt", "loan", "credit", "interest rate", "insurance", "scam", "fraud", "food bank", "benefits"]),
 ]
+
+# Hard negatives: if any appear, never classify as AI
+AI_NEGATIVE = [
+    "murder", "stab", "court", "police", "missing", "jailed", "sentenced",
+    "coronation street", "emmerdale", "strictly", "spoilers",
+    "politics live", "resign", "mp", "cabinet", "starmer",
+    "match", "medal", "olympic",
+]
+
+
+TAX_STRONG = [
+    "hmrc", "self assessment", "national insurance", "vat", "cgt", "capital gains",
+    "stamp duty", "tax return", "tax code", "personal allowance"
+]
+
+TAX_NEGATIVE = [
+    "iplayer", "bbc iplayer", "netflix", "film", "movie", "drama", "series",
+    "wuthering heights", "spoilers", "coronation street", "emmerdale", "strictly"
+]
+
+
+
+PERSONAL_MONEY_STRONG = [
+    "council tax", "energy bills", "bills", "cost of living",
+    "savings", "isa", "pension", "salary", "wages", "pay",
+    "loan", "credit", "debt", "interest rate", "inflation",
+    "mortgage", "remortgage", "rent", "house price",
+    "hmrc", "self assessment", "tax", "national insurance",
+    "fuel price",
+    "fuel prices",
+    "petrol",
+    "diesel",
+    "pump price",
+    "pump prices",
+    "forecourt",
+]
+
+
+
+AI_STRONG = [
+    "artificial intelligence",
+    " ai ",
+    "openai",
+    "chatgpt",
+    "gemini",
+    "machine learning",
+    "deepmind",
+    "generative ai",
+    "large language model",
+    "llm",
+]
+
+BUSINESS_STRONG = [
+    "shares", "share sale", "stock", "stocks", "earnings", "profits",
+    "ipo", "merger", "acquisition", "deal", "funding", "investment",
+    "lawsuit", "sues", "tariff", "auction", "bankruptcy",
+    "company", "firm", "corporate", "markets",
+    "banking",
+    "banking group",
+    "branch",
+    "branches",
+    "lender",
+    "lending",
+    "loan book",
+    "share price",
+    "dividend",
+    "results",
+    "revenue",
+    "profit warning",
+]
+MONEY_STRONG = [
+    # household / consumer finance only
+    "council tax", "cost of living", "inflation", "energy bills",
+    "fuel", "petrol", "diesel",
+    "salary sacrifice", "wages", "salary", "pay rise",
+    "pension", "isa", "savings",
+    "debt", "loan", "credit", "interest rate",
+    "insurance", "scam", "fraud", "food bank", "benefits"
+]
+
+MONEY_NEGATIVE = [
+    "iplayer", "bbc iplayer", "netflix", "film", "movie", "drama", "series",
+    "wuthering heights", "spoilers", "coronation street", "emmerdale", "strictly",
+    "instagram", "youtube", "tiktok", "social media",
+    "supreme court", "minister", "cabinet", "mp", "parliament",
+    "warner bros", "paramount", "disney", "spotify",
+    "puberty",
+    "blockers",
+    "gender",
+    "nhs",
+    "clinic",
+    "hospital",
+    "doctor",
+]
+
+def _has_word(text: str, token: str) -> bool:
+    return re.search(r"\b" + re.escape(token) + r"\b", text) is not None
 
 def infer_section(title: str = "", summary: str = "", category: str = "", tags=None, scope: str = "") -> str:
     """
     Returns one of:
       ai-news, ai-guides, ai-tools, ai-policy,
-      money, property, mortgages, tax,
+      money, property, mortgages, tax, business-news,
       or "general"
     """
+    # --- RSS CATEGORY FIRST-PASS (predictable) ---
+    # For strong, unambiguous categories we can return immediately.
+    # For Business/Finance we DO NOT early-return: we let Money-vs-Business rules decide.
+    cat_l = (category or "").strip().lower()
+    if cat_l in ("ai", "tech", "technology"):
+        return "ai-news"
+    if cat_l == "tax":
+        return "tax"
+    if cat_l == "money":
+        return "money"
+    if cat_l in ("property", "housing"):
+        return "property"
+
     tags = tags or []
-    category_l = (category or "").lower()
-
-    # FAST CATEGORY → SECTION MAPPING (RSS-friendly)
-    if category_l in ("tech", "technology"):
-        return "ai-news"
-    if category_l in ("business",):
-        return "money"
-
-    # Category-to-section mapping (gives immediate coverage for RSS categories)
-    cat = (category or "").strip().lower()
-    if cat in ("business",):
-        return "money"
-    if cat in ("tech", "technology"):
-        return "ai-news"
-    # You can expand later: e.g. "uk news" -> "general"
+    category_l = (category or "").strip().lower()
 
     blob = " ".join([
         str(title or ""),
         str(summary or ""),
-        category_l,
+        cat_l,
         " ".join([str(t) for t in tags if t]),
         str(scope or ""),
     ]).lower()
 
-    # Keyword rules (first match wins)
+    # --- HARD AI/TECH DETECTOR (publisher category often lies) ---
+    # If any of these appear, treat as AI news even if category is UK News/Business/etc.
+    AI_HARD = [
+        "artificial intelligence", " ai ", " ai-", "chatgpt", "openai", "gpt", "llm",
+        "anthropic", "claude", "gemini", "deepmind", "copilot", "mistral",
+        "machine learning", "neural", "model", "prompt", "inference",
+        "siri", "assistant", "chatbot", "ai assistant"
+    ]
+    # avoid false positives like 'aid' by requiring spaces around ' ai ' above
+    if any(k in blob for k in AI_HARD):
+        return "ai-news"
+
+    # --- AI override (even if category is Business) ---
+    # If the story clearly mentions AI terms, classify into ai-* before Business/category fallbacks.
     for section, kws in SECTION_RULES:
+        if not section.startswith("ai-"):
+            continue
         for kw in kws:
+            if kw == "llm":
+                if _has_word(blob, "llm"):
+                    return section
+                continue
+            if kw == "gpt-":
+                if "gpt-" in blob:
+                    return section
+                continue
             if kw in blob:
                 return section
 
+
+    # --- Business vs Money disambiguation (category-based helper) ---
+    if category_l == "business":
+        has_personal = any(tok in blob for tok in PERSONAL_MONEY_STRONG)
+        has_business = any(tok in blob for tok in BUSINESS_STRONG)
+        if has_personal:
+            return "money"
+        if has_business:
+            return "business-news"
+        return "business-news"
+    # Keyword rules (first match wins)
+    for section, kws in SECTION_RULES:
+        for kw in kws:
+            # Block AI sections if negative signals present
+            if section.startswith("ai-") and any(k in blob for k in AI_NEGATIVE):
+                continue
+
+            # For short/risky tokens, apply word boundaries
+            if kw == "llm":
+                if _has_word(blob, "llm"):
+                    return section
+                continue
+
+            if kw == "gpt-":
+                if "gpt-" in blob:
+                    return section
+                continue
+
+            if kw in blob:
+                # Extra guard: tax must have strong tax signal and avoid entertainment false-positives
+                if section == "tax":
+                    if any(n in blob for n in TAX_NEGATIVE):
+                        continue
+                    strong_ok = False
+                    for tok in TAX_STRONG:
+                        if " " in tok:
+                            if tok in blob:
+                                strong_ok = True
+                                break
+                        else:
+                            if _has_word(blob, tok):
+                                strong_ok = True
+                                break
+                    if not strong_ok and not _has_word(blob, "tax"):
+                        continue
+                if section == "money":
+                    if any(n in blob for n in MONEY_NEGATIVE):
+                        continue
+                    strong_ok = False
+                    for tok in MONEY_STRONG:
+                        if " " in tok:
+                            if tok in blob:
+                                strong_ok = True
+                                break
+                        else:
+                            if _has_word(blob, tok):
+                                strong_ok = True
+                                break
+                    if not strong_ok and not _has_word(blob, "money"):
+                        continue
+                return section
+
+
+                # Extra guard: money must have strong personal-finance/cost-of-living signal
+                if section == "money":
+                    if any(tok in blob for tok in MONEY_NEGATIVE):
+                        continue
+                    if not any(tok in blob for tok in MONEY_STRONG):
+                        continue
     return "general"
 
 
-# =====================================================================================
 # IN-MEMORY CACHE FOR PERFORMANCE (reduces TTFB)
 # =====================================================================================
 from functools import lru_cache
@@ -333,6 +542,19 @@ def get_gemini_chat(session_id: str, system_message: str) -> LlmChat:
 
 # Create the main app without a prefix
 app = FastAPI()
+
+# Treat HEAD like GET (useful for bots/CDNs)
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+class HeadAsGetMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method == 'HEAD':
+            request.scope['method'] = 'GET'
+        return await call_next(request)
+
+app.add_middleware(HeadAsGetMiddleware)
+
 # -------------------------------
 # CORS
 # -------------------------------
@@ -927,6 +1149,12 @@ def select_location_image(title: str, content: str, used_photo_ids: set) -> str:
     Checks article title and content for location mentions.
     """
     text = (title + ' ' + content).lower()
+
+    # --- Guard: treat council-tax headlines as PERSONAL money, not HMRC tax ---
+    # Keeps "council tax rise/hike/bands" in money.
+    if "council tax" in text or "tax hike" in text:
+        return "money"
+
     
     # Check for Cheshire location mentions
     location_matches = []
@@ -4318,10 +4546,12 @@ async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_aut
 async def get_admin_articles(skip: int = 0, limit: int = 50, authorized: bool = Depends(get_admin_auth)):
     """Get all articles for admin dashboard with full details. Requires admin authentication."""
     try:
-        articles = await db.articles.find(
-            {}, {"_id": 0}
-        ).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
-        
+        articles = await db.articles.find({}, {}).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
+        # Ensure Mongo _id is returned as string for admin actions (archive/unarchive)
+        for a in articles:
+            if '_id' in a:
+                a['_id'] = str(a['_id'])
+
         total = await db.articles.count_documents({})
         return {"articles": articles, "total": total, "skip": skip, "limit": limit}
     except Exception as e:
@@ -9344,57 +9574,78 @@ For the latest news from across the region, keep following {source}."""
 @api_router.post("/remove-product-articles")
 async def remove_product_articles():
     """
-    Remove articles that are product advertisements, gadgets, deals, or shopping content.
-    These should not appear on a news site.
+    Remove retail/deal/shopping articles (trainers, gadgets, price-slash promos, etc).
+    Keeps legit business news (share sales, profits, earnings, etc).
     """
     try:
-        # Keywords that indicate product/shopping articles
-        product_keywords = [
-            'gadget', 'blender', 'air fryer', 'nutribullet', 'ninja', 'dyson', 'shark',
-            'reduced to £', 'now just £', 'now only £', 'deal stack', 'price slash',
-            'shoppers snapping', 'shoppers rushing', 'flying off shelves', 'selling fast',
-            'argos deal', 'amazon shoppers', 'tesco shoppers', 'aldi shoppers',
-            'cheaper than the osteopath', 'cheaper than physio', 'pain relief gadget',
-            'massage gun', 'posture corrector', 'vacuum cleaner', 'coffee machine',
-            'kitchen gadget', 'home gadget', 'cleaning gadget',
-            'much cheaper than', 'fraction of the price', 'save over £',
-            'five-star reviews', '5-star reviews', 'rave reviews', 'shoppers are loving',
-            'i swear by', 'game-changer', 'life-changing gadget'
+        if db is None:
+            raise HTTPException(status_code=503, detail="Database disabled. Configure MONGO_URL/DB_NAME and set LOCAL_DEV_NO_DB=0.")
+
+        retail_brands = [
+            "skechers","new balance","nike","adidas","puma","reebok","asics",
+            "dyson","shark","ninja","nutribullet"
         ]
-        
-        # Get all articles
-        all_articles = await db.articles.find({}).to_list(1000)
-        
+        retailers = [
+            "amazon","argos","tesco","aldi","asda","boots","john lewis","currys",
+            "very.co.uk","ao.com","costco"
+        ]
+        product_terms = [
+            "trainer","trainers","shoe","shoes","sneaker","sneakers",
+            "air fryer","blender","vacuum","coffee machine","gadget",
+            "headphones","earbuds","smartwatch","tablet","laptop","tv",
+            "mattress","sofa","bedding"
+        ]
+        promo_language = [
+            "reduced","reduced by","price cut","price slash","sale","discount","deal",
+            "now only","now just","was £","save £","save over","half price",
+            "limited time","offer ends","shoppers","bargain","bundle"
+        ]
+
+        # Business-news signals we should NOT delete
+        business_signals = [
+            "share sale","shares","earnings","profits","profit warning","revenue",
+            "ipo","merger","acquisition","results","balance sheet","dividend",
+            "lawsuit","sues","tariff","auction","bankruptcy"
+        ]
+
+        all_articles = await db.articles.find({}).to_list(2000)
+
         removed_count = 0
         removed_titles = []
-        
+
         for article in all_articles:
-            title = article.get('title', '').lower()
-            content = article.get('content', '').lower()
+            title = (article.get("title") or "").lower()
+            content = (article.get("content") or article.get("summary") or "").lower()
             text = f"{title} {content}"
-            
-            # Check if article matches any product keyword
-            is_product = any(keyword.lower() in text for keyword in product_keywords)
-            
-            # Also check for price patterns like "£14" in title with product context
-            import re
-            has_price_pattern = re.search(r'(reduced to|now just|now only|was £\d+.*now|save (over )?£)\d+', text)
-            
-            if is_product or has_price_pattern:
-                # Delete the article
-                await db.articles.delete_one({'_id': article['_id']})
+
+            # Never delete if it looks like genuine business news
+            if any(s in text for s in business_signals):
+                continue
+
+            looks_retail = (
+                (any(b in text for b in retail_brands) and any(p in text for p in promo_language)) or
+                (any(r in text for r in retailers) and any(p in text for p in promo_language)) or
+                (any(pt in text for pt in product_terms) and any(p in text for p in promo_language))
+            )
+
+            # Price/promo patterns (only counts if product/retailer context is present)
+            import re as _re
+            price_promo = bool(_re.search(r"(\d+%\s*off)|(reduced\s*by\s*\d+%)|(was\s*£\d+.*now\s*£\d+)|((now|only|just)\s*£\d+)|(save\s*(over\s*)?£\d+)", text))
+            context_present = any(pt in text for pt in product_terms) or any(r in text for r in retailers) or any(b in text for b in retail_brands)
+
+            if looks_retail or (price_promo and context_present):
+                await db.articles.delete_one({"_id": article["_id"]})
                 removed_count += 1
-                removed_titles.append(article.get('title', 'Unknown')[:60] + "...")
-                logger.info(f"Removed product article: {article.get('title', '')[:50]}...")
-        
+                removed_titles.append((article.get("title") or "Unknown")[:80])
+
         return {
             "success": True,
             "articles_checked": len(all_articles),
             "articles_removed": removed_count,
-            "removed_titles": removed_titles[:20],  # Only return first 20 titles
-            "message": f"Removed {removed_count} product/gadget articles"
+            "removed_titles": removed_titles[:30],
+            "message": f"Removed {removed_count} retail/deals/shopping articles"
         }
-        
+
     except Exception as e:
         logger.error(f"Error removing product articles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -9430,8 +9681,8 @@ async def sync_rss_now():
                 continue
             if title.lower() in existing_titles:
                 continue
-            if not article.get('image'):
-                continue
+            #             if not article.get('image'):
+            #                 continue
             new_articles.append(article)
         
         logger.info(f"Found {len(new_articles)} new articles to import")
@@ -9447,6 +9698,23 @@ async def sync_rss_now():
                 original_content = article.get('content', '')
                 source = article.get('source', 'News Source')
                 source_url = article.get('source_url', '')
+
+                
+                # Full article extraction fallback (Render-safe, fail-open)
+                scrape_status = "not_attempted"
+                scrape_error = None
+                try:
+                    threshold = int(os.getenv("FULL_SCRAPE_THRESHOLD", "450"))
+                except Exception:
+                    threshold = 450
+
+                if source_url and isinstance(original_content, str) and len(original_content.strip()) < threshold:
+                    scrape_result = await fetch_full_article(source_url)
+                    scrape_status = scrape_result.get("status") or "unknown"
+                    scrape_error = scrape_result.get("error")
+                    if scrape_result.get("ok") and scrape_result.get("content"):
+                        original_content = scrape_result["content"]
+                        scrape_status = "ok"
                 
                 # Budget guard (hybrid): Perplexity ONLY for AI sections + monthly cap (default £20)
                 section = infer_section(
@@ -9491,6 +9759,10 @@ async def sync_rss_now():
                     'content': detailed_content,
                     'summary': original_content[:200] + '...' if len(original_content) > 200 else original_content,
                     'original_summary': original_content,
+                    'content_source': 'scrape' if scrape_status == 'ok' else 'rss',
+                    'scrape_status': scrape_status,
+                    'scrape_error': scrape_error,
+                    'scraped_at': datetime.utcnow() if scrape_status not in ('not_attempted','disabled') else None,
                     'image': article.get('image'),
                     'image_source': 'rss_feed',
                     'category': article.get('category', 'Local News'),
