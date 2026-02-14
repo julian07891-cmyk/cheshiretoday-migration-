@@ -9736,8 +9736,6 @@ async def sync_rss_now():
 
                 # Only allow Perplexity for AI sections, within monthly quota
                 if section.startswith("ai-"):
-                    from datetime import datetime
-
                     month_key = datetime.utcnow().strftime("%Y-%m")
                     budget_gbp = float(os.getenv("PERPLEXITY_MONTHLY_BUDGET_GBP", "20"))
                     cost_per_article = float(os.getenv("PERPLEXITY_COST_PER_ARTICLE_GBP", "0.02"))  # conservative default
