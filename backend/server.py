@@ -2998,11 +2998,9 @@ async def get_articles(
             # Direct search query - return results sorted by relevance
             articles = await db.articles.find(
                 query,
-                {
-                    '_id': 1, 'id': 1, 'title': 1, 'summary': 1, 'category': 1,
+                { '_id': 1, 'id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
-                }
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
             
             # Process IDs
@@ -3039,7 +3037,7 @@ async def get_articles(
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
             local_articles = await db.articles.find(
-                {'is_local_source': True},
+                { 'is_local_source': True, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 },
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -3048,7 +3046,7 @@ async def get_articles(
             ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
             
             uk_articles = await db.articles.find(
-                {'is_local_source': {'$ne': True}},
+                { 'is_local_source': {'$ne': True, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 }},
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -3082,8 +3080,7 @@ async def get_articles(
             # Query with projection to fetch only required fields for better performance
             articles = await db.articles.find(
                 query,
-                {
-                    '_id': 1,
+                { '_id': 1,
                     'title': 1, 'summary': 1,
                     'category': 1,
                     'author': 1,
@@ -3094,8 +3091,7 @@ async def get_articles(
                     'source': 1,
                     'source_url': 1,
                     'scope': 1,
-                    'is_local_source': 1, 'affiliate_type': 1
-                }
+                    'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
         # Helper function to clean word count from content
