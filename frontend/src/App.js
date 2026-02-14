@@ -166,7 +166,7 @@ function HomePage() {
 
   // Track how many articles each category shows on homepage
   const HOMEPAGE_ARTICLE_COUNTS = {
-    "Local News": 6, // Cheshire News section
+    "local": 6, // Cheshire News section
     "UK News": 4,
     Business: 4,
   };
@@ -305,7 +305,7 @@ function HomePage() {
       (a) =>
         a.is_priority_cheshire ||
         a.is_secondary_cheshire ||
-        (a.category === "Local News" && a.priority_location),
+        (a.category === "local" && a.priority_location),
     );
 
     // First, try to get the 5 most recent articles with location diversity
@@ -338,7 +338,7 @@ function HomePage() {
     // Last resort: add any Local News articles
     if (selected.length < 5) {
       const localNews = articles.filter(
-        (a) => a.category === "Local News" && !usedIds.has(a.id),
+        (a) => a.category === "local" && !usedIds.has(a.id),
       );
       for (const article of localNews) {
         if (selected.length >= 5) break;
@@ -382,11 +382,11 @@ function HomePage() {
   // When user opens Local News, hide the homepage “Highlights” to avoid duplicates
   const homepageLocalNewsHighlightIds = new Set([
     ...cheshireSectionArticles.map((a) => a.id),
-    ...(featuredArticle && featuredArticle.category === "Local News" ? [featuredArticle.id] : []),
+    ...(featuredArticle && featuredArticle.category === "local" ? [featuredArticle.id] : []),
   ]);
 
   const categoryArticles =
-    activeCategory === "Local News"
+    activeCategory === "local"
       ? regularArticles.filter((a) => !homepageLocalNewsHighlightIds.has(a.id))
       : regularArticles;
 
@@ -613,7 +613,7 @@ function HomePage() {
                     {category.icon || "📰"}
                   </span>
                   <span className="font-semibold text-sm">
-                    {category.label}
+                    {category.name}
                   </span>
                 </button>
               ))}
@@ -757,7 +757,7 @@ function HomePage() {
                         <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-[#1E3A8A]">
                           <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <MapPin className="h-6 w-6 text-[#1E3A8A]" />
-                            Local News Highlights
+                            Local Highlights
                           </h2>
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             Macclesfield • Wilmslow • Knutsford & more
@@ -779,7 +779,7 @@ function HomePage() {
                             to="/cheshire-general"
                             className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#1E3A8A] hover:bg-[#16306f] text-white font-medium rounded-full transition-colors"
                           >
-                            View All Local News (20+)
+                            View All Local (20+)
                             <ChevronRight className="h-4 w-4" />
                           </Link>
                         </div>

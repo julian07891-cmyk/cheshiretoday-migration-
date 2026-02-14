@@ -92,11 +92,11 @@ export const mockArticles = [
 
 export const categories = [
   { id: "all", name: "All", icon: "Newspaper" },
-  { id: "Local News", name: "Local News", icon: "MapPin" },
-  { id: "Business", name: "Business", icon: "Briefcase" },
-  { id: "Politics", name: "Politics", icon: "Landmark" },
-  { id: "Crime", name: "Crime", icon: "Shield" },
-  { id: "Property", name: "Property", icon: "Home" },
-  { id: "Sport", name: "Sport", icon: "Trophy" },
-  { id: "Whats On", name: "What’s On", icon: "Calendar" }
+  { id: "local", name: "Local", icon: "MapPin" },
+  { id: "uk", name: "UK", icon: "Globe" },
+  { id: "business", name: "Business", icon: "Briefcase" },
+  { id: "health", name: "Health", icon: "Heart" },
+  { id: "sport", name: "Sport", icon: "Trophy" },
+  { id: "lifestyle", name: "Lifestyle", icon: "Coffee" },
+  { id: "whats-on", name: "What\x27s On", icon: "Calendar" }
 ];
