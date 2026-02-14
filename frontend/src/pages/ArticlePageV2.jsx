@@ -158,7 +158,7 @@ export default function ArticlePageV2({ categories }) {
             onSearch={() => {}}
           />
 
-          <main className="container mx-auto px-4 py-16 max-w-3xl">
+          <main className="container mx-auto px-4 py-16 max-w-6xl">
             <h1 className="text-4xl font-extrabold text-gray-900 mb-3">Article Not Found</h1>
             <p className="text-gray-600 mb-6">{errorMsg || "Sorry, this link may be incorrect."}</p>
             <button
@@ -271,13 +271,53 @@ export default function ArticlePageV2({ categories }) {
                   onArticleClick={(a) => navigate(`/article/${a.id}`)}
                 />
 
-                {/* Placeholder blocks for later (ads/newsletter/jobs/etc) */}
-                <div className="rounded-xl border border-gray-200 bg-white p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">Coming soon</h3>
-                  <p className="text-sm text-gray-600">
-                    Sidebar modules (newsletter, local offers, sponsor spot) will go here.
-                  </p>
-                </div>
+                  {/* Newsletter (non-intrusive, keeps readers coming back) */}
+  <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <h3 className="text-sm font-semibold text-gray-900 mb-2">Get the Cheshire Today briefing</h3>
+    <p className="text-sm text-gray-600 mb-3">A short email with the top local stories — no spam.</p>
+    <form onSubmit={(e) => { e.preventDefault(); toast({ title: "Coming soon", description: "Newsletter signup will be enabled shortly." }); }} className="flex gap-2">
+      <input
+        type="email"
+        required
+        placeholder="you.com"
+        className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+      />
+      <button
+        type="submit"
+        className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+      >
+        Sign up
+      </button>
+    </form>
+    <p className="mt-2 text-xs text-gray-500">You can unsubscribe anytime.</p>
+  </div>
+
+  {/* Explore by area (internal routes) */}
+  <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <h3 className="text-sm font-semibold text-gray-900 mb-3">Local news by area</h3>
+    <div className="flex flex-wrap gap-2">
+      {[
+        "chester",
+        "crewe",
+        "warrington",
+        "macclesfield",
+        "wilmslow",
+        "northwich",
+        "congleton",
+        "nantwich",
+        "knutsford",
+        "ellesmere-port",
+      ].map((slug) => (
+        <button
+          key={slug}
+          onClick={() => navigate(`/`)}
+          className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:border-emerald-300 hover:text-emerald-700"
+        >
+          {slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+        </button>
+      ))}
+    </div>
+  </div>
               </div>
             </aside>
           </div>

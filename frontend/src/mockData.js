@@ -91,13 +91,12 @@ export const mockArticles = [
 ];
 
 export const categories = [
-  { id: 'all', name: 'All', icon: 'Newspaper' },
-  { id: 'Local News', name: 'Local News', icon: 'MapPin' },
-  { id: 'UK News', name: 'UK News', icon: 'Newspaper' },
-  { id: 'Business', name: 'Business', icon: 'Briefcase' },
-  { id: 'Health', name: 'Health', icon: 'Heart' },
-  { id: 'Sports', name: 'Sports', icon: 'Trophy' },
-  { id: 'Tech', name: 'Tech', icon: 'Laptop' },
-  { id: 'Science', name: 'Science', icon: 'Beaker' },
-  { id: 'Entertainment', name: 'Entertainment', icon: 'Film' }
+  { id: "all", name: "All", icon: "Newspaper" },
+  { id: "Local News", name: "Local News", icon: "MapPin" },
+  { id: "Business", name: "Business", icon: "Briefcase" },
+  { id: "Politics", name: "Politics", icon: "Landmark" },
+  { id: "Crime", name: "Crime", icon: "Shield" },
+  { id: "Property", name: "Property", icon: "Home" },
+  { id: "Sport", name: "Sport", icon: "Trophy" },
+  { id: "Whats On", name: "What’s On", icon: "Calendar" }
 ];
