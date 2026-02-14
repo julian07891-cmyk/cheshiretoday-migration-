@@ -1684,6 +1684,16 @@ class AdminLoginResponse(BaseModel):
     message: str
     expires_in: int = 86400  # 24 hours in seconds
 
+
+@api_router.get("/version")
+async def version():
+    import os
+    return {
+        "version_marker": "FULL_SCRAPE_PROD_BRANCH",
+        "git_commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or None
+    }
+
+
 @api_router.post("/admin/login", response_model=AdminLoginResponse)
 async def admin_login(request: AdminLoginRequest):
     """
