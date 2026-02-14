@@ -253,9 +253,21 @@ export default function ArticlePageV2({ categories }) {
               {/* Make source attribution smaller + less prominent */}
               {attribution && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    {attribution}
-                  </p>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+  {attribution && <span>{attribution.replace("This article was originally published by", "Originally published by")}</span>}
+  {(article.sourceUrl || article.source_url || article.link || article.url) && (
+    <>{" · "}
+      <a
+        href={article.sourceUrl || article.source_url || article.link || article.url}
+        target="_blank"
+        rel="nofollow noopener noreferrer"
+        className="hover:text-gray-600 underline decoration-dotted underline-offset-2"
+      >
+        View source
+      </a>
+    </>
+  )}
+</p>
                 </div>
               )}
             </article>
