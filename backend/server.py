@@ -9789,7 +9789,7 @@ async def sync_rss_now():
             "new_articles_found": len(new_articles),
             "articles_imported": imported_count,
             "imported_titles": imported_titles,
-            "message": f"Synced RSS feeds - imported {imported_count} new articles"
+            "message": f"[FULL_SCRAPE_PROD] Synced RSS feeds - imported {imported_count} new articles"
         }
         
     except Exception as e:
