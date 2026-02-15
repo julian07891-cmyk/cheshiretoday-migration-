@@ -9702,6 +9702,7 @@ async def sync_rss_now():
     """
     try:
         from app.news_feed_service import news_feed_service
+        from app.simple_scraper import scrape_article
         from app.perplexity_service import perplexity_service
         from uuid import uuid4
         import os
@@ -9911,6 +9912,52 @@ async def sync_rss_now():
                     or article.get('pubDate')
                     or article.get('published_at')
                 )
+                # ---------------------------------------------
+                # FULL CONTENT FALLBACK (scrape) when RSS is thin
+                # ---------------------------------------------
+                # If RSS only gives a short summary, scrape the source_url for fuller body text.
+                # Keeps your original summary in 'original_summary' so you can compare later.
+                try:
+                    raw_summary = (article.get("summary") or article.get("content") or "").strip()
+                    url_for_scrape = (article.get("source_url") or article.get("url") or "").strip()
+
+                    should_scrape = bool(url_for_scrape) and (len(raw_summary) < 600)
+                    scraped = None
+
+                    if should_scrape:
+                        scraped = scrape_article(url_for_scrape)
+                        if scraped and scraped.get("ok") and scraped.get("content"):
+                            # Prefer scraped body as main content
+                            article["original_summary"] = raw_summary
+                            article["content"] = scraped["content"]
+                            article["content_source"] = "scrape"
+                            article["scrape_status"] = "ok"
+                            article["scrape_error"] = None
+                            article["scraped_at"] = scraped.get("fetched_at")
+                            # If RSS image missing, use OG image when available
+                            if not article.get("image") and scraped.get("image"):
+                                article["image"] = scraped.get("image")
+                        else:
+                            # Mark failure but keep RSS content
+                            article["content"] = raw_summary
+                            article["content_source"] = "rss"
+                            article["scrape_status"] = "failed"
+                            article["scrape_error"] = (scraped.get("error") if isinstance(scraped, dict) else "scrape_failed")
+                            article["scraped_at"] = (scraped.get("fetched_at") if isinstance(scraped, dict) else None)
+                    else:
+                        article["content"] = raw_summary
+                        article["content_source"] = "rss"
+                        article["scrape_status"] = None
+                        article["scrape_error"] = None
+                        article["scraped_at"] = None
+                except Exception as _scrape_e:
+                    # Never fail the entire sync because one scrape failed
+                    article["content"] = (article.get("summary") or article.get("content") or "").strip()
+                    article["content_source"] = "rss"
+                    article["scrape_status"] = "failed"
+                    article["scrape_error"] = str(_scrape_e)
+                    article["scraped_at"] = None
+
                 article_doc = {
                     'id': str(uuid4()),
                     'title': title,
