@@ -2839,7 +2839,7 @@ async def get_cheshire_general_articles(
                 ]},
                 {'$or': [
                     {'is_cheshire_related': True},
-                    {'is_local_source': True},
+                    {**base_archived_filter, 'is_local_source': True},
                     {'source': {'$in': ['Cheshire Live', 'Warrington Guardian', 'Manchester Evening News']}}
                 ]}
             ]
@@ -2987,16 +2987,10 @@ async def get_articles(
         query = {}
         
         
-        # Hide archived articles by default
-        
-        if not include_archived:
-        
-            (mongo_query if 'mongo_query' in locals() else query if 'query' in locals() else filter_query)['archived'] = {'$ne': True}
-
-        # Exclude archived articles by default
-        if not include_archived:
-            query["$or"] = [{"archived": {"$exists": False}}, {"archived": False}]
-        
+        # Archived handling: exclude archived by default everywhere
+        base_archived_filter = {} if include_archived else {"archived": {"$ne": True}}
+        if base_archived_filter:
+            query.update(base_archived_filter)
         # Search functionality - search in title and content
         if search and len(search) >= 2:
             import re
@@ -3018,7 +3012,7 @@ async def get_articles(
                 query,
                 { '_id': 1, 'id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 }
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 , 'archived': 1, 'archived_at': 1 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
             
             # Process IDs
@@ -3055,21 +3049,19 @@ async def get_articles(
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
             local_articles = await db.articles.find(
-                {'is_local_source': True},
+                {**base_archived_filter, 'is_local_source': True},
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
-                }
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'archived': 1, 'archived_at': 1 }
             ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
             
             uk_articles = await db.articles.find(
-                {'is_local_source': {'$ne': True}},
+                {**base_archived_filter, 'is_local_source': {'$ne': True}},
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1
-                }
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'archived': 1, 'archived_at': 1 }
             ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
             
             # Interleave: 2 local, 2 UK, repeat
@@ -3109,7 +3101,7 @@ async def get_articles(
                     'source': 1,
                     'source_url': 1,
                     'scope': 1,
-                    'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 }
+                    'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 , 'archived': 1, 'archived_at': 1 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
         # Helper function to clean word count from content
@@ -3323,7 +3315,6 @@ async def get_article(article_id: str):
     Also searches in archived_articles collection to ensure old shared links still work.
     """
     try:
-\
         # -------------------------------
         # LOCAL DEV – single article from mock store
         # -------------------------------
