@@ -145,6 +145,14 @@ const LoadingFallback = () => (
   <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-20 w-full"></div>
 );
 
+// Admin route wrapper (keeps /admin stable in production)
+const AdminPage = () => (
+  <Suspense fallback={<LoadingFallback />}>
+    <AdminDashboard />
+  </Suspense>
+);
+
+
 
 // Valid location slugs
 const VALID_LOCATIONS = [
