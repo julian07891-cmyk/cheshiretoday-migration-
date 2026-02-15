@@ -179,7 +179,6 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePageV1 />} />
             <Route path="/article/:articleId" element={<ArticlePageV2 categories={categories} />} />
-            <Route path="/search" element={<SearchPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route
               path="/jobs"
