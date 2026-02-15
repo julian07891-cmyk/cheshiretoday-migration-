@@ -2848,7 +2848,7 @@ async def get_cheshire_general_articles(
             query,
             {
                 '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
-                'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                'author': 1, 'publishedDate': normalize_dt(article.get('publishedDate') or article.get('published_date') or article.get('published_at') or article.get('published')), 'image': 1, 'tags': 1,
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
                 'location': 1
             }
@@ -9686,6 +9686,40 @@ async def sync_rss_now():
                 return urlunparse((parts.scheme, parts.netloc, parts.path, parts.params, new_query, parts.fragment))
             except Exception:
                 return (url or "").strip()
+
+        
+        def normalize_dt(value):
+            # Returns ISO8601 string in UTC with timezone offset when possible
+            try:
+                from datetime import datetime, timezone
+                if value is None:
+                    return None
+                if isinstance(value, str):
+                    v = value.strip()
+                    if not v:
+                        return None
+                    # Handle trailing Z
+                    if v.endswith("Z"):
+                        try:
+                            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+                            return dt.astimezone(timezone.utc).isoformat()
+                        except Exception:
+                            return v
+                    try:
+                        dt = datetime.fromisoformat(v)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt.astimezone(timezone.utc).isoformat()
+                    except Exception:
+                        return v
+                if isinstance(value, datetime):
+                    dt = value
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    return dt.astimezone(timezone.utc).isoformat()
+                return None
+            except Exception:
+                return None
         logger.info("Starting manual RSS sync...")
         
         # Get existing article titles to avoid duplicates
@@ -9825,7 +9859,7 @@ async def sync_rss_now():
                     'is_local_source': article.get('is_local_source', False),
                     'publishedDate': published_dt,
                     'published_date': published_dt,
-                    'created_at': datetime.utcnow(),
+                    'created_at': datetime.utcnow().isoformat(),
                     'monetisation_type': 'none',
                     'affiliate_links': []
                 }
