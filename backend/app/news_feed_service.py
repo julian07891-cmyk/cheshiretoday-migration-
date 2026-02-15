@@ -1173,9 +1173,7 @@ class NewsFeedService:
         local_feed_keys = [
             'cheshire_live',
             'cheshire_live_chester', 
-            'warrington_guardian',
-            'manchester_evening_news'
-        ]
+            'warrington_guardian',        ]
         
         for feed_key in local_feed_keys:
             if feed_key in self.feeds:
