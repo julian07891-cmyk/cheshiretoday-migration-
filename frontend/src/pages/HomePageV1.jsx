@@ -14,8 +14,17 @@ function safeDateMs(d) {
   return Number.isFinite(t) ? t : 0;
 }
 
-function articleKey(a, fallback = "x") {
-  return a?.id || a?._id || fallback;
+function articleKey(a) {
+  const id = a?.id || a?._id;
+  if (id) return String(id);
+
+  const url = a?.source_url || a?.sourceUrl || a?.url;
+  if (url) return String(url);
+
+  const title = a?.title || "";
+  const date = a?.publishedDate || "";
+  const combo = (title + "__" + date).trim();
+  return combo !== "__" ? combo : null;
 }
 
 function isLocal(a) {
@@ -29,7 +38,7 @@ function isFeatured(a) {
 }
 
 function toCard(a, fallbackId, overrides = {}) {
-  const id = articleKey(a, fallbackId);
+  const id = articleKey(a) || fallbackId;
   return {
     id,
     title: a?.title || "Untitled",
@@ -127,6 +136,23 @@ export default function HomePageV1() {
       pushTop(a);
     }
 
+
+    // 3) Most Read (5) — use view_count when present, exclude used
+    const mostReadCards = [];
+
+    const byViewsThenNewest = [...newestFirst].sort((a, b) => {
+      const av = Number(a?.view_count || a?.views || 0);
+      const bv = Number(b?.view_count || b?.views || 0);
+      if (bv !== av) return bv - av;
+      return safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate);
+    });
+
+    for (const a of byViewsThenNewest) {
+      if (mostReadCards.length >= 5) break;
+      if (!mark(a)) continue;
+      mostReadCards.push(toCard(a, `most-${mostReadCards.length}`));
+    }
+
 // 3) AI feed (4) — exclude used (backend section is source of truth)
     const aiArticles = [];
     for (const a of newestFirst) {
@@ -197,6 +223,7 @@ export default function HomePageV1() {
 return {
       hero: heroArticle,
       topStories: topStoriesCards,
+      mostReadFeed: mostReadCards,
       aiFeed: aiArticles,
       financeFeed: financeArticles,
       latestFeed: latestCards,
@@ -224,7 +251,7 @@ return {
           headline={hero.title || "Untitled"}
           publishedTime={hero.publishedDate || ""}
           readTime={3}
-          url={`/article/${articleKey(hero)}`}
+          url={`/article/${articleKey(hero) || "hero"}`}
         />
       )}
       {!loading && !err && topStories.length > 0 && (
@@ -233,7 +260,7 @@ return {
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
-        <div className="mt-8 grid grid-cols-1 grid-cols-12 gap-8">
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left: Latest feed */}
           <main className="lg:col-span-8">
             {latestFeed.length > 0 && (
