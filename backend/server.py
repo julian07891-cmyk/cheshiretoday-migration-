@@ -3193,7 +3193,44 @@ async def get_articles(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# NOTE: This route MUST be defined BEFORE /articles/{article_id} to prevent route matching issues
+# NOTE: This route MUST be defined BEFORE /articles/{article_id} to prevent route matching issue
+@api_router.get("/articles-v2")
+async def get_articles_v2(
+    category: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+    source_type: Optional[str] = None,
+    include_archived: bool = False,
+    section: Optional[str] = None,
+    search: Optional[str] = None
+):
+    """
+    Stable wrapper around /api/articles.
+    Always returns: { "articles": [...], "total": N, ... }
+    (Does NOT change existing /api/articles response shape to avoid breaking frontend.)
+    """
+    data = await get_articles(
+        category=category,
+        skip=skip,
+        limit=limit,
+        source_type=source_type,
+        include_archived=include_archived,
+        section=section,
+        search=search
+    )
+
+    # get_articles sometimes returns a list, sometimes an object (e.g. search)
+    if isinstance(data, list):
+        return {"articles": data, "total": len(data)}
+    if isinstance(data, dict) and "articles" in data:
+        # ensure total exists
+        if "total" not in data and isinstance(data.get("articles"), list):
+            data["total"] = len(data["articles"])
+        return data
+
+    # Fallback
+    return {"articles": [], "total": 0, "raw": data}
+s
 @api_router.get("/articles/most-read")
 async def get_most_read_articles(period: str = "today", limit: int = 5):
     """
