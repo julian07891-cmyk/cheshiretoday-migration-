@@ -9688,36 +9688,18 @@ async def sync_rss_now():
                 return (url or "").strip()
 
         
-        def normalize_dt(value):
-            # Returns ISO8601 string in UTC with timezone offset when possible
+        def normalize_dt(dt_value):
+            if not dt_value:
+                return None
             try:
                 from datetime import datetime, timezone
-                if value is None:
-                    return None
-                if isinstance(value, str):
-                    v = value.strip()
-                    if not v:
-                        return None
-                    # Handle trailing Z
-                    if v.endswith("Z"):
-                        try:
-                            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-                            return dt.astimezone(timezone.utc).isoformat()
-                        except Exception:
-                            return v
-                    try:
-                        dt = datetime.fromisoformat(v)
-                        if dt.tzinfo is None:
-                            dt = dt.replace(tzinfo=timezone.utc)
-                        return dt.astimezone(timezone.utc).isoformat()
-                    except Exception:
-                        return v
-                if isinstance(value, datetime):
-                    dt = value
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    return dt.astimezone(timezone.utc).isoformat()
-                return None
+                if isinstance(dt_value, datetime):
+                    dt = dt_value
+                else:
+                    dt = datetime.fromisoformat(str(dt_value).strip().replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(timezone.utc).isoformat()
             except Exception:
                 return None
         logger.info("Starting manual RSS sync...")
