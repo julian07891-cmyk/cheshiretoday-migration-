@@ -9,11 +9,74 @@ import httpx
 import logging
 import asyncio
 import feedparser
+from bs4 import BeautifulSoup
+import requests
+
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from uuid import uuid4
 import xml.etree.ElementTree as ET
 from html import unescape
+
+
+# --- Full article extraction helpers (auto) ---
+def _clean_ws(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "")).strip()
+
+def _extract_readable_text_from_html(html: str) -> str:
+    """Best-effort readable text extractor.
+    - removes scripts/styles/nav/footer
+    - prefers <article>, then <main>, then body
+    - joins paragraph-like blocks
+    """
+    if not html:
+        return ""
+    soup = BeautifulSoup(html, "html.parser")
+
+    for tag in soup(["script", "style", "noscript", "svg"]):
+        tag.decompose()
+
+    # Remove common clutter blocks if present
+    for sel in ["header", "footer", "nav", "aside"]:
+        for tag in soup.select(sel):
+            tag.decompose()
+
+    root = soup.find("article") or soup.find("main") or soup.body or soup
+    if not root:
+        return ""
+
+    parts = []
+    for el in root.find_all(["p", "h2", "h3", "li"]):
+        t = _clean_ws(el.get_text(" ", strip=True))
+        if len(t) >= 40:
+            parts.append(t)
+
+    # Fallback: just text
+    if not parts:
+        t = _clean_ws(root.get_text(" ", strip=True))
+        return t
+
+    text = "\n\n".join(parts)
+    return text
+
+def _try_fetch_full_article_text(url: str, timeout: int = 12) -> str:
+    """Fetch article HTML and extract readable text (returns '' on failure)."""
+    if not url:
+        return ""
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (CheshireTodayBot/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome Safari"
+        }
+        r = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+        if not r.ok:
+            return ""
+        ct = (r.headers.get("content-type") or "").lower()
+        if "text/html" not in ct and "<html" not in (r.text[:500].lower()):
+            return ""
+        return _extract_readable_text_from_html(r.text)
+    except Exception:
+        return ""
+# --- end full article extraction helpers ---
 
 # Alias for RSS category guard
 def category_guard(cat: str) -> str:
@@ -24,6 +87,44 @@ logger = logging.getLogger(__name__)
 
 # UK News RSS Feed Sources
 RSS_FEEDS = {
+
+    # --- AI / Tech (extra) ---
+    'techcrunch': {
+        'url': 'https://techcrunch.com/feed/',
+        'source': 'TechCrunch',
+        'category': 'Tech',
+        'priority': 3
+    },
+    'arxiv_cs_ai': {
+        'url': 'https://export.arxiv.org/rss/cs.AI',
+        'source': 'arXiv',
+        'category': 'Tech',
+        'priority': 3
+    },
+    'theregister_headlines': {
+        'url': 'https://www.theregister.com/headlines.atom',
+        'source': 'The Register',
+        'category': 'Tech',
+        'priority': 3
+    },
+
+    # --- Money (extra) ---
+    'moneysavingexpert': {
+        'url': 'https://www.moneysavingexpert.com/news/feeds/news.rss',
+        'source': 'MoneySavingExpert',
+        'category': 'Money',
+        'priority': 3
+    },
+
+    # --- Tax (extra) ---
+    'hmrc_atom': {
+        'url': 'https://www.gov.uk/government/organisations/hm-revenue-customs.atom',
+        'source': 'GOV.UK',
+        'category': 'Tax',
+        'priority': 3
+    },
+
+
     # BBC News Feeds
     'bbc_uk': {
         'url': 'https://feeds.bbci.co.uk/news/uk/rss.xml',
@@ -48,34 +149,42 @@ RSS_FEEDS = {
     'guardian_money': {
         'url': 'https://www.theguardian.com/uk/money/rss',
         'source': 'The Guardian',
-        'category': 'Business',
+        'category': 'Money',
         'priority': 2
     },
     'ft_personal_finance': {
         'url': 'https://www.ft.com/personal-finance?format=rss',
         'source': 'Financial Times',
-        'category': 'Business',
+        'category': 'Money',
         'priority': 2
     },
 
     # Property / Housing (UK)
-    'guardian_housing': {
+        # Tax (UK)
+    'hmrc_tax': {
+        'url': 'https://www.gov.uk/government/organisations/hm-revenue-customs.atom',
+        'source': 'GOV.UK (HMRC)',
+        'category': 'Tax',
+        'priority': 2
+    },
+
+'guardian_housing': {
         'url': 'https://www.theguardian.com/uk/money/property/rss',
         'source': 'The Guardian',
-        'category': 'Business',
+        'category': 'Property',
         'priority': 2
     },
     'ft_property': {
         'url': 'https://www.ft.com/property-sector?format=rss',
         'source': 'Financial Times',
-        'category': 'Business',
+        'category': 'Property',
         'priority': 2
     },
 
     'bbc_technology': {
         'url': 'https://feeds.bbci.co.uk/news/technology/rss.xml',
         'source': 'BBC News',
-        'category': 'Tech',
+        'category': 'AI',
         'priority': 2
     },
     'bbc_health': {
@@ -107,7 +216,7 @@ RSS_FEEDS = {
     'sky_technology': {
         'url': 'https://feeds.skynews.com/feeds/rss/technology.xml',
         'source': 'Sky News',
-        'category': 'Tech',
+        'category': 'AI',
         'priority': 2
     },
     
@@ -291,13 +400,31 @@ RSS_FEEDS = {
         'is_local': True,
         'location': 'warrington'
     },
-    'manchester_evening_news': {
-        'url': 'https://www.manchestereveningnews.co.uk/news/?service=rss',
-        'source': 'Manchester Evening News',
-        'category': 'Local News',
-        'priority': 1,
-        'is_local': True
-    },
+
+    "ai": [
+        {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"},
+        {"name": "Sky News Technology", "url": "https://feeds.skynews.com/feeds/rss/technology.xml"},
+        {"name": "The Guardian Technology", "url": "https://www.theguardian.com/uk/technology/rss"},
+    ],
+
+    "business": [
+        {"name": "BBC Business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
+        {"name": "Sky News Business", "url": "https://feeds.skynews.com/feeds/rss/business.xml"},
+        {"name": "The Guardian Business", "url": "https://www.theguardian.com/uk/business/rss"},
+    ],
+
+    "money": [
+        {"name": "The Guardian Money", "url": "https://www.theguardian.com/uk/money/rss"},
+    ],
+
+    "property": [
+        {"name": "The Guardian Property", "url": "https://www.theguardian.com/uk/money/property/rss"},
+        {"name": "The Guardian Housing Network", "url": "https://www.theguardian.com/housing-network/rss"},
+    ],
+
+    "tax": [
+        {"name": "HMRC (GOV.UK) Atom", "url": "https://www.gov.uk/government/organisations/hm-revenue-customs.atom"},
+    ],
 }
 
 # Cheshire-related keywords for filtering local news
@@ -576,13 +703,43 @@ SPAM_TITLE_PATTERNS = [
 
 
 def is_spam_or_product_article(title: str, content: str) -> bool:
-    """
-    Check if an article appears to be spam, advertising, or a product article.
-    Returns True if the article should be filtered out.
-    """
-    import re
-    
     text = f"{title} {content}".lower()
+
+    # --- CONTEXT-AWARE RETAIL FILTER ---
+
+    retail_brands = [
+        "amazon","argos","tesco","aldi","asda","boots","john lewis","currys",
+        "new balance","nike","adidas","skechers"
+    ]
+
+    product_terms = [
+        "trainer","trainers","shoe","shoes","sneaker","sneakers",
+        "air fryer","blender","vacuum","coffee machine","gadget"
+    ]
+
+    retail_language = [
+        "reduced","price cut","sale","discount","now only","now just",
+        "was £","save £","save over","half price","limited time","shoppers"
+    ]
+
+    # Only remove if retail language AND product context both appear
+    if any(b in text for b in retail_brands) and any(r in text for r in retail_language):
+        return True
+
+    if any(p in text for p in product_terms) and any(r in text for r in retail_language):
+        return True
+
+    # price + retail context pattern
+    if re.search(r"(£[0-9]+.*(sale|discount))|((sale|discount).*£[0-9]+)", text):
+        return True
+
+    return False
+
+
+    # price + promo patterns (e.g., "£30 sale", "reduced by 40%", "was £90 now £45")
+    if re.search(r"(was\s*£\d+\s*.*now\s*£\d+)|((now|only|just)\s*£\d+)|(save\s*(over\s*)?£\d+)|(reduced\s*by\s*\d+%)|(\d+%\s*off)", text):
+        return True
+
     title_lower = title.lower()
     
     # Check for spam keywords
@@ -655,6 +812,13 @@ class NewsFeedService:
         """Extract image URL from RSS item"""
         # Try media:content first
         media_content = item.find('.//media:content', namespaces)
+
+        # FULLTEXT_FALLBACK: if RSS snippet is too short, fetch article page and extract text
+        candidate_text = (content or summary or "").strip() if 'content' in locals() else (summary or "").strip()
+        if len(candidate_text) < 500:
+            full_text = _try_fetch_full_article_text(link)
+            if full_text and len(full_text) > len(candidate_text):
+                content = full_text
         if media_content is not None:
             url = media_content.get('url')
             if url:
@@ -787,19 +951,21 @@ class NewsFeedService:
                             
                             # Apply keyword-based category override
                             override_category = get_category_override(title, description, default_category)
+                    
                             if override_category:
                                 category = override_category
                             
                             # Get location from feed config or detect from content
                             feed_location = self.feeds.get(feed_key, {}).get('location')
                             detected_location = get_article_priority_location(title, description)
+                            
                             article_location = feed_location or detected_location
                             
                             
                             article = {
                                 'id': str(uuid4()),
                                 'title': title,
-                                'content': description,
+                                                                'content': description,
                                 'summary': description[:200] + '...' if len(description) > 200 else description,
                                 'source': source,
                                 'source_url': link,
@@ -891,7 +1057,7 @@ class NewsFeedService:
                     article = {
                         'id': str(uuid4()),
                         'title': title,
-                        'content': description,
+                                                'content': description,
                         'summary': description[:200] + '...' if len(description) > 200 else description,
                         'source': source,
                         'source_url': link,
@@ -1070,7 +1236,7 @@ class NewsFeedService:
                 cheshire_live_articles.extend(articles)
         
         # Fetch other local feeds
-        for feed_key in ['warrington_guardian', 'manchester_evening_news']:
+        for feed_key in ['warrington_guardian', ]:
             if feed_key in self.feeds:
                 articles = await self.fetch_feed(feed_key)
                 for article in articles:
@@ -1109,3 +1275,36 @@ class NewsFeedService:
 
 # Global instance
 news_feed_service = NewsFeedService()
+
+
+def fetch_full_article_content(url):
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        response = requests.get(url, timeout=10, headers=headers)
+        if response.status_code != 200:
+            return None
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Try common article containers
+        selectors = [
+            "article",
+            ".article-body",
+            ".story-body",
+            ".entry-content",
+            ".post-content",
+            "#main-content"
+        ]
+
+        for selector in selectors:
+            content = soup.select_one(selector)
+            if content:
+                paragraphs = content.find_all("p")
+                full_text = "\n\n".join(p.get_text(strip=True) for p in paragraphs if len(p.get_text(strip=True)) > 40)
+                if len(full_text) > 300:
+                    return full_text
+
+        return None
+
+    except Exception:
+        return None
