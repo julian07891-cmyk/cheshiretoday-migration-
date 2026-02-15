@@ -9707,6 +9707,42 @@ async def sync_rss_now():
         from app.perplexity_service import perplexity_service
         from uuid import uuid4
         import os
+
+        def is_blocked_source(article: dict) -> bool:
+            """Block affiliate/deals/shopping sources and paths at import-time."""
+            try:
+                title = (article.get("title") or "").lower()
+                category = (article.get("category") or "").lower()
+                source = (article.get("source") or "").lower()
+                url = (article.get("source_url") or "").lower()
+
+                # Broad affiliate/deals language
+                promo_terms = (
+                    "deal", "deals", "discount", "discounts", "sale", "sales", "promo", "promotion",
+                    "voucher", "vouchers", "coupon", "coupons", "save £", "now £", "was £", "% off",
+                    "amazon", "prime deal", "best price", "shopping", "money-saving", "money saving"
+                )
+
+                # Block obvious categories/sources
+                if "money-saving" in category or "deals" in category:
+                    return True
+
+                # Block MEN money-saving/deals paths specifically (even if MEN still appears elsewhere)
+                if "manchestereveningnews.co.uk" in url and ("/money-saving/" in url or "/deals/" in url):
+                    return True
+
+                # Optional: if you want to block MEN entirely, uncomment:
+                # if "manchester evening news" in source:
+                #     return True
+
+                # Generic promo filter: only trigger if strong promo signals exist
+                if any(t in title for t in promo_terms) or any(t in url for t in ("/money-saving/", "/deals/", "/shopping/", "/voucher/", "/coupons/")):
+                    return True
+
+                return False
+            except Exception:
+                return False
+
         
         
         def canonicalize_url(url: str) -> str:
@@ -9770,6 +9806,8 @@ async def sync_rss_now():
         seen_titles = set()
         for article in rss_articles:
             title = article.get('title', '').strip()
+            if is_blocked_source(article):
+                continue
             if not title:
                 continue
             if title.lower() in existing_titles:
