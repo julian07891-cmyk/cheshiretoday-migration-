@@ -9669,11 +9669,31 @@ async def sync_rss_now():
         from uuid import uuid4
         import os
         
+        
+        def canonicalize_url(url: str) -> str:
+            try:
+                from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+                u = url.strip()
+                if not u:
+                    return ""
+                parts = urlparse(u)
+                # drop common tracking params
+                keep = [(k,v) for (k,v) in parse_qsl(parts.query, keep_blank_values=True)
+                        if not (k.lower().startswith("utm_") or k.lower() in ("at_medium","at_campaign","fbclid","gclid","mc_cid","mc_eid"))]
+                new_query = urlencode(keep, doseq=True)
+                return urlunparse((parts.scheme, parts.netloc, parts.path, parts.params, new_query, parts.fragment))
+            except Exception:
+                return (url or "").strip()
         logger.info("Starting manual RSS sync...")
         
         # Get existing article titles to avoid duplicates
         existing_articles = await db.articles.find({}, {'title': 1}).to_list(2000)
         existing_titles = {a['title'].lower().strip() for a in existing_articles if a.get('title')}
+        existing_urls = set()
+        for a in existing_articles:
+            u = (a.get('source_url') or '').strip()
+            if u:
+                existing_urls.add(canonicalize_url(u))
         
         # Fetch all RSS feeds
         rss_articles = await news_feed_service.fetch_all_feeds()
@@ -9693,9 +9713,12 @@ async def sync_rss_now():
             url = (article.get('source_url') or '').strip()
             tkey = title.lower().strip()
             if url:
-                if url in seen_urls:
+                c_url = canonicalize_url(url)
+                if c_url in existing_urls:
                     continue
-                seen_urls.add(url)
+                if c_url in seen_urls:
+                    continue
+                seen_urls.add(c_url)
             else:
                 if tkey in seen_titles:
                     continue
@@ -9810,7 +9833,8 @@ async def sync_rss_now():
                 imported_titles.append(title[:60] + "...")
                 existing_titles.add(title.lower())
                 if source_url:
-                    seen_urls.add(source_url)
+                    seen_urls.add(canonicalize_url(source_url))
+                    existing_urls.add(canonicalize_url(source_url))
                 logger.info(f"✅ Imported: {title[:50]}...")
                 
             except Exception as e:
