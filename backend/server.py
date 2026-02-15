@@ -2381,6 +2381,7 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
 # DISABLED_AI:             original_content = article.get('content', '')
 # DISABLED_AI:             source = article.get('source', 'BBC News')
 # DISABLED_AI:             source_url = article.get('source_url', '')
+
 # DISABLED_AI:             
 # DISABLED_AI:             logger.info(f"Regenerating content for: {title[:40]}...")
 # DISABLED_AI:             
