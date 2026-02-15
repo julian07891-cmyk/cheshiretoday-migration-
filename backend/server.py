@@ -2986,6 +2986,13 @@ async def get_articles(
         
         query = {}
         
+        
+        # Hide archived articles by default
+        
+        if not include_archived:
+        
+            (mongo_query if 'mongo_query' in locals() else query if 'query' in locals() else filter_query)['archived'] = {'$ne': True}
+
         # Exclude archived articles by default
         if not include_archived:
             query["$or"] = [{"archived": {"$exists": False}}, {"archived": False}]
