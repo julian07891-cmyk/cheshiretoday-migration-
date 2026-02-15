@@ -9832,6 +9832,13 @@ async def sync_rss_now():
                     published_dt = datetime.utcnow().isoformat()
 
                 # Create article document
+                published_iso = normalize_dt(
+                    article.get('publishedDate')
+                    or article.get('published_date')
+                    or article.get('published')
+                    or article.get('pubDate')
+                    or article.get('published_at')
+                )
                 article_doc = {
                     'id': str(uuid4()),
                     'title': title,
@@ -9850,8 +9857,8 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'publishedDate': published_dt,
-                    'published_date': published_dt,
+                    'publishedDate': published_iso,
+                    'published_date': published_iso,
                     'created_at': datetime.utcnow().isoformat(),
                     'monetisation_type': 'none',
                     'affiliate_links': []
