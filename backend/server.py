@@ -11690,5 +11690,7 @@ async def admin_env_check():
     return {
         "ADMIN_USER_set": bool(os.getenv("ADMIN_USER")),
         "ADMIN_PASS_set": bool(os.getenv("ADMIN_PASS")),
+        "ADMIN_USERNAME_set": bool(os.getenv("ADMIN_USERNAME")),
+        "ADMIN_PASSWORD_set": bool(os.getenv("ADMIN_PASSWORD")),
     }
 
