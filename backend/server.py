@@ -9688,20 +9688,30 @@ async def sync_rss_now():
                 return (url or "").strip()
 
         
+
         def normalize_dt(dt_value):
             if not dt_value:
                 return None
             try:
                 from datetime import datetime, timezone
+                # datetime instance
                 if isinstance(dt_value, datetime):
                     dt = dt_value
                 else:
-                    dt = datetime.fromisoformat(str(dt_value).strip().replace("Z", "+00:00"))
+                    raw = str(dt_value).strip()
+                    # ISO first
+                    try:
+                        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                    except Exception:
+                        # RFC822 / RSS style
+                        from email.utils import parsedate_to_datetime
+                        dt = parsedate_to_datetime(raw)
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=timezone.utc)
                 return dt.astimezone(timezone.utc).isoformat()
             except Exception:
                 return None
+
         logger.info("Starting manual RSS sync...")
         
         # Get existing article titles to avoid duplicates
