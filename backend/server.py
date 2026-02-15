@@ -3230,7 +3230,6 @@ async def get_articles_v2(
 
     # Fallback
     return {"articles": [], "total": 0, "raw": data}
-s
 @api_router.get("/articles/most-read")
 async def get_most_read_articles(period: str = "today", limit: int = 5):
     """
