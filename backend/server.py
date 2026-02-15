@@ -3320,7 +3320,9 @@ async def get_article(article_id: str):
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        article['id'] = str(article['_id'])
+        # Preserve existing 'id' if present (UUID legacy), else fall back to Mongo _id
+        if not article.get('id'):
+            article['id'] = str(article['_id'])
         del article['_id']
         if 'created_at' in article:
             del article['created_at']
