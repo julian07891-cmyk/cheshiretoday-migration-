@@ -1003,6 +1003,8 @@ class NewsFeedService:
                                 article['location'] = article_location
                                 article['tags'].append(article_location.capitalize())
                             
+                            article.setdefault('source', feed.get('name') if isinstance(feed, dict) else feed_key)
+                            article.setdefault('summary', summary)
                             articles.append(article)
                             
                         except Exception as e:
@@ -1096,6 +1098,8 @@ class NewsFeedService:
                         article['location'] = location
                         article['tags'].append(location.capitalize())
                     
+                    article.setdefault('source', feed.get('name') if isinstance(feed, dict) else feed_key)
+                    article.setdefault('summary', summary)
                     articles.append(article)
                     
                 except Exception as e:
