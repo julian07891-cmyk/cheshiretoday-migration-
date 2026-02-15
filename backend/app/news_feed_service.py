@@ -789,11 +789,29 @@ def get_category_override(title: str, content: str, original_category: str = Non
     return None
 
 
+def _flatten_feed_groups(feeds: dict) -> dict:
+    """Normalize feeds so every value is a single feed config dict.
+    If a value is a list of feed dicts, expand into synthetic keys.
+    """
+    if not isinstance(feeds, dict):
+        return feeds
+    flat = {}
+    for k, v in feeds.items():
+        if isinstance(v, dict):
+            flat[k] = v
+        elif isinstance(v, list):
+            for idx, sub in enumerate(v):
+                if isinstance(sub, dict):
+                    flat[f"{k}__{idx}"] = sub
+        # ignore anything else
+    return flat
+
 class NewsFeedService:
     """Service to fetch and parse real news from RSS feeds"""
     
     def __init__(self):
         self.feeds = RSS_FEEDS
+        self.feeds = _flatten_feed_groups(self.feeds)
         self.timeout = 15.0
     
     def _clean_html(self, text: str) -> str:
