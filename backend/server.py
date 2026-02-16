@@ -11694,3 +11694,35 @@ async def admin_env_check():
         "ADMIN_PASSWORD_set": bool(os.getenv("ADMIN_PASSWORD")),
     }
 
+@app.get("/api/admin/creds-check")
+async def admin_creds_check():
+    """
+    TEMP DIAGNOSTIC: returns masked admin credential info (no secrets).
+    Remove after login is confirmed working.
+    """
+    import os, hashlib
+
+    u = os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_USER") or ""
+    p = os.getenv("ADMIN_PASSWORD") or os.getenv("ADMIN_PASS") or ""
+
+    def sha256(x: str) -> str:
+        return hashlib.sha256(x.encode("utf-8")).hexdigest() if x else ""
+
+    def mask(x: str) -> str:
+        if not x:
+            return ""
+        if len(x) <= 4:
+            return "*" * len(x)
+        return f"{x[:2]}***{x[-2:]}"
+
+    return {
+        "using_username_key": "ADMIN_USERNAME" if os.getenv("ADMIN_USERNAME") else ("ADMIN_USER" if os.getenv("ADMIN_USER") else ""),
+        "using_password_key": "ADMIN_PASSWORD" if os.getenv("ADMIN_PASSWORD") else ("ADMIN_PASS" if os.getenv("ADMIN_PASS") else ""),
+        "username_masked": mask(u),
+        "username_len": len(u),
+        "username_sha256": sha256(u),
+        "password_len": len(p),
+        "password_sha256": sha256(p),
+    }
+
+
