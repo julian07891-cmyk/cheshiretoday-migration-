@@ -28,8 +28,8 @@ const StatCard = memo(({ title, value, icon: Icon, color }) => (
     <CardContent className="pt-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground dark:text-gray-400">{title}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-foreground dark:text-white">{value}</p>
         </div>
         <div className={`h-10 w-10 sm:h-12 sm:w-12 ${color} rounded-full flex items-center justify-center`}>
           <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -1869,10 +1869,10 @@ const AdminDashboard = ({ onBack }) => {
   // Show loading state while checking authentication
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Checking authentication...</p>
+          <p className="text-muted-foreground dark:text-gray-400">Checking authentication...</p>
         </div>
       </div>
     );
@@ -1881,7 +1881,7 @@ const AdminDashboard = ({ onBack }) => {
   // Show login form if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted dark:bg-gray-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
@@ -1895,7 +1895,7 @@ const AdminDashboard = ({ onBack }) => {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground dark:text-gray-300 mb-1">
                   Username / Email
                 </label>
                 <Input
@@ -1914,7 +1914,7 @@ const AdminDashboard = ({ onBack }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground dark:text-gray-300 mb-1">
                   Password
                 </label>
                 <Input
@@ -1949,7 +1949,7 @@ const AdminDashboard = ({ onBack }) => {
               </Button>
             </form>
             <div className="mt-4 text-center">
-              <Button variant="ghost" onClick={onBack} className="text-gray-500">
+              <Button variant="ghost" onClick={onBack} className="text-muted-foreground">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Site
               </Button>
@@ -1962,10 +1962,10 @@ const AdminDashboard = ({ onBack }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+          <p className="text-muted-foreground dark:text-gray-400">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -1973,7 +1973,7 @@ const AdminDashboard = ({ onBack }) => {
 
   return (
     <HelmetProvider>
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-muted dark:bg-gray-900">
       {/* SEO - Prevent indexing of admin pages */}
       <Helmet>
         <title>Admin Dashboard | Cheshire Today</title>
@@ -1981,7 +1981,7 @@ const AdminDashboard = ({ onBack }) => {
       </Helmet>
       
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 shadow-sm">
+      <div className="bg-card dark:bg-gray-800 border-b dark:border-gray-700 shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-4 flex-wrap">
@@ -1996,7 +1996,7 @@ const AdminDashboard = ({ onBack }) => {
                 <span className="hidden sm:inline">Back to Site</span>
               </Button>
               <div className="h-6 w-px bg-gray-300 hidden sm:block" />
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground dark:text-white flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
                 <span className="hidden sm:inline">Admin Dashboard</span>
                 <span className="sm:hidden">Admin</span>
@@ -2073,8 +2073,8 @@ const AdminDashboard = ({ onBack }) => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">Last Article</p>
-                  <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-xs sm:text-sm font-medium text-muted-foreground dark:text-gray-400">Last Article</p>
+                  <p className="text-xs sm:text-sm font-medium text-foreground dark:text-white">
                     {formatDate(stats?.latest_article_date).split(',')[0]}
                   </p>
                 </div>
@@ -2220,13 +2220,13 @@ const AdminDashboard = ({ onBack }) => {
         </Card>
 
         {/* Tabs - Improved Navigation */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 mb-4 p-1">
+        <div className="bg-card dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 mb-4 p-1">
           <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
             <Button 
               variant={activeTab === 'overview' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('overview')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'overview' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'overview' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-overview"
             >
               <BarChart3 className="h-4 w-4" />
@@ -2237,7 +2237,7 @@ const AdminDashboard = ({ onBack }) => {
               variant={activeTab === 'articles' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('articles')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'articles' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'articles' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-articles"
             >
               <FileText className="h-4 w-4" />
@@ -2248,7 +2248,7 @@ const AdminDashboard = ({ onBack }) => {
               variant={activeTab === 'subscribers' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('subscribers')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'subscribers' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'subscribers' ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-subscribers"
             >
               <Users className="h-4 w-4" />
@@ -2260,7 +2260,7 @@ const AdminDashboard = ({ onBack }) => {
               variant={activeTab === 'newsimport' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('newsimport')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'newsimport' ? '!bg-blue-600 hover:!bg-blue-700 !text-white' : '!text-gray-900 dark:!text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'newsimport' ? '!bg-blue-600 hover:!bg-blue-700 !text-white' : '!text-foreground dark:!text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-newsimport"
             >
               <MapPin className="h-4 w-4" />
@@ -2271,7 +2271,7 @@ const AdminDashboard = ({ onBack }) => {
               variant={activeTab === 'facebook' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('facebook')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'facebook' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'facebook' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-facebook"
             >
               <Facebook className="h-4 w-4" />
@@ -2282,7 +2282,7 @@ const AdminDashboard = ({ onBack }) => {
               variant={activeTab === 'digest' ? 'default' : 'ghost'}
               onClick={() => setActiveTab('digest')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'digest' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'digest' ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-digest"
             >
               <Mail className="h-4 w-4" />
@@ -2295,7 +2295,7 @@ const AdminDashboard = ({ onBack }) => {
                 if (!fbAnalytics) fetchFacebookAnalytics();
               }}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'analytics' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'analytics' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-analytics"
             >
               <TrendingUp className="h-4 w-4" />
@@ -2311,7 +2311,7 @@ const AdminDashboard = ({ onBack }) => {
                 fetchArticleStats();
               }}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'archive' ? 'bg-gray-700 hover:bg-gray-800 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'archive' ? 'bg-gray-700 hover:bg-gray-800 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-archive"
             >
               <Archive className="h-4 w-4" />
@@ -2324,7 +2324,7 @@ const AdminDashboard = ({ onBack }) => {
                 if (affiliateProducts.length === 0) fetchAffiliateProducts();
               }}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'affiliates' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-gray-900 dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'affiliates' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-affiliates"
             >
               <ShoppingBag className="h-4 w-4" />
@@ -2335,7 +2335,7 @@ const AdminDashboard = ({ onBack }) => {
               variant="ghost"
               onClick={() => setActiveTab('jobs')}
               size="sm"
-              className={`flex items-center gap-2 min-w-fit ${activeTab === 'jobs' ? '!bg-emerald-600 hover:!bg-emerald-700 !text-white' : '!text-gray-900 dark:!text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'jobs' ? '!bg-emerald-600 hover:!bg-emerald-700 !text-white' : '!text-foreground dark:!text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-jobs"
             >
               <Briefcase className="h-4 w-4" />
@@ -2355,9 +2355,9 @@ const AdminDashboard = ({ onBack }) => {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {Object.entries(stats?.articles?.by_category || {}).map(([category, count]) => (
-                  <div key={category} className="bg-gray-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-gray-900">{count}</p>
-                    <p className="text-sm text-gray-600">{category}</p>
+                  <div key={category} className="bg-muted rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-foreground">{count}</p>
+                    <p className="text-sm text-muted-foreground">{category}</p>
                   </div>
                 ))}
               </div>
@@ -2384,8 +2384,8 @@ const AdminDashboard = ({ onBack }) => {
                         onClick={() => setArticleSubTab(tab.id)}
                         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
                           articleSubTab === tab.id 
-                            ? 'bg-white dark:bg-gray-700 text-emerald-600 shadow-sm' 
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            ? 'bg-card dark:bg-gray-700 text-emerald-600 shadow-sm' 
+                            : 'text-muted-foreground dark:text-gray-400 hover:text-foreground dark:hover:text-white'
                         }`}
                       >
                         {tab.label} ({tab.count})
@@ -2401,7 +2401,7 @@ const AdminDashboard = ({ onBack }) => {
                         placeholder="Search articles..."
                         value={articleSearch}
                         onChange={(e) => setArticleSearch(e.target.value)}
-                        className="pl-9 bg-white dark:bg-gray-700"
+                        className="pl-9 bg-card dark:bg-gray-700"
                       />
                     </div>
                     {selectedArticles.size > 0 && (
@@ -2451,7 +2451,7 @@ const AdminDashboard = ({ onBack }) => {
                         setSelectedArticles(new Set(articles.map(a => a.id)));
                       }
                     }}
-                    className="text-gray-600"
+                    className="text-muted-foreground"
                   >
                     {selectedArticles.size === articles.length ? (
                       <><Square className="h-4 w-4 mr-1" /> Deselect All</>
@@ -2479,7 +2479,7 @@ const AdminDashboard = ({ onBack }) => {
                       className={`flex items-center gap-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border ${
                         selectedArticles.has(article.id) 
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700' 
-                          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                          : 'bg-muted dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       }`}
                       data-testid={`article-row-${article.id}`}
                     >
@@ -2509,16 +2509,16 @@ const AdminDashboard = ({ onBack }) => {
                         className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 dark:text-white truncate">{article.title}</h4>
+                        <h4 className="font-medium text-foreground dark:text-white truncate">{article.title}</h4>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
                             {article.category}
                           </Badge>
-                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                          <span className="text-xs text-muted-foreground dark:text-gray-400">
                             {formatDate(article.publishedDate)}
                           </span>
                           {article.view_count > 0 && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1">
                               <Eye className="h-3 w-3" /> {article.view_count}
                             </span>
                           )}
@@ -2616,7 +2616,7 @@ const AdminDashboard = ({ onBack }) => {
             </CardHeader>
             <CardContent>
               {subscribers.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   <Mail className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                   <p>No subscribers yet</p>
                 </div>
@@ -2625,7 +2625,7 @@ const AdminDashboard = ({ onBack }) => {
                   {subscribers.map((subscriber) => (
                     <div 
                       key={subscriber.email} 
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
                       data-testid={`subscriber-row-${subscriber.email}`}
                     >
                       <div className="flex items-center gap-3">
@@ -2633,8 +2633,8 @@ const AdminDashboard = ({ onBack }) => {
                           <Mail className="h-5 w-5 text-blue-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-900">{subscriber.email}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="font-medium text-foreground">{subscriber.email}</p>
+                          <p className="text-xs text-muted-foreground">
                             Subscribed: {formatDate(subscriber.subscribed_at)}
                           </p>
                         </div>
@@ -2676,7 +2676,7 @@ const AdminDashboard = ({ onBack }) => {
               </CardHeader>
               <CardContent>
                 {scheduledPosts.pending.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
+                  <div className="text-center py-6 text-muted-foreground">
                     <CalendarIcon className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                     <p>No scheduled posts</p>
                     <p className="text-sm">Select an article below to schedule</p>
@@ -2698,7 +2698,7 @@ const AdminDashboard = ({ onBack }) => {
                             />
                           )}
                           <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate">{post.article_title}</p>
+                            <p className="font-medium text-foreground truncate">{post.article_title}</p>
                             <div className="flex items-center gap-2 text-sm text-blue-700">
                               <Clock className="h-3 w-3" />
                               <span>{formatDate(post.scheduled_time)}</span>
@@ -2727,14 +2727,14 @@ const AdminDashboard = ({ onBack }) => {
                 {/* History */}
                 {scheduledPosts.history.length > 0 && (
                   <div className="mt-6">
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Recent History</h4>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Recent History</h4>
                     <div className="space-y-2">
                       {scheduledPosts.history.slice(0, 5).map((post) => (
                         <div 
                           key={post._id} 
                           className={`flex items-center gap-3 p-2 rounded-lg ${
                             post.status === 'posted' ? 'bg-green-50' : 
-                            post.status === 'failed' ? 'bg-red-50' : 'bg-gray-50'
+                            post.status === 'failed' ? 'bg-red-50' : 'bg-muted'
                           }`}
                         >
                           {post.status === 'posted' ? (
@@ -2787,10 +2787,10 @@ const AdminDashboard = ({ onBack }) => {
                 {smartLoading && smartArticles.length === 0 ? (
                   <div className="text-center py-6">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600" />
-                    <p className="mt-2 text-gray-500">Analyzing articles...</p>
+                    <p className="mt-2 text-muted-foreground">Analyzing articles...</p>
                   </div>
                 ) : smartArticles.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
+                  <div className="text-center py-6 text-muted-foreground">
                     <TrendingUp className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                     <p>Click refresh to get AI recommendations</p>
                   </div>
@@ -2800,16 +2800,16 @@ const AdminDashboard = ({ onBack }) => {
                       <div 
                         key={article._id || article.id}
                         className={`flex items-center gap-3 p-3 rounded-lg border ${
-                          index === 0 ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-100'
+                          index === 0 ? 'bg-purple-50 border-purple-200' : 'bg-muted border-gray-100'
                         }`}
                       >
                         <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                          index === 0 ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'
+                          index === 0 ? 'bg-purple-600 text-white' : 'bg-gray-200 text-muted-foreground'
                         }`}>
                           {article.score}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">{article.title}</p>
+                          <p className="font-medium text-foreground text-sm truncate">{article.title}</p>
                           <div className="flex flex-wrap gap-1 mt-1">
                             {article.reasons?.slice(0, 3).map((reason, i) => (
                               <span key={i} className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
@@ -2854,7 +2854,7 @@ const AdminDashboard = ({ onBack }) => {
                   {schedulableArticles.map((article) => (
                     <div 
                       key={article._id} 
-                      className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-gray-100 transition-colors"
                       data-testid={`fb-article-${article._id}`}
                     >
                       <img 
@@ -2863,12 +2863,12 @@ const AdminDashboard = ({ onBack }) => {
                         className="w-14 h-14 object-cover rounded flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{article.title}</p>
+                        <p className="font-medium text-foreground text-sm truncate">{article.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="secondary" className="text-xs">
                             {article.category}
                           </Badge>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {article.source}
                           </span>
                         </div>
@@ -2928,7 +2928,7 @@ const AdminDashboard = ({ onBack }) => {
                     </div>
                     <p className="font-bold text-blue-700 dark:text-blue-300">7:30 AM</p>
                     <p className="text-sm text-blue-600 dark:text-blue-400">The Daily Brief</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Every morning</p>
+                    <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">Every morning</p>
                   </div>
                   <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center border-2 border-purple-200 dark:border-purple-800">
                     <div className="h-10 w-10 bg-purple-100 dark:bg-purple-800 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -2936,7 +2936,7 @@ const AdminDashboard = ({ onBack }) => {
                     </div>
                     <p className="font-bold text-purple-700 dark:text-purple-300">9:00 AM</p>
                     <p className="text-sm text-purple-600 dark:text-purple-400">Weekly Roundup</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Every Sunday</p>
+                    <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">Every Sunday</p>
                   </div>
                   <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 text-center border-2 border-red-200 dark:border-red-800">
                     <div className="h-10 w-10 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -2944,7 +2944,7 @@ const AdminDashboard = ({ onBack }) => {
                     </div>
                     <p className="font-bold text-red-700 dark:text-red-300">Manual</p>
                     <p className="text-sm text-red-600 dark:text-red-400">Breaking News</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">High priority only</p>
+                    <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">High priority only</p>
                   </div>
                 </div>
               </CardContent>
@@ -2968,7 +2968,7 @@ const AdminDashboard = ({ onBack }) => {
                       type="text"
                       placeholder="your@email.com"
                       defaultValue="news@cheshiretoday.co.uk"
-                      className="flex-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      className="flex-1 bg-card dark:bg-gray-700 text-foreground dark:text-white"
                       id="test-digest-email"
                       data-testid="test-digest-email-input"
                     />
@@ -3031,30 +3031,30 @@ const AdminDashboard = ({ onBack }) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Headline</label>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Headline</label>
                   <Input
                     id="breaking-headline"
                     placeholder="Major incident headline..."
-                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
                     data-testid="breaking-headline-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">What We Know (one point per line)</label>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">What We Know (one point per line)</label>
                   <textarea
                     id="breaking-bullets"
                     rows={3}
                     placeholder="Police have confirmed an incident at...&#10;Road closures are in place on...&#10;Emergency services are on scene..."
-                    className="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 border rounded-md bg-card dark:bg-gray-700 text-foreground dark:text-white"
                     data-testid="breaking-bullets-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Live Updates URL (optional)</label>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Live Updates URL (optional)</label>
                   <Input
                     id="breaking-url"
                     placeholder="https://cheshiretoday.co.uk/article/..."
-                    className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
                     data-testid="breaking-url-input"
                   />
                 </div>
@@ -3091,7 +3091,7 @@ const AdminDashboard = ({ onBack }) => {
                   <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-2">
                     <strong>Subject:</strong> We&apos;ve made some changes to Cheshire Today 📩
                   </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-muted-foreground dark:text-gray-400">
                     This will inform all subscribers about the new Daily Brief (7:30 AM), Weekly Roundup (Sunday), 
                     and Breaking News options. All subscribers will be automatically migrated to The Daily Brief.
                   </p>
@@ -3144,7 +3144,7 @@ const AdminDashboard = ({ onBack }) => {
                 {emailAnalyticsLoading && !emailAnalytics ? (
                   <div className="text-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" />
-                    <p className="mt-2 text-gray-500">Loading email analytics...</p>
+                    <p className="mt-2 text-muted-foreground">Loading email analytics...</p>
                   </div>
                 ) : emailAnalytics?.success ? (
                   <div className="space-y-6">
@@ -3153,39 +3153,39 @@ const AdminDashboard = ({ onBack }) => {
                       <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 text-center">
                         <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300">{emailAnalytics.summary?.total_emails_sent || 0}</p>
                         <p className="text-sm text-indigo-600 dark:text-indigo-400">Emails Sent</p>
-                        <p className="text-xs text-gray-500">(last 30 days)</p>
+                        <p className="text-xs text-muted-foreground">(last 30 days)</p>
                       </div>
                       <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 text-center">
                         <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">{emailAnalytics.summary?.open_rate || 0}%</p>
                         <p className="text-sm text-emerald-600 dark:text-emerald-400">Open Rate</p>
-                        <p className="text-xs text-gray-500">{emailAnalytics.summary?.unique_openers || 0} unique opens</p>
+                        <p className="text-xs text-muted-foreground">{emailAnalytics.summary?.unique_openers || 0} unique opens</p>
                       </div>
                       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
                         <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{emailAnalytics.summary?.click_rate || 0}%</p>
                         <p className="text-sm text-blue-600 dark:text-blue-400">Click Rate</p>
-                        <p className="text-xs text-gray-500">{emailAnalytics.summary?.unique_clickers || 0} clicked</p>
+                        <p className="text-xs text-muted-foreground">{emailAnalytics.summary?.unique_clickers || 0} clicked</p>
                       </div>
                       <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 text-center">
                         <p className="text-3xl font-bold text-amber-700 dark:text-amber-300">{emailAnalytics.summary?.click_to_open_rate || 0}%</p>
                         <p className="text-sm text-amber-600 dark:text-amber-400">Click-to-Open</p>
-                        <p className="text-xs text-gray-500">engagement quality</p>
+                        <p className="text-xs text-muted-foreground">engagement quality</p>
                       </div>
                     </div>
 
                     {/* Email Type Breakdown */}
                     {emailAnalytics.by_type && Object.keys(emailAnalytics.by_type).length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Breakdown by Type</h4>
+                      <div className="bg-muted dark:bg-gray-800 rounded-lg p-4">
+                        <h4 className="font-semibold text-muted-foreground dark:text-gray-300 mb-3">Breakdown by Type</h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {Object.entries(emailAnalytics.by_type).map(([type, stats]) => (
-                            <div key={type} className="bg-white dark:bg-gray-700 rounded-lg p-3 border dark:border-gray-600">
+                            <div key={type} className="bg-card dark:bg-gray-700 rounded-lg p-3 border dark:border-gray-600">
                               <p className="font-medium text-gray-800 dark:text-gray-200">{type}</p>
                               <div className="flex justify-between text-sm mt-1">
-                                <span className="text-gray-500">Sent:</span>
+                                <span className="text-muted-foreground">Sent:</span>
                                 <span className="font-semibold">{stats.sent}</span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Delivered:</span>
+                                <span className="text-muted-foreground">Delivered:</span>
                                 <span className="font-semibold text-green-600">{stats.success}</span>
                               </div>
                             </div>
@@ -3197,7 +3197,7 @@ const AdminDashboard = ({ onBack }) => {
                     {/* Recent Sends */}
                     {emailAnalytics.recent_sends?.length > 0 && (
                       <div>
-                        <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Email Campaigns</h4>
+                        <h4 className="font-semibold text-muted-foreground dark:text-gray-300 mb-3">Recent Email Campaigns</h4>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead className="bg-gray-100 dark:bg-gray-700">
@@ -3211,8 +3211,8 @@ const AdminDashboard = ({ onBack }) => {
                             </thead>
                             <tbody className="divide-y dark:divide-gray-600">
                               {emailAnalytics.recent_sends.slice(0, 5).map((send, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                  <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
+                                <tr key={idx} className="hover:bg-muted dark:hover:bg-gray-700">
+                                  <td className="px-3 py-2 text-muted-foreground dark:text-gray-400">
                                     {send.sent_at ? new Date(send.sent_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'N/A'}
                                   </td>
                                   <td className="px-3 py-2">
@@ -3231,13 +3231,13 @@ const AdminDashboard = ({ onBack }) => {
                       </div>
                     )}
 
-                    <div className="text-center text-xs text-gray-500 pt-2">
+                    <div className="text-center text-xs text-muted-foreground pt-2">
                       <p>Note: Analytics tracking is automatically enabled for all new emails.</p>
                       <p>Open tracking uses a 1x1 invisible pixel. Click tracking redirects through our server.</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <BarChart3 className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                     <p>Click refresh to load email analytics</p>
                     <p className="text-xs mt-2">Track open rates, click rates, and engagement metrics</p>
@@ -3283,7 +3283,7 @@ const AdminDashboard = ({ onBack }) => {
                 {analyticsLoading && !fbAnalytics ? (
                   <div className="text-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600" />
-                    <p className="mt-2 text-gray-500">Loading analytics...</p>
+                    <p className="mt-2 text-muted-foreground">Loading analytics...</p>
                   </div>
                 ) : fbAnalytics?.success ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -3305,7 +3305,7 @@ const AdminDashboard = ({ onBack }) => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-gray-500">
+                  <div className="text-center py-6 text-muted-foreground">
                     <BarChart3 className="h-10 w-10 mx-auto mb-2 text-gray-300" />
                     <p>{fbAnalytics?.error || "Click refresh to load analytics"}</p>
                   </div>
@@ -3327,12 +3327,12 @@ const AdminDashboard = ({ onBack }) => {
                     {fbInsights.insights.map((insight, index) => (
                       <div 
                         key={index}
-                        className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg"
+                        className="flex items-start gap-3 p-4 bg-muted rounded-lg"
                       >
                         <span className="text-2xl">{insight.icon}</span>
                         <div>
-                          <h4 className="font-semibold text-gray-900">{insight.title}</h4>
-                          <p className="text-sm text-gray-600">{insight.description}</p>
+                          <h4 className="font-semibold text-foreground">{insight.title}</h4>
+                          <p className="text-sm text-muted-foreground">{insight.description}</p>
                           {insight.recommendation && (
                             <p className="text-sm text-blue-600 mt-1">💡 {insight.recommendation}</p>
                           )}
@@ -3361,18 +3361,18 @@ const AdminDashboard = ({ onBack }) => {
                         key={post.post_id}
                         className={`flex items-center gap-3 p-3 rounded-lg ${
                           index === 0 ? 'bg-yellow-50 border border-yellow-200' :
-                          index < 3 ? 'bg-green-50' : 'bg-gray-50'
+                          index < 3 ? 'bg-green-50' : 'bg-muted'
                         }`}
                       >
                         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                           index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                          index < 3 ? 'bg-green-400 text-white' : 'bg-gray-300 text-gray-700'
+                          index < 3 ? 'bg-green-400 text-white' : 'bg-gray-300 text-muted-foreground'
                         }`}>
                           {index + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate text-sm">{post.title}</p>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                          <p className="font-medium text-foreground truncate text-sm">{post.title}</p>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                             <span>❤️ {post.likes}</span>
                             <span>💬 {post.comments}</span>
                             <span>🔄 {post.shares}</span>
@@ -3442,7 +3442,7 @@ const AdminDashboard = ({ onBack }) => {
                 
                 {/* Quick send breaking news */}
                 <div className="border-t pt-4 mt-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Send Breaking News Alert</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Send Breaking News Alert</p>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -3476,7 +3476,7 @@ const AdminDashboard = ({ onBack }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-gray-600" />
+                  <BarChart3 className="h-5 w-5 text-muted-foreground" />
                   Article Storage Statistics
                 </CardTitle>
               </CardHeader>
@@ -3489,8 +3489,8 @@ const AdminDashboard = ({ onBack }) => {
                         <p className="text-sm text-green-600">Active Articles</p>
                       </div>
                       <div className="bg-gray-100 rounded-lg p-4 text-center">
-                        <p className="text-2xl font-bold text-gray-700">{articleStats.archived || 0}</p>
-                        <p className="text-sm text-gray-600">Archived</p>
+                        <p className="text-2xl font-bold text-muted-foreground">{articleStats.archived || 0}</p>
+                        <p className="text-sm text-muted-foreground">Archived</p>
                       </div>
                       <div className="bg-blue-50 rounded-lg p-4 text-center">
                         <p className="text-2xl font-bold text-blue-700">{articleStats.total || 0}</p>
@@ -3503,11 +3503,11 @@ const AdminDashboard = ({ onBack }) => {
                     </div>
                     
                     {articleStats.oldest_date && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-sm text-gray-600">
+                      <div className="bg-muted rounded-lg p-3">
+                        <p className="text-sm text-muted-foreground">
                           <strong>Date Range:</strong> {articleStats.oldest_date?.substring(0, 10)} to {articleStats.newest_date?.substring(0, 10)}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           {articleStats.storage_note}
                         </p>
                       </div>
@@ -3516,7 +3516,7 @@ const AdminDashboard = ({ onBack }) => {
                 ) : (
                   <div className="text-center py-4">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
-                    <p className="text-sm text-gray-500 mt-2">Loading stats...</p>
+                    <p className="text-sm text-muted-foreground mt-2">Loading stats...</p>
                   </div>
                 )}
               </CardContent>
@@ -3526,7 +3526,7 @@ const AdminDashboard = ({ onBack }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Archive className="h-5 w-5 text-gray-600" />
+                  <Archive className="h-5 w-5 text-muted-foreground" />
                   Bulk Archive
                 </CardTitle>
                 <CardDescription>
@@ -3580,7 +3580,7 @@ const AdminDashboard = ({ onBack }) => {
               </CardHeader>
               <CardContent>
                 {archivedArticles.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <Archive className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                     <p>No archived articles</p>
                     <p className="text-sm mt-1">Use bulk archive to move old articles here</p>
@@ -3590,7 +3590,7 @@ const AdminDashboard = ({ onBack }) => {
                     {archivedArticles.map((article) => (
                       <div 
                         key={article._id || article.id} 
-                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                        className="flex items-center gap-3 p-3 bg-muted dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                         onClick={() => window.open(`/article/${article._id || article.id}`, '_blank')}
                         title="Click to view article"
                       >
@@ -3602,7 +3602,7 @@ const AdminDashboard = ({ onBack }) => {
                           />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-700 dark:text-gray-300 truncate text-sm">{article.title}</p>
+                          <p className="font-medium text-muted-foreground dark:text-gray-300 truncate text-sm">{article.title}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant="secondary" className="text-xs">{article.category}</Badge>
                             <span className="text-xs text-gray-400">{article.publishedDate?.substring(0, 10)}</span>
@@ -3689,8 +3689,8 @@ const AdminDashboard = ({ onBack }) => {
                     <p className="text-sm text-green-600">Active Products</p>
                   </div>
                   <div className="bg-gray-100 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-gray-700">{affiliateProducts.filter(p => p.active === false).length}</p>
-                    <p className="text-sm text-gray-600">Inactive</p>
+                    <p className="text-2xl font-bold text-muted-foreground">{affiliateProducts.filter(p => p.active === false).length}</p>
+                    <p className="text-sm text-muted-foreground">Inactive</p>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-4 text-center">
                     <p className="text-2xl font-bold text-blue-700">{affiliateCategories.length}</p>
@@ -3714,7 +3714,7 @@ const AdminDashboard = ({ onBack }) => {
               </CardHeader>
               <CardContent>
                 {affiliateProducts.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     <ShoppingBag className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                     <p className="font-medium">No affiliate products yet</p>
                     <p className="text-sm mt-1">Click &quot;Add Product&quot; to create your first Amazon affiliate link</p>
@@ -3733,8 +3733,8 @@ const AdminDashboard = ({ onBack }) => {
                         key={product.id} 
                         className={`flex items-center gap-4 p-4 rounded-lg border transition-colors ${
                           product.active !== false 
-                            ? 'bg-white border-gray-200 hover:bg-gray-50' 
-                            : 'bg-gray-50 border-gray-200 opacity-60'
+                            ? 'bg-card border-gray-200 hover:bg-muted' 
+                            : 'bg-muted border-gray-200 opacity-60'
                         }`}
                         data-testid={`affiliate-row-${product.id}`}
                       >
@@ -3747,7 +3747,7 @@ const AdminDashboard = ({ onBack }) => {
                             onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1557821552-17105176677c?w=200'; }}
                           />
                           {product.active === false && (
-                            <div className="absolute inset-0 bg-gray-500/50 rounded-lg flex items-center justify-center">
+                            <div className="absolute inset-0 bg-muted0/50 rounded-lg flex items-center justify-center">
                               <span className="text-white text-xs font-medium">OFF</span>
                             </div>
                           )}
@@ -3756,7 +3756,7 @@ const AdminDashboard = ({ onBack }) => {
                         {/* Product Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-gray-900 truncate">{product.name}</h4>
+                            <h4 className="font-medium text-foreground truncate">{product.name}</h4>
                             {product.active !== false && (
                               <Badge className="bg-green-100 text-green-700 text-xs">Active</Badge>
                             )}
@@ -3766,7 +3766,7 @@ const AdminDashboard = ({ onBack }) => {
                             <Badge variant="secondary" className="text-xs">{product.category}</Badge>
                             <div className="flex items-center gap-0.5">
                               <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-                              <span className="text-xs text-gray-500">{product.rating}</span>
+                              <span className="text-xs text-muted-foreground">{product.rating}</span>
                             </div>
                           </div>
                           <a 
@@ -3788,7 +3788,7 @@ const AdminDashboard = ({ onBack }) => {
                             onClick={() => handleToggleAffiliateActive(product)}
                             disabled={actionLoading === `toggle-affiliate-${product.id}`}
                             className={product.active !== false 
-                              ? "text-gray-600 hover:text-gray-700" 
+                              ? "text-muted-foreground hover:text-muted-foreground" 
                               : "text-green-600 hover:text-green-700"
                             }
                             title={product.active !== false ? "Deactivate" : "Activate"}
@@ -3836,12 +3836,12 @@ const AdminDashboard = ({ onBack }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <LinkIcon className="h-5 w-5 text-gray-600" />
+                  <LinkIcon className="h-5 w-5 text-muted-foreground" />
                   How It Works
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm text-gray-600">
+                <div className="space-y-3 text-sm text-muted-foreground">
                   <div className="flex gap-3">
                     <span className="bg-amber-100 text-amber-700 rounded-full w-6 h-6 flex items-center justify-center font-medium flex-shrink-0">1</span>
                     <p>Find a product on Amazon.co.uk you want to promote</p>
@@ -3915,8 +3915,8 @@ const AdminDashboard = ({ onBack }) => {
                     <p className="text-sm text-yellow-600 dark:text-yellow-500">Featured</p>
                   </div>
                   <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">{jobs.filter(j => j.active === false && j.status !== 'pending').length}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Inactive</p>
+                    <p className="text-2xl font-bold text-muted-foreground dark:text-gray-300">{jobs.filter(j => j.active === false && j.status !== 'pending').length}</p>
+                    <p className="text-sm text-muted-foreground dark:text-gray-400">Inactive</p>
                   </div>
                   <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 text-center">
                     <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{jobs.length}</p>
@@ -3943,22 +3943,22 @@ const AdminDashboard = ({ onBack }) => {
                     {jobs.filter(j => j.status === 'pending').map((job) => (
                       <div 
                         key={job.id} 
-                        className="flex items-center gap-4 p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800"
+                        className="flex items-center gap-4 p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-card dark:bg-gray-800"
                         data-testid={`pending-job-${job.id}`}
                       >
                         <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white font-bold text-lg">
                           {job.company.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 dark:text-white">{job.title}</h4>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                          <h4 className="font-medium text-foreground dark:text-white">{job.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
                             <Building2 className="h-3 w-3" />
                             {job.company}
                             <span className="mx-1">•</span>
                             <MapPin className="h-3 w-3" />
                             {job.location}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Submitted by: {job.contact_name} ({job.contact_email})
                           </p>
                         </div>
@@ -4037,7 +4037,7 @@ const AdminDashboard = ({ onBack }) => {
               </CardHeader>
               <CardContent>
                 {jobs.filter(j => j.status !== 'pending').length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-muted-foreground">
                     <Briefcase className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                     <p className="font-medium">No job listings yet</p>
                     <p className="text-sm mt-1">Click &quot;Add Job&quot; to create your first job posting</p>
@@ -4056,8 +4056,8 @@ const AdminDashboard = ({ onBack }) => {
                         key={job.id} 
                         className={`flex items-center gap-4 p-4 rounded-lg border transition-colors ${
                           job.active !== false 
-                            ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700' 
-                            : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60'
+                            ? 'bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-muted dark:hover:bg-gray-700' 
+                            : 'bg-muted dark:bg-gray-900 border-gray-200 dark:border-gray-700 opacity-60'
                         }`}
                         data-testid={`job-row-${job.id}`}
                       >
@@ -4074,7 +4074,7 @@ const AdminDashboard = ({ onBack }) => {
                         {/* Job Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium text-gray-900 dark:text-white truncate">{job.title}</h4>
+                            <h4 className="font-medium text-foreground dark:text-white truncate">{job.title}</h4>
                             {job.active !== false && (
                               <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">Active</Badge>
                             )}
@@ -4083,11 +4083,11 @@ const AdminDashboard = ({ onBack }) => {
                             )}
                           </div>
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
-                            <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                            <span className="text-sm text-muted-foreground dark:text-gray-400 flex items-center gap-1">
                               <Building2 className="h-3 w-3" />
                               {job.company}
                             </span>
-                            <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                            <span className="text-sm text-muted-foreground dark:text-gray-400 flex items-center gap-1">
                               <MapPin className="h-3 w-3" />
                               {job.location}
                             </span>
@@ -4096,7 +4096,7 @@ const AdminDashboard = ({ onBack }) => {
                               <span className="text-sm font-medium text-green-600 dark:text-green-400">{job.salary}</span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">
                             {job.category} • Posted {formatDate(job.created_at)}
                           </p>
                         </div>
@@ -4109,7 +4109,7 @@ const AdminDashboard = ({ onBack }) => {
                             onClick={() => handleToggleJobFeatured(job.id)}
                             className={job.featured 
                               ? "text-yellow-600 hover:text-yellow-700 border-yellow-300" 
-                              : "text-gray-600 hover:text-yellow-600"
+                              : "text-muted-foreground hover:text-yellow-600"
                             }
                             title={job.featured ? "Remove Featured" : "Make Featured"}
                           >
@@ -4120,7 +4120,7 @@ const AdminDashboard = ({ onBack }) => {
                             size="sm"
                             onClick={() => handleToggleJobActive(job.id)}
                             className={job.active !== false 
-                              ? "text-gray-600 hover:text-gray-700" 
+                              ? "text-muted-foreground hover:text-muted-foreground" 
                               : "text-green-600 hover:text-green-700"
                             }
                             title={job.active !== false ? "Deactivate" : "Activate"}
@@ -4172,12 +4172,12 @@ const AdminDashboard = ({ onBack }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <LinkIcon className="h-5 w-5 text-gray-600" />
+                  <LinkIcon className="h-5 w-5 text-muted-foreground" />
                   Tips for Job Listings
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                <div className="space-y-3 text-sm text-muted-foreground dark:text-gray-400">
                   <div className="flex gap-3">
                     <span className="bg-blue-100 text-blue-700 rounded-full w-6 h-6 flex items-center justify-center font-medium flex-shrink-0">1</span>
                     <p>Featured jobs appear at the top of the job board with special highlighting</p>
@@ -4220,12 +4220,12 @@ const AdminDashboard = ({ onBack }) => {
                           <PlusCircle className="h-6 w-6 text-emerald-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">Import New Articles</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <h3 className="font-semibold text-foreground dark:text-white">Import New Articles</h3>
+                          <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
                             Add new articles without removing existing ones
                           </p>
                         </div>
-                        <ul className="text-xs text-gray-600 dark:text-gray-400 text-left space-y-1">
+                        <ul className="text-xs text-muted-foreground dark:text-gray-400 text-left space-y-1">
                           <li>• 8 Cheshire/Local articles</li>
                           <li>• 12 UK News articles</li>
                           <li>• 2 each: Business, Health, Tech, Science, Entertainment</li>
@@ -4261,8 +4261,8 @@ const AdminDashboard = ({ onBack }) => {
                           <Archive className="h-6 w-6 text-amber-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">Archive & Refresh</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <h3 className="font-semibold text-foreground dark:text-white">Archive & Refresh</h3>
+                          <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
                             Move all articles to archive and import fresh news
                           </p>
                         </div>
@@ -4302,8 +4302,8 @@ const AdminDashboard = ({ onBack }) => {
                           <MapPin className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">Backfill Locations</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          <h3 className="font-semibold text-foreground dark:text-white">Backfill Locations</h3>
+                          <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
                             Auto-tag articles with location categories
                           </p>
                         </div>
@@ -4349,34 +4349,34 @@ const AdminDashboard = ({ onBack }) => {
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="text-center">
                           <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{importResult.total_imported || importResult.articles_imported || 0}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Total Imported</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Total Imported</p>
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{importResult.cheshire_articles || 0}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Cheshire News</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Cheshire News</p>
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{importResult.uk_articles || 0}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">UK News</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">UK News</p>
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{(importResult.business_articles || 0) + (importResult.tech_articles || 0) + (importResult.health_articles || 0)}</p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">Business/Tech/Health</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Business/Tech/Health</p>
                         </div>
                       </div>
                       {importResult.science_articles !== undefined && (
                         <div className="mt-4 grid grid-cols-3 gap-4">
                           <div className="text-center">
                             <p className="text-lg font-bold text-cyan-700 dark:text-cyan-300">{importResult.science_articles || 0}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Science</p>
+                            <p className="text-xs text-muted-foreground dark:text-gray-400">Science</p>
                           </div>
                           <div className="text-center">
                             <p className="text-lg font-bold text-pink-700 dark:text-pink-300">{importResult.entertainment_articles || 0}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Entertainment</p>
+                            <p className="text-xs text-muted-foreground dark:text-gray-400">Entertainment</p>
                           </div>
                           <div className="text-center">
                             <p className="text-lg font-bold text-green-700 dark:text-green-300">{importResult.sports_articles || 0}</p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400">Sports</p>
+                            <p className="text-xs text-muted-foreground dark:text-gray-400">Sports</p>
                           </div>
                         </div>
                       )}
@@ -4390,23 +4390,23 @@ const AdminDashboard = ({ onBack }) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <LinkIcon className="h-5 w-5 text-gray-600" />
+                  <LinkIcon className="h-5 w-5 text-muted-foreground" />
                   News Sources
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Local Cheshire Sources</h4>
-                    <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                    <h4 className="font-medium text-foreground dark:text-white mb-2">Local Cheshire Sources</h4>
+                    <ul className="space-y-1 text-muted-foreground dark:text-gray-400">
                       <li>• Cheshire Live (Macclesfield, Chester)</li>
                       <li>• Warrington Guardian</li>
                       <li>• Manchester Evening News</li>
                     </ul>
                   </div>
                   <div>
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">National UK Sources</h4>
-                    <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                    <h4 className="font-medium text-foreground dark:text-white mb-2">National UK Sources</h4>
+                    <ul className="space-y-1 text-muted-foreground dark:text-gray-400">
                       <li>• BBC News (UK, Sports, Business)</li>
                       <li>• The Guardian (UK, Tech, Science)</li>
                       <li>• Sky News (UK News)</li>
@@ -4626,7 +4626,7 @@ const AdminDashboard = ({ onBack }) => {
 
             {/* Time Picker */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Time (24-hour format)
               </label>
               <Input
@@ -4786,10 +4786,10 @@ const AdminDashboard = ({ onBack }) => {
             </div>
 
             {/* Featured Toggle */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted dark:bg-gray-800 rounded-lg">
               <div>
                 <Label htmlFor="featured" className="font-medium">Featured Article</Label>
-                <p className="text-sm text-gray-500">Show this article prominently on the homepage</p>
+                <p className="text-sm text-muted-foreground">Show this article prominently on the homepage</p>
               </div>
               <Switch
                 id="featured"
@@ -4863,7 +4863,7 @@ const AdminDashboard = ({ onBack }) => {
                 required
                 data-testid="affiliate-url-input"
               />
-              <p className="text-xs text-gray-500">Paste any Amazon.co.uk product or search URL. Your affiliate tag will be added automatically.</p>
+              <p className="text-xs text-muted-foreground">Paste any Amazon.co.uk product or search URL. Your affiliate tag will be added automatically.</p>
             </div>
 
             {/* Price */}
@@ -4904,7 +4904,7 @@ const AdminDashboard = ({ onBack }) => {
                 placeholder="https://images.unsplash.com/..."
                 data-testid="affiliate-image-input"
               />
-              <p className="text-xs text-gray-500">Use Unsplash or another image source. Amazon images may not work directly.</p>
+              <p className="text-xs text-muted-foreground">Use Unsplash or another image source. Amazon images may not work directly.</p>
             </div>
 
             {/* Image Preview */}
@@ -4936,14 +4936,14 @@ const AdminDashboard = ({ onBack }) => {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">Products show alongside articles in matching categories</p>
+              <p className="text-xs text-muted-foreground">Products show alongside articles in matching categories</p>
             </div>
 
             {/* Active Toggle */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div>
                 <Label htmlFor="affiliate-active" className="font-medium">Active</Label>
-                <p className="text-sm text-gray-500">Show this product on the site</p>
+                <p className="text-sm text-muted-foreground">Show this product on the site</p>
               </div>
               <Switch
                 id="affiliate-active"
@@ -4985,14 +4985,14 @@ const AdminDashboard = ({ onBack }) => {
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${
               confirmDialog.variant === 'destructive' ? 'text-red-600' : 
-              confirmDialog.variant === 'warning' ? 'text-amber-600' : 'text-gray-900 dark:text-white'
+              confirmDialog.variant === 'warning' ? 'text-amber-600' : 'text-foreground dark:text-white'
             }`}>
               {confirmDialog.variant === 'destructive' && <AlertTriangle className="h-5 w-5" />}
               {confirmDialog.variant === 'warning' && <AlertCircle className="h-5 w-5" />}
               {confirmDialog.variant === 'default' && <CheckCircle className="h-5 w-5 text-emerald-600" />}
               {confirmDialog.title}
             </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-400 pt-2">
+            <DialogDescription className="text-muted-foreground dark:text-gray-400 pt-2">
               {confirmDialog.description}
             </DialogDescription>
           </DialogHeader>

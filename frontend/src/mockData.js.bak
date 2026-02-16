@@ -1,0 +1,100 @@
+// Mock data for Cheshire News articles
+export const mockArticles = [
+  {
+    id: '1',
+    title: 'Chester City Centre Regeneration Project Unveiled',
+    content: 'Chester City Council has announced ambitious plans for a major regeneration project in the heart of the city centre. The £50 million development will transform the historic shopping district, creating new retail spaces, restaurants, and improved pedestrian areas. The project aims to attract more visitors to Chester while preserving the city\'s rich Roman heritage and medieval architecture. Local businesses have welcomed the announcement, expressing optimism about increased footfall and economic growth. The regeneration is expected to create over 200 new jobs and will begin construction in early 2026.',
+    category: 'Local News',
+    author: 'Sarah Thompson',
+    publishedDate: '2025-07-15T10:30:00Z',
+    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=500&fit=crop',
+    tags: ['chester', 'development', 'city-centre'],
+    featured: true
+  },
+  {
+    id: '2',
+    title: 'Cheshire Tech Startup Secures £5M Investment',
+    content: 'A Warrington-based technology startup has secured £5 million in Series A funding to expand its innovative cloud computing platform. TechNova Solutions, founded in 2023, has attracted investment from leading venture capital firms across the UK. The company plans to use the funding to hire 50 new employees and open a second office in Manchester. CEO James Morrison stated that Cheshire\'s thriving business environment and skilled workforce were key factors in the company\'s success.',
+    category: 'Business',
+    author: 'Michael Roberts',
+    publishedDate: '2025-07-14T14:20:00Z',
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=500&fit=crop',
+    tags: ['business', 'technology', 'investment'],
+    featured: false
+  },
+  {
+    id: '3',
+    title: 'Annual Cheshire Food Festival Returns This Weekend',
+    content: 'The popular Cheshire Food Festival is back for its 15th year, showcasing the finest local produce and culinary talent from across the county. Over 100 food vendors will set up stalls at Tatton Park, offering everything from artisan cheeses to award-winning craft beers. Celebrity chef Marcus Greene will host cooking demonstrations throughout the weekend. Organizers expect more than 25,000 visitors over the three-day event. Tickets are available at the gate, with family packages offering excellent value.',
+    category: 'Events',
+    author: 'Emma Davies',
+    publishedDate: '2025-07-14T09:15:00Z',
+    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=500&fit=crop',
+    tags: ['events', 'food', 'festival'],
+    featured: false
+  },
+  {
+    id: '4',
+    title: 'Chester FC Announces New Stadium Plans',
+    content: 'Chester Football Club has revealed plans for a state-of-the-art 12,000-capacity stadium on the outskirts of the city. The proposed development includes modern facilities, improved accessibility, and community spaces. The club\'s board believes the new stadium will help attract top talent and provide a better matchday experience for supporters. Local councillors have expressed support for the project, citing potential economic benefits and job creation. A planning application will be submitted next month.',
+    category: 'Sports',
+    author: 'David Williams',
+    publishedDate: '2025-07-13T16:45:00Z',
+    image: 'https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=500&fit=crop',
+    tags: ['sports', 'football', 'chester'],
+    featured: false
+  },
+  {
+    id: '5',
+    title: 'Community Garden Project Transforms Vacant Wirral Site',
+    content: 'A disused plot of land in Birkenhead has been transformed into a thriving community garden, thanks to the efforts of local volunteers. The Wirral Green Initiative has created raised beds, a greenhouse, and communal seating areas where residents can grow vegetables and flowers. The project has brought neighbors together and provides fresh produce for local food banks. Project coordinator Lisa Henderson praised the community spirit and announced plans to expand to other vacant sites across Wirral.',
+    category: 'Community',
+    author: 'Rachel Green',
+    publishedDate: '2025-07-13T11:00:00Z',
+    image: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=500&fit=crop',
+    tags: ['community', 'wirral', 'environment'],
+    featured: false
+  },
+  {
+    id: '6',
+    title: 'New Rail Link to Connect Crewe and Manchester',
+    content: 'Transport officials have announced plans for a new high-speed rail link connecting Crewe and Manchester, cutting journey times by 30%. The £800 million project forms part of the Northern Powerhouse initiative and is expected to boost economic growth across Cheshire. Construction will begin in 2027, with completion scheduled for 2031. Business leaders have welcomed the news, highlighting improved connectivity and opportunities for regional collaboration.',
+    category: 'Local News',
+    author: 'Sarah Thompson',
+    publishedDate: '2025-07-12T13:30:00Z',
+    image: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&h=500&fit=crop',
+    tags: ['transport', 'infrastructure', 'crewe'],
+    featured: false
+  },
+  {
+    id: '7',
+    title: 'Cheshire Business Awards 2025 Nominees Announced',
+    content: 'The nominees for the prestigious Cheshire Business Awards 2025 have been revealed, celebrating excellence and innovation across the county. Categories include Best Startup, Corporate Social Responsibility, and Business Leader of the Year. The awards ceremony will take place at Chester Racecourse in September, with over 500 business leaders expected to attend. Award sponsor Janet Morrison emphasized the importance of recognizing entrepreneurial achievement in Cheshire.',
+    category: 'Business',
+    author: 'Michael Roberts',
+    publishedDate: '2025-07-12T10:00:00Z',
+    image: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&h=500&fit=crop',
+    tags: ['business', 'awards', 'cheshire'],
+    featured: false
+  },
+  {
+    id: '8',
+    title: 'Chester Marathon Draws Record Number of Runners',
+    content: 'The Chester Marathon has attracted a record 8,000 participants this year, making it one of the largest sporting events in the North West. Runners from across the UK and 15 countries worldwide will compete on the scenic route through Chester\'s historic streets and surrounding countryside. Race director Tom Hughes credited the event\'s popularity to its welcoming atmosphere and beautiful course. The marathon will raise funds for local charities, with organizers estimating over £200,000 in donations.',
+    category: 'Sports',
+    author: 'David Williams',
+    publishedDate: '2025-07-11T15:20:00Z',
+    image: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=800&h=500&fit=crop',
+    tags: ['sports', 'marathon', 'chester'],
+    featured: false
+  }
+];
+
+export const categories = [
+  { id: "all", name: "All", icon: "Newspaper" },
+  { id: "Cheshire", name: "Cheshire", icon: "MapPin" },
+  { id: "UK", name: "UK", icon: "Newspaper" },
+  { id: "Business", name: "Business", icon: "Briefcase" },
+  { id: "Lifestyle", name: "Lifestyle", icon: "Heart" },
+  { id: "Sport", name: "Sport", icon: "Trophy" }
+];

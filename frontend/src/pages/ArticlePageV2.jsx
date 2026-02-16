@@ -120,7 +120,7 @@ export default function ArticlePageV2({ categories }) {
   if (loading) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
           <FestiveTheme />
           <NewsHeader
             categories={categories}
@@ -131,7 +131,7 @@ export default function ArticlePageV2({ categories }) {
           <div className="container mx-auto px-4 py-20">
             <div className="flex flex-col items-center justify-center">
               <Loader2 className="h-16 w-16 animate-spin text-emerald-600 mb-4" />
-              <p className="text-lg text-gray-600">Loading article...</p>
+              <p className="text-lg text-muted-foreground">Loading article...</p>
             </div>
           </div>
           <Toaster />
@@ -143,7 +143,7 @@ export default function ArticlePageV2({ categories }) {
   if (!article) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
           <FestiveTheme />
 
           <Helmet>
@@ -159,8 +159,8 @@ export default function ArticlePageV2({ categories }) {
           />
 
           <main className="container mx-auto px-4 py-16 max-w-6xl">
-            <h1 className="text-4xl font-extrabold text-gray-900 mb-3">Article Not Found</h1>
-            <p className="text-gray-600 mb-6">{errorMsg || "Sorry, this link may be incorrect."}</p>
+            <h1 className="text-4xl font-extrabold text-foreground mb-3">Article Not Found</h1>
+            <p className="text-muted-foreground mb-6">{errorMsg || "Sorry, this link may be incorrect."}</p>
             <button
               onClick={() => navigate("/")}
               className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-white font-medium hover:bg-emerald-700"
@@ -179,7 +179,7 @@ export default function ArticlePageV2({ categories }) {
 
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <FestiveTheme />
 
         <Helmet>
@@ -220,11 +220,11 @@ export default function ArticlePageV2({ categories }) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Main article */}
             <article className="lg:col-span-8">
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
                 {article.title}
               </h1>
 
-              <div className="mt-3 text-sm text-gray-600 flex items-center gap-3">
+              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
                 <span>
                   {formatDateTime(
                     article.publishedDate || article.published_at || article.created_at
@@ -261,7 +261,7 @@ export default function ArticlePageV2({ categories }) {
         href={article.sourceUrl || article.source_url || article.link || article.url}
         target="_blank"
         rel="nofollow noopener noreferrer"
-        className="hover:text-gray-600 underline decoration-dotted underline-offset-2"
+        className="hover:text-muted-foreground underline decoration-dotted underline-offset-2"
       >
         View source
       </a>
@@ -285,8 +285,8 @@ export default function ArticlePageV2({ categories }) {
 
                   {/* Newsletter (non-intrusive, keeps readers coming back) */}
   <div className="rounded-xl border border-gray-200 bg-white p-4">
-    <h3 className="text-sm font-semibold text-gray-900 mb-2">Get the Cheshire Today briefing</h3>
-    <p className="text-sm text-gray-600 mb-3">A short email with the top local stories — no spam.</p>
+    <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
+    <p className="text-sm text-muted-foreground mb-3">A short email with the top local stories — no spam.</p>
     <form onSubmit={(e) => { e.preventDefault(); toast({ title: "Coming soon", description: "Newsletter signup will be enabled shortly." }); }} className="flex gap-2">
       <input
         type="email"
@@ -301,12 +301,12 @@ export default function ArticlePageV2({ categories }) {
         Sign up
       </button>
     </form>
-    <p className="mt-2 text-xs text-gray-500">You can unsubscribe anytime.</p>
+    <p className="mt-2 text-xs text-muted-foreground">You can unsubscribe anytime.</p>
   </div>
 
   {/* Explore by area (internal routes) */}
   <div className="rounded-xl border border-gray-200 bg-white p-4">
-    <h3 className="text-sm font-semibold text-gray-900 mb-3">Local news by area</h3>
+    <h3 className="text-sm font-semibold text-foreground mb-3">Local news by area</h3>
     <div className="flex flex-wrap gap-2">
       {[
         "chester",
