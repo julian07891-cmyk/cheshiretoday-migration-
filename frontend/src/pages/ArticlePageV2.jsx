@@ -250,11 +250,28 @@ export default function ArticlePageV2({ categories }) {
                 {mainContent}
               </div>
 
-              {/* Make source attribution smaller + less prominent */}
-              {attribution && (
-                <div className="mt-6 pt-4 border-t border-border">
-                  <p className="text-xs text-gray-400 leading-relaxed">
-  {attribution && <span>{attribution.replace("This article was originally published by", "Originally published by")}</span>}
+              {/* Source attribution */}
+              {(article.source || article.source_url) && (
+                <div className="mt-8 pt-6 border-t border-border">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Source:{" "}
+                    {(article.sourceUrl || article.source_url) ? (
+                      <a
+                        href={article.sourceUrl || article.source_url}
+                        target="_blank"
+                        rel="nofollow noopener noreferrer"
+                        className="font-medium text-foreground hover:underline"
+                      >
+                        {article.source || "View original"}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-foreground">
+                        {article.source}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
   {(article.sourceUrl || article.source_url || article.link || article.url) && (
     <>{" · "}
       <a
