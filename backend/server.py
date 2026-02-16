@@ -4,6 +4,14 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
+
+# --- dotenv: only for local dev ---
+IS_RENDER = bool(
+    os.getenv("RENDER")
+    or os.getenv("RENDER_SERVICE_ID")
+    or os.getenv("RENDER_EXTERNAL_URL")
+)
+if not IS_RENDER:
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -29,7 +37,7 @@ from app import rss_routes
 PUBLIC_BASE_URL = (os.environ.get("PUBLIC_URL") or os.environ.get("SITEMAP_BASE_URL") or "https://cheshiretoday.co.uk").rstrip("/")
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+    load_dotenv(ROOT_DIR / '.env', override=False)
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
@@ -443,6 +451,16 @@ api_cache = SimpleCache()
 # =====================================================================================
 ADMIN_USERNAME = os.getenv('ADMIN_USERNAME') or os.getenv('ADMIN_USER', 'admin')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD') or os.getenv('ADMIN_PASS', 'changeme')
+
+def get_admin_creds():
+    """
+    Read admin credentials from environment at *request time*.
+    Strips whitespace to avoid invisible mismatches from dashboard copy/paste.
+    """
+    u = (os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_USER") or "admin")
+    pw = (os.getenv("ADMIN_PASSWORD") or os.getenv("ADMIN_PASS") or "changeme")
+    return u.strip(), pw.strip()
+
 
 # Simple token store (in production, use Redis or database)
 admin_tokens = {}  # Legacy - kept for backwards compatibility during transition
@@ -1700,24 +1718,28 @@ async def admin_login(request: AdminLoginRequest):
     Admin login endpoint - returns a token for authenticated admin access.
     Token is valid for 24 hours and stored in MongoDB for distributed access.
     """
-    if request.username == ADMIN_USERNAME and request.password == ADMIN_PASSWORD:
+    env_user, env_pass = get_admin_creds()
+    req_user = (request.username or "").strip()
+    req_pass = (request.password or "").strip()
+
+    if req_user == env_user and req_pass == env_pass:
         # Generate token
         token = generate_admin_token()
         expiry = datetime.now(timezone.utc) + timedelta(hours=24)
-        
+
         # Store in MongoDB for distributed access across replicas
         await store_admin_token(token, expiry)
-        
-        logger.info(f"Admin login successful for: {request.username}")
+
+        logger.info(f"Admin login successful for: {req_user}")
         return AdminLoginResponse(
             success=True,
             token=token,
             message="Login successful",
             expires_in=86400
         )
-    else:
-        logger.warning(f"Failed admin login attempt for: {request.username}")
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    logger.warning(f"Failed admin login attempt for: {req_user}")
+    raise HTTPException(status_code=401, detail="Invalid username or password")
 
 @api_router.post("/admin/logout")
 async def admin_logout(authorization: Optional[str] = Header(None)):
