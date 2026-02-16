@@ -246,13 +246,13 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 
-              <div className="prose prose-lg max-w-none whitespace-pre-wrap">
+              <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {mainContent}
               </div>
 
               {/* Make source attribution smaller + less prominent */}
               {attribution && (
-                <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="mt-6 pt-4 border-t border-border">
                   <p className="text-xs text-gray-400 leading-relaxed">
   {attribution && <span>{attribution.replace("This article was originally published by", "Originally published by")}</span>}
   {(article.sourceUrl || article.source_url || article.link || article.url) && (
@@ -283,8 +283,24 @@ export default function ArticlePageV2({ categories }) {
                   onArticleClick={(a) => navigate(`/article/${a.id}`)}
                 />
 
+
+                {/* Monetisation placeholder (sponsored/affiliate/ad) */}
+                <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold text-foreground">Sponsored</div>
+                    <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">Ad</span>
+                  </div>
+                  <div>Ad slot / affiliate widget placeholder (monetisation phase).</div>
+                  <a
+                    href="/advertise"
+                    className="inline-block mt-2 text-emerald-700 hover:underline font-semibold dark:text-emerald-400"
+                  >
+                    Advertise with us →
+                  </a>
+                </div>
+
                   {/* Newsletter (non-intrusive, keeps readers coming back) */}
-  <div className="rounded-xl border border-gray-200 bg-white p-4">
+  <div className="rounded-xl border border-border bg-card p-4">
     <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
     <p className="text-sm text-muted-foreground mb-3">A short email with the top local stories — no spam.</p>
     <form onSubmit={(e) => { e.preventDefault(); toast({ title: "Coming soon", description: "Newsletter signup will be enabled shortly." }); }} className="flex gap-2">
@@ -292,7 +308,7 @@ export default function ArticlePageV2({ categories }) {
         type="email"
         required
         placeholder="you.com"
-        className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+        className="flex-1 rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 placeholder:text-muted-foreground"
       />
       <button
         type="submit"
@@ -305,7 +321,7 @@ export default function ArticlePageV2({ categories }) {
   </div>
 
   {/* Explore by area (internal routes) */}
-  <div className="rounded-xl border border-gray-200 bg-white p-4">
+  <div className="rounded-xl border border-border bg-card p-4">
     <h3 className="text-sm font-semibold text-foreground mb-3">Local news by area</h3>
     <div className="flex flex-wrap gap-2">
       {[
@@ -323,7 +339,7 @@ export default function ArticlePageV2({ categories }) {
         <button
           key={slug}
           onClick={() => navigate(`/`)}
-          className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-700 hover:border-emerald-300 hover:text-emerald-700"
+          className="rounded-full border border-input bg-background px-3 py-1 text-xs text-foreground hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
         >
           {slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
         </button>
