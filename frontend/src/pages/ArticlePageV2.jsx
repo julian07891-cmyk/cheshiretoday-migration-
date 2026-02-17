@@ -56,48 +56,52 @@ function splitAttribution(rawContent) {
 
 
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
-const GuidePromoBlock = ({ category }) => {
-  if (!category) return null;
+const GuidePromoBlock = ({ guides = [], category }) => {
+  if (!Array.isArray(guides) || guides.length === 0) return null;
 
-  const cat = String(category).toLowerCase();
+  const cat = String(category || "").toLowerCase();
 
-  let slug = null;
-  let title = null;
-  let desc = null;
+  const preferSlug = () => {
+    // Category → best-fit guide mapping (fallback-friendly)
+    if (cat.includes("ai") || cat.includes("tech")) return "best-ai-tools-uk";
+    if (cat.includes("business") || cat.includes("finance") || cat.includes("money")) return "best-ai-productivity-tools-uk";
+    if (cat.includes("writing")) return "best-ai-writing-tools-uk";
+    // For Local News / UK News / anything else: still promote the main AI tools guide (fastest monetisation)
+    return "best-ai-tools-uk";
+  };
 
-  if (cat.includes("ai") || cat.includes("tech")) {
-    slug = "best-ai-tools-uk";
-    title = "Best AI Tools in the UK (2026 Guide)";
-    desc = "Full comparison of ChatGPT, Claude, Gemini and more →";
-  } else if (cat.includes("business") || cat.includes("productivity")) {
-    slug = "best-ai-productivity-tools-uk";
-    title = "Best AI Productivity Tools in the UK";
-    desc = "Top AI tools for work, business and creators →";
-  } else if (cat.includes("writing")) {
-    slug = "best-ai-writing-tools-uk";
-    title = "Best AI Writing Tools in the UK";
-    desc = "Compare ChatGPT, Claude, Jasper & Grammarly →";
-  }
+  const preferred = preferSlug();
 
-  if (!slug) return null;
+  const preferredGuide = guides.find((g) => String(g?.slug || "") === preferred);
+  const others = guides.filter((g) => String(g?.slug || "") !== preferred);
+  const ordered = [preferredGuide, ...others].filter(Boolean).slice(0, 3);
 
   return (
     <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-        🔎 In-depth Guide
+      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">
+        🔎 AI Guides
       </div>
-      <a
-        href={`/guides/${slug}`}
-        className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
-      >
-        {title}
-      </a>
-      <div className="text-sm mt-1 text-gray-700 dark:text-gray-400">
-        {desc}
+
+      <div className="space-y-2">
+        {ordered.map((g) => (
+          <div key={g.slug} className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-transparent p-3">
+            <a
+              href={`/guides/${g.slug}`}
+              className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
+            >
+              {g.title || g.slug}
+            </a>
+            <div className="text-xs mt-1 text-gray-700 dark:text-gray-400">
+              Updated: {String(g.updated_at || g.created_at || "").slice(0, 10)}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
+
+
 
 
 export default function ArticlePageV2({ categories }) {
@@ -105,7 +109,9 @@ export default function ArticlePageV2({ categories }) {
   const navigate = useNavigate();
 
   const [article, setArticle] = useState(null);
-  const [loading, setLoading] = useState(true);
+  
+  const [guides, setGuides] = useState([]);
+const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
   const publicUrl =
@@ -136,7 +142,19 @@ export default function ArticlePageV2({ categories }) {
         if (!mounted) return;
 
         setArticle(data);
-      } catch (e) {
+      
+        // Load AI Guides (authority pages) — separate fetch so article page still works if it fails
+        try {
+          const gRes = await fetch(getApiUrl() + "/api/authority-pages");
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            const pages = Array.isArray(gData?.pages) ? gData.pages : [];
+            setGuides(pages);
+          }
+        } catch (_) {
+          // ignore
+        }
+} catch (e) {
         if (!mounted) return;
         console.error("Error fetching article:", e);
         setArticle(null);
@@ -319,7 +337,7 @@ export default function ArticlePageV2({ categories }) {
                   </p>
                 </div>
               )}
-            <GuidePromoBlock category={article?.category} />
+            <GuidePromoBlock guides={guides} category={article?.category} />
 
 </article>
 
@@ -335,7 +353,32 @@ export default function ArticlePageV2({ categories }) {
                 />
 
 
-                {/* Monetisation placeholder (sponsored/affiliate/ad) */}
+                
+                {/* AI Guides (authority pages) */}
+                {Array.isArray(guides) && guides.length > 0 && (
+                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-900/10 p-4">
+                    <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
+                      AI Guides
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      {guides.slice(0, 3).map((g) => (
+                        <li key={g.slug}>
+                          <a
+                            href={`/guides/${g.slug}`}
+                            className="font-semibold text-foreground hover:underline underline-offset-2"
+                          >
+                            🔥 {g.title || g.slug}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="text-xs mt-3 text-muted-foreground">
+                      UK-focused comparisons &amp; best picks →
+                    </div>
+                  </div>
+                )}
+
+{/* Monetisation placeholder (sponsored/affiliate/ad) */}
                 <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-foreground">Sponsored</div>
