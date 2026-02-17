@@ -1976,7 +1976,7 @@ class HybridNewsRequest(BaseModel):
     business_articles: int = 2  # Business/finance (good CPM)
     health_articles: int = 0    # Off (noise)
     tech_articles: int = 10     # AI/Tech (highest CPM niche)
-    science_articles: int = 4   # Science (strong niche)
+    science_articles: int = 6   # Science (strong niche)
     entertainment_articles: int = 0  # Off (noise)
     use_perplexity: bool = False  # Keep OFF (cost guard)
 
@@ -2087,6 +2087,29 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     article['author'] = article.get('source', 'BBC News')
                     article['id'] = str(uuid4())
                     
+                    # Ensure deterministic section (used by homepage feeds)
+                    if not article.get('section'):
+                        cat = (article.get('category') or category_name or '').strip()
+                        text = ((article.get('title','') + ' ' + article.get('summary','') + ' ' + article.get('content','')).lower())
+                        if cat == 'AI':
+                            article['section'] = 'ai-news'
+                        elif cat == 'Tech':
+                            article['section'] = 'tech-news'
+                        elif cat == 'Science':
+                            article['section'] = 'science'
+                        elif cat == 'Business':
+                            article['section'] = 'business-news'
+                        elif any(k in text for k in ['mortgage','remortgage','lender','rate','fixed rate']):
+                            article['section'] = 'mortgages'
+                        elif any(k in text for k in ['council tax','hmrc','self assessment','tax year','vat','income tax','national insurance']):
+                            article['section'] = 'tax'
+                        elif any(k in text for k in ['house price','housing market','rent','landlord','tenant','property','leasehold','freehold']):
+                            article['section'] = 'property'
+                        elif any(k in text for k in ['interest rate','bank of england','inflation','budget','economy']):
+                            article['section'] = 'money'
+                        else:
+                            article['section'] = 'general'
+
                     await db.articles.insert_one(article)
                     existing_titles.add(title.lower())
                     used_image_urls.add(rss_image)
@@ -2185,6 +2208,20 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             article['is_local_source'] = True  # Mark as local source
             article['is_local_newspaper'] = article.get('is_local_feed', False)
             
+            # Ensure deterministic section for local RSS (keep money/tax/property when detected)
+            if not article.get('section'):
+                text = ((article.get('title','') + ' ' + article.get('summary','') + ' ' + article.get('content','')).lower())
+                if any(k in text for k in ['mortgage','remortgage','lender','rate','fixed rate']):
+                    article['section'] = 'mortgages'
+                elif any(k in text for k in ['council tax','hmrc','self assessment','tax year','vat','income tax','national insurance']):
+                    article['section'] = 'tax'
+                elif any(k in text for k in ['house price','housing market','rent','landlord','tenant','property','leasehold','freehold']):
+                    article['section'] = 'property'
+                elif any(k in text for k in ['interest rate','bank of england','inflation','budget','economy']):
+                    article['section'] = 'money'
+                else:
+                    article['section'] = 'local-news'
+
             await db.articles.insert_one(article)
             existing_titles.add(title.lower())
             used_image_urls.add(rss_image)
@@ -11763,3 +11800,13 @@ async def api_local_feeds_only(limit: int = 200):
     if limit and limit > 0:
         articles = articles[:limit]
     return {"count": len(articles), "articles": articles}
+
+
+@app.get("/api/authority-pages/{slug}")
+async def get_authority_page(slug: str):
+    page = await db.authority_pages.find_one({"slug": slug, "status": {"$in": ["draft", "published"]}})
+    if not page:
+        raise HTTPException(status_code=404, detail="Not found")
+    page["id"] = str(page.get("_id"))
+    page.pop("_id", None)
+    return page

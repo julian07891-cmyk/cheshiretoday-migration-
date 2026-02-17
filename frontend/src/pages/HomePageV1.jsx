@@ -128,7 +128,7 @@ export default function HomePageV1() {
     };
 
     // 1) Hero
-    const heroArticle = newestFirst.find(isAiTechScience) || newestFirst.find(isLocal) || newestFirst[0] || null;
+    const heroArticle = newestFirst.find(a => String(a?.category || "").toLowerCase().includes("uk")) || newestFirst.find(isLocal) || newestFirst[0] || null;
     if (heroArticle) mark(heroArticle);
 
     // 2) Top Stories (4) — local-first featured, excluding hero and any dupes
@@ -150,7 +150,8 @@ export default function HomePageV1() {
     // Pass 2: Local next
     for (const a of newestFirst) {
       if (topStoriesCards.length >= 4) break;
-      if (!isLocal(a)) continue;
+      const sec = String(a?.section || "").toLowerCase();
+      if (!sec.startsWith("ai-")) continue;
       pushTop(a);
     }
 
@@ -187,7 +188,7 @@ export default function HomePageV1() {
       aiArticles.push(a);
     }
 
-// 4) Finance feed — structured (4 business, 1 money, 1 business latest)
+// 4) Finance feed — structured (4 business, 1 local, 1 business latest)
     const financeArticles = [];
 
     const isBusiness = (a) =>
@@ -206,10 +207,15 @@ export default function HomePageV1() {
       financeArticles.push(a);
     }
 
-    // Pass 2: 1 personal money (UK money)
+    // Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
     for (const a of newestFirst) {
       if (financeArticles.length >= 5) break;
-      if (!isMoney(a)) continue;
+
+      const sec = String(a?.section || "").toLowerCase();
+      // Avoid pulling AI items into Business & Money
+      if (sec.startsWith("ai-")) continue;
+
+      if (!isLocal(a)) continue;
       if (!mark(a)) continue;
       financeArticles.push(a);
     }
@@ -238,9 +244,11 @@ export default function HomePageV1() {
       pushLatest(a);
     }
 
-    // Pass 2: Add Local for the next 4 slots
+    // Pass 2: Add Local (non-ai) for the next 4 slots
     for (const a of newestFirst) {
       if (latestCards.length >= 12) break;
+      const sec = String(a?.section || "").toLowerCase();
+      if (sec.startsWith("ai-")) continue;
       if (!isLocal(a)) continue;
       pushLatest(a);
     }
@@ -404,6 +412,14 @@ onClick={() =>
             {aiFeed.length > 0 && (
               <section className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
                 <h2 className="text-lg font-bold mb-3">AI & Tech</h2>
+                  <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <a href="/guides/best-ai-tools-uk" className="font-semibold text-blue-700 dark:text-blue-300 hover:underline">
+                      🔥 Best AI Tools in the UK (2026 Guide)
+                    </a>
+                    <div className="text-xs mt-1 text-gray-600 dark:text-gray-400">
+                      In-depth comparison of ChatGPT, Claude, Gemini & more →
+                    </div>
+                  </div>
                 <div className="space-y-3">
                   {aiFeed.map((a, i) => (
                     <CompactArticleCard

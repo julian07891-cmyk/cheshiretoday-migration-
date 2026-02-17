@@ -169,7 +169,7 @@ RSS_FEEDS = {
     },
 
 'guardian_housing': {
-        'url': 'https://www.theguardian.com/uk/money/property/rss',
+        'url': 'https://www.theguardian.com/housing-network/rss',
         'source': 'The Guardian',
         'category': 'Property',
         'priority': 2
@@ -184,7 +184,7 @@ RSS_FEEDS = {
     'bbc_technology': {
         'url': 'https://feeds.bbci.co.uk/news/technology/rss.xml',
         'source': 'BBC News',
-        'category': 'AI',
+        'category': 'Tech',
         'priority': 2
     },
     'bbc_health': {
@@ -216,7 +216,7 @@ RSS_FEEDS = {
     'sky_technology': {
         'url': 'https://feeds.skynews.com/feeds/rss/technology.xml',
         'source': 'Sky News',
-        'category': 'AI',
+        'category': 'Tech',
         'priority': 2
     },
     

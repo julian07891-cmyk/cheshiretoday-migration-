@@ -139,6 +139,7 @@ import { toast } from "./hooks/use-toast";
 import { Toaster } from "./components/ui/toaster";
 import { articleService } from "./services/api";
 import LocationPage from "./components/LocationPage";
+import AuthorityPage from "./pages/AuthorityPage";
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -236,6 +237,7 @@ function App() {
             />
             {/* Location-specific pages for Local SEO */}
             <Route path="/advertise" element={<AdvertisePage />} />
+            <Route path="/guides/:slug" element={<AuthorityPage />} />
             <Route path="/:location" element={<LocationRouteWrapper />} />
           </Routes>
         </BrowserRouter>
