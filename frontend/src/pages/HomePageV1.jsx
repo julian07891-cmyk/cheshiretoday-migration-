@@ -426,14 +426,30 @@ onClick={() =>
             {aiFeed.length > 0 && (
               <section className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
                 <h2 className="text-lg font-bold mb-3">AI & Tech</h2>
-                  <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <a href="/guides/best-ai-tools-uk" className="font-semibold text-blue-700 dark:text-blue-300 hover:underline">
-                      🔥 Best AI Tools in the UK (2026 Guide)
-                    </a>
-                    <div className="text-xs mt-1 text-gray-600 dark:text-gray-400">
-                      In-depth comparison of ChatGPT, Claude, Gemini & more →
+                  {guides?.length > 0 && (
+                    <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        AI Guides
+                      </div>
+
+                      <ul className="space-y-2 text-sm">
+                        {guides.slice(0, 3).map((g, idx) => (
+                          <li key={g?.id || g?.slug || idx}>
+                            <a
+                              href={`/guides/${encodeURIComponent(g.slug)}`}
+                              className="font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+                            >
+                              🔥 {g.title || g.slug}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="text-xs mt-2 text-gray-600 dark:text-gray-400">
+                        UK-focused comparisons & best picks →
+                      </div>
                     </div>
-                  </div>
+                  )}
                 <div className="space-y-3">
                   {aiFeed.map((a, i) => (
                     <CompactArticleCard
