@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+/* BUILD_STAMP: guides-promo-20260217-231725 */
+
+
 // Build signature (forces fresh deploy bundles)
 const __GUIDES_PROMO_BUILD__ = "guides-promo-2026-02-17a";
 
