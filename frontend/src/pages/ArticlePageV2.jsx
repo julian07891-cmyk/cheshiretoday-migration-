@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+
+// Build signature to force fresh deploy bundles
+const __GUIDES_PROMO_BUILD__ = "guides-promo-0eb7a86";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
