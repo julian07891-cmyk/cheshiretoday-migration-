@@ -400,17 +400,17 @@ onClick={() =>
                   </div>
                   <ul className="space-y-2 text-sm">
                     <li>
-                      <a href="/money/best-savings-accounts" className="text-blue-600 hover:underline">
+                      <a href="/guides/best-savings-accounts-uk" className="text-blue-600 hover:underline">
                         • Best savings accounts →
                       </a>
                     </li>
                     <li>
-                      <a href="/money/best-mortgage-rates" className="text-blue-600 hover:underline">
+                      <a href="/guides/best-mortgage-rates-uk" className="text-blue-600 hover:underline">
                         • Compare mortgage rates →
                       </a>
                     </li>
                     <li>
-                      <a href="/money/council-tax-bands-cheshire" className="text-blue-600 hover:underline">
+                      <a href="/guides/council-tax-bands-cheshire" className="text-blue-600 hover:underline">
                         • Cheshire council tax guide →
                       </a>
                     </li>
