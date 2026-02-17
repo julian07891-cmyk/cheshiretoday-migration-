@@ -1,9 +1,35 @@
-from app.full_article_extractor import fetch_full_article
-from fastapi.staticfiles import StaticFiles
+import os
+import re
+import logging
+import secrets
+import hashlib
+import random
+import uuid
+import asyncio
+from pathlib import Path
+from datetime import datetime, timezone, timedelta
+from uuid import uuid4
+from typing import List, Optional
+
+from dotenv import load_dotenv
+
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import RedirectResponse
-from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
+
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
+
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field, EmailStr
+from bson import ObjectId
+from openai import OpenAI
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
+from app import rss_routes
+from app.full_article_extractor import fetch_full_article
 
 # --- dotenv: only for local dev ---
 IS_RENDER = bool(
@@ -11,39 +37,19 @@ IS_RENDER = bool(
     or os.getenv("RENDER_SERVICE_ID")
     or os.getenv("RENDER_EXTERNAL_URL")
 )
+
+ROOT_DIR = Path(__file__).parent
 if not IS_RENDER:
-from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.gzip import GZipMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
-import re
-import logging
-import secrets
-import hashlib
-from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
-import uuid
-from uuid import uuid4
-from datetime import datetime, timezone, timedelta
-from bson import ObjectId
-from openai import OpenAI
-import random
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
-import asyncio
-from app import rss_routes
+    load_dotenv(ROOT_DIR / ".env", override=False)
 
 PUBLIC_BASE_URL = (os.environ.get("PUBLIC_URL") or os.environ.get("SITEMAP_BASE_URL") or "https://cheshiretoday.co.uk").rstrip("/")
 
-ROOT_DIR = Path(__file__).parent
-    load_dotenv(ROOT_DIR / '.env', override=False)
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
-from app.unsplash_service import unsplash_service
-from app.pexels_service import pexels_service
-from app.pixabay_service import pixabay_service
+# from app.unsplash_service import unsplash_service  # disabled: RSS-only images
+# from app.pexels_service import pexels_service  # disabled: RSS-only images
+# from app.pixabay_service import pixabay_service  # disabled: RSS-only images
 from app.news_feed_service import news_feed_service
 from app.perplexity_service import perplexity_service
 
@@ -1964,15 +1970,15 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
 
 
 class HybridNewsRequest(BaseModel):
-    cheshire_articles: int = 8   # 8 Cheshire/local articles
-    uk_articles: int = 12        # 12 UK articles
-    max_sports: int = 3          # Limit sports articles
-    business_articles: int = 2   # 2 Business articles (FREE from RSS)
-    health_articles: int = 2     # 2 Health articles (FREE from RSS)
-    tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
-    science_articles: int = 2    # 2 Science articles (FREE from RSS)
-    entertainment_articles: int = 2  # 2 Entertainment articles (FREE from RSS)
-    use_perplexity: bool = False  # ENABLED - Hybrid model with AI content generation
+    cheshire_articles: int = 4   # 4 Cheshire/local articles (trust + local traffic)
+    uk_articles: int = 2        # 2 UK articles (minimal filler)
+    max_sports: int = 0         # No sports (low CPM)
+    business_articles: int = 2  # Business/finance (good CPM)
+    health_articles: int = 0    # Off (noise)
+    tech_articles: int = 10     # AI/Tech (highest CPM niche)
+    science_articles: int = 4   # Science (strong niche)
+    entertainment_articles: int = 0  # Off (noise)
+    use_perplexity: bool = False  # Keep OFF (cost guard)
 
 
 @api_router.post("/import-hybrid-news")
@@ -2027,10 +2033,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             sports_articles = [a for a in uk_with_images if a.get('category') == 'Sports']
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
             health_articles = [a for a in uk_with_images if a.get('category') == 'Health']
-            tech_articles = [a for a in uk_with_images if a.get('category') == 'Tech']
+            tech_articles = [a for a in uk_with_images if a.get('category') in ['Tech', 'AI']]
             science_articles = [a for a in uk_with_images if a.get('category') == 'Science']
             entertainment_articles = [a for a in uk_with_images if a.get('category') == 'Entertainment']
-            uk_news_articles = [a for a in uk_with_images if a.get('category') in ['UK News', 'Local News'] or a.get('category') not in ['Sports', 'Business', 'Health', 'Tech', 'Science', 'Entertainment']]
+            uk_news_articles = [a for a in uk_with_images if a.get('category') == 'UK News' and any(k in (a.get('title','') + a.get('summary','')).lower() for k in ['ai','technology','tech','digital','cyber','data','economy','inflation','interest rate','bank of england'])]
             
             logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(health_articles)} Health, {len(tech_articles)} Tech, {len(science_articles)} Science, {len(entertainment_articles)} Entertainment, {len(sports_articles)} Sports")
             
@@ -2091,7 +2097,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 return imported_count
             
             # Import UK News articles
-            uk_imported = await import_category_articles(uk_news_articles, "UK News", request.uk_articles, "uk_imported")
+            uk_imported = 0  # Disabled generic UK News for AI/Tech focus
             
             # Import Business articles (FREE from RSS)
             business_imported = await import_category_articles(business_articles, "Business", request.business_articles, "business_imported")
@@ -11747,4 +11753,13 @@ async def admin_creds_check():
         "password_sha256": sha256(p),
     }
 
-
+# ==========================
+# Local feeds debug endpoint
+# ==========================
+@app.get("/api/local-feeds-only")
+async def api_local_feeds_only(limit: int = 200):
+    articles = await news_feed_service.fetch_local_feeds_only()
+    # Optional cap for easier debugging
+    if limit and limit > 0:
+        articles = articles[:limit]
+    return {"count": len(articles), "articles": articles}

@@ -33,6 +33,23 @@ function isLocal(a) {
   return cat.includes("local") || scope.includes("cheshire");
 }
 
+function isAiTechScience(a) {
+  const cat = String(a?.category || "").toLowerCase();
+  const sec = String(a?.section || "").toLowerCase();
+  // backend: category may be AI/Tech/Science, and ai feed uses section ai-*
+  if (sec.startsWith("ai-")) return true;
+  if (cat.includes("ai") || cat.includes("tech") || cat.includes("science")) return true;
+  // fallback keyword match
+  const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+  return /\b(ai|artificial intelligence|chatgpt|openai|gemini|llm|model|chip|gpu|nvidia|amd|intel|cyber|security|hack|breach|data|cloud|saas|robot)\b/.test(t);
+}
+
+function isAiTechFeatured(a) {
+  // optionally allow manual pinning via featured=true, but still prefer AI/Tech/Science first
+  return isAiTechScience(a) || Boolean(a?.featured);
+}
+
+
 function isFeatured(a) {
   return Boolean(a?.featured);
 }
@@ -111,7 +128,7 @@ export default function HomePageV1() {
     };
 
     // 1) Hero
-    const heroArticle = newestFirst.find(isLocal) || newestFirst[0] || null;
+    const heroArticle = newestFirst.find(isAiTechScience) || newestFirst.find(isLocal) || newestFirst[0] || null;
     if (heroArticle) mark(heroArticle);
 
     // 2) Top Stories (4) — local-first featured, excluding hero and any dupes
@@ -123,14 +140,21 @@ export default function HomePageV1() {
       topStoriesCards.push(toCard(a, `top-${topStoriesCards.length}`));
     };
 
-    // Pass 1: Local featured first
+    // Pass 1: AI/Tech/Science first
+    for (const a of newestFirst) {
+      if (topStoriesCards.length >= 4) break;
+      if (!isAiTechFeatured(a)) continue;
+      pushTop(a);
+    }
+
+    // Pass 2: Local next
     for (const a of newestFirst) {
       if (topStoriesCards.length >= 4) break;
       if (!isLocal(a)) continue;
       pushTop(a);
     }
 
-    // Pass 2: Any featured to fill remaining slots
+    // Pass 3: Fill remaining slots with anything
     for (const a of newestFirst) {
       if (topStoriesCards.length >= 4) break;
       pushTop(a);
@@ -207,14 +231,21 @@ export default function HomePageV1() {
       latestCards.push(toCard(a, `latest-${latestCards.length}`));
     };
 
-    // Pass 1: Prefer Local for the first ~7 slots
+    // Pass 1: Prefer AI/Tech/Science for the first 8 slots
+    for (const a of newestFirst) {
+      if (latestCards.length >= 8) break;
+      if (!isAiTechScience(a)) continue;
+      pushLatest(a);
+    }
+
+    // Pass 2: Add Local for the next 4 slots
     for (const a of newestFirst) {
       if (latestCards.length >= 12) break;
       if (!isLocal(a)) continue;
       pushLatest(a);
     }
 
-    // Pass 2: Fill remaining with anything else
+    // Pass 3: Fill remaining with anything else
     for (const a of newestFirst) {
       if (latestCards.length >= 12) break;
       pushLatest(a);

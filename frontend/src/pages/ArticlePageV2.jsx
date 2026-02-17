@@ -272,21 +272,6 @@ export default function ArticlePageV2({ categories }) {
                   </p>
                 </div>
               )}
-  {(article.sourceUrl || article.source_url || article.link || article.url) && (
-    <>{" · "}
-      <a
-        href={article.sourceUrl || article.source_url || article.link || article.url}
-        target="_blank"
-        rel="nofollow noopener noreferrer"
-        className="hover:text-muted-foreground underline decoration-dotted underline-offset-2"
-      >
-        View source
-      </a>
-    </>
-  )}
-</p>
-                </div>
-              )}
             </article>
 
             {/* Sidebar */}

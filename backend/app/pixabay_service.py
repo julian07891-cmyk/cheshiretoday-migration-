@@ -12,9 +12,16 @@ import random
 from typing import Optional, Set
 from dotenv import load_dotenv
 
-# Load .env from the backend directory
-load_dotenv('/app/backend/.env')
+# --- dotenv: only for local dev ---
+IS_RENDER = bool(
+    os.getenv("RENDER")
+    or os.getenv("RENDER_SERVICE_ID")
+    or os.getenv("RENDER_EXTERNAL_URL")
+)
+if not IS_RENDER:
 
+# Load .env from the backend directory
+    load_dotenv('/app/backend/.env', override=False)
 logger = logging.getLogger(__name__)
 
 

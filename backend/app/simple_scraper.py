@@ -4,22 +4,23 @@ from typing import Dict, Optional
 from urllib.parse import urlparse
 
 import requests
-
-
+import html as html_lib
 # Basic, dependency-light HTML -> text extraction.
 # Tries <article>, then <main>, then <body>. Removes scripts/styles/nav/footer headers.
 # Returns clean text + basic metadata.
-def _strip_tags(html: str) -> str:
-    # Remove scripts/styles/noscript
-    html = re.sub(r"(?is)<(script|style|noscript|svg|canvas).*?>.*?</\1>", " ", html)
+def _strip_tags(html_text: str) -> str:
+    # Remove scripts/styles/noscript + some heavy non-text elements
+    html_text = re.sub(r"(?is)<(script|style|noscript|svg|canvas).*?>.*?</\\1>", " ", html_text)
     # Remove common junk blocks (best-effort)
-    html = re.sub(r"(?is)<(nav|footer|header|aside).*?>.*?</\1>", " ", html)
+    html_text = re.sub(r"(?is)<(nav|footer|header|aside).*?>.*?</\\1>", " ", html_text)
     # Convert <br> and </p> to newlines
-    html = re.sub(r"(?i)<br\s*/?>", "\n", html)
-    html = re.sub(r"(?i)</p\s*>", "\n\n", html)
+    html_text = re.sub(r"(?i)<br\\s*/?>", "\\n", html_text)
+    html_text = re.sub(r"(?i)</p\\s*>", "\\n\\n", html_text)
     # Drop all remaining tags
-    text = re.sub(r"(?s)<.*?>", " ", html)
-    # Decode a few common entities
+    text = re.sub(r"(?s)<.*?>", " ", html_text)
+
+    # Decode entities (e.g. &#x27;) and normalize a few common ones
+    text = html_lib.unescape(text)
     text = (
         text.replace("&nbsp;", " ")
             .replace("&amp;", "&")
@@ -28,11 +29,16 @@ def _strip_tags(html: str) -> str:
             .replace("&lt;", "<")
             .replace("&gt;", ">")
     )
+
+    # Remove common invisible junk chars (ZWSP/ZWNJ/BOM)
+    text = text.replace("\\u200c", "").replace("\\u200b", "").replace("\\ufeff", "")
+
     # Collapse whitespace
-    text = re.sub(r"[ \t\r\f\v]+", " ", text)
-    text = re.sub(r"\n\s+\n", "\n\n", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"[ \\t\\r\\f\\v]+", " ", text)
+    text = re.sub(r"\\n\\s+\\n", "\\n\\n", text)
+    text = re.sub(r"\\n{3,}", "\\n\\n", text)
     return text.strip()
+
 
 
 def _pick_main_block(html: str) -> str:
@@ -107,9 +113,52 @@ def scrape_article(url: str, timeout: int = 15) -> Dict[str, object]:
 
         picked = _pick_main_block(html)
         text = _strip_tags(picked)
+        # Remove common boilerplate lines (publisher UI chrome that makes content look unprofessional)
+        # We do this line-by-line to keep genuine paragraphs intact.
+        drop_patterns = [
+            r"^\s*comments\b.*$",
+            r"^\s*news\b\s*$",
+            r"^\s*live\b\s*$",
+            r"^\s*local democracy reporter\b.*$",
+            r"^\s*[0-2]?\d:\d\d,\s*\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}\s*$",  # e.g. 06:00, 15 Feb 2026
+            r"^\s*sign up\b.*$",
+            r"^\s*subscribe\b.*$",
+            r"^\s*newsletter\b.*$",
+            r"^\s*advertisement\b.*$",
+            r"^\s*advertising\b.*$",
+            r"^\s*cookie\b.*$",
+            r"^\s*privacy\b.*$",
+            r"^\s*read more\b.*$",
+            r"^\s*related articles\b.*$",
+            r"^\s*article continues below\b.*$",
+            r"^\s*follow us\b.*$",
+            r"^\s*share\b.*$",
+            r"^\s*get the .* briefing\b.*$",
+            r"^\s*email\s+direct\s+to\s+your\s+inbox\b.*$",
+        ]
 
-        # Remove common boilerplate lines
-        text = re.sub(r"(?im)^\s*(cookie|privacy|sign up|subscribe|advertisement|advertising)\b.*$", "", text).strip()
+        lines = [ln.strip() for ln in text.splitlines()]
+        cleaned = []
+        for ln in lines:
+            if not ln:
+                cleaned.append("")
+                continue
+            low = ln.lower()
+
+            if any(re.search(pat, ln, flags=re.IGNORECASE) for pat in drop_patterns):
+                continue
+
+            # Drop short bylines / UI crumbs
+            if low.startswith("by ") and len(ln) <= 80:
+                continue
+            if "cookie" in low and len(ln) <= 120:
+                continue
+
+            cleaned.append(ln)
+
+        text = "\n".join(cleaned)
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
 
         # Heuristic: require minimum length
         if len(text) < 600:

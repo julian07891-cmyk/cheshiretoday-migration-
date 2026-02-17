@@ -29,3 +29,9 @@ frontend/warmup.sh
 
 # local dev proxy disabled copy
 frontend/src/setupProxy.js.DISABLED
+
+# Local-only env (never commit)
+backend/.env
+backend/.env.*
+.env
+.env.*

@@ -401,30 +401,6 @@ RSS_FEEDS = {
         'location': 'warrington'
     },
 
-    "ai": [
-        {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"},
-        {"name": "Sky News Technology", "url": "https://feeds.skynews.com/feeds/rss/technology.xml"},
-        {"name": "The Guardian Technology", "url": "https://www.theguardian.com/uk/technology/rss"},
-    ],
-
-    "business": [
-        {"name": "BBC Business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
-        {"name": "Sky News Business", "url": "https://feeds.skynews.com/feeds/rss/business.xml"},
-        {"name": "The Guardian Business", "url": "https://www.theguardian.com/uk/business/rss"},
-    ],
-
-    "money": [
-        {"name": "The Guardian Money", "url": "https://www.theguardian.com/uk/money/rss"},
-    ],
-
-    "property": [
-        {"name": "The Guardian Property", "url": "https://www.theguardian.com/uk/money/property/rss"},
-        {"name": "The Guardian Housing Network", "url": "https://www.theguardian.com/housing-network/rss"},
-    ],
-
-    "tax": [
-        {"name": "HMRC (GOV.UK) Atom", "url": "https://www.gov.uk/government/organisations/hm-revenue-customs.atom"},
-    ],
 }
 
 # Cheshire-related keywords for filtering local news
@@ -548,7 +524,7 @@ def is_secondary_cheshire_article(title: str, content: str = '') -> bool:
 # More specific keywords should be used to avoid false positives
 
 # Limit RSS categories to reduce noise + DB growth (monetisation-first)
-ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business"}
+ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Science"}
 
 def _rss_category_guard(cat: str) -> str:
     c = (cat or "").strip()
@@ -830,13 +806,6 @@ class NewsFeedService:
         """Extract image URL from RSS item"""
         # Try media:content first
         media_content = item.find('.//media:content', namespaces)
-
-        # FULLTEXT_FALLBACK: if RSS snippet is too short, fetch article page and extract text
-        candidate_text = (content or summary or "").strip() if 'content' in locals() else (summary or "").strip()
-        if len(candidate_text) < 500:
-            full_text = _try_fetch_full_article_text(link)
-            if full_text and len(full_text) > len(candidate_text):
-                content = full_text
         if media_content is not None:
             url = media_content.get('url')
             if url:
@@ -852,14 +821,17 @@ class NewsFeedService:
         # Try enclosure (more permissive - check URL for image extensions)
         enclosure = item.find('enclosure')
         if enclosure is not None:
-            url = enclosure.get('url', '')
-            enc_type = enclosure.get('type', '')
+            url = enclosure.get('url', '') or ''
+            enc_type = enclosure.get('type', '') or ''
+            enc_type = enc_type.lower()
+
             # Accept if type contains 'image' OR URL looks like an image
-            if url and ('image' in enc_type or 
-                       any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif']) or
-                       'i2-prod' in url or 'ichef' in url or 'guim' in url):
+            looks_like_image = any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif'])
+            known_img_hosts = any(h in url.lower() for h in ['i2-prod', 'ichef', 'guim', 'static', 'cdn'])
+
+            if url and ('image' in enc_type or looks_like_image or known_img_hosts):
                 return url
-        
+
         # Try to find image in description
         description = item.find('description')
         if description is not None and description.text:
@@ -987,6 +959,8 @@ class NewsFeedService:
                                 'summary': description[:200] + '...' if len(description) > 200 else description,
                                 'source': source,
                                 'source_url': link,
+                                'link': link,
+                                'url': link,
                                 'category': category_guard(category),
                                 'image': image,
                                 'publishedDate': self._parse_date(pub_date),
@@ -1003,8 +977,8 @@ class NewsFeedService:
                                 article['location'] = article_location
                                 article['tags'].append(article_location.capitalize())
                             
-                            article.setdefault('source', feed.get('name') if isinstance(feed, dict) else feed_key)
-                            article.setdefault('summary', summary)
+                            article.setdefault('source', source)
+                            article.setdefault('summary', (locals().get('summary') or locals().get('description') or '').strip())
                             articles.append(article)
                             
                         except Exception as e:
@@ -1081,6 +1055,8 @@ class NewsFeedService:
                         'summary': description[:200] + '...' if len(description) > 200 else description,
                         'source': source,
                         'source_url': link,
+                        'link': link,
+                        'url': link,
                                 'category': category_guard(category),
                                 'image': image,
                         'publishedDate': self._parse_date(pub_date),
@@ -1098,8 +1074,8 @@ class NewsFeedService:
                         article['location'] = location
                         article['tags'].append(location.capitalize())
                     
-                    article.setdefault('source', feed.get('name') if isinstance(feed, dict) else feed_key)
-                    article.setdefault('summary', summary)
+                    article.setdefault('source', source)
+                    article.setdefault('summary', (locals().get('summary') or locals().get('description') or '').strip())
                     articles.append(article)
                     
                 except Exception as e:
@@ -1133,17 +1109,27 @@ class NewsFeedService:
         if hasattr(entry, 'enclosures') and entry.enclosures:
             for enclosure in entry.enclosures:
                 url = enclosure.get('href', '') or enclosure.get('url', '')
-                enc_type = enclosure.get('type', '')
-                if url and ('image' in enc_type or any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif']) or 'i2-prod' in url):
+                enc_type = (enclosure.get('type', '') or '').lower()
+
+                if not url:
+                    continue
+
+                lower_url = url.lower()
+
+                if (
+                    "image" in enc_type
+                    or any(ext in lower_url for ext in [".jpg", ".jpeg", ".png", ".webp", ".gif"])
+                    or any(domain in lower_url for domain in ["i2-prod", "ichef", "guim", "cdn"])
+                ):
                     return url
-        
+
         # Try to find image in summary/description
         summary = getattr(entry, 'summary', '') or getattr(entry, 'description', '')
         if summary:
             img_match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', summary)
             if img_match:
                 return img_match.group(1)
-        
+
         return None
     
     async def fetch_all_feeds(self) -> List[Dict[str, Any]]:

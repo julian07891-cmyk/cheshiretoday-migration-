@@ -11,8 +11,14 @@ import random
 from typing import Optional, List, Dict, Any, Set
 from dotenv import load_dotenv
 
-load_dotenv()
-
+# --- dotenv: only for local dev ---
+IS_RENDER = bool(
+    os.getenv("RENDER")
+    or os.getenv("RENDER_SERVICE_ID")
+    or os.getenv("RENDER_EXTERNAL_URL")
+)
+if not IS_RENDER:
+    load_dotenv(override=False)
 logger = logging.getLogger(__name__)
 
 
