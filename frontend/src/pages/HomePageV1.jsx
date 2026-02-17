@@ -76,6 +76,7 @@ function escapeRegExp(s) {
 /* ---------- page ---------- */
 export default function HomePageV1() {
   const [articles, setArticles] = useState([]);
+  const [guides, setGuides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -95,6 +96,19 @@ export default function HomePageV1() {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.articles || [];
         if (mounted) setArticles(list);
+
+        // Load AI Guides (authority pages) — separate fetch so homepage still works if it fails
+        try {
+          const gRes = await fetch(getApiUrl() + "/api/authority-pages");
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            const pages = Array.isArray(gData?.pages) ? gData.pages : [];
+            if (mounted) setGuides(pages);
+          }
+        } catch (_) {
+          // ignore
+        }
+
       } catch (e) {
         if (mounted) setErr(e?.message || "Failed to load");
       } finally {
