@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+// Build signature (forces fresh deploy bundles)
+const __GUIDES_PROMO_BUILD__ = "guides-promo-2026-02-17a";
+
+
 // Build signature to force fresh deploy bundles
-const __GUIDES_PROMO_BUILD__ = "guides-promo-0eb7a86";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
