@@ -53,6 +53,53 @@ function splitAttribution(rawContent) {
   return { main, attribution };
 }
 
+
+
+/* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
+const GuidePromoBlock = ({ category }) => {
+  if (!category) return null;
+
+  const cat = String(category).toLowerCase();
+
+  let slug = null;
+  let title = null;
+  let desc = null;
+
+  if (cat.includes("ai") || cat.includes("tech")) {
+    slug = "best-ai-tools-uk";
+    title = "Best AI Tools in the UK (2026 Guide)";
+    desc = "Full comparison of ChatGPT, Claude, Gemini and more →";
+  } else if (cat.includes("business") || cat.includes("productivity")) {
+    slug = "best-ai-productivity-tools-uk";
+    title = "Best AI Productivity Tools in the UK";
+    desc = "Top AI tools for work, business and creators →";
+  } else if (cat.includes("writing")) {
+    slug = "best-ai-writing-tools-uk";
+    title = "Best AI Writing Tools in the UK";
+    desc = "Compare ChatGPT, Claude, Jasper & Grammarly →";
+  }
+
+  if (!slug) return null;
+
+  return (
+    <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
+        🔎 In-depth Guide
+      </div>
+      <a
+        href={`/guides/${slug}`}
+        className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
+      >
+        {title}
+      </a>
+      <div className="text-sm mt-1 text-gray-700 dark:text-gray-400">
+        {desc}
+      </div>
+    </div>
+  );
+};
+
+
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
   const navigate = useNavigate();
@@ -272,7 +319,9 @@ export default function ArticlePageV2({ categories }) {
                   </p>
                 </div>
               )}
-            </article>
+            <GuidePromoBlock category={article?.category} />
+
+</article>
 
             {/* Sidebar */}
             <aside className="lg:col-span-4">
