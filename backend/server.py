@@ -8510,6 +8510,35 @@ async def generate_sitemap():
             xml_content += '    <priority>0.8</priority>\n'
             xml_content += '  </url>\n'
         
+
+        # Add published authority pages (AI monetisation guides)
+        try:
+            guides = await db.authority_pages.find(
+                {"status": "published"},
+                {"slug": 1, "updated_at": 1, "created_at": 1}
+            ).sort("updated_at", -1).limit(200).to_list(200)
+
+            for g in guides:
+                slug = (g.get("slug") or "").strip()
+                if not slug:
+                    continue
+
+                last = g.get("updated_at") or g.get("created_at") or datetime.utcnow()
+                if isinstance(last, str):
+                    try:
+                        last = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                    except Exception:
+                        last = datetime.utcnow()
+
+                xml_content += '  <url>\n'
+                xml_content += f'    <loc>{base_url}/guides/{saxutils.escape(slug)}</loc>\n'
+                xml_content += f'    <lastmod>{last.strftime("%Y-%m-%d")}</lastmod>\n'
+                xml_content += '    <changefreq>weekly</changefreq>\n'
+                xml_content += '    <priority>0.7</priority>\n'
+                xml_content += '  </url>\n'
+        except Exception as e:
+            logger.warning(f"Authority pages sitemap skipped: {e}")
+
         # Add all articles with images
         for article in articles:
             article_id = str(article['_id'])
@@ -11803,6 +11832,26 @@ async def api_local_feeds_only(limit: int = 200):
 
 
 @app.get("/api/authority-pages/{slug}")
+
+
+@app.get("/api/authority-pages")
+async def list_authority_pages(category: str | None = None, limit: int = 10):
+    query = {"status": "published"}
+    if category:
+        query["category"] = category
+
+    pages = await db.authority_pages.find(
+        query,
+        {"slug": 1, "title": 1, "updated_at": 1, "created_at": 1, "category": 1}
+    ).sort("updated_at", -1).limit(limit).to_list(limit)
+
+    for p in pages:
+        p["id"] = str(p.get("_id"))
+        p.pop("_id", None)
+
+    return {"count": len(pages), "pages": pages}
+
+
 async def get_authority_page(slug: str):
     page = await db.authority_pages.find_one({"slug": slug, "status": {"$in": ["draft", "published"]}})
     if not page:
