@@ -50,12 +50,13 @@ export default function AuthorityPage() {
   const tools = sections.filter((s) => s?.type === "tool");
 
   return (
-    <HomepageLayout>
-      <HomepageHeader breakingStories={[]} />
+    <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+      <HomepageLayout>
+        <HomepageHeader breakingStories={[]} />
 
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <div className="mb-4">
-          <Link to="/" className="text-sm text-blue-600 hover:underline">
+          <Link to="/" className="text-sm text-emerald-700 dark:text-emerald-400 hover:underline">
             ← Back to Home
           </Link>
         </div>
@@ -65,34 +66,34 @@ export default function AuthorityPage() {
 
         {!loading && !err && (
           <>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200 border border-slate-200/60 dark:border-gray-700">
                 {category}
               </span>
-              <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800">
+              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200 border border-slate-200/60 dark:border-gray-700">
                 {monetisation === "affiliate" ? "Affiliate" : monetisation}
               </span>
               {page?.status && (
-                <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800">
+                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200 border border-slate-200/60 dark:border-gray-700">
                   {String(page.status).toUpperCase()}
                 </span>
               )}
             </div>
 
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
               {title}
             </h1>
 
             {intro && (
-              <p className="mt-3 text-gray-700 dark:text-gray-300 leading-relaxed">
+              <p className="mt-4 text-base md:text-lg text-slate-700 dark:text-gray-300 leading-relaxed max-w-3xl">
                 {intro}
               </p>
             )}
 
             {monetisation === "affiliate" && (
-              <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-900">
+              <div className="mt-6 rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/70 dark:bg-amber-900/10 p-5">
                 <div className="text-sm font-semibold mb-1">Affiliate disclosure</div>
-                <div className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
                   Some links on this page may be affiliate links. If you use them, we may earn a commission at no extra cost to you.
                 </div>
                 <Link to="/affiliate-disclosure" className="inline-block mt-2 text-sm font-semibold text-blue-600 hover:underline">
@@ -102,8 +103,8 @@ export default function AuthorityPage() {
             )}
 
             {tools.length > 0 && (
-              <div className="mt-6 space-y-4">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              <div className="mt-10">
+                <h2 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white mb-4">
                   Recommended tools
                 </h2>
 
@@ -115,14 +116,14 @@ export default function AuthorityPage() {
                   return (
                     <div
                       key={name + idx}
-                      className="rounded-lg border border-gray-200 dark:border-gray-800 p-4"
+                      className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5 hover:bg-white transition"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-base font-semibold text-gray-900 dark:text-white">
+                          <div className="text-base md:text-lg font-semibold text-slate-900 dark:text-white">
                             {name}
                           </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                          <div className="text-sm text-slate-600 dark:text-gray-300 mt-1">
                             Rating: {rating > 0 ? `${rating}/5` : "—"}
                           </div>
                         </div>
@@ -132,7 +133,7 @@ export default function AuthorityPage() {
                             href={link}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-sm font-semibold text-blue-600 hover:underline whitespace-nowrap"
+                            className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:underline whitespace-nowrap"
                           >
                             Visit →
                           </a>
@@ -150,16 +151,17 @@ export default function AuthorityPage() {
 
             {tools.length === 0 && (
               <div className="mt-6 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-                <div className="text-sm text-gray-700 dark:text-gray-300">
+                <div className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
                   This guide is live, but tools are still being filled in.
                 </div>
               </div>
             )}
           </>
         )}
-      </div>
+        </div>
 
-      <NewsFooter />
-    </HomepageLayout>
+        <NewsFooter />
+      </HomepageLayout>
+    </div>
   );
 }
