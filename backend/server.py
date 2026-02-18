@@ -625,6 +625,20 @@ if FRONTEND_BUILD_DIR.exists():
     app.mount("/frontend", StaticFiles(directory=str(FRONTEND_BUILD_DIR)), name="frontend_build")
 
 @app.get("/", include_in_schema=False)
+
+
+# Serve root build assets like /logo.png, /favicon.ico, /manifest.json, etc.
+@app.get("/{asset_name}", include_in_schema=False)
+async def serve_root_asset(asset_name: str):
+    # Only allow simple filenames (no slashes)
+    if "/" in asset_name or ".." in asset_name:
+        return {"detail": "Not Found"}
+
+    asset_path = FRONTEND_BUILD_DIR / asset_name
+    if asset_path.exists() and asset_path.is_file():
+        return FileResponse(str(asset_path))
+    return {"detail": "Not Found"}
+
 async def serve_spa_root():
     index_path = _index_file()
     if index_path.exists():
