@@ -7,6 +7,12 @@ import React, { useEffect, useMemo, useState } from "react";
 const __GUIDES_PROMO_BUILD__ = "guides-promo-2026-02-17a";
 
 
+
+const FALLBACK_GUIDES = [
+  { slug: "best-ai-tools-uk", title: "Best AI Tools in the UK (2026 Guide)" },
+  { slug: "best-ai-writing-tools-uk", title: "Best AI Writing Tools in the UK (2026 Guide)" },
+  { slug: "best-ai-productivity-tools-uk", title: "Best AI Productivity Tools in the UK (2026 Guide)" },
+];
 // Build signature to force fresh deploy bundles
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
@@ -112,6 +118,34 @@ const GuidePromoBlock = ({ guides = [], category }) => {
 
 
 
+
+
+const GuidesInlinePromo = ({ guides }) => {
+  const list = Array.isArray(guides) ? guides : [];
+  if (!list.length) return null;
+
+  const g = list[0];
+  const slug = (g?.slug || "").trim();
+  const title = g?.title || "In-depth Guide";
+  if (!slug) return null;
+
+  return (
+    <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
+        In-depth Guide
+      </div>
+      <a
+        href={`/guides/${slug}`}
+        className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
+      >
+        {title}
+      </a>
+      <div className="text-sm mt-1 text-gray-700 dark:text-gray-400">
+        Full comparison and recommendations →
+      </div>
+    </div>
+  );
+};
 
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
@@ -322,6 +356,8 @@ const [loading, setLoading] = useState(true);
 
               <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {mainContent}
+
+              <GuidesInlinePromo guides={guides} />
               </div>
 
               {/* Source attribution */}
@@ -370,7 +406,7 @@ const [loading, setLoading] = useState(true);
                       AI Guides
                     </div>
                     <ul className="space-y-2 text-sm">
-                      {guides.slice(0, 3).map((g) => (
+                      {list.map((g) => (
                         <li key={g.slug}>
                           <a
                             href={`/guides/${g.slug}`}
@@ -387,7 +423,10 @@ const [loading, setLoading] = useState(true);
                   </div>
                 )}
 
-{/* Monetisation placeholder (sponsored/affiliate/ad) */}
+{
+                <GuidesInlinePromo guides={guides} />
+
+/* Monetisation placeholder (sponsored/affiliate/ad) */}
                 <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-foreground">Sponsored</div>
