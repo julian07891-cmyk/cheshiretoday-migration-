@@ -333,7 +333,7 @@ export default function ArticlePageV2({ categories }) {
               )}
 
               <div className="rounded-2xl bg-white/70 dark:bg-transparent border border-slate-200/60 dark:border-border p-5 md:p-8">
-                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-100 dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
+                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {safeText(mainContent)}
               </div>
 
