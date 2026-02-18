@@ -1,5 +1,25 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+const safeTextForRender = (v) => {
+  if (v === null || v === undefined) return "";
+  const t = typeof v;
+  if (t === "string") return v;
+  if (t === "number" || t === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map(safeTextForRender).filter(Boolean).join("\n");
+  if (t === "object") {
+    // Common shapes we might accidentally receive
+    if (typeof v.text === "string") return v.text;
+    if (typeof v.content === "string") return v.content;
+    if (typeof v.summary === "string") return v.summary;
+    try {
+      return JSON.stringify(v);
+    } catch (e) {
+      return "";
+    }
+  }
+  return "";
+};
+
 /* BUILD_STAMP: guides-promo-20260217-231725 */
 
 
@@ -290,7 +310,7 @@ const [loading, setLoading] = useState(true);
         <FestiveTheme />
 
         <Helmet>
-          <title>{article.title} | Cheshire Today</title>
+          <title>{safeTextForRender(article.title)} | Cheshire Today</title>
           <meta name="description" content={description} />
 
           <meta property="og:type" content="article" />
@@ -348,13 +368,13 @@ const [loading, setLoading] = useState(true);
               {article.image && (
                 <img
                   src={article.image}
-                  alt={article.title}
+                  alt={safeTextForRender(article.title)}
                   className="w-full rounded-xl mt-6 mb-6 object-cover"
                 />
               )}
 
               <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
-                {mainContent}
+                {safeTextForRender(mainContent)}
 
               <GuidesInlinePromo guides={guides} />
 
