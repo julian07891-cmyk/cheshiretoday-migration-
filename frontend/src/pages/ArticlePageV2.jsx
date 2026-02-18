@@ -122,30 +122,29 @@ const GuidePromoBlock = ({ guides = [], category }) => {
 
 const GuidesInlinePromo = ({ guides }) => {
   const list = Array.isArray(guides) ? guides : [];
-  if (!list.length) return null;
-
   const g = list[0];
-  const slug = (g?.slug || "").trim();
+  if (!g) return null;
+
   const title = g?.title || "In-depth Guide";
-  if (!slug) return null;
+  const slug = (g?.slug || "").trim();
+  const href = slug ? `/guides/${slug}` : "/guides/best-ai-tools-uk";
 
   return (
     <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
       <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
         In-depth Guide
       </div>
-      <a
-        href={`/guides/${slug}`}
-        className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
-      >
+      <a href={href} className="block font-bold text-blue-900 dark:text-blue-200 hover:underline">
         {title}
       </a>
       <div className="text-sm mt-1 text-gray-700 dark:text-gray-400">
-        Full comparison and recommendations →
+        Updated UK guide with recommendations and affiliate disclosures →
       </div>
     </div>
   );
 };
+
+
 
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
@@ -356,6 +355,8 @@ const [loading, setLoading] = useState(true);
 
               <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {mainContent}
+
+              <GuidesInlinePromo guides={guides} />
 
               {/* GuidesInlinePromo disabled for crash isolation */}
               </div>
