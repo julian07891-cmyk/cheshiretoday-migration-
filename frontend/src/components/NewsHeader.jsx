@@ -88,7 +88,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
       </div>
 
       {/* Main Header - Simplified on mobile */}
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 backdrop-blur-md bg-white/95 dark:bg-gray-800/95">
+      <header className="bg-slate-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 backdrop-blur-md bg-white/95 dark:bg-gray-800/95">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between py-3 md:py-4">
             {/* Logo - Compact on mobile */}
@@ -123,7 +123,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
                 
                 {/* Search Results Dropdown */}
                 {searchOpen && searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-50 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
                     {searchResults.map((article) => (
                       <div
                         key={article.id}
@@ -188,7 +188,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
             <div className="container mx-auto px-4 py-4">
               {/* Mobile Search */}
               <div className="relative mb-4">

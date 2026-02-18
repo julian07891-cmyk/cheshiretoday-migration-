@@ -290,27 +290,45 @@ return {
   const latestFeed = home.latestFeed;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
-    <div className="min-h-screen bg-slate-50 dark:bg-background">
+    <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
     <HomepageLayout>
       <HomepageHeader breakingStories={[]} />
 
       {loading && <div className="py-6">Loading…</div>}
       {!loading && err && <div className="py-6 text-red-600">{err}</div>}
 
-      {!loading && !err && hero && (
-        <HeroStoryCard
-          image={hero.image}
-          category={hero.category || "Local News"}
-          town={hero.location || "Cheshire"}
-          headline={hero.title || "Untitled"}
-          publishedTime={hero.publishedDate || ""}
-          readTime={3}
-          url={`/article/${articleKey(hero) || "hero"}`}
-        />
-      )}
-      {!loading && !err && topStories.length > 0 && (
-        <TopStoriesGrid stories={topStories} />
+      {!loading && !err && (
+        <section className="mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left: Hero (dominant) */}
+            <div className="lg:col-span-8">
+              {hero && (
+                <HeroStoryCard
+                  image={hero.image}
+                  category={hero.category || "Local News"}
+                  town={hero.location || "Cheshire"}
+                  headline={hero.title || "Untitled"}
+                  publishedTime={hero.publishedDate || ""}
+                  readTime={3}
+                  url={`/article/${articleKey(hero) || "hero"}`}
+                />
+              )}
+            </div>
+
+            {/* Right: Top Stories (compact) */}
+            <aside className="lg:col-span-4">
+              {topStories.length > 0 && (
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
+                    <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
+                  </div>
+                  <TopStoriesGrid stories={topStories} />
+                </div>
+              )}
+            </aside>
+          </div>
+        </section>
       )}
 
       {/* --- Main content: 2-column news layout --- */}
@@ -426,32 +444,39 @@ onClick={() =>
 
             {/* AI & Tech (only when backend classifies ai-*) */}
             {aiFeed.length > 0 && (
-              <section className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-                <h2 className="text-lg font-bold mb-3">AI & Tech</h2>
-                  {guides?.length > 0 && (
-                    <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        AI Guides
-                      </div>
+              <section className="rounded-lg border border-slate-200/50 dark:border-gray-800 p-4 bg-white/70 dark:bg-transparent">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold">AI & Tech</h2>
+                  <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
+                    Updated
+                  </span>
+                </div>
 
-                      <ul className="space-y-2 text-sm">
-                        {guides.slice(0, 3).map((g, idx) => (
-                          <li key={g?.id || g?.slug || idx}>
-                            <a
-                              href={`/guides/${encodeURIComponent(g.slug)}`}
-                              className="font-semibold text-blue-700 dark:text-blue-300 hover:underline"
-                            >
-                              🔥 {g.title || g.slug}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-
-                      <div className="text-xs mt-2 text-gray-600 dark:text-gray-400">
-                        UK-focused comparisons & best picks →
-                      </div>
+                {Array.isArray(guides) && guides.length > 0 && (
+                  <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      AI Guides
                     </div>
-                  )}
+
+                    <ul className="space-y-2 text-sm">
+                      {guides.slice(0, 3).map((g, idx) => (
+                        <li key={g?.id || g?.slug || idx}>
+                          <a
+                            href={`/guides/${encodeURIComponent(g.slug)}`}
+                            className="font-semibold text-blue-700 dark:text-blue-300 hover:underline"
+                          >
+                            🔥 {g.title || g.slug}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="text-xs mt-2 text-gray-600 dark:text-gray-400">
+                      UK-focused comparisons &amp; best picks →
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {aiFeed.map((a, i) => (
                     <CompactArticleCard
@@ -488,7 +513,7 @@ onClick={() =>
 
       <NewsFooter />
 </HomepageLayout>
-    </div>    </div>
+    </div>
 
   );
 }

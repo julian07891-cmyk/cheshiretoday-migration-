@@ -219,7 +219,7 @@ export default function ArticlePageV2({ categories }) {
   if (loading) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+        <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <NewsHeader
             categories={categories}
@@ -242,7 +242,7 @@ export default function ArticlePageV2({ categories }) {
   if (!article) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+        <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <Helmet>
             <title>Article Not Found | Cheshire Today</title>
@@ -279,7 +279,7 @@ export default function ArticlePageV2({ categories }) {
 
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+      <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
         <FestiveTheme />
 
         <Helmet>
@@ -333,7 +333,7 @@ export default function ArticlePageV2({ categories }) {
               )}
 
               <div className="rounded-2xl bg-white/70 dark:bg-transparent border border-slate-200/60 dark:border-border p-5 md:p-8">
-                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
+                <div className="prose prose-lg prose-slate max-w-2xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {safeText(mainContent)}
               </div>
 
