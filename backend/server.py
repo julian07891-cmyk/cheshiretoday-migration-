@@ -607,7 +607,10 @@ app.add_middleware(
 # -------------------------------
 from fastapi.responses import FileResponse
 
-FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
+# Prefer Render-copied build (backend/frontend_build); fallback to local frontend/build
+FRONTEND_BUILD_DIR = (ROOT_DIR / "frontend_build").resolve()
+if not FRONTEND_BUILD_DIR.exists():
+    FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
 
 # Serve static assets (JS/CSS/media)
 if FRONTEND_BUILD_DIR.exists():

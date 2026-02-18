@@ -1,71 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-
-// ---- safe render helpers (prevents React #31 from rendering objects) ----
-const __RT__ = (v) => {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  try { return JSON.stringify(v); } catch (e) { return String(v); }
-};
-
-const safeTextForRender = (v) => {
-  if (v === null || v === undefined) return "";
-  const t = typeof v;
-  if (t === "string") return v;
-  if (t === "number" || t === "boolean") return String(v);
-  if (Array.isArray(v)) return v.map(safeTextForRender).filter(Boolean).join("\n");
-  if (t === "object") {
-    // Common shapes we might accidentally receive
-    if (typeof v.text === "string") return v.text;
-    if (typeof v.content === "string") return v.content;
-    if (typeof v.summary === "string") return v.summary;
-    try {
-      return JSON.stringify(v);
-    } catch (e) {
-      return "";
-    }
-  }
-  return "";
-};
-
-/* BUILD_STAMP: guides-promo-20260217-231725 */
-
-
-// Build signature (forces fresh deploy bundles)
-const __GUIDES_PROMO_BUILD__ = "guides-promo-2026-02-17a";
-
-
-
-
-// Convert unknown values into safe renderable text (prevents React #31 from rendering objects)
-const safeText = (v) => {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (typeof v === "object") {
-    if (typeof v.title === "string") return v.title;
-    if (typeof v.name === "string") return v.name;
-    if (typeof v.content === "string") return v.content;
-    if (typeof v.summary === "string") return v.summary;
-    try {
-      return JSON.stringify(v);
-    } catch (e) {
-      return "";
-    }
-  }
-  try {
-    return String(v);
-  } catch (e) {
-    return "";
-  }
-};
-
-const FALLBACK_GUIDES = [
-  { slug: "best-ai-tools-uk", title: "Best AI Tools in the UK (2026 Guide)" },
-  { slug: "best-ai-writing-tools-uk", title: "Best AI Writing Tools in the UK (2026 Guide)" },
-  { slug: "best-ai-productivity-tools-uk", title: "Best AI Productivity Tools in the UK (2026 Guide)" },
-];
-// Build signature to force fresh deploy bundles
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
@@ -80,8 +13,36 @@ import { toast } from "../hooks/use-toast.js";
 import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
 
+/**
+ * Convert unknown values to a safe string for React rendering.
+ * Prevents React error: "Objects are not valid as a React child" (React #31).
+ */
+function safeText(v) {
+  if (v == null) return "";
+  const t = typeof v;
+  if (t === "string") return v;
+  if (t === "number" || t === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map(safeText).filter(Boolean).join("\n");
+  if (t === "object") {
+    // Common backend shapes
+    if (typeof v.text === "string") return v.text;
+    if (typeof v.content === "string") return v.content;
+    if (typeof v.summary === "string") return v.summary;
+    if (typeof v.title === "string") return v.title;
+    if (typeof v.name === "string") return v.name;
+    return "";
+  }
+  try {
+    return String(v);
+  } catch (_) {
+    return "";
+  }
+}
+
 function formatDateTime(dateString) {
+  if (!dateString) return "";
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("en-GB", {
     weekday: "long",
     day: "numeric",
@@ -92,32 +53,23 @@ function formatDateTime(dateString) {
   });
 }
 
-
 function buildDescription(article) {
-  const summary = safeText(article?.summary);
-  if (summary.trim().length >= 40) return summary.trim().slice(0, 200);
+  const summary = safeText(article?.summary).trim();
+  if (summary.length >= 40) return summary.slice(0, 200);
   return safeText(article?.content).trim().slice(0, 200);
 }
 
-// Shrink the “originally published by …” block so it doesn’t distract.
-// Works whether backend appended it as plain text lines or a paragraph.
+// Split out any appended attribution block so it doesn't dominate the article body.
 function splitAttribution(rawContent) {
   const content = safeText(rawContent);
-
   const marker = "This article was originally published by";
   const idx = content.indexOf(marker);
-
-  if (idx === -1) {
-    return { main: content, attribution: "" };
-  }
-
-  const main = content.slice(0, idx).trim();
-  const attribution = content.slice(idx).trim();
-
-  return { main, attribution };
+  if (idx === -1) return { main: content, attribution: "" };
+  return {
+    main: content.slice(0, idx).trim(),
+    attribution: content.slice(idx).trim(),
+  };
 }
-
-
 
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
 const GuidePromoBlock = ({ guides = [], category }) => {
@@ -126,34 +78,32 @@ const GuidePromoBlock = ({ guides = [], category }) => {
   const cat = String(category || "").toLowerCase();
 
   const preferSlug = () => {
-    // Category → best-fit guide mapping (fallback-friendly)
     if (cat.includes("ai") || cat.includes("tech")) return "best-ai-tools-uk";
-    if (cat.includes("business") || cat.includes("finance") || cat.includes("money")) return "best-ai-productivity-tools-uk";
+    if (cat.includes("business") || cat.includes("finance") || cat.includes("money"))
+      return "best-ai-productivity-tools-uk";
     if (cat.includes("writing")) return "best-ai-writing-tools-uk";
-    // For Local News / UK News / anything else: still promote the main AI tools guide (fastest monetisation)
     return "best-ai-tools-uk";
   };
 
   const preferred = preferSlug();
-
   const preferredGuide = guides.find((g) => String(g?.slug || "") === preferred);
   const others = guides.filter((g) => String(g?.slug || "") !== preferred);
   const ordered = [preferredGuide, ...others].filter(Boolean).slice(0, 3);
 
   return (
     <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">
-        🔎 AI Guides
-      </div>
-
+      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">🔎 AI Guides</div>
       <div className="space-y-2">
         {ordered.map((g) => (
-          <div key={g.slug} className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-transparent p-3">
+          <div
+            key={g.slug}
+            className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-transparent p-3"
+          >
             <a
               href={`/guides/${g.slug}`}
               className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
             >
-              {g.title || g.slug}
+              {safeText(g.title) || g.slug}
             </a>
             <div className="text-xs mt-1 text-gray-700 dark:text-gray-400">
               Updated: {String(g.updated_at || g.created_at || "").slice(0, 10)}
@@ -165,24 +115,18 @@ const GuidePromoBlock = ({ guides = [], category }) => {
   );
 };
 
-
-
-
-
 const GuidesInlinePromo = ({ guides }) => {
   const list = Array.isArray(guides) ? guides : [];
   const g = list[0];
   if (!g) return null;
 
-  const title = g?.title || "In-depth Guide";
-  const slug = (g?.slug || "").trim();
+  const title = safeText(g?.title) || "In-depth Guide";
+  const slug = String(g?.slug || "").trim();
   const href = slug ? `/guides/${slug}` : "/guides/best-ai-tools-uk";
 
   return (
     <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
-        In-depth Guide
-      </div>
+      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">In-depth Guide</div>
       <a href={href} className="block font-bold text-blue-900 dark:text-blue-200 hover:underline">
         {title}
       </a>
@@ -193,32 +137,31 @@ const GuidesInlinePromo = ({ guides }) => {
   );
 };
 
-
-
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
   const navigate = useNavigate();
 
   const [article, setArticle] = useState(null);
-  
   const [guides, setGuides] = useState([]);
-const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
   const publicUrl =
-    process.env.REACT_APP_PUBLIC_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "");
+    process.env.REACT_APP_PUBLIC_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
   const description = useMemo(() => buildDescription(article), [article]);
-
-
   const safeTitle = useMemo(() => safeText(article?.title), [article]);
-  const safeBody = useMemo(() => safeText(article?.content ?? article?.summary ?? ""), [article]);
 
-  const { main: mainContent, attribution } = useMemo(
-    () => splitAttribution(safeBody),
-    [article]
-  );
+  const rawBody = useMemo(() => {
+    const c = article?.content;
+    const s = article?.summary;
+    if (typeof c === "string" && c.trim()) return c;
+    if (typeof s === "string" && s.trim()) return s;
+    // last-resort stringify avoidance: return empty instead of rendering objects
+    return "";
+  }, [article]);
+
+  const { main: mainContent, attribution } = useMemo(() => splitAttribution(rawBody), [rawBody]);
 
   useEffect(() => {
     let mounted = true;
@@ -230,26 +173,25 @@ const [loading, setLoading] = useState(true);
 
         const API_BASE = getApiUrl().replace(/\/$/, "");
         const res = await fetch(`${API_BASE}/api/articles/${encodeURIComponent(articleId)}`);
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
         if (!mounted) return;
 
         setArticle(data);
-      
-        // Load AI Guides (authority pages) — separate fetch so article page still works if it fails
+
+        // Load AI Guides (authority pages). Non-blocking: page still works if this fails.
         try {
-          const gRes = await fetch(getApiUrl() + "/api/authority-pages");
+          const gRes = await fetch(getApiUrl().replace(/\/$/, "") + "/api/authority-pages");
           if (gRes.ok) {
             const gData = await gRes.json();
             const pages = Array.isArray(gData?.pages) ? gData.pages : [];
-            setGuides(pages);
+            if (mounted) setGuides(pages);
           }
         } catch (_) {
           // ignore
         }
-} catch (e) {
+      } catch (e) {
         if (!mounted) return;
         console.error("Error fetching article:", e);
         setArticle(null);
@@ -270,10 +212,7 @@ const [loading, setLoading] = useState(true);
     const shareUrl = `${publicUrl}/article/${articleId}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareUrl);
-      toast({
-        title: "Link Copied!",
-        description: "Article link copied to clipboard!",
-      });
+      toast({ title: "Link Copied!", description: "Article link copied to clipboard!" });
     }
   };
 
@@ -305,7 +244,6 @@ const [loading, setLoading] = useState(true);
       <HelmetProvider>
         <div className="min-h-screen bg-background">
           <FestiveTheme />
-
           <Helmet>
             <title>Article Not Found | Cheshire Today</title>
             <meta name="robots" content="noindex, nofollow" />
@@ -337,13 +275,15 @@ const [loading, setLoading] = useState(true);
     );
   }
 
+  const published = formatDateTime(article.publishedDate || article.published_at || article.created_at);
+
   return (
     <HelmetProvider>
       <div className="min-h-screen bg-background">
         <FestiveTheme />
 
         <Helmet>
-          <title>{safeTextForRender(article.title)} | Cheshire Today</title>
+          <title>{safeTitle || "Article"} | Cheshire Today</title>
           <meta name="description" content={description} />
 
           <meta property="og:type" content="article" />
@@ -366,34 +306,20 @@ const [loading, setLoading] = useState(true);
           onSearch={() => {}}
         />
 
-        {/* Layout B: content + right sidebar */}
         <main className="container mx-auto px-4 py-10 max-w-6xl">
           <div className="mb-6">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-sm text-emerald-700 hover:underline"
-            >
+            <button onClick={() => navigate(-1)} className="text-sm text-emerald-700 hover:underline">
               ← Back
             </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Main article */}
             <article className="lg:col-span-8">
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-                {safeTitle}
-              </h1>
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">{safeTitle}</h1>
 
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
-                <span>
-                  {formatDateTime(
-                    article.publishedDate || article.published_at || article.created_at
-                  )}
-                </span>
-                <button
-                  onClick={handleShare}
-                  className="ml-auto text-emerald-700 hover:underline text-sm"
-                >
+                <span>{published}</span>
+                <button onClick={handleShare} className="ml-auto text-emerald-700 hover:underline text-sm">
                   Share
                 </button>
               </div>
@@ -401,20 +327,17 @@ const [loading, setLoading] = useState(true);
               {article.image && (
                 <img
                   src={article.image}
-                  alt={safeTextForRender(article.title)}
+                  alt={safeTitle || "Article image"}
                   className="w-full rounded-xl mt-6 mb-6 object-cover"
                 />
               )}
 
               <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
-                {safeTextForRender(mainContent)}
+                {safeText(mainContent)}
+              </div>
 
               <GuidesInlinePromo guides={guides} />
 
-              {/* GuidesInlinePromo disabled for crash isolation */}
-              </div>
-
-              {/* Source attribution */}
               {(article.source || article.source_url) && (
                 <div className="mt-8 pt-6 border-t border-border">
                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -426,24 +349,26 @@ const [loading, setLoading] = useState(true);
                         rel="nofollow noopener noreferrer"
                         className="font-medium text-foreground hover:underline"
                       >
-                        {article.source || "View original"}
+                        {safeText(article.source) || "View original"}
                       </a>
                     ) : (
-                      <span className="font-medium text-foreground">
-                        {article.source}
-                      </span>
+                      <span className="font-medium text-foreground">{safeText(article.source)}</span>
                     )}
                   </p>
+
+                  {attribution ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {safeText(attribution)}
+                    </p>
+                  ) : null}
                 </div>
               )}
-            <GuidePromoBlock guides={guides} category={article?.category} />
 
-</article>
+              <GuidePromoBlock guides={guides} category={article?.category} />
+            </article>
 
-            {/* Sidebar */}
             <aside className="lg:col-span-4">
               <div className="sticky top-6 space-y-6">
-                {/* Related articles in sidebar format */}
                 <RelatedArticles
                   articleId={articleId}
                   variant="sidebar"
@@ -451,36 +376,27 @@ const [loading, setLoading] = useState(true);
                   onArticleClick={(a) => navigate(`/article/${a.id}`)}
                 />
 
-
-                
-                {/* AI Guides (authority pages) */}
                 {Array.isArray(guides) && guides.length > 0 && (
                   <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-900/10 p-4">
                     <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
                       AI Guides
                     </div>
                     <ul className="space-y-2 text-sm">
-                      {(Array.isArray(guides) ? guides : []).map((g) => (
+                      {guides.map((g) => (
                         <li key={g.slug}>
                           <a
                             href={`/guides/${g.slug}`}
                             className="font-semibold text-foreground hover:underline underline-offset-2"
                           >
-                            🔥 {g.title || g.slug}
+                            🔥 {safeText(g.title) || g.slug}
                           </a>
                         </li>
                       ))}
                     </ul>
-                    <div className="text-xs mt-3 text-muted-foreground">
-                      UK-focused comparisons &amp; best picks →
-                    </div>
+                    <div className="text-xs mt-3 text-muted-foreground">UK-focused comparisons &amp; best picks →</div>
                   </div>
                 )}
 
-{
-                {/* GuidesInlinePromo disabled for crash isolation */}
-
-/* Monetisation placeholder (sponsored/affiliate/ad) */}
                 <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-foreground">Sponsored</div>
@@ -495,53 +411,57 @@ const [loading, setLoading] = useState(true);
                   </a>
                 </div>
 
-                  {/* Newsletter (non-intrusive, keeps readers coming back) */}
-  <div className="rounded-xl border border-border bg-card p-4">
-    <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
-    <p className="text-sm text-muted-foreground mb-3">A short email with the top local stories — no spam.</p>
-    <form onSubmit={(e) => { e.preventDefault(); toast({ title: "Coming soon", description: "Newsletter signup will be enabled shortly." }); }} className="flex gap-2">
-      <input
-        type="email"
-        required
-        placeholder="you.com"
-        className="flex-1 rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 placeholder:text-muted-foreground"
-      />
-      <button
-        type="submit"
-        className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-      >
-        Sign up
-      </button>
-    </form>
-    <p className="mt-2 text-xs text-muted-foreground">You can unsubscribe anytime.</p>
-  </div>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
+                  <p className="text-sm text-muted-foreground mb-3">A short email with the top local stories — no spam.</p>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      toast({ title: "Coming soon", description: "Newsletter signup will be enabled shortly." });
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="email"
+                      required
+                      placeholder="you@example.com"
+                      className="flex-1 rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 placeholder:text-muted-foreground"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                    >
+                      Sign up
+                    </button>
+                  </form>
+                  <p className="mt-2 text-xs text-muted-foreground">You can unsubscribe anytime.</p>
+                </div>
 
-  {/* Explore by area (internal routes) */}
-  <div className="rounded-xl border border-border bg-card p-4">
-    <h3 className="text-sm font-semibold text-foreground mb-3">Local news by area</h3>
-    <div className="flex flex-wrap gap-2">
-      {[
-        "chester",
-        "crewe",
-        "warrington",
-        "macclesfield",
-        "wilmslow",
-        "northwich",
-        "congleton",
-        "nantwich",
-        "knutsford",
-        "ellesmere-port",
-      ].map((slug) => (
-        <button
-          key={slug}
-          onClick={() => navigate(`/`)}
-          className="rounded-full border border-input bg-background px-3 py-1 text-xs text-foreground hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
-        >
-          {slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-        </button>
-      ))}
-    </div>
-  </div>
+                <div className="rounded-xl border border-border bg-card p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Local news by area</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      "chester",
+                      "crewe",
+                      "warrington",
+                      "macclesfield",
+                      "wilmslow",
+                      "northwich",
+                      "congleton",
+                      "nantwich",
+                      "knutsford",
+                      "ellesmere-port",
+                    ].map((slug) => (
+                      <button
+                        key={slug}
+                        onClick={() => navigate(`/`)}
+                        className="rounded-full border border-input bg-background px-3 py-1 text-xs text-foreground hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
+                      >
+                        {slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </aside>
           </div>
