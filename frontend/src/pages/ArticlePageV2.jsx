@@ -406,7 +406,7 @@ const [loading, setLoading] = useState(true);
                       AI Guides
                     </div>
                     <ul className="space-y-2 text-sm">
-                      {list.map((g) => (
+                      {(Array.isArray(guides) ? guides : []).map((g) => (
                         <li key={g.slug}>
                           <a
                             href={`/guides/${g.slug}`}
