@@ -357,7 +357,7 @@ const [loading, setLoading] = useState(true);
               <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {mainContent}
 
-              <GuidesInlinePromo guides={guides} />
+              {/* GuidesInlinePromo disabled for crash isolation */}
               </div>
 
               {/* Source attribution */}
@@ -424,7 +424,7 @@ const [loading, setLoading] = useState(true);
                 )}
 
 {
-                <GuidesInlinePromo guides={guides} />
+                {/* GuidesInlinePromo disabled for crash isolation */}
 
 /* Monetisation placeholder (sponsored/affiliate/ad) */}
                 <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
