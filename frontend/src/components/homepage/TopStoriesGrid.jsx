@@ -15,7 +15,7 @@ export default function TopStoriesGrid({ stories = [] }) {
           <Link
             key={story.id || story.url || story.title || idx}
             to={story.url || `/article/${story._id || story.id}` }
-            className="group block overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800"
+            className="group block overflow-hidden rounded-lg border border-slate-200/50 dark:border-gray-800"
           >
             {story.image && (
               <img
