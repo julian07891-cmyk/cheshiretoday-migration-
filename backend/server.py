@@ -606,25 +606,44 @@ app.add_middleware(
 # Serve React (CRA) build
 # -------------------------------
 from fastapi.responses import FileResponse
+from fastapi import Request
 
 # Prefer Render-copied build (backend/frontend_build); fallback to local frontend/build
 FRONTEND_BUILD_DIR = (ROOT_DIR / "frontend_build").resolve()
 if not FRONTEND_BUILD_DIR.exists():
     FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
 
-# Serve static assets (JS/CSS/media)
-if FRONTEND_BUILD_DIR.exists():
+def _index_file():
+    return FRONTEND_BUILD_DIR / "index.html"
+
+# Serve static assets (CRA puts bundles under /static)
+if (FRONTEND_BUILD_DIR / "static").exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_BUILD_DIR / "static")), name="static")
+
+# Serve other build assets at root (favicon.ico, manifest.json, etc.)
+if FRONTEND_BUILD_DIR.exists():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_BUILD_DIR)), name="frontend_build")
 
 @app.get("/", include_in_schema=False)
 async def serve_spa_root():
-    index_path = FRONTEND_BUILD_DIR / "index.html"
+    index_path = _index_file()
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return {"detail": "Frontend build not found"}
+
+# Catch-all: serve SPA for client-side routes (but never for /api or /static or /frontend)
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_spa_routes(full_path: str, request: Request):
+    if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
+        return {"detail": "Not Found"}
+    index_path = _index_file()
     if index_path.exists():
         return FileResponse(str(index_path))
     return {"detail": "Frontend build not found"}
 
 
 @app.on_event("startup")
+
 async def startup_event():
     if not (LOCAL_DEV_NO_DB or db is None):
 
