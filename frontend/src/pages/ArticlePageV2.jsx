@@ -219,7 +219,7 @@ export default function ArticlePageV2({ categories }) {
   if (loading) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <NewsHeader
             categories={categories}
@@ -242,7 +242,7 @@ export default function ArticlePageV2({ categories }) {
   if (!article) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <Helmet>
             <title>Article Not Found | Cheshire Today</title>
@@ -279,7 +279,7 @@ export default function ArticlePageV2({ categories }) {
 
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-gray-900 dark:text-white">
         <FestiveTheme />
 
         <Helmet>
@@ -332,7 +332,8 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 
-              <div className="prose prose-lg max-w-none whitespace-pre-wrap dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
+              <div className="rounded-2xl bg-white/70 dark:bg-transparent border border-slate-200/60 dark:border-border p-5 md:p-8">
+                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-100 dark:prose-invert prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {safeText(mainContent)}
               </div>
 
@@ -365,6 +366,7 @@ export default function ArticlePageV2({ categories }) {
               )}
 
               <GuidePromoBlock guides={guides} category={article?.category} />
+              </div>
             </article>
 
             <aside className="lg:col-span-4">
@@ -471,5 +473,6 @@ export default function ArticlePageV2({ categories }) {
         <Toaster />
       </div>
     </HelmetProvider>
+
   );
 }
