@@ -28,6 +28,30 @@ const __GUIDES_PROMO_BUILD__ = "guides-promo-2026-02-17a";
 
 
 
+
+// Convert unknown values into safe renderable text (prevents React #31 from rendering objects)
+const safeText = (v) => {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "object") {
+    if (typeof v.title === "string") return v.title;
+    if (typeof v.name === "string") return v.name;
+    if (typeof v.content === "string") return v.content;
+    if (typeof v.summary === "string") return v.summary;
+    try {
+      return JSON.stringify(v);
+    } catch (e) {
+      return "";
+    }
+  }
+  try {
+    return String(v);
+  } catch (e) {
+    return "";
+  }
+};
+
 const FALLBACK_GUIDES = [
   { slug: "best-ai-tools-uk", title: "Best AI Tools in the UK (2026 Guide)" },
   { slug: "best-ai-writing-tools-uk", title: "Best AI Writing Tools in the UK (2026 Guide)" },
@@ -60,9 +84,6 @@ function formatDateTime(dateString) {
   });
 }
 
-function safeText(s) {
-  return (s || "").toString();
-}
 
 function buildDescription(article) {
   const summary = safeText(article?.summary);
@@ -182,8 +203,12 @@ const [loading, setLoading] = useState(true);
 
   const description = useMemo(() => buildDescription(article), [article]);
 
+
+  const safeTitle = useMemo(() => safeText(article?.title), [article]);
+  const safeBody = useMemo(() => safeText(article?.content ?? article?.summary ?? ""), [article]);
+
   const { main: mainContent, attribution } = useMemo(
-    () => splitAttribution(article?.content),
+    () => splitAttribution(safeBody),
     [article]
   );
 
@@ -315,13 +340,13 @@ const [loading, setLoading] = useState(true);
 
           <meta property="og:type" content="article" />
           <meta property="og:url" content={`${publicUrl}/article/${articleId}`} />
-          <meta property="og:title" content={article.title} />
+          <meta property="og:title" content={safeTitle} />
           <meta property="og:description" content={description} />
           {article.image && <meta property="og:image" content={article.image} />}
 
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:url" content={`${publicUrl}/article/${articleId}`} />
-          <meta name="twitter:title" content={article.title} />
+          <meta name="twitter:title" content={safeTitle} />
           <meta name="twitter:description" content={description} />
           {article.image && <meta name="twitter:image" content={article.image} />}
         </Helmet>
@@ -348,7 +373,7 @@ const [loading, setLoading] = useState(true);
             {/* Main article */}
             <article className="lg:col-span-8">
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-                {article.title}
+                {safeTitle}
               </h1>
 
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
