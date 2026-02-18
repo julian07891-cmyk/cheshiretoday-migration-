@@ -366,7 +366,7 @@ onClick={() =>
           </main>
 
           {/* Right: Sidebar widgets */}
-          <aside className="lg:col-span-4 space-y-8">
+          <aside className="lg:col-span-4 space-y-10 md:space-y-14">
             {/* Business & Money */}
             {financeFeed.length > 0 && (
               <>
