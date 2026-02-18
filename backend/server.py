@@ -630,21 +630,6 @@ async def serve_spa_root():
     if index_path.exists():
         return FileResponse(str(index_path))
     return {"detail": "Frontend build not found"}
-
-# Catch-all: serve SPA for client-side routes (but never for /api or /static or /frontend)
-@app.get("/{full_path:path}", include_in_schema=False)
-async def serve_spa_routes(full_path: str, request: Request):
-    if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
-        return {"detail": "Not Found"}
-    index_path = _index_file()
-    if index_path.exists():
-        return FileResponse(str(index_path))
-    return {"detail": "Frontend build not found"}
-
-
-@app.on_event("startup")
-
-async def startup_event():
     if not (LOCAL_DEV_NO_DB or db is None):
 
         await ensure_indexes()
@@ -11881,3 +11866,21 @@ async def get_authority_page(slug: str):
     page["id"] = str(page.get("_id"))
     page.pop("_id", None)
     return page
+
+# -------------------------------
+# SPA catch-all (MUST be last)
+# -------------------------------
+from fastapi import Request
+from fastapi.responses import FileResponse
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_catch_all(full_path: str, request: Request):
+    # Never handle API or static paths here
+    if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
+        return {"detail": "Not Found"}
+
+    index_path = FRONTEND_BUILD_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return {"detail": "Frontend build not found"}
+
