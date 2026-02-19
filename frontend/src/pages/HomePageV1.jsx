@@ -149,21 +149,21 @@ export default function HomePageV1() {
     const topStoriesCards = [];
 
     const pushTop = (a) => {
-      if (topStoriesCards.length >= 4) return;
+      if (topStoriesCards.length >= 7) return;
       if (!mark(a)) return;
       topStoriesCards.push(toCard(a, `top-${topStoriesCards.length}`));
     };
 
     // Pass 1: AI/Tech/Science first
     for (const a of newestFirst) {
-      if (topStoriesCards.length >= 4) break;
+      if (topStoriesCards.length >= 7) break;
       if (!isAiTechFeatured(a)) continue;
       pushTop(a);
     }
 
     // Pass 2: Local next
     for (const a of newestFirst) {
-      if (topStoriesCards.length >= 4) break;
+      if (topStoriesCards.length >= 7) break;
       const sec = String(a?.section || "").toLowerCase();
       if (!sec.startsWith("ai-")) continue;
       pushTop(a);
@@ -171,7 +171,7 @@ export default function HomePageV1() {
 
     // Pass 3: Fill remaining slots with anything
     for (const a of newestFirst) {
-      if (topStoriesCards.length >= 4) break;
+      if (topStoriesCards.length >= 7) break;
       pushTop(a);
     }
 
@@ -242,6 +242,26 @@ export default function HomePageV1() {
       financeArticles.push(a);
     }
 
+
+    // 4b) Mortgages & Savings (3) — keyword + section based, exclude used
+    const moneyFeed = [];
+
+    const isMoneyish = (a) => {
+      const sec = String(a?.section || "").toLowerCase();
+      if (["money", "tax", "property", "mortgages"].includes(sec)) return true;
+      const t = (String(a?.title || "") + " " + String(a?.summary || "")).toLowerCase();
+      return /\b(mortgage|mortgages|rate|rates|isa|savings|save|interest|remortgage|fixed\s*rate|tracker|stamp\s*duty|council\s*tax)\b/.test(t);
+    };
+
+    for (const a of newestFirst) {
+      if (moneyFeed.length >= 3) break;
+      const sec = String(a?.section || "").toLowerCase();
+      if (sec.startsWith("ai-")) continue; // keep this block focused
+      if (!isMoneyish(a)) continue;
+      if (!mark(a)) continue;
+      moneyFeed.push(a);
+    }
+
 // 5) Latest feed (12) — local-first, exclude used
     const latestCards = [];
 
@@ -279,6 +299,7 @@ return {
       mostReadFeed: mostReadCards,
       aiFeed: aiArticles,
       financeFeed: financeArticles,
+      moneyFeed: moneyFeed,
       latestFeed: latestCards,
     };
   }, [newestFirst]);
@@ -287,6 +308,7 @@ return {
   const topStories = home.topStories;
   const aiFeed = home.aiFeed;
   const financeFeed = home.financeFeed;
+  const moneyFeed = home.moneyFeed || [];
   const latestFeed = home.latestFeed;
 
   return (
@@ -303,7 +325,7 @@ return {
             {/* Left: Hero (dominant) */}
             <div className="lg:col-span-8">
               {hero && (
-                <HeroStoryCard
+                  <HeroStoryCard
                   image={hero.image}
                   category={hero.category || "Local News"}
                   town={hero.location || "Cheshire"}
@@ -313,6 +335,44 @@ return {
                   url={`/article/${articleKey(hero) || "hero"}`}
                 />
               )}
+
+{/* Monetisation strip (hero) */}
+              <div className="mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                  <a
+                    href="/guides/best-mortgage-rates-uk"
+                    className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Mortgage rates</div>
+                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">Compare UK deals →</div>
+                  </a>
+
+                  <a
+                    href="/guides/best-credit-cards-uk"
+                    className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Compare credit cards</div>
+                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">0% offers + rewards →</div>
+                  </a>
+
+                  <a
+                    href="/guides/best-savings-accounts-uk"
+                    className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+                  >
+                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
+                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Savings accounts</div>
+                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">Best easy-access picks →</div>
+                  </a>
+
+                </div>
+
+                <div className="mt-2 text-[11px] text-slate-500 dark:text-gray-400">
+                  We may earn a commission from affiliate links.
+                </div>
+              </div>
             </div>
 
             {/* Right: Top Stories (compact) */}
@@ -325,7 +385,8 @@ return {
                   </div>
                   <TopStoriesGrid stories={topStories} />
                 </div>
-              )}
+                                
+                )}
             </aside>
           </div>
         </section>
@@ -333,12 +394,12 @@ return {
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="-mt-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left: Latest feed */}
-          <main className="lg:col-span-8">
+          <main className="lg:col-span-8 lg:-mt-4">
             {latestFeed.length > 0 && (
               <section>
-                <h2 className="text-lg font-bold mb-3">Latest</h2>
+                <h2 className="text-lg font-bold mb-2">Latest</h2>
                 <div className="space-y-3">
                   {latestFeed.map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
@@ -374,7 +435,7 @@ onClick={() =>
                             View advertising options →
                           </a>
                         </div>
-                      )}
+                )}
 
 </div>
 ))}
@@ -385,10 +446,41 @@ onClick={() =>
 
           {/* Right: Sidebar widgets */}
           <aside className="lg:col-span-4 space-y-10 md:space-y-14">
+            {/* Mortgages & Savings (news cards) */}
+            {Array.isArray(moneyFeed) && moneyFeed.length > 0 && (
+              <section className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold">Mortgages &amp; Savings</h2>
+                  <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800">
+                    Money
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {moneyFeed.slice(0, 3).map((a, i) => (
+                    <CompactArticleCard
+                      key={a.id || a._id || i}
+                      onClick={() => navigate("/article/" + (a.id || a._id))}
+                      article={{
+                        title: a.title,
+                        content: a.summary || a.content || "",
+                        summary: a.summary || "",
+                        image: a.image,
+                        category: a.category || "Money",
+                        location: a.location || "Cheshire",
+                        publishedDate: a.publishedDate,
+                        readTime: 3,
+                        url: "/article/" + (a.id || a._id),
+                      }}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Business & Money */}
             {financeFeed.length > 0 && (
-              <>
-                <section className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+                <>
+<section className="rounded-lg border border-gray-200 dark:border-gray-800 p-4">
                   <h2 className="text-lg font-bold mb-3">Business & Money</h2>
                   <div className="space-y-3">
                     {financeFeed.map((a, i) => (
@@ -439,8 +531,9 @@ onClick={() =>
                     We may earn a commission if you use affiliate links.
                   </div>
                 </section>
-              </>
-            )}
+            
+</>
+)}
 
             {/* AI & Tech (only when backend classifies ai-*) */}
             {aiFeed.length > 0 && (
@@ -509,7 +602,7 @@ onClick={() =>
             </section>
           </aside>
         </div>
-      )}
+                )}
 
       <NewsFooter />
 </HomepageLayout>

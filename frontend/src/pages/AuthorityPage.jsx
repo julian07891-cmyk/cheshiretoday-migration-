@@ -85,7 +85,7 @@ export default function AuthorityPage() {
             </h1>
 
             {intro && (
-              <p className="mt-4 text-base md:text-lg text-slate-700 dark:text-gray-300 leading-relaxed max-w-3xl">
+              <p className="mt-4 text-base md:text-lg text-slate-700 dark:text-gray-300 leading-relaxed max-w-4xl">
                 {intro}
               </p>
             )}

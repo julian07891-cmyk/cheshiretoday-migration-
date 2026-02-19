@@ -306,7 +306,7 @@ export default function ArticlePageV2({ categories }) {
           onSearch={() => {}}
         />
 
-        <main className="container mx-auto px-4 py-10 max-w-6xl">
+        <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="mb-6">
             <button onClick={() => navigate(-1)} className="text-sm text-emerald-700 hover:underline">
               ← Back
@@ -333,7 +333,7 @@ export default function ArticlePageV2({ categories }) {
               )}
 
               <div className="rounded-2xl bg-white/70 dark:bg-transparent border border-slate-200/60 dark:border-border p-5 md:p-8">
-                <div className="prose prose-lg prose-slate max-w-2xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
+                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
                 {safeText(mainContent)}
               </div>
 

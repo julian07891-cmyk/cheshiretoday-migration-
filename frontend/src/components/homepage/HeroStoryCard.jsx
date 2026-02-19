@@ -13,7 +13,7 @@ export default function HeroStoryCard({
   return (
     <article className="w-full">
       <Link to={url} className="block group">
-        <div className="relative w-full aspect-[16/9] overflow-hidden rounded-xl">
+        <div className="relative w-full aspect-[16/9] md:aspect-[4/3] overflow-hidden rounded-xl">
           <img
             src={image}
             alt={headline}
