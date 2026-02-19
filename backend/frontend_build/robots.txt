@@ -1,0 +1,97 @@
+# =============================================
+# Cheshire Today - robots.txt
+# https://cheshiretoday.co.uk
+# Last updated: 2026-01-18
+# =============================================
+
+# Default rules for all bots
+User-agent: *
+Allow: /
+Allow: /article/
+Allow: /search
+Allow: /chester
+Allow: /warrington
+Allow: /wirral
+Allow: /crewe
+Allow: /macclesfield
+
+# Crawl rate (be polite to server)
+Crawl-delay: 1
+
+# Disallow admin and internal API paths
+Disallow: /admin
+Disallow: /api/admin/
+Disallow: /api/send-digest
+Disallow: /api/test-email
+Disallow: /api/cleanup-subscribers
+Disallow: /api/check-subscribers
+
+# Disallow query parameters that create duplicate content
+Disallow: /*?*utm_
+Disallow: /*?*fbclid
+Disallow: /*?*gclid
+
+# =============================================
+# Googlebot specific rules
+# =============================================
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Googlebot-Image
+Allow: /
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.gif$
+Allow: /*.webp$
+
+User-agent: Googlebot-News
+Allow: /
+Allow: /article/
+
+# =============================================
+# Bing specific rules
+# =============================================
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# =============================================
+# Social media crawlers (for link previews)
+# =============================================
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+# =============================================
+# Block bad bots and scrapers
+# =============================================
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+# =============================================
+# Sitemaps
+# =============================================
+Sitemap: https://cheshiretoday.co.uk/api/sitemap.xml
+Sitemap: https://cheshiretoday.co.uk/api/news-sitemap.xml
+
+# Preferred domain
+Host: https://cheshiretoday.co.uk

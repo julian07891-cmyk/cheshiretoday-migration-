@@ -1,0 +1,15 @@
+{
+  "short_name": "Cheshire Today",
+  "name": "Cheshire Today - Local News & Updates",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#1E3A8A",
+  "background_color": "#ffffff"
+}
