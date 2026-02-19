@@ -1,3 +1,4 @@
+import HeroMonetisationStrip from "../components/homepage/HeroMonetisationStrip";
 import React, { useEffect, useMemo, useState } from "react";
 import { getApiUrl } from "../utils/api";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
+
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import NewsFooter from "../components/NewsFooter";
 
@@ -336,43 +338,8 @@ return {
                 />
               )}
 
-{/* Monetisation strip (hero) */}
-              <div className="mt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                  <a
-                    href="/guides/best-mortgage-rates-uk"
-                    className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Mortgage rates</div>
-                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">Compare UK deals →</div>
-                  </a>
-
-                  <a
-                    href="/guides/best-credit-cards-uk"
-                    className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Compare credit cards</div>
-                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">0% offers + rewards →</div>
-                  </a>
-
-                  <a
-                    href="/guides/best-savings-accounts-uk"
-                    className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white">Savings accounts</div>
-                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">Best easy-access picks →</div>
-                  </a>
-
-                </div>
-
-                <div className="mt-2 text-[11px] text-slate-500 dark:text-gray-400">
-                  We may earn a commission from affiliate links.
-                </div>
-              </div>
+              {/* Monetisation strip (hero) */}
+              <HeroMonetisationStrip />
             </div>
 
             {/* Right: Top Stories (compact) */}
@@ -385,8 +352,7 @@ return {
                   </div>
                   <TopStoriesGrid stories={topStories} />
                 </div>
-                                
-                )}
+                          )}
             </aside>
           </div>
         </section>
