@@ -19,8 +19,6 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.gzip import GZipMiddleware
-
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
@@ -10304,8 +10302,6 @@ app.include_router(api_router)
 app.include_router(rss_routes.router)
 
 # Add GZip compression middleware for faster response delivery
-app.add_middleware(GZipMiddleware, minimum_size=500)
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
