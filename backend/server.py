@@ -620,34 +620,28 @@ def _index_file():
 if (FRONTEND_BUILD_DIR / "static").exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_BUILD_DIR / "static")), name="static")
 
-# Serve other build assets at root (favicon.ico, manifest.json, etc.)
-if FRONTEND_BUILD_DIR.exists():
-    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_BUILD_DIR)), name="frontend_build")
-
-@app.get("/", include_in_schema=False)
-
-
-# Serve root build assets like /logo.png, /favicon.ico, /manifest.json, etc.
+# Serve other build assets at root (favicon.ico, manifest.json, logo.png, etc.)
 @app.get("/{asset_name}", include_in_schema=False)
 async def serve_root_asset(asset_name: str):
     # Only allow simple filenames (no slashes)
     if "/" in asset_name or ".." in asset_name:
-        return {"detail": "Not Found"}
+        raise HTTPException(status_code=404, detail="Not Found")
 
     asset_path = FRONTEND_BUILD_DIR / asset_name
     if asset_path.exists() and asset_path.is_file():
         return FileResponse(str(asset_path))
-    return {"detail": "Not Found"}
+    raise HTTPException(status_code=404, detail="Not Found")
 
+# SPA root
+@app.get("/", include_in_schema=False)
 async def serve_spa_root():
     index_path = _index_file()
     if index_path.exists():
         return FileResponse(str(index_path))
-    return {"detail": "Frontend build not found"}
-    if not (LOCAL_DEV_NO_DB or db is None):
+    raise HTTPException(status_code=404, detail="Frontend build not found")
 
-        await ensure_indexes()
-# Create a router with the /api prefix
+# SPA catch-all (must be AFTER /api routes are mounted via APIRouter)
+# NOTE: actual catch-all route is defined later after app.include_router(api_router)
 api_router = APIRouter(prefix="/api")
 
 @api_router.get("/health")
@@ -11890,6 +11884,22 @@ from fastapi.responses import FileResponse
 @app.get("/{full_path:path}", include_in_schema=False)
 async def spa_catch_all(full_path: str, request: Request):
     # Never handle API or static paths here
+    if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
+        return {"detail": "Not Found"}
+
+    # If it's a request for a file (has an extension), serve it from the build if it exists.
+    # If it doesn't exist, return 404 (do NOT return index.html).
+    if "." in full_path:
+        candidate = FRONTEND_BUILD_DIR / full_path
+        if candidate.exists() and candidate.is_file():
+            return FileResponse(str(candidate))
+        return {"detail": "Not Found"}
+
+    # Otherwise serve SPA index.html
+    index_path = FRONTEND_BUILD_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    return {"detail": "Frontend build not found"}
     if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
         return {"detail": "Not Found"}
 
