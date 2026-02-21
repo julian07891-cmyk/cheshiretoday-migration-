@@ -33,11 +33,10 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    });
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
 
   if (loading) {
@@ -78,55 +77,48 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
 
   if (variant === "sidebar") {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Related Articles</h3>
-        </div>
+      <div className="space-y-3">
+        {related.map((article) => (
+          <div
+            key={article.id}
+            onClick={() => onArticleClick(article)}
+            className="cursor-pointer group flex gap-3"
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onArticleClick(article);
+            }}
+          >
+            <div className="relative overflow-hidden rounded-lg flex-shrink-0">
+              <img
+                src={article.image}
+                alt={article.title}
+                className="h-14 w-20 object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            </div>
 
-        <div className="space-y-3">
-          {related.map((article) => (
-            <div
-              key={article.id}
-              onClick={() => onArticleClick(article)}
-              className="cursor-pointer group flex gap-3"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onArticleClick(article);
-              }}
-            >
-              <div className="relative overflow-hidden rounded-lg flex-shrink-0">
-                <img
-                  src={article.image}
-                  alt={article.title}
-                  className="h-14 w-20 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
+            <div className="min-w-0">
+              <div className="mb-1">
+                <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded">
+                  {article.category}
+                </span>
               </div>
 
-              <div className="min-w-0">
-                <div className="mb-1">
-                  <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded">
-                    {article.category}
-                  </span>
-                </div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                {article.title}
+              </h4>
 
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                  {article.title}
-                </h4>
-
-                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {formatDate(article.publishedDate || article.published_at || article.created_at)}
-                </div>
+              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <Clock className="h-3 w-3 mr-1" />
+                {formatDate(article.publishedDate || article.published_at || article.created_at)}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     );
   }
-
-  // default: grid (existing behavior)
+// default: grid (existing behavior)
   return (
     <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Related Articles</h3>

@@ -1,53 +1,37 @@
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import RedirectResponse
+from dotenv import load_dotenv
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import re
 import logging
 import secrets
 import hashlib
-import random
-import uuid
-import asyncio
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-from uuid import uuid4
-from typing import List, Optional
-
-from dotenv import load_dotenv
-
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
-
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+from typing import List, Optional
+import uuid
+from uuid import uuid4
+from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from openai import OpenAI
+import random
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-
+import asyncio
 from app import rss_routes
-from app.full_article_extractor import fetch_full_article
-
-# --- dotenv: only for local dev ---
-IS_RENDER = bool(
-    os.getenv("RENDER")
-    or os.getenv("RENDER_SERVICE_ID")
-    or os.getenv("RENDER_EXTERNAL_URL")
-)
 
 ROOT_DIR = Path(__file__).parent
-if not IS_RENDER:
-    load_dotenv(ROOT_DIR / ".env", override=False)
-
-PUBLIC_BASE_URL = (os.environ.get("PUBLIC_URL") or os.environ.get("SITEMAP_BASE_URL") or "https://cheshiretoday.co.uk").rstrip("/")
-
+load_dotenv(ROOT_DIR / '.env')
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
-# from app.unsplash_service import unsplash_service  # disabled: RSS-only images
-# from app.pexels_service import pexels_service  # disabled: RSS-only images
-# from app.pixabay_service import pixabay_service  # disabled: RSS-only images
+from app.unsplash_service import unsplash_service
+from app.pexels_service import pexels_service
+from app.pixabay_service import pixabay_service
 from app.news_feed_service import news_feed_service
 from app.perplexity_service import perplexity_service
 
@@ -64,351 +48,11 @@ JOB_POSTING_PACKAGES = {
 }
 
 # MongoDB connection
-
-if LOCAL_DEV_NO_DB:
-    db = None
-else:
-    mongo_url = os.getenv("MONGO_URL")
-    db_name = os.getenv("DB_NAME")
-    if not mongo_url or not db_name:
-        print("⚠️ MONGO_URL/DB_NAME missing - DB disabled")
-        db = None
-    else:
-        client = AsyncIOMotorClient(mongo_url)
-        db = client[db_name]
-# -------------------------------
-# Ensure MongoDB indexes (performance)
-# -------------------------------
-async def ensure_indexes():
-    try:
-        await db.articles.create_index(
-            [("publishedDate", -1)],
-            name="publishedDate_desc"
-        )
-        await db.articles.create_index(
-            [("category", 1), ("publishedDate", -1)],
-            name="category_publishedDate"
-        )
-        await db.articles.create_index(
-            [("is_local_source", 1), ("publishedDate", -1)],
-            name="local_publishedDate"
-        )
-        await db.articles.create_index(
-            [("archived", 1)],
-            name="archived_flag"
-        )
-        print("✅ MongoDB indexes ensured")
-    except Exception as e:
-        print("⚠️ MongoDB index creation failed:", e)
-# -------------------------------
-# LOCAL DEV: in-memory articles
-# -------------------------------
-LOCAL_DEV_ARTICLES = []
-
-def seed_local_articles_if_needed():
-    """Seed mock articles for local dev when no DB is available."""
-    if LOCAL_DEV_ARTICLES:
-        return
-    from uuid import uuid4
-    from datetime import datetime, timezone
-    categories = ["Local News", "UK News", "Business", "Tech", "Health", "Science", "Entertainment", "Sports"]
-    locations = [
-        "chester",
-        "warrington",
-        "crewe",
-        "nantwich",
-        "macclesfield",
-        "congleton",
-        "northwich",
-        "winsford",
-        "wilmslow",
-        "knutsford",
-        "ellesmere-port"
-    ]
-    for i in range(20):
-        LOCAL_DEV_ARTICLES.append({
-            "id": str(uuid4()),
-            "title": f"Mock article {i+1}",
-            "content": "Mock content for local development.",
-            "summary": "Mock summary.",
-            "category": categories[i % len(categories)],
-            "author": "Cheshire Today (Mock)",
-            "publishedDate": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "image": "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&q=60&fit=crop&auto=format",
-            "tags": ["mock", "cheshire"],
-            "featured": i < 3,
-            "source": "Mock Feed",
-            "source_url": "",
-            "scope": "cheshire",
-            "location": locations[i % len(locations)],
-            "is_local_source": True,
-        })
+mongo_url = os.environ['MONGO_URL']
+client = AsyncIOMotorClient(mongo_url)
+db = client[os.environ['DB_NAME']]
 
 # =====================================================================================
-# =====================================================================================
-# NICHE SILOS (AI/Tech + Money/Property) — section inference (safe, non-persistent)
-# =====================================================================================
-
-import re
-
-SECTION_RULES = [
-    # IMPORTANT: keep AI rules strict to avoid misclassification
-    ("ai-policy", [
-        "ai act", "artificial intelligence act", "ofcom", "ico",
-        "regulation", "regulator", "whitehall", "data protection",
-        "online safety", "algorithmic accountability"
-    ]),
-    ("ai-tools", [
-        "chatgpt", "openai", "gemini", "claude", "anthropic", "midjourney",
-        "copilot", "github copilot", "notion ai"
-    ]),
-    ("ai-guides", [
-        "how to use chatgpt", "prompt", "prompting", "tutorial", "guide",
-        "explainer", "step-by-step", "what is ai", "ai for beginners"
-    ]),
-    # NOTE: avoid generic words like "model" that appear in non-tech stories
-    ("ai-news", [
-        "artificial intelligence", "machine learning", "deep learning",
-        "large language model", "generative ai", "neural network",
-        "chatgpt", "openai", "gpt-", "llm",
-        "automation", "nvidia", "semiconductor", "chip"
-    ]),
-
-    ("mortgages", ["mortgage", "remortgage", "fixed rate", "tracker", "lender", "apr", "interest rate", "affordability", "broker"]),
-    ("tax", ["hmrc", "self assessment", "allowance", "national insurance", "vat", "capital gains", "cgt", "stamp duty"]),
-    ("property", ["property", "house price", "rent", "landlord", "tenant", "letting", "buy-to-let", "rightmove", "zoopla", "housing market"]),
-    ("money", ["inflation", "cost of living", "energy bills", "council tax", "fuel", "petrol", "diesel", "salary sacrifice", "wages", "pay rise", "pension", "isa", "savings", "debt", "loan", "credit", "interest rate", "insurance", "scam", "fraud", "food bank", "benefits"]),
-]
-
-# Hard negatives: if any appear, never classify as AI
-AI_NEGATIVE = [
-    "murder", "stab", "court", "police", "missing", "jailed", "sentenced",
-    "coronation street", "emmerdale", "strictly", "spoilers",
-    "politics live", "resign", "mp", "cabinet", "starmer",
-    "match", "medal", "olympic",
-]
-
-
-TAX_STRONG = [
-    "hmrc", "self assessment", "national insurance", "vat", "cgt", "capital gains",
-    "stamp duty", "tax return", "tax code", "personal allowance"
-]
-
-TAX_NEGATIVE = [
-    "iplayer", "bbc iplayer", "netflix", "film", "movie", "drama", "series",
-    "wuthering heights", "spoilers", "coronation street", "emmerdale", "strictly"
-]
-
-
-
-PERSONAL_MONEY_STRONG = [
-    "council tax", "energy bills", "bills", "cost of living",
-    "savings", "isa", "pension", "salary", "wages", "pay",
-    "loan", "credit", "debt", "interest rate", "inflation",
-    "mortgage", "remortgage", "rent", "house price",
-    "hmrc", "self assessment", "tax", "national insurance",
-    "fuel price",
-    "fuel prices",
-    "petrol",
-    "diesel",
-    "pump price",
-    "pump prices",
-    "forecourt",
-]
-
-
-
-AI_STRONG = [
-    "artificial intelligence",
-    " ai ",
-    "openai",
-    "chatgpt",
-    "gemini",
-    "machine learning",
-    "deepmind",
-    "generative ai",
-    "large language model",
-    "llm",
-]
-
-BUSINESS_STRONG = [
-    "shares", "share sale", "stock", "stocks", "earnings", "profits",
-    "ipo", "merger", "acquisition", "deal", "funding", "investment",
-    "lawsuit", "sues", "tariff", "auction", "bankruptcy",
-    "company", "firm", "corporate", "markets",
-    "banking",
-    "banking group",
-    "branch",
-    "branches",
-    "lender",
-    "lending",
-    "loan book",
-    "share price",
-    "dividend",
-    "results",
-    "revenue",
-    "profit warning",
-]
-MONEY_STRONG = [
-    # household / consumer finance only
-    "council tax", "cost of living", "inflation", "energy bills",
-    "fuel", "petrol", "diesel",
-    "salary sacrifice", "wages", "salary", "pay rise",
-    "pension", "isa", "savings",
-    "debt", "loan", "credit", "interest rate",
-    "insurance", "scam", "fraud", "food bank", "benefits"
-]
-
-MONEY_NEGATIVE = [
-    "iplayer", "bbc iplayer", "netflix", "film", "movie", "drama", "series",
-    "wuthering heights", "spoilers", "coronation street", "emmerdale", "strictly",
-    "instagram", "youtube", "tiktok", "social media",
-    "supreme court", "minister", "cabinet", "mp", "parliament",
-    "warner bros", "paramount", "disney", "spotify",
-    "puberty",
-    "blockers",
-    "gender",
-    "nhs",
-    "clinic",
-    "hospital",
-    "doctor",
-]
-
-def _has_word(text: str, token: str) -> bool:
-    return re.search(r"\b" + re.escape(token) + r"\b", text) is not None
-
-def infer_section(title: str = "", summary: str = "", category: str = "", tags=None, scope: str = "") -> str:
-    """
-    Returns one of:
-      ai-news, ai-guides, ai-tools, ai-policy,
-      money, property, mortgages, tax, business-news,
-      or "general"
-    """
-    # --- RSS CATEGORY FIRST-PASS (predictable) ---
-    # For strong, unambiguous categories we can return immediately.
-    # For Business/Finance we DO NOT early-return: we let Money-vs-Business rules decide.
-    cat_l = (category or "").strip().lower()
-    if cat_l in ("ai", "tech", "technology"):
-        return "ai-news"
-    if cat_l == "tax":
-        return "tax"
-    if cat_l == "money":
-        return "money"
-    if cat_l in ("property", "housing"):
-        return "property"
-
-    tags = tags or []
-    category_l = (category or "").strip().lower()
-
-    blob = " ".join([
-        str(title or ""),
-        str(summary or ""),
-        cat_l,
-        " ".join([str(t) for t in tags if t]),
-        str(scope or ""),
-    ]).lower()
-
-    # --- HARD AI/TECH DETECTOR (publisher category often lies) ---
-    # If any of these appear, treat as AI news even if category is UK News/Business/etc.
-    AI_HARD = [
-        "artificial intelligence", " ai ", " ai-", "chatgpt", "openai", "gpt", "llm",
-        "anthropic", "claude", "gemini", "deepmind", "copilot", "mistral",
-        "machine learning", "neural", "model", "prompt", "inference",
-        "siri", "assistant", "chatbot", "ai assistant"
-    ]
-    # avoid false positives like 'aid' by requiring spaces around ' ai ' above
-    if any(k in blob for k in AI_HARD):
-        return "ai-news"
-
-    # --- AI override (even if category is Business) ---
-    # If the story clearly mentions AI terms, classify into ai-* before Business/category fallbacks.
-    for section, kws in SECTION_RULES:
-        if not section.startswith("ai-"):
-            continue
-        for kw in kws:
-            if kw == "llm":
-                if _has_word(blob, "llm"):
-                    return section
-                continue
-            if kw == "gpt-":
-                if "gpt-" in blob:
-                    return section
-                continue
-            if kw in blob:
-                return section
-
-
-    # --- Business vs Money disambiguation (category-based helper) ---
-    if category_l == "business":
-        has_personal = any(tok in blob for tok in PERSONAL_MONEY_STRONG)
-        has_business = any(tok in blob for tok in BUSINESS_STRONG)
-        if has_personal:
-            return "money"
-        if has_business:
-            return "business-news"
-        return "business-news"
-    # Keyword rules (first match wins)
-    for section, kws in SECTION_RULES:
-        for kw in kws:
-            # Block AI sections if negative signals present
-            if section.startswith("ai-") and any(k in blob for k in AI_NEGATIVE):
-                continue
-
-            # For short/risky tokens, apply word boundaries
-            if kw == "llm":
-                if _has_word(blob, "llm"):
-                    return section
-                continue
-
-            if kw == "gpt-":
-                if "gpt-" in blob:
-                    return section
-                continue
-
-            if kw in blob:
-                # Extra guard: tax must have strong tax signal and avoid entertainment false-positives
-                if section == "tax":
-                    if any(n in blob for n in TAX_NEGATIVE):
-                        continue
-                    strong_ok = False
-                    for tok in TAX_STRONG:
-                        if " " in tok:
-                            if tok in blob:
-                                strong_ok = True
-                                break
-                        else:
-                            if _has_word(blob, tok):
-                                strong_ok = True
-                                break
-                    if not strong_ok and not _has_word(blob, "tax"):
-                        continue
-                if section == "money":
-                    if any(n in blob for n in MONEY_NEGATIVE):
-                        continue
-                    strong_ok = False
-                    for tok in MONEY_STRONG:
-                        if " " in tok:
-                            if tok in blob:
-                                strong_ok = True
-                                break
-                        else:
-                            if _has_word(blob, tok):
-                                strong_ok = True
-                                break
-                    if not strong_ok and not _has_word(blob, "money"):
-                        continue
-                return section
-
-
-                # Extra guard: money must have strong personal-finance/cost-of-living signal
-                if section == "money":
-                    if any(tok in blob for tok in MONEY_NEGATIVE):
-                        continue
-                    if not any(tok in blob for tok in MONEY_STRONG):
-                        continue
-    return "general"
-
-
 # IN-MEMORY CACHE FOR PERFORMANCE (reduces TTFB)
 # =====================================================================================
 from functools import lru_cache
@@ -441,30 +85,14 @@ class SimpleCache:
         self._cache.clear()
         self._timestamps.clear()
 
-
-# Affiliate disclosure templates (used only when affiliate_type is set)
-AFFILIATE_DISCLOSURES = {
-    "money_tool": "This article may contain affiliate links. If you use them, Cheshire Today may earn a small commission at no extra cost to you."
-}
-
 # Global cache instance
 api_cache = SimpleCache()
 
 # =====================================================================================
 # ADMIN AUTHENTICATION
 # =====================================================================================
-ADMIN_USERNAME = os.getenv('ADMIN_USERNAME') or os.getenv('ADMIN_USER', 'admin')
-ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD') or os.getenv('ADMIN_PASS', 'changeme')
-
-def get_admin_creds():
-    """
-    Read admin credentials from environment at *request time*.
-    Strips whitespace to avoid invisible mismatches from dashboard copy/paste.
-    """
-    u = (os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_USER") or "admin")
-    pw = (os.getenv("ADMIN_PASSWORD") or os.getenv("ADMIN_PASS") or "changeme")
-    return u.strip(), pw.strip()
-
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'changeme')
 
 # Simple token store (in production, use Redis or database)
 admin_tokens = {}  # Legacy - kept for backwards compatibility during transition
@@ -565,86 +193,8 @@ def get_gemini_chat(session_id: str, system_message: str) -> LlmChat:
 # Create the main app without a prefix
 app = FastAPI()
 
-# Treat HEAD like GET (useful for bots/CDNs)
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-
-class HeadAsGetMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.method == 'HEAD':
-            request.scope['method'] = 'GET'
-        return await call_next(request)
-
-app.add_middleware(HeadAsGetMiddleware)
-
-# -------------------------------
-# CORS
-# -------------------------------
-from fastapi.middleware.cors import CORSMiddleware
-
-CORS_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "https://cheshiretoday.co.uk",
-    "https://www.cheshiretoday.co.uk",
-    "https://cheshiretoday-migration.onrender.com",
-    "https://cheshiretoday-frontend-migration.onrender.com",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-# -------------------------------
-# Serve React (CRA) build
-# -------------------------------
-from fastapi.responses import FileResponse
-from fastapi import Request
-
-# Prefer Render-copied build (backend/frontend_build); fallback to local frontend/build
-FRONTEND_BUILD_DIR = (ROOT_DIR / "frontend_build").resolve()
-if not FRONTEND_BUILD_DIR.exists():
-    FRONTEND_BUILD_DIR = (ROOT_DIR.parent / "frontend" / "build").resolve()
-
-def _index_file():
-    return FRONTEND_BUILD_DIR / "index.html"
-
-# Serve static assets (CRA puts bundles under /static)
-if (FRONTEND_BUILD_DIR / "static").exists():
-    app.mount("/static", StaticFiles(directory=str(FRONTEND_BUILD_DIR / "static")), name="static")
-
-# Serve other build assets at root (favicon.ico, manifest.json, logo.png, etc.)
-@app.get("/{asset_name}", include_in_schema=False)
-async def serve_root_asset(asset_name: str):
-    # Only allow simple filenames (no slashes)
-    if "/" in asset_name or ".." in asset_name:
-        raise HTTPException(status_code=404, detail="Not Found")
-
-    asset_path = FRONTEND_BUILD_DIR / asset_name
-    if asset_path.exists() and asset_path.is_file():
-        return FileResponse(str(asset_path))
-    raise HTTPException(status_code=404, detail="Not Found")
-
-# SPA root
-@app.get("/", include_in_schema=False)
-async def serve_spa_root():
-    index_path = _index_file()
-    if index_path.exists():
-        return FileResponse(str(index_path))
-    raise HTTPException(status_code=404, detail="Frontend build not found")
-
-# SPA catch-all (must be AFTER /api routes are mounted via APIRouter)
-# NOTE: actual catch-all route is defined later after app.include_router(api_router)
+# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
-
-@api_router.get("/health")
-async def health():
-    return {"status": "ok"}
 
 # Define Models
 class Article(BaseModel):
@@ -1186,12 +736,6 @@ def select_location_image(title: str, content: str, used_photo_ids: set) -> str:
     Checks article title and content for location mentions.
     """
     text = (title + ' ' + content).lower()
-
-    # --- Guard: treat council-tax headlines as PERSONAL money, not HMRC tax ---
-    # Keeps "council tax rise/hike/bands" in money.
-    if "council tax" in text or "tax hike" in text:
-        return "money"
-
     
     # Check for Cheshire location mentions
     location_matches = []
@@ -1572,6 +1116,7 @@ Start writing the article now:"""
         logger.info(f"Generated clean article: '{title[:40]}...' ({len(content)} chars)")
         
         return {
+            'title': title,
             'content': content,
             'category': category,
             'tags': tags,
@@ -1612,24 +1157,16 @@ async def fetch_trending_headlines_from_rss(count: int = 5) -> List[dict]:
             if not title or title.lower() in seen_titles:
                 continue
             
-            is_local = (
-            article.get("scope") == "cheshire"
-            or article.get("is_cheshire_related") is True
-            or bool(article.get("location"))
-            )           
-            scope = "cheshire" if is_local else "uk"
-
-            # Prevent "Local News" unless truly local
-            category = article.get("category") or "UK News"
-            if category == "Local News" and scope != "cheshire":
-                category = "UK News"
-
+            # Determine scope based on content
+            is_local = article.get('is_cheshire_related', False)
+            scope = 'cheshire' if is_local else 'uk'
+            
             headlines.append({
-                "headline": title,
-                "category": category,
-                "scope": scope,
-                "source": article.get("source", "BBC News"),
-                "source_url": article.get("source_url", "")
+                'headline': title,
+                'category': article.get('category', 'UK News'),
+                'scope': scope,
+                'source': article.get('source', 'BBC News'),
+                'source_url': article.get('source_url', '')
             })
             seen_titles.add(title.lower())
             
@@ -1721,44 +1258,30 @@ class AdminLoginResponse(BaseModel):
     message: str
     expires_in: int = 86400  # 24 hours in seconds
 
-
-@api_router.get("/version")
-async def version():
-    import os
-    return {
-        "version_marker": "FULL_SCRAPE_PROD_BRANCH",
-        "git_commit": os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT") or None
-    }
-
-
 @api_router.post("/admin/login", response_model=AdminLoginResponse)
 async def admin_login(request: AdminLoginRequest):
     """
     Admin login endpoint - returns a token for authenticated admin access.
     Token is valid for 24 hours and stored in MongoDB for distributed access.
     """
-    env_user, env_pass = get_admin_creds()
-    req_user = (request.username or "").strip()
-    req_pass = (request.password or "").strip()
-
-    if req_user == env_user and req_pass == env_pass:
+    if request.username == ADMIN_USERNAME and request.password == ADMIN_PASSWORD:
         # Generate token
         token = generate_admin_token()
         expiry = datetime.now(timezone.utc) + timedelta(hours=24)
-
+        
         # Store in MongoDB for distributed access across replicas
         await store_admin_token(token, expiry)
-
-        logger.info(f"Admin login successful for: {req_user}")
+        
+        logger.info(f"Admin login successful for: {request.username}")
         return AdminLoginResponse(
             success=True,
             token=token,
             message="Login successful",
             expires_in=86400
         )
-
-    logger.warning(f"Failed admin login attempt for: {req_user}")
-    raise HTTPException(status_code=401, detail="Invalid username or password")
+    else:
+        logger.warning(f"Failed admin login attempt for: {request.username}")
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
 @api_router.post("/admin/logout")
 async def admin_logout(authorization: Optional[str] = Header(None)):
@@ -1983,15 +1506,15 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
 
 
 class HybridNewsRequest(BaseModel):
-    cheshire_articles: int = 4   # 4 Cheshire/local articles (trust + local traffic)
-    uk_articles: int = 2        # 2 UK articles (minimal filler)
-    max_sports: int = 0         # No sports (low CPM)
-    business_articles: int = 2  # Business/finance (good CPM)
-    health_articles: int = 0    # Off (noise)
-    tech_articles: int = 10     # AI/Tech (highest CPM niche)
-    science_articles: int = 6   # Science (strong niche)
-    entertainment_articles: int = 0  # Off (noise)
-    use_perplexity: bool = False  # Keep OFF (cost guard)
+    cheshire_articles: int = 8   # 8 Cheshire/local articles
+    uk_articles: int = 12        # 12 UK articles
+    max_sports: int = 3          # Limit sports articles
+    business_articles: int = 2   # 2 Business articles (FREE from RSS)
+    health_articles: int = 2     # 2 Health articles (FREE from RSS)
+    tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
+    science_articles: int = 2    # 2 Science articles (FREE from RSS)
+    entertainment_articles: int = 2  # 2 Entertainment articles (FREE from RSS)
+    use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
 
 
 @api_router.post("/import-hybrid-news")
@@ -2046,18 +1569,15 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             sports_articles = [a for a in uk_with_images if a.get('category') == 'Sports']
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
             health_articles = [a for a in uk_with_images if a.get('category') == 'Health']
-            tech_articles = [a for a in uk_with_images if a.get('category') in ['Tech', 'AI']]
+            tech_articles = [a for a in uk_with_images if a.get('category') == 'Tech']
             science_articles = [a for a in uk_with_images if a.get('category') == 'Science']
             entertainment_articles = [a for a in uk_with_images if a.get('category') == 'Entertainment']
-            uk_news_articles = [a for a in uk_with_images if a.get('category') == 'UK News' and any(k in (a.get('title','') + a.get('summary','')).lower() for k in ['ai','technology','tech','digital','cyber','data','economy','inflation','interest rate','bank of england'])]
+            uk_news_articles = [a for a in uk_with_images if a.get('category') in ['UK News', 'Local News'] or a.get('category') not in ['Sports', 'Business', 'Health', 'Tech', 'Science', 'Entertainment']]
             
             logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(health_articles)} Health, {len(tech_articles)} Tech, {len(science_articles)} Science, {len(entertainment_articles)} Entertainment, {len(sports_articles)} Sports")
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
-                request.use_perplexity = False  # HARD DISABLE AI (budget guard)
-
-
                 nonlocal perplexity_cost_estimate
                 imported_count = 0
                 for article in articles_list:
@@ -2077,19 +1597,19 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
                     
-                    if request.use_perplexity and section.startswith("ai-"):
+                    if request.use_perplexity:
                         # Generate detailed content using Perplexity
                         logger.info(f"Generating content for {category_name} article: {title[:40]}...")
-# DISABLED_AI:                         detailed_content = await perplexity_service.generate_article_content(
-# DISABLED_AI:                             title=title,
-# DISABLED_AI:                             summary=original_content,
-# DISABLED_AI:                             source=article.get('source', 'BBC News'),
-# DISABLED_AI:                             source_url=article.get('source_url', '')
-# DISABLED_AI:                         )
+                        detailed_content = await perplexity_service.generate_article_content(
+                            title=title,
+                            summary=original_content,
+                            source=article.get('source', 'BBC News'),
+                            source_url=article.get('source_url', '')
+                        )
                         perplexity_cost_estimate += 0.005
                     else:
                         # Use RSS content directly (faster, no AI)
-                        detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nThis is an excerpt. Read the full story at the source."
+                        detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
                     
                     # Use RSS image (guaranteed perfect match)
                     article['image'] = rss_image
@@ -2100,29 +1620,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     article['author'] = article.get('source', 'BBC News')
                     article['id'] = str(uuid4())
                     
-                    # Ensure deterministic section (used by homepage feeds)
-                    if not article.get('section'):
-                        cat = (article.get('category') or category_name or '').strip()
-                        text = ((article.get('title','') + ' ' + article.get('summary','') + ' ' + article.get('content','')).lower())
-                        if cat == 'AI':
-                            article['section'] = 'ai-news'
-                        elif cat == 'Tech':
-                            article['section'] = 'tech-news'
-                        elif cat == 'Science':
-                            article['section'] = 'science'
-                        elif cat == 'Business':
-                            article['section'] = 'business-news'
-                        elif any(k in text for k in ['mortgage','remortgage','lender','rate','fixed rate']):
-                            article['section'] = 'mortgages'
-                        elif any(k in text for k in ['council tax','hmrc','self assessment','tax year','vat','income tax','national insurance']):
-                            article['section'] = 'tax'
-                        elif any(k in text for k in ['house price','housing market','rent','landlord','tenant','property','leasehold','freehold']):
-                            article['section'] = 'property'
-                        elif any(k in text for k in ['interest rate','bank of england','inflation','budget','economy']):
-                            article['section'] = 'money'
-                        else:
-                            article['section'] = 'general'
-
                     await db.articles.insert_one(article)
                     existing_titles.add(title.lower())
                     used_image_urls.add(rss_image)
@@ -2133,7 +1630,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 return imported_count
             
             # Import UK News articles
-            uk_imported = 0  # Disabled generic UK News for AI/Tech focus
+            uk_imported = await import_category_articles(uk_news_articles, "UK News", request.uk_articles, "uk_imported")
             
             # Import Business articles (FREE from RSS)
             business_imported = await import_category_articles(business_articles, "Business", request.business_articles, "business_imported")
@@ -2197,19 +1694,19 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             
-            if request.use_perplexity and section.startswith("ai-"):
+            if request.use_perplexity:
                 # Generate detailed content using Perplexity (expands RSS summary to full article)
                 logger.info(f"Generating full content for local article: {title[:40]}...")
-# DISABLED_AI:                 detailed_content = await perplexity_service.generate_article_content(
-# DISABLED_AI:                     title=title,
-# DISABLED_AI:                     summary=original_content,
-# DISABLED_AI:                     source=article.get('source', 'Cheshire Live'),
-# DISABLED_AI:                     source_url=article.get('source_url', '')
-# DISABLED_AI:                 )
+                detailed_content = await perplexity_service.generate_article_content(
+                    title=title,
+                    summary=original_content,
+                    source=article.get('source', 'Cheshire Live'),
+                    source_url=article.get('source_url', '')
+                )
                 perplexity_cost_estimate += 0.005
             else:
                 # Use RSS content directly (faster, no AI)
-                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nThis is an excerpt. Read the full story at the source."
+                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
             
             article['image'] = rss_image
             article['image_source'] = 'rss_feed'
@@ -2221,20 +1718,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             article['is_local_source'] = True  # Mark as local source
             article['is_local_newspaper'] = article.get('is_local_feed', False)
             
-            # Ensure deterministic section for local RSS (keep money/tax/property when detected)
-            if not article.get('section'):
-                text = ((article.get('title','') + ' ' + article.get('summary','') + ' ' + article.get('content','')).lower())
-                if any(k in text for k in ['mortgage','remortgage','lender','rate','fixed rate']):
-                    article['section'] = 'mortgages'
-                elif any(k in text for k in ['council tax','hmrc','self assessment','tax year','vat','income tax','national insurance']):
-                    article['section'] = 'tax'
-                elif any(k in text for k in ['house price','housing market','rent','landlord','tenant','property','leasehold','freehold']):
-                    article['section'] = 'property'
-                elif any(k in text for k in ['interest rate','bank of england','inflation','budget','economy']):
-                    article['section'] = 'money'
-                else:
-                    article['section'] = 'local-news'
-
             await db.articles.insert_one(article)
             existing_titles.add(title.lower())
             used_image_urls.add(rss_image)
@@ -2433,69 +1916,68 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/admin/regenerate-content")
-# DISABLED_AI: async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
-# DISABLED_AI:     """
-# DISABLED_AI:     Regenerate content for all existing articles using Perplexity.
-# DISABLED_AI:     Only processes articles with short content (< 500 chars).
-# DISABLED_AI:     Cost: ~$0.005 per article
-# DISABLED_AI:     Requires admin authentication.
-# DISABLED_AI:     """
-# DISABLED_AI:     try:
-# DISABLED_AI:         # Find articles with short content
-# DISABLED_AI:         articles = await db.articles.find({}).to_list(1000)
-# DISABLED_AI:         
-# DISABLED_AI:         short_content_articles = [
-# DISABLED_AI:             a for a in articles 
-# DISABLED_AI:             if len(a.get('content', '')) < 500
-# DISABLED_AI:         ]
-# DISABLED_AI:         
-# DISABLED_AI:         logger.info(f"Found {len(short_content_articles)} articles with short content to regenerate")
-# DISABLED_AI:         
-# DISABLED_AI:         regenerated = 0
-# DISABLED_AI:         cost_estimate = 0
-# DISABLED_AI:         
-# DISABLED_AI:         for article in short_content_articles:
-# DISABLED_AI:             title = article.get('title', '')
-# DISABLED_AI:             original_content = article.get('content', '')
-# DISABLED_AI:             source = article.get('source', 'BBC News')
-# DISABLED_AI:             source_url = article.get('source_url', '')
-
-# DISABLED_AI:             
-# DISABLED_AI:             logger.info(f"Regenerating content for: {title[:40]}...")
-# DISABLED_AI:             
-# DISABLED_AI:             detailed_content = await perplexity_service.generate_article_content(
-# DISABLED_AI:                 title=title,
-# DISABLED_AI:                 summary=original_content,
-# DISABLED_AI:                 source=source,
-# DISABLED_AI:                 source_url=source_url
-# DISABLED_AI:             )
-# DISABLED_AI:             cost_estimate += 0.005
-# DISABLED_AI:             
-# DISABLED_AI:             if detailed_content and len(detailed_content) > len(original_content):
-# DISABLED_AI:                 await db.articles.update_one(
-# DISABLED_AI:                     {'_id': article['_id']},
-# DISABLED_AI:                     {'$set': {
-# DISABLED_AI:                         'content': detailed_content,
-# DISABLED_AI:                         'original_summary': original_content,
-# DISABLED_AI:                         'content_generated': True
-# DISABLED_AI:                     }}
-# DISABLED_AI:                 )
-# DISABLED_AI:                 regenerated += 1
-# DISABLED_AI:                 logger.info(f"✅ Regenerated content ({len(detailed_content)} chars): {title[:40]}...")
-# DISABLED_AI:             else:
-# DISABLED_AI:                 logger.warning(f"Skipped - no improvement: {title[:40]}...")
-# DISABLED_AI:         
-# DISABLED_AI:         return {
-# DISABLED_AI:             "success": True,
-# DISABLED_AI:             "total_articles": len(articles),
-# DISABLED_AI:             "short_content_found": len(short_content_articles),
-# DISABLED_AI:             "regenerated": regenerated,
-# DISABLED_AI:             "estimated_cost_usd": round(cost_estimate, 4)
-# DISABLED_AI:         }
-# DISABLED_AI:         
-# DISABLED_AI:     except Exception as e:
-# DISABLED_AI:         logger.error(f"Error regenerating content: {str(e)}")
-# DISABLED_AI:         raise HTTPException(status_code=500, detail=str(e))
+async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
+    """
+    Regenerate content for all existing articles using Perplexity.
+    Only processes articles with short content (< 500 chars).
+    Cost: ~$0.005 per article
+    Requires admin authentication.
+    """
+    try:
+        # Find articles with short content
+        articles = await db.articles.find({}).to_list(1000)
+        
+        short_content_articles = [
+            a for a in articles 
+            if len(a.get('content', '')) < 500
+        ]
+        
+        logger.info(f"Found {len(short_content_articles)} articles with short content to regenerate")
+        
+        regenerated = 0
+        cost_estimate = 0
+        
+        for article in short_content_articles:
+            title = article.get('title', '')
+            original_content = article.get('content', '')
+            source = article.get('source', 'BBC News')
+            source_url = article.get('source_url', '')
+            
+            logger.info(f"Regenerating content for: {title[:40]}...")
+            
+            detailed_content = await perplexity_service.generate_article_content(
+                title=title,
+                summary=original_content,
+                source=source,
+                source_url=source_url
+            )
+            cost_estimate += 0.005
+            
+            if detailed_content and len(detailed_content) > len(original_content):
+                await db.articles.update_one(
+                    {'_id': article['_id']},
+                    {'$set': {
+                        'content': detailed_content,
+                        'original_summary': original_content,
+                        'content_generated': True
+                    }}
+                )
+                regenerated += 1
+                logger.info(f"✅ Regenerated content ({len(detailed_content)} chars): {title[:40]}...")
+            else:
+                logger.warning(f"Skipped - no improvement: {title[:40]}...")
+        
+        return {
+            "success": True,
+            "total_articles": len(articles),
+            "short_content_found": len(short_content_articles),
+            "regenerated": regenerated,
+            "estimated_cost_usd": round(cost_estimate, 4)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error regenerating content: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/admin/clean-content")
@@ -2544,7 +2026,6 @@ async def clean_article_content(authorized: bool = Depends(get_admin_auth)):
 
 @api_router.post("/admin/remove-duplicates")
 async def _remove_duplicates_internal():
-    _db_required(db)
     """
     Internal helper function to remove duplicate articles.
     Called automatically after imports and by the admin endpoint.
@@ -2917,7 +2398,7 @@ async def get_cheshire_general_articles(
                 ]},
                 {'$or': [
                     {'is_cheshire_related': True},
-                    {**base_archived_filter, 'is_local_source': True},
+                    {'is_local_source': True},
                     {'source': {'$in': ['Cheshire Live', 'Warrington Guardian', 'Manchester Evening News']}}
                 ]}
             ]
@@ -2926,12 +2407,12 @@ async def get_cheshire_general_articles(
         articles = await db.articles.find(
             query,
             {
-                '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
-                'author': 1, 'publishedDate': normalize_dt(article.get('publishedDate') or article.get('published_date') or article.get('published_at') or article.get('published')), 'image': 1, 'tags': 1,
-                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
+                '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                 'location': 1
             }
-        ).sort('publishedDate', -1).skip(skip).limit(max(fetch_limit, 200)).to_list(fetch_limit)
+        ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
         total_count = await db.articles.count_documents(query)
         
@@ -2963,31 +2444,6 @@ async def get_articles_by_location(
     This ensures each location page shows only articles primarily about that area.
     """
     try:
-        # -------------------------------
-        # LOCAL DEV – use mock articles
-        # -------------------------------
-        if LOCAL_DEV_NO_DB:
-            seed_local_articles_if_needed()
-            location_lower = location.lower()
-
-            if location_lower not in LOCATION_KEYWORDS:
-                raise HTTPException(status_code=404, detail=f"Location '{location}' not found")
-
-            # strict: only exact location matches
-            filtered = [a for a in LOCAL_DEV_ARTICLES if a.get("location") == location_lower]
-
-            # newest first (string ISO dates sort fine)
-            filtered.sort(key=lambda a: a.get("publishedDate", ""), reverse=True)
-
-            page = filtered[skip: skip + limit]
-
-            return {
-                "articles": page,
-                "location": location.capitalize(),
-                "total": len(filtered)
-            }
-
-        # existing DB logic continues below...
         location_lower = location.lower()
         
         if location_lower not in LOCATION_KEYWORDS:
@@ -3000,12 +2456,12 @@ async def get_articles_by_location(
         articles = await db.articles.find(
             query,
             {
-                '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
+                '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                 'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1,
+                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                 'location': 1
             }
-        ).sort('publishedDate', -1).skip(skip).limit(max(fetch_limit, 200)).to_list(fetch_limit)
+        ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
         # Get total count for this location
         total_count = await db.articles.count_documents(query)
@@ -3034,41 +2490,23 @@ async def get_articles(
     limit: int = 20,
     source_type: Optional[str] = None,  # "local", "national", or None for all
     include_archived: bool = False,  # By default, exclude archived articles
-    section: Optional[str] = None,  # ai-news, ai-guides, ai-tools, ai-policy, money, property, mortgages, tax
     search: Optional[str] = None  # Search query for title and content
 ):
     """Get all articles with optional filtering by category, source type, and search"""
     try:
-        # -------------------------------
-        # LOCAL DEV – return mock articles
-        # -------------------------------
-        if LOCAL_DEV_NO_DB:
-            seed_local_articles_if_needed()
-            return LOCAL_DEV_ARTICLES
         # Check cache for default homepage request (most common)
-        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{search}:{section}"
-
-        # Cache the most common homepage patterns (limit 10/20, no search, first page, not archived, no source_type)
-        if (
-            not search
-            and skip == 0
-            and limit in (10, 20)
-            and (not category or category == "all")
-            and not source_type
-            and include_archived is False
-            and not section
-        ):
-            cached = api_cache.get(cache_key, ttl_seconds=60)  # 60 second cache
+        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}"
+        if not search and skip == 0 and limit == 20 and not category:
+            cached = api_cache.get(cache_key, ttl_seconds=30)  # 30 second cache
             if cached:
                 return cached
         
         query = {}
         
+        # Exclude archived articles by default
+        if not include_archived:
+            query["$or"] = [{"archived": {"$exists": False}}, {"archived": False}]
         
-        # Archived handling: exclude archived by default everywhere
-        base_archived_filter = {} if include_archived else {"archived": {"$ne": True}}
-        if base_archived_filter:
-            query.update(base_archived_filter)
         # Search functionality - search in title and content
         if search and len(search) >= 2:
             import re
@@ -3088,9 +2526,11 @@ async def get_articles(
             # Direct search query - return results sorted by relevance
             articles = await db.articles.find(
                 query,
-                { '_id': 1, 'id': 1, 'title': 1, 'summary': 1, 'category': 1,
+                {
+                    '_id': 1, 'id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 , 'archived': 1, 'archived_at': 1 }
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
             
             # Process IDs
@@ -3120,44 +2560,42 @@ async def get_articles(
         elif source_type == 'national':
             query['is_local_source'] = False
         
-        
-        # Section silo filtering (AI/Tech + Money/Property)
-        fetch_limit = max(limit * 12, 60) if (section and section != 'all') else limit
-        # This is computed on-the-fly from title/summary/category/tags/scope.
+        # For "all" category (Latest News), use interleaved ordering: Local, Local, UK, UK
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
             local_articles = await db.articles.find(
-                {**base_archived_filter, 'is_local_source': True},
+                {'is_local_source': True},
                 {
-                    '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
+                    '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'archived': 1, 'archived_at': 1 }
-            ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                }
+            ).sort('publishedDate', -1).limit(limit).to_list(limit)
             
             uk_articles = await db.articles.find(
-                {**base_archived_filter, 'is_local_source': {'$ne': True}},
+                {'is_local_source': {'$ne': True}},
                 {
-                    '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
+                    '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1, 'affiliate_type': 1, 'archived': 1, 'archived_at': 1 }
-            ).sort('publishedDate', -1).limit(max(fetch_limit, 200)).to_list(fetch_limit)
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                }
+            ).sort('publishedDate', -1).limit(limit).to_list(limit)
             
             # Interleave: 2 local, 2 UK, repeat
-            target_limit = fetch_limit if (section and section != 'all') else limit
             articles = []
             local_idx = 0
             uk_idx = 0
             
-            while len(articles) < target_limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
+            while len(articles) < limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
                 # Add 2 local articles
                 for _ in range(2):
-                    if local_idx < len(local_articles) and len(articles) < target_limit:
+                    if local_idx < len(local_articles) and len(articles) < limit:
                         articles.append(local_articles[local_idx])
                         local_idx += 1
                 
                 # Add 2 UK articles
                 for _ in range(2):
-                    if uk_idx < len(uk_articles) and len(articles) < target_limit:
+                    if uk_idx < len(uk_articles) and len(articles) < limit:
                         articles.append(uk_articles[uk_idx])
                         uk_idx += 1
             
@@ -3168,8 +2606,11 @@ async def get_articles(
             # Query with projection to fetch only required fields for better performance
             articles = await db.articles.find(
                 query,
-                { '_id': 1,
-                    'title': 1, 'summary': 1,
+                {
+                    '_id': 1,
+                    'title': 1,
+                    'content': 1,
+                    'summary': 1,
                     'category': 1,
                     'author': 1,
                     'publishedDate': 1,
@@ -3179,7 +2620,8 @@ async def get_articles(
                     'source': 1,
                     'source_url': 1,
                     'scope': 1,
-                    'is_local_source': 1, 'affiliate_type': 1, 'content': 1, 'content_source': 1, 'scrape_status': 1, 'scrape_error': 1 , 'archived': 1, 'archived_at': 1 }
+                    'is_local_source': 1
+                }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
         # Helper function to clean word count from content
@@ -3212,10 +2654,6 @@ async def get_articles(
             # Clean word count from content
             if 'content' in article:
                 article['content'] = clean_word_count(article['content'])
-
-                if article.get("affiliate_type") and article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
-
-                    article["content"] += "\n\n" + AFFILIATE_DISCLOSURES[article["affiliate_type"]]
             
             # Add Cheshire priority flags and location
             title = article.get('title', '')
@@ -3223,45 +2661,11 @@ async def get_articles(
             article['is_priority_cheshire'] = is_priority_cheshire_article(title, content)
             article['is_secondary_cheshire'] = is_secondary_cheshire_article(title, content)
             article['priority_location'] = get_article_priority_location(title, content)
-
-            # Compute section for niche silos
-            article['section'] = infer_section(
-                title=article.get('title',''),
-                summary=article.get('summary',''),
-                category=article.get('category',''),
-                tags=article.get('tags') or [],
-                scope=article.get('scope',''),
-            )
             
-            # Attach affiliate disclosure only when applicable
-
-            if article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
-
-                article["disclosure"] = AFFILIATE_DISCLOSURES[article["affiliate_type"]]
-
-            # HARD RULE: affiliates only allowed in money section
-            if article.get("affiliate_type") and article.get("section") != "money":
-                article["affiliate_type"] = None
-
             unique_articles.append(article)
         
-
-        # Apply section filter (computed)
-        if section and section != "all":
-            unique_articles = [a for a in unique_articles if a.get("section") == section]
-            # After filtering, apply pagination
-            unique_articles = unique_articles[skip: skip + limit]
-
-        # Cache the result for common homepage requests
-        if (
-            not search
-            and skip == 0
-            and limit in (10, 20)
-            and (not category or category == "all")
-            and not source_type
-            and include_archived is False
-            and not section
-        ):
+        # Cache the result for homepage requests
+        if not search and skip == 0 and limit == 20 and not category:
             api_cache.set(cache_key, unique_articles)
         
         return unique_articles
@@ -3270,43 +2674,7 @@ async def get_articles(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# NOTE: This route MUST be defined BEFORE /articles/{article_id} to prevent route matching issue
-@api_router.get("/articles-v2")
-async def get_articles_v2(
-    category: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 20,
-    source_type: Optional[str] = None,
-    include_archived: bool = False,
-    section: Optional[str] = None,
-    search: Optional[str] = None
-):
-    """
-    Stable wrapper around /api/articles.
-    Always returns: { "articles": [...], "total": N, ... }
-    (Does NOT change existing /api/articles response shape to avoid breaking frontend.)
-    """
-    data = await get_articles(
-        category=category,
-        skip=skip,
-        limit=limit,
-        source_type=source_type,
-        include_archived=include_archived,
-        section=section,
-        search=search
-    )
-
-    # get_articles sometimes returns a list, sometimes an object (e.g. search)
-    if isinstance(data, list):
-        return {"articles": data, "total": len(data)}
-    if isinstance(data, dict) and "articles" in data:
-        # ensure total exists
-        if "total" not in data and isinstance(data.get("articles"), list):
-            data["total"] = len(data["articles"])
-        return data
-
-    # Fallback
-    return {"articles": [], "total": 0, "raw": data}
+# NOTE: This route MUST be defined BEFORE /articles/{article_id} to prevent route matching issues
 @api_router.get("/articles/most-read")
 async def get_most_read_articles(period: str = "today", limit: int = 5):
     """
@@ -3364,7 +2732,7 @@ async def get_most_read_articles(period: str = "today", limit: int = 5):
                 pass
             
             if not article:
-                article = await db.articles.find_one({"_id": ObjectId(article_id)})
+                article = await db.articles.find_one({"id": article_id})
             
             if article:
                 articles.append({
@@ -3393,31 +2761,17 @@ async def get_article(article_id: str):
     Also searches in archived_articles collection to ensure old shared links still work.
     """
     try:
-        # -------------------------------
-        # LOCAL DEV – single article from mock store
-        # -------------------------------
-        if LOCAL_DEV_NO_DB:
-            seed_local_articles_if_needed()
-            article = next((a for a in LOCAL_DEV_ARTICLES if a.get("id") == article_id), None)
-            if not article:
-                raise HTTPException(status_code=404, detail="Article not found")
-            # Affiliate disclosure (if applicable)
-            if article.get("affiliate_type"):
-                article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"])
-            return article
-
         article = None
         
-        # First try MongoDB _id (PRIMARY)
-        try:
-            article = await db.articles.find_one({"_id": ObjectId(article_id)})
-        except:
-            article = None
-
-        # Fallback: custom id field (legacy)
+        # First try to find by custom 'id' field (UUID format) in main collection
+        article = await db.articles.find_one({'id': article_id})
+        
+        # If not found, try MongoDB ObjectId in main collection
         if not article:
-            article = await db.articles.find_one({"id": article_id})
-
+            try:
+                article = await db.articles.find_one({'_id': ObjectId(article_id)})
+            except:
+                pass  # Invalid ObjectId format, that's fine
         
         # If still not found, search in archived_articles collection
         # This ensures old shared links (e.g., Facebook posts) continue to work
@@ -3433,16 +2787,11 @@ async def get_article(article_id: str):
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        # Preserve existing 'id' if present (UUID legacy), else fall back to Mongo _id
-        if not article.get('id'):
-            article['id'] = str(article['_id'])
+        article['id'] = str(article.get('id', article['_id']))
         del article['_id']
         if 'created_at' in article:
             del article['created_at']
         
-        # Affiliate disclosure (DB articles)
-        if article and article.get('affiliate_type'):
-            article['affiliate_disclosure'] = AFFILIATE_DISCLOSURES.get(article['affiliate_type'])
         return article
     except HTTPException:
         # Re-raise HTTP exceptions as-is (don't wrap 404 in 500)
@@ -3487,12 +2836,12 @@ async def get_article_share_page(article_id: str, request: Request):
         title = article.get('title', 'Cheshire Today')
         description = article.get('content', '')[:200].replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
         image = article.get('image', '')
-        article_url = f"{PUBLIC_BASE_URL}/article/{article_id}"
-        share_url = f"{PUBLIC_BASE_URL}/api/share/{article_id}"
+        article_url = f"https://cheshiretoday.co.uk/article/{article_id}"
+        share_url = f"https://cheshiretoday.co.uk/api/share/{article_id}"
         
         # Use default social share image if no article image
         if not image or len(image) < 10:
-            image = f"{PUBLIC_BASE_URL}/social-share.jpg"
+            image = 'https://cheshiretoday.co.uk/social-share.jpg'
         
         # Check if request is from a social media crawler (don't redirect them)
         user_agent = request.headers.get('user-agent', '').lower()
@@ -3532,6 +2881,11 @@ async def get_article_share_page(article_id: str, request: Request):
             <meta name="twitter:title" content="{title}">
             <meta name="twitter:description" content="{description}">
             <meta name="twitter:site" content="@CheshireToday">
+
+    {json_ld_script}
+    <link rel="canonical" href="{app_url}">
+    <meta property="article:published_time" content="{published_iso}">
+    <meta property="article:author" content="{article.get('author','Cheshire Today') if article else ''}">
             
             <!-- Canonical points to share URL so Facebook doesn't follow to homepage -->
             <link rel="canonical" href="{share_url}">
@@ -3571,66 +2925,66 @@ async def get_article_share_page(article_id: str, request: Request):
 @api_router.get("/seo/article/{article_id}")
 async def get_seo_article_page(article_id: str, request: Request):
     """
-    Server-side rendered HTML page optimized for search engine crawlers.
-    Returns full article content with proper meta tags for indexing.
-    This helps Google index article pages properly since React is client-rendered.
+    Server-side rendered HTML page optimised for search engine crawlers.
+    Returns full article content with proper meta tags + JSON-LD for indexing.
     """
     from fastapi.responses import HTMLResponse
-    
+    import json
+
     try:
         # Search in main articles collection first
         article = None
         try:
-            article = await db.articles.find_one({'_id': ObjectId(article_id)})
-        except:
+            article = await db.articles.find_one({"_id": ObjectId(article_id)}, {"_id": 0})
+        except Exception:
             pass
-        
+
         if not article:
-            article = await db.articles.find_one({'id': article_id})
-        
+            article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+
         # If not found, search in archived_articles collection
         if not article:
             try:
-                article = await db.archived_articles.find_one({'_id': ObjectId(article_id)})
-            except:
+                article = await db.archived_articles.find_one({"_id": ObjectId(article_id)}, {"_id": 0})
+            except Exception:
                 pass
-        
+
         if not article:
-            article = await db.archived_articles.find_one({'id': article_id})
-        
+            article = await db.archived_articles.find_one({"id": article_id}, {"_id": 0})
+
         if not article:
-            return HTMLResponse(status_code=404, content="""
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="robots" content="noindex">
-                <title>Article Not Found | Cheshire Today</title>
-            </head>
-            <body><h1>Article Not Found</h1></body>
-            </html>
-            """)
-        
-        # Get article data
-        article_id_str = str(article.get('id', article.get('_id', '')))
-        title = article.get('title', 'Cheshire Today Article')
-        content = article.get('content', '')
-        description = content[:160].replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;') if content else title
-        image = article.get("image") or f"{PUBLIC_BASE_URL}/social-share.jpg"
-        category = article.get('category', 'News')
-        author = article.get('author', 'Cheshire Today')
-        published_date = article.get('publishedDate', article.get('created_at', ''))
-        canonical_url = f"{PUBLIC_BASE_URL}/article/{article_id_str}"
-        
-        # Format content for HTML (basic paragraph handling)
-        formatted_content = content.replace('\n\n', '</p><p>').replace('\n', '<br>')
-        if formatted_content and not formatted_content.startswith('<p>'):
-            formatted_content = f'<p>{formatted_content}</p>'
-        
-        # Escape HTML in title
-        safe_title = title.replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
-        
-        # Build JSON-LD structured data for Google
+            return HTMLResponse(
+                status_code=404,
+                content="""<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="robots" content="noindex">
+<title>Article Not Found | Cheshire Today</title></head>
+<body><h1>Article Not Found</h1></body></html>"""
+            )
+
+        # Base URL: prefer env for deploys; in local dev you may set PUBLIC_URL=http://localhost:3000
+        base_url = (os.environ.get("PUBLIC_URL") or "https://cheshiretoday.co.uk").rstrip("/")
+
+        article_id_str = str(article.get("id") or article.get("_id") or "").strip()
+        title = str(article.get("title") or "Cheshire Today Article")
+        content = str(article.get("content") or "")
+        summary = str(article.get("summary") or "")
+        description_src = summary if len(summary.strip()) >= 40 else content
+        description = (description_src[:160]).replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;") if description_src else title
+
+        image = str(article.get("image") or f"{base_url}/social-share.jpg")
+        category = str(article.get("category") or "News")
+        author = str(article.get("author") or "Cheshire Today")
+        published_date = str(article.get("publishedDate") or article.get("created_at") or "")
+
+        canonical_url = f"{base_url}/article/{article_id_str}"
+
+        # Basic content formatting
+        formatted_content = content.replace("\n\n", "</p><p>").replace("\n", "<br>")
+        if formatted_content and not formatted_content.startswith("<p>"):
+            formatted_content = f"<p>{formatted_content}</p>"
+
+        safe_title = title.replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+
         json_ld = {
             "@context": "https://schema.org",
             "@type": "NewsArticle",
@@ -3639,95 +2993,77 @@ async def get_seo_article_page(article_id: str, request: Request):
             "image": [image] if image else [],
             "datePublished": published_date,
             "dateModified": published_date,
-            "author": {
-                "@type": "Organization",
-                "name": author
-            },
+            "author": {"@type": "Organization", "name": author},
             "publisher": {
-                "@type": "NewsMediaOrganization",
+                "@type": "Organization",
                 "name": "Cheshire Today",
-                "logo": {
-                    "@type": "ImageObject",
-                    "url": "https://cheshiretoday.co.uk/logo.png"
-                }
+                "logo": {"@type": "ImageObject", "url": f"{base_url}/logo.png"},
             },
-            "mainEntityOfPage": {
-                "@type": "WebPage",
-                "@id": canonical_url
-            },
-            "articleSection": category
+            "mainEntityOfPage": {"@type": "WebPage", "@id": canonical_url},
+            "articleSection": category,
         }
-        
-        import json
-        json_ld_str = json.dumps(json_ld)
-        
+
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{safe_title} | Cheshire Today</title>
-    <meta name="description" content="{description}">
-    <meta name="author" content="{author}">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    
-    <!-- Canonical URL - Critical for SEO -->
-    <link rel="canonical" href="{canonical_url}">
-    
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="{canonical_url}">
-    <meta property="og:title" content="{safe_title}">
-    <meta property="og:description" content="{description}">
-    <meta property="og:image" content="{image}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="Cheshire Today">
-    <meta property="article:published_time" content="{published_date}">
-    <meta property="article:section" content="{category}">
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="{canonical_url}">
-    <meta name="twitter:title" content="{safe_title}">
-    <meta name="twitter:description" content="{description}">
-    <meta name="twitter:image" content="{image}">
-    <meta name="twitter:site" content="@CheshireToday">
-    
-    <!-- Structured Data for Google -->
-    <script type="application/ld+json">{json_ld_str}</script>
-    
-    <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }}
-        h1 {{ color: #1a1a1a; margin-bottom: 10px; }}
-        .meta {{ color: #666; font-size: 14px; margin-bottom: 20px; }}
-        .content {{ color: #333; }}
-        img {{ max-width: 100%; height: auto; border-radius: 8px; margin: 20px 0; }}
-        .cta {{ background: #047857; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }}
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{safe_title} | Cheshire Today</title>
+  <meta name="description" content="{description}">
+  <meta name="author" content="{author}">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+  <link rel="canonical" href="{canonical_url}">
+
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="{canonical_url}">
+  <meta property="og:title" content="{safe_title}">
+  <meta property="og:description" content="{description}">
+  <meta property="og:image" content="{image}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Cheshire Today">
+  <meta property="article:published_time" content="{published_date}">
+  <meta property="article:section" content="{category}">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="{canonical_url}">
+  <meta name="twitter:title" content="{safe_title}">
+  <meta name="twitter:description" content="{description}">
+  <meta name="twitter:image" content="{image}">
+  <meta name="twitter:site" content="@CheshireToday">
+
+  <script type="application/ld+json">{json.dumps(json_ld)}</script>
+
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }}
+    h1 {{ color: #1a1a1a; margin-bottom: 10px; }}
+    .meta {{ color: #666; font-size: 14px; margin-bottom: 20px; }}
+    .content {{ color: #333; }}
+    img {{ max-width: 100%; height: auto; border-radius: 8px; margin: 20px 0; }}
+    .cta {{ background: #047857; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }}
+  </style>
 </head>
 <body>
-    <article>
-        <h1>{safe_title}</h1>
-        <div class="meta">
-            <span>By {author}</span> | 
-            <span>{category}</span> | 
-            <time datetime="{published_date}">{published_date[:10] if published_date else ''}</time>
-        </div>
-        {f'<img src="{image}" alt="{safe_title}">' if image else ''}
-        <div class="content">
-            {formatted_content}
-        </div>
-        <a href="{canonical_url}" class="cta">Read Full Article on Cheshire Today</a>
-    </article>
+  <article>
+    <h1>{safe_title}</h1>
+    <div class="meta">
+      <span>By {author}</span> |
+      <span>{category}</span> |
+      <time datetime="{published_date}">{published_date[:10] if published_date else ""}</time>
+    </div>
+    {f'<img src="{image}" alt="{safe_title}">' if image else ''}
+    <div class="content">{formatted_content}</div>
+    <a href="{canonical_url}" class="cta">Read Full Article on Cheshire Today</a>
+  </article>
 </body>
 </html>"""
-        
-        return HTMLResponse(content=html_content, headers={
-            "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
-            "X-Robots-Tag": "index, follow"
-        })
-        
+
+        return HTMLResponse(
+            content=html_content,
+            headers={"Cache-Control": "public, max-age=3600", "X-Robots-Tag": "index, follow"},
+        )
+
     except Exception as e:
         logging.error(f"Error generating SEO article page: {str(e)}")
         return HTMLResponse(status_code=500, content="""
@@ -3868,7 +3204,6 @@ async def delete_article(article_id: str):
 
 @api_router.post("/subscribe", response_model=SubscribeResponse)
 async def subscribe_newsletter(request: SubscribeRequest):
-    _db_required(db)
     """Subscribe to newsletter with optional preferences"""
     try:
         email = request.email.lower().strip()
@@ -4553,6 +3888,90 @@ async def unsubscribe_newsletter(request: UnsubscribeRequest):
         raise HTTPException(status_code=500, detail="Failed to process unsubscribe request")
 
 
+@api_router.get("/newsletter/preferences/{email}")
+async def get_newsletter_preferences(email: str):
+    """
+    Get current newsletter preferences for an email.
+    Returns preferences if found, or defaults if not.
+    """
+    try:
+        email = email.lower().strip()
+        subscriber = await db.subscribers.find_one({"email": email})
+        
+        if not subscriber:
+            return {
+                "found": False,
+                "email": email,
+                "message": "Email not found in subscriber list",
+                "preferences": None
+            }
+        
+        return {
+            "found": True,
+            "email": email,
+            "preferences": {
+                "daily_brief": subscriber.get("daily_brief", True),
+                "weekly_roundup": subscriber.get("weekly_roundup", False),
+                "breaking_news": subscriber.get("breaking_news", False)
+            },
+            "subscribed_at": str(subscriber.get("subscribed_at")) if subscriber.get("subscribed_at") else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting preferences: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get preferences")
+
+
+@api_router.post("/newsletter/preferences")
+async def update_newsletter_preferences(request: PreferencesUpdateRequest):
+    """
+    Update newsletter preferences for a subscriber.
+    If all preferences are disabled, effectively unsubscribes them from all emails.
+    """
+    try:
+        email = request.email.lower().strip()
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required")
+        
+        # Check if subscriber exists
+        subscriber = await db.subscribers.find_one({"email": email})
+        
+        if not subscriber:
+            raise HTTPException(status_code=404, detail="Email not found. Please subscribe first.")
+        
+        # Update preferences
+        await db.subscribers.update_one(
+            {"email": email},
+            {"$set": {
+                "daily_brief": request.daily_brief,
+                "weekly_roundup": request.weekly_roundup,
+                "breaking_news": request.breaking_news,
+                "preferences_updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        # If ALL preferences are False, log it (user might as well unsubscribe)
+        if not request.daily_brief and not request.weekly_roundup and not request.breaking_news:
+            logger.info(f"Subscriber {email[:3]}*** disabled all email preferences")
+        
+        return {
+            "success": True,
+            "message": "Your email preferences have been updated.",
+            "preferences": {
+                "daily_brief": request.daily_brief,
+                "weekly_roundup": request.weekly_roundup,
+                "breaking_news": request.breaking_news
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating preferences: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update preferences")
+
+
 @api_router.post("/admin/backfill-locations")
 async def backfill_article_locations(authorized: bool = Depends(get_admin_auth)):
     """
@@ -4639,8 +4058,6 @@ async def backfill_article_locations(authorized: bool = Depends(get_admin_auth))
 @api_router.get("/admin/subscribers")
 async def get_subscribers(authorized: bool = Depends(get_admin_auth)):
     """Get all subscribers for admin dashboard. Requires admin authentication."""
-    _db_required(db)
-
     try:
         subscribers = await db.subscribers.find({}, {"_id": 0}).to_list(1000)
         return {"subscribers": subscribers, "total": len(subscribers)}
@@ -4651,7 +4068,6 @@ async def get_subscribers(authorized: bool = Depends(get_admin_auth)):
 @api_router.delete("/admin/subscribers/{email}")
 async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_auth)):
     """Delete a subscriber by email. Requires admin authentication."""
-    _db_required(db)
     try:
         result = await db.subscribers.delete_one({"email": email})
         if result.deleted_count == 0:
@@ -4667,12 +4083,10 @@ async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_aut
 async def get_admin_articles(skip: int = 0, limit: int = 50, authorized: bool = Depends(get_admin_auth)):
     """Get all articles for admin dashboard with full details. Requires admin authentication."""
     try:
-        articles = await db.articles.find({}, {}).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
-        # Ensure Mongo _id is returned as string for admin actions (archive/unarchive)
-        for a in articles:
-            if '_id' in a:
-                a['_id'] = str(a['_id'])
-
+        articles = await db.articles.find(
+            {}, {"_id": 0}
+        ).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
+        
         total = await db.articles.count_documents({})
         return {"articles": articles, "total": total, "skip": skip, "limit": limit}
     except Exception as e:
@@ -4754,7 +4168,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         from app.news_feed_service import get_article_priority_location
         
         # Check if article exists
-        existing = await db.articles.find_one({"_id": ObjectId(article_id)})
+        existing = await db.articles.find_one({"id": article_id})
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
         
@@ -4858,7 +4272,7 @@ async def archive_article(article_id: str, auth: bool = Depends(get_admin_auth))
             except:
                 pass
         if not article:
-            article = await db.articles.find_one({"_id": ObjectId(article_id)})
+            article = await db.articles.find_one({"id": article_id})
         
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
@@ -4916,7 +4330,7 @@ async def unarchive_article(article_id: str, auth: bool = Depends(get_admin_auth
                 pass
         
         if not archived_article:
-            archived_article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
+            archived_article = await db.archived_articles.find_one({"id": article_id})
         
         if not archived_article:
             raise HTTPException(status_code=404, detail="Article not found in archive")
@@ -4958,7 +4372,7 @@ async def get_archived_articles(
         ).to_list(None)
         
         for article in legacy_archived:
-            article['id'] = str(article['_id'])
+            article['id'] = str(article.get('id', article['_id']))
             article['archive_source'] = 'legacy'
             if '_id' in article:
                 del article['_id']
@@ -4971,7 +4385,7 @@ async def get_archived_articles(
         ).to_list(None)
         
         for article in new_archived:
-            article['id'] = str(article['_id'])
+            article['id'] = str(article.get('id', article['_id']))
             article['archive_source'] = 'collection'
             if '_id' in article:
                 del article['_id']
@@ -5054,7 +4468,7 @@ async def get_articles_by_date_range(
         total = await db.articles.count_documents(query)
         
         for article in articles:
-            article['id'] = str(article['_id'])
+            article['id'] = str(article.get('id', article['_id']))
             if '_id' in article:
                 del article['_id']
         
@@ -7084,7 +6498,7 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
                 # Try to get article to find category
                 article = await db.articles.find_one({"_id": ObjectId(article_id)}) if ObjectId.is_valid(article_id) else None
                 if not article:
-                    article = await db.articles.find_one({"_id": ObjectId(article_id)})
+                    article = await db.articles.find_one({"id": article_id})
                 
                 if article:
                     category = article.get("category", "Unknown")
@@ -7216,16 +6630,6 @@ async def track_article_view(article_id: str, request: Request):
 # ============================================================================
 
 from app.push_service import push_service
-
-
-def _db_required(db):
-    # DB is disabled in LOCAL_DEV_NO_DB mode
-    if db is None:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=503,
-            detail="Database disabled (LOCAL_DEV_NO_DB=1). Configure MONGO_URL/DB_NAME and set LOCAL_DEV_NO_DB=0."
-        )
 
 @api_router.get("/push/vapid-public-key")
 async def get_vapid_public_key():
@@ -7807,60 +7211,26 @@ async def send_digest_now():
                     }
         
         # Log SMTP config at start for debugging
-        logger.info(
-            f"SMTP Config Check - Host: {os.environ.get('SMTP_HOST')}, "
-            f"Port: {os.environ.get('SMTP_PORT')}, "
-            f"User: {os.environ.get('SMTP_USER')}"
-        )
-
-        # Get subscribers with daily_brief preference (or all if no preference set - backwards compatibility)
-        subscribers = await db.subscribers.find(
-            {"$or": [
-                {"daily_brief": True},
-                {"daily_brief": {"$exists": False}}
-            ]},
-            {"_id": 0, "email": 1}
-        ).to_list(1000)
-
+        import os
+        logger.info(f"SMTP Config Check - Host: {os.environ.get('SMTP_HOST')}, Port: {os.environ.get('SMTP_PORT')}, User: {os.environ.get('SMTP_USER')}")
+        
+        # Get all subscribers
+        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(1000)
         if not subscribers:
-            logger.info("No subscribers found with daily_brief preference - skipping")
-            return
-
-        # Deduplicate emails (case-insensitive) + basic validation
-        import re
-        email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-
+            return {"success": False, "message": "No subscribers found"}
+        
+        # Deduplicate emails (case-insensitive)
         seen_emails = set()
         unique_emails = []
-
         for s in subscribers:
-            email_raw = (s.get("email") or "").strip()
-            email_norm = email_raw.lower()
-
-            if not email_raw:
-                continue
-            if email_norm in seen_emails:
-                continue
-            if not email_regex.match(email_norm) or email_norm.endswith("@example.com"):
-                continue
-
-            seen_emails.add(email_norm)
-            unique_emails.append(email_raw)  # keep original case
-
+            email = s.get('email', '').lower().strip()
+            if email and email not in seen_emails:
+                seen_emails.add(email)
+                unique_emails.append(s.get('email'))  # Keep original case
+        
         subscriber_emails = unique_emails
-        logger.info(
-            f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief "
-            f"(from {len(subscribers)} candidate records)"
-        )
-
-        # ============================================================
-        # TEST MODE: During migration, send digest ONLY to one email
-        # Set DIGEST_TEST_EMAIL in Render env to enable
-        # ============================================================
-        test_digest_email = os.environ.get("DIGEST_TEST_EMAIL", "").strip()
-        if test_digest_email:
-            subscriber_emails = [test_digest_email]
-            logger.warning(f"🧪 TEST MODE ENABLED: Digest will be sent ONLY to {test_digest_email}")
+        logger.info(f"DIGEST: Found {len(subscriber_emails)} unique subscriber emails (from {len(subscribers)} total)")
+        
         # Get latest articles with deduplication by title
         pipeline = [
             {"$sort": {"publishedDate": -1}},
@@ -7930,16 +7300,6 @@ async def send_digest_now():
             if not is_similar:
                 seen_titles.add(title_normalized)
                 seen_keywords.append(title_keywords)
-            # Attach affiliate disclosure only when applicable
-
-            if article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
-
-                article["disclosure"] = AFFILIATE_DISCLOSURES[article["affiliate_type"]]
-
-            # HARD RULE: affiliates only allowed in money section
-            if article.get("affiliate_type") and article.get("section") != "money":
-                article["affiliate_type"] = None
-
                 unique_articles.append(article)
         
         # Prioritize Local News (including Cheshire locations) first, Sports LAST
@@ -8523,35 +7883,6 @@ async def generate_sitemap():
             xml_content += '    <priority>0.8</priority>\n'
             xml_content += '  </url>\n'
         
-
-        # Add published authority pages (AI monetisation guides)
-        try:
-            guides = await db.authority_pages.find(
-                {"status": "published"},
-                {"slug": 1, "updated_at": 1, "created_at": 1}
-            ).sort("updated_at", -1).limit(200).to_list(200)
-
-            for g in guides:
-                slug = (g.get("slug") or "").strip()
-                if not slug:
-                    continue
-
-                last = g.get("updated_at") or g.get("created_at") or datetime.utcnow()
-                if isinstance(last, str):
-                    try:
-                        last = datetime.fromisoformat(last.replace("Z", "+00:00"))
-                    except Exception:
-                        last = datetime.utcnow()
-
-                xml_content += '  <url>\n'
-                xml_content += f'    <loc>{base_url}/guides/{saxutils.escape(slug)}</loc>\n'
-                xml_content += f'    <lastmod>{last.strftime("%Y-%m-%d")}</lastmod>\n'
-                xml_content += '    <changefreq>weekly</changefreq>\n'
-                xml_content += '    <priority>0.7</priority>\n'
-                xml_content += '  </url>\n'
-        except Exception as e:
-            logger.warning(f"Authority pages sitemap skipped: {e}")
-
         # Add all articles with images
         for article in articles:
             article_id = str(article['_id'])
@@ -8665,7 +7996,7 @@ async def generate_rss_feed():
         # Get latest 50 articles
         articles = await db.articles.find(
             {}, 
-            {'_id': 0, 'id': 1, 'title': 1,'publishedDate': 1, 'category': 1, 'author': 1, 'image': 1}
+            {'_id': 0, 'id': 1, 'title': 1, 'content': 1, 'publishedDate': 1, 'category': 1, 'author': 1, 'image': 1}
         ).sort('publishedDate', -1).limit(50).to_list(50)
         
         # Build RSS XML
@@ -8726,38 +8057,35 @@ async def generate_rss_feed():
 
 @api_router.get("/trending-headlines")
 async def get_trending_headlines():
+    """Get breaking news headlines from recent articles in the database.
+    
+    IMPORTANT: We use ACTUAL articles from the database (not AI-generated headlines)
+    so that clicking a headline always opens the correct matching article.
+    """
     try:
-        # Prefer FREE RSS headlines
-        headlines = await fetch_trending_headlines_from_rss(count=5)
-
-        # Optional fallback to Gemini if RSS fails/empty
-        if not headlines:
-            cheshire = await fetch_trending_headlines("cheshire", count=3)
-            uk = await fetch_trending_headlines("uk", count=2)
-
-            headlines = []
-            for title, category, source, url in cheshire:
-                headlines.append({
-                    "headline": title,
-                    "category": category,
-                    "scope": "cheshire",
-                    "source": source,
-                    "source_url": url
-                })
-            for title, category, source, url in uk:
-                headlines.append({
-                    "headline": title,
-                    "category": category,
-                    "scope": "uk",
-                    "source": source,
-                    "source_url": url
-                })
-
-        return {"headlines": headlines}
-
+        # Get the most recent articles from the database - these ARE the breaking news
+        # Mix of Cheshire and UK articles for variety
+        recent_articles = await db.articles.find(
+            {},
+            {"_id": 1, "title": 1, "category": 1, "scope": 1, "publishedDate": 1}
+        ).sort("publishedDate", -1).limit(10).to_list(10)
+        
+        headlines = []
+        for article in recent_articles:
+            headlines.append({
+                "headline": article.get("title", ""),
+                "category": article.get("category", "News"),
+                "scope": article.get("scope", "cheshire"),
+                "articleId": str(article.get("_id", ""))  # Include article ID for direct linking
+            })
+        
+        logger.info(f"Returning {len(headlines)} headlines from database articles")
+        return {"headlines": headlines, "updated_at": datetime.utcnow().isoformat()}
+        
     except Exception as e:
         logger.error(f"Error fetching trending headlines: {str(e)}")
-        return {"headlines": []}
+        return {"headlines": [], "error": str(e)}
+
 @api_router.get("/trending-topics")
 async def get_trending_topics(limit: int = 10):
     """
@@ -8841,71 +8169,48 @@ async def get_trending_topics(limit: int = 10):
 async def get_related_articles(article_id: str, limit: int = 4):
     """Get related articles based on category and tags"""
     try:
-        # -------------------------------
-        # LOCAL DEV – compute from mock articles
-        # -------------------------------
-        if LOCAL_DEV_NO_DB:
-            seed_local_articles_if_needed()
-            all_articles = LOCAL_DEV_ARTICLES
-
-            source = next((a for a in all_articles if a.get("id") == article_id), None)
-            if not source:
-                return []
-
-            category = source.get("category", "")
-            source_tags = set(source.get("tags") or [])
-
-            def score(a):
-                s = 0
-                if a.get("category") == category:
-                    s += 10
-                a_tags = set(a.get("tags") or [])
-                s += len(source_tags.intersection(a_tags)) * 3
-                return s
-
-            candidates = [a for a in all_articles if a.get("id") != article_id]
-            candidates.sort(key=lambda a: (score(a), a.get("publishedDate", "")), reverse=True)
-            return candidates[:limit]
-        # -------------------------------
-
-        # -------------------------------
-        # DB mode
-        # -------------------------------
+        # Find the source article
         article = None
         try:
             article = await db.articles.find_one({"_id": ObjectId(article_id)}, {"_id": 0})
-        except Exception:
+        except:
             pass
-
         if not article:
             article = await db.articles.find_one({"id": article_id}, {"_id": 0})
-
+        
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
-
-        category = article.get("category", "")
-
-        query = {"category": category, "id": {"$ne": article_id}}
-
+        
+        category = article.get('category', '')
+        tags = article.get('tags', [])
+        
+        # Find related articles by category, excluding current article
+        query = {
+            "category": category,
+            "id": {"$ne": article_id}
+        }
+        
         related = await db.articles.find(
             query,
-            {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1},
+            {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1}
         ).sort("publishedDate", -1).limit(limit).to_list(limit)
-
+        
+        # If not enough related articles, get more from other categories
         if len(related) < limit:
             more = await db.articles.find(
                 {"id": {"$ne": article_id}, "category": {"$ne": category}},
-                {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1},
+                {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1}
             ).sort("publishedDate", -1).limit(limit - len(related)).to_list(limit - len(related))
             related.extend(more)
-
+        
         return related
-
+        
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting related articles: {str(e)}")
         return []
+
 async def serve_article_html(article_id: str):
     """
     Server-side rendered HTML for social media crawlers (Facebook, Twitter, LinkedIn).
@@ -8950,6 +8255,47 @@ async def serve_article_html(article_id: str):
             # This MUST point to the article page, NOT the homepage
             app_url = f"{base_url}/article/{article_id}"
         
+        # --- Structured Data (NewsArticle Schema) ---
+        import json
+        from datetime import datetime
+
+        if article:
+            published = article.get("publishedDate")
+            try:
+                published_iso = datetime.fromisoformat(str(published).replace("Z","+00:00")).isoformat()
+            except:
+                published_iso = datetime.utcnow().isoformat()
+
+            structured_data = {
+                "@context": "https://schema.org",
+                "@type": "NewsArticle",
+                "headline": title,
+                "image": [image],
+                "datePublished": published_iso,
+                "dateModified": published_iso,
+                "author": {
+                    "@type": "Person",
+                    "name": article.get("author", "Cheshire Today")
+                },
+                "publisher": {
+                    "@type": "Organization",
+                    "name": "Cheshire Today",
+                    "logo": {
+                        "@type": "ImageObject",
+                        "url": f"{base_url}/logo.png"
+                    }
+                },
+                "mainEntityOfPage": {
+                    "@type": "WebPage",
+                    "@id": app_url
+                }
+            }
+
+            json_ld_script = f'<script type="application/ld+json">{json.dumps(structured_data)}</script>'
+        else:
+            published_iso = ""
+            json_ld_script = ""
+
         # Generate static HTML with meta tags for social media crawlers
         html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -8985,6 +8331,11 @@ async def serve_article_html(article_id: str):
     <meta name="twitter:image" content="{image}">
     <meta name="twitter:image:alt" content="{title}">
     <meta name="twitter:site" content="@CheshireToday">
+
+    {json_ld_script}
+    <link rel="canonical" href="{app_url}">
+    <meta property="article:published_time" content="{published_iso}">
+    <meta property="article:author" content="{article.get('author','Cheshire Today') if article else ''}">
     
     <!-- Redirect to React app for actual users -->
     <script>
@@ -9164,6 +8515,17 @@ EZOIC_ADS_TXT_URL = "https://srv.adstxtmanager.com/82520/cheshiretoday.co.uk"
 
 
 # Root-level routes (for local development)
+
+@app.head("/robots.txt")
+async def robots_txt_head():
+    """HEAD support for robots.txt"""
+    from fastapi.responses import Response
+    return Response(
+        content=get_robots_content(),
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
 @app.get("/robots.txt")
 async def robots_txt():
     """Generate robots.txt for search engines"""
@@ -9178,6 +8540,17 @@ async def ads_txt():
 
 
 # API router routes (for production - accessible via /api/robots.txt which gets served at root by nginx)
+
+@api_router.head("/robots.txt")
+async def api_robots_txt_head():
+    """HEAD support for robots.txt (API route)"""
+    from fastapi.responses import Response
+    return Response(
+        content=get_robots_content(),
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=86400"}
+    )
+
 @api_router.get("/robots.txt")
 async def api_robots_txt():
     """Generate robots.txt for search engines (API route for production)"""
@@ -9427,8 +8800,6 @@ async def clean_duplicate_articles(authorized: bool = Depends(get_admin_auth)):
             if pattern in seen_patterns:
                 to_remove.append({
                     'id': str(article['_id']),
-                    'section': getattr(request, 'section', None),
-                    'affiliate_type': getattr(request, 'affiliate_type', None),
                     'title': title[:60]
                 })
             else:
@@ -9724,78 +9095,57 @@ For the latest news from across the region, keep following {source}."""
 @api_router.post("/remove-product-articles")
 async def remove_product_articles():
     """
-    Remove retail/deal/shopping articles (trainers, gadgets, price-slash promos, etc).
-    Keeps legit business news (share sales, profits, earnings, etc).
+    Remove articles that are product advertisements, gadgets, deals, or shopping content.
+    These should not appear on a news site.
     """
     try:
-        if db is None:
-            raise HTTPException(status_code=503, detail="Database disabled. Configure MONGO_URL/DB_NAME and set LOCAL_DEV_NO_DB=0.")
-
-        retail_brands = [
-            "skechers","new balance","nike","adidas","puma","reebok","asics",
-            "dyson","shark","ninja","nutribullet"
+        # Keywords that indicate product/shopping articles
+        product_keywords = [
+            'gadget', 'blender', 'air fryer', 'nutribullet', 'ninja', 'dyson', 'shark',
+            'reduced to £', 'now just £', 'now only £', 'deal stack', 'price slash',
+            'shoppers snapping', 'shoppers rushing', 'flying off shelves', 'selling fast',
+            'argos deal', 'amazon shoppers', 'tesco shoppers', 'aldi shoppers',
+            'cheaper than the osteopath', 'cheaper than physio', 'pain relief gadget',
+            'massage gun', 'posture corrector', 'vacuum cleaner', 'coffee machine',
+            'kitchen gadget', 'home gadget', 'cleaning gadget',
+            'much cheaper than', 'fraction of the price', 'save over £',
+            'five-star reviews', '5-star reviews', 'rave reviews', 'shoppers are loving',
+            'i swear by', 'game-changer', 'life-changing gadget'
         ]
-        retailers = [
-            "amazon","argos","tesco","aldi","asda","boots","john lewis","currys",
-            "very.co.uk","ao.com","costco"
-        ]
-        product_terms = [
-            "trainer","trainers","shoe","shoes","sneaker","sneakers",
-            "air fryer","blender","vacuum","coffee machine","gadget",
-            "headphones","earbuds","smartwatch","tablet","laptop","tv",
-            "mattress","sofa","bedding"
-        ]
-        promo_language = [
-            "reduced","reduced by","price cut","price slash","sale","discount","deal",
-            "now only","now just","was £","save £","save over","half price",
-            "limited time","offer ends","shoppers","bargain","bundle"
-        ]
-
-        # Business-news signals we should NOT delete
-        business_signals = [
-            "share sale","shares","earnings","profits","profit warning","revenue",
-            "ipo","merger","acquisition","results","balance sheet","dividend",
-            "lawsuit","sues","tariff","auction","bankruptcy"
-        ]
-
-        all_articles = await db.articles.find({}).to_list(2000)
-
+        
+        # Get all articles
+        all_articles = await db.articles.find({}).to_list(1000)
+        
         removed_count = 0
         removed_titles = []
-
+        
         for article in all_articles:
-            title = (article.get("title") or "").lower()
-            content = (article.get("content") or article.get("summary") or "").lower()
+            title = article.get('title', '').lower()
+            content = article.get('content', '').lower()
             text = f"{title} {content}"
-
-            # Never delete if it looks like genuine business news
-            if any(s in text for s in business_signals):
-                continue
-
-            looks_retail = (
-                (any(b in text for b in retail_brands) and any(p in text for p in promo_language)) or
-                (any(r in text for r in retailers) and any(p in text for p in promo_language)) or
-                (any(pt in text for pt in product_terms) and any(p in text for p in promo_language))
-            )
-
-            # Price/promo patterns (only counts if product/retailer context is present)
-            import re as _re
-            price_promo = bool(_re.search(r"(\d+%\s*off)|(reduced\s*by\s*\d+%)|(was\s*£\d+.*now\s*£\d+)|((now|only|just)\s*£\d+)|(save\s*(over\s*)?£\d+)", text))
-            context_present = any(pt in text for pt in product_terms) or any(r in text for r in retailers) or any(b in text for b in retail_brands)
-
-            if looks_retail or (price_promo and context_present):
-                await db.articles.delete_one({"_id": article["_id"]})
+            
+            # Check if article matches any product keyword
+            is_product = any(keyword.lower() in text for keyword in product_keywords)
+            
+            # Also check for price patterns like "£14" in title with product context
+            import re
+            has_price_pattern = re.search(r'(reduced to|now just|now only|was £\d+.*now|save (over )?£)\d+', text)
+            
+            if is_product or has_price_pattern:
+                # Delete the article
+                await db.articles.delete_one({'_id': article['_id']})
                 removed_count += 1
-                removed_titles.append((article.get("title") or "Unknown")[:80])
-
+                removed_titles.append(article.get('title', 'Unknown')[:60] + "...")
+                logger.info(f"Removed product article: {article.get('title', '')[:50]}...")
+        
         return {
             "success": True,
             "articles_checked": len(all_articles),
             "articles_removed": removed_count,
-            "removed_titles": removed_titles[:30],
-            "message": f"Removed {removed_count} retail/deals/shopping articles"
+            "removed_titles": removed_titles[:20],  # Only return first 20 titles
+            "message": f"Removed {removed_count} product/gadget articles"
         }
-
+        
     except Exception as e:
         logger.error(f"Error removing product articles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -9809,98 +9159,14 @@ async def sync_rss_now():
     """
     try:
         from app.news_feed_service import news_feed_service
-        from app.simple_scraper import scrape_article
         from app.perplexity_service import perplexity_service
         from uuid import uuid4
-        import os
-
-        def is_blocked_source(article: dict) -> bool:
-            """Block affiliate/deals/shopping sources and paths at import-time."""
-            try:
-                title = (article.get("title") or "").lower()
-                category = (article.get("category") or "").lower()
-                source = (article.get("source") or "").lower()
-                url = (article.get("source_url") or "").lower()
-
-                # Broad affiliate/deals language
-                promo_terms = (
-                    "deal", "deals", "discount", "discounts", "sale", "sales", "promo", "promotion",
-                    "voucher", "vouchers", "coupon", "coupons", "save £", "now £", "was £", "% off",
-                    "amazon", "prime deal", "best price", "shopping", "money-saving", "money saving"
-                )
-
-                # Block obvious categories/sources
-                if "money-saving" in category or "deals" in category:
-                    return True
-
-                # Block MEN money-saving/deals paths specifically (even if MEN still appears elsewhere)
-                if "manchestereveningnews.co.uk" in url and ("/money-saving/" in url or "/deals/" in url):
-                    return True
-
-                # Optional: if you want to block MEN entirely, uncomment:
-                # if "manchester evening news" in source:
-                #     return True
-
-                # Generic promo filter: only trigger if strong promo signals exist
-                if any(t in title for t in promo_terms) or any(t in url for t in ("/money-saving/", "/deals/", "/shopping/", "/voucher/", "/coupons/")):
-                    return True
-
-                return False
-            except Exception:
-                return False
-
         
-        
-        def canonicalize_url(url: str) -> str:
-            try:
-                from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
-                u = url.strip()
-                if not u:
-                    return ""
-                parts = urlparse(u)
-                # drop common tracking params
-                keep = [(k,v) for (k,v) in parse_qsl(parts.query, keep_blank_values=True)
-                        if not (k.lower().startswith("utm_") or k.lower() in ("at_medium","at_campaign","fbclid","gclid","mc_cid","mc_eid"))]
-                new_query = urlencode(keep, doseq=True)
-                return urlunparse((parts.scheme, parts.netloc, parts.path, parts.params, new_query, parts.fragment))
-            except Exception:
-                return (url or "").strip()
-
-        
-
-        def normalize_dt(dt_value):
-            if not dt_value:
-                return None
-            try:
-                from datetime import datetime, timezone
-                # datetime instance
-                if isinstance(dt_value, datetime):
-                    dt = dt_value
-                else:
-                    raw = str(dt_value).strip()
-                    # ISO first
-                    try:
-                        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-                    except Exception:
-                        # RFC822 / RSS style
-                        from email.utils import parsedate_to_datetime
-                        dt = parsedate_to_datetime(raw)
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=timezone.utc)
-                return dt.astimezone(timezone.utc).isoformat()
-            except Exception:
-                return None
-
         logger.info("Starting manual RSS sync...")
         
         # Get existing article titles to avoid duplicates
         existing_articles = await db.articles.find({}, {'title': 1}).to_list(2000)
         existing_titles = {a['title'].lower().strip() for a in existing_articles if a.get('title')}
-        existing_urls = set()
-        for a in existing_articles:
-            u = (a.get('source_url') or '').strip()
-            if u:
-                existing_urls.add(canonicalize_url(u))
         
         # Fetch all RSS feeds
         rss_articles = await news_feed_service.fetch_all_feeds()
@@ -9908,32 +9174,14 @@ async def sync_rss_now():
         
         # Filter for new articles with images
         new_articles = []
-        seen_urls = set()
-        seen_titles = set()
         for article in rss_articles:
             title = article.get('title', '').strip()
-            if is_blocked_source(article):
-                continue
             if not title:
                 continue
             if title.lower() in existing_titles:
                 continue
-
-            url = (article.get('source_url') or '').strip()
-            tkey = title.lower().strip()
-            if url:
-                c_url = canonicalize_url(url)
-                if c_url in existing_urls:
-                    continue
-                if c_url in seen_urls:
-                    continue
-                seen_urls.add(c_url)
-            else:
-                if tkey in seen_titles:
-                    continue
-                seen_titles.add(tkey)
-            #             if not article.get('image'):
-            #                 continue
+            if not article.get('image'):
+                continue
             new_articles.append(article)
         
         logger.info(f"Found {len(new_articles)} new articles to import")
@@ -9941,7 +9189,7 @@ async def sync_rss_now():
         # Import up to 10 new articles
         imported_count = 0
         imported_titles = []
-        max_import = int(os.getenv("RSS_SYNC_MAX_IMPORT","10"))
+        max_import = 10
         
         for article in new_articles[:max_import]:
             try:
@@ -9949,132 +9197,23 @@ async def sync_rss_now():
                 original_content = article.get('content', '')
                 source = article.get('source', 'News Source')
                 source_url = article.get('source_url', '')
-
                 
-                # Full article extraction fallback (Render-safe, fail-open)
-                scrape_status = "not_attempted"
-                scrape_error = None
-                try:
-                    threshold = int(os.getenv("FULL_SCRAPE_THRESHOLD", "450"))
-                except Exception:
-                    threshold = 450
-
-                if source_url and isinstance(original_content, str) and len(original_content.strip()) < threshold:
-                    scrape_result = await fetch_full_article(source_url)
-                    scrape_status = scrape_result.get("status") or "unknown"
-                    scrape_error = scrape_result.get("error")
-                    if scrape_result.get("ok") and scrape_result.get("content"):
-                        original_content = scrape_result["content"]
-                        scrape_status = "ok"
-                
-                # Budget guard (hybrid): Perplexity ONLY for AI sections + monthly cap (default £20)
-                section = infer_section(
+                # Generate detailed content using Perplexity
+                logger.info(f"Generating content for: {title[:50]}...")
+                detailed_content = await perplexity_service.generate_article_content(
                     title=title,
                     summary=original_content,
-                    category=article.get('category',''),
-                    tags=article.get('tags') or [],
-                    scope=article.get('scope','')
-                ).strip()
-
-                # Default: use RSS content (free)
-                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nThis is an excerpt. Read the full story at the source."
-
-                # Only allow Perplexity for AI sections, within monthly quota
-                if section.startswith("ai-"):
-                    month_key = datetime.utcnow().strftime("%Y-%m")
-                    budget_gbp = float(os.getenv("PERPLEXITY_MONTHLY_BUDGET_GBP", "20"))
-                    cost_per_article = float(os.getenv("PERPLEXITY_COST_PER_ARTICLE_GBP", "0.02"))  # conservative default
-                    max_ai_articles = int(budget_gbp / cost_per_article) if cost_per_article > 0 else 0
-
-                    usage = await db.ai_usage.find_one({"_id": month_key}) or {"count": 0}
-                    used = int(usage.get("count", 0))
-
-                    if used < max_ai_articles and max_ai_articles > 0:
-                        logger.info(f"Perplexity enabled (usage {used}/{max_ai_articles}) for: {title[:50]}...")
-# DISABLED_AI:                         detailed_content = await perplexity_service.generate_article_content(
-# DISABLED_AI:                             title=title,
-# DISABLED_AI:                             summary=original_content,
-# DISABLED_AI:                             source=source,
-# DISABLED_AI:                             source_url=source_url
-# DISABLED_AI:                         )
-                        await db.ai_usage.update_one({"_id": month_key}, {"$inc": {"count": 1}}, upsert=True)
-                    else:
-                        logger.info(f"Perplexity cap reached for {month_key} ({used}/{max_ai_articles}). Using RSS content.")
+                    source=source,
+                    source_url=source_url
+                )
                 
-                # Normalize publish datetime (RSS feeds vary by field name)
-                published_dt = (
-                    article.get("publishedDate")
-                    or article.get("published_date")
-                    or article.get("published")
-                    or article.get("pubDate")
-                )
-                if not published_dt:
-                    published_dt = datetime.utcnow().isoformat()
-
                 # Create article document
-                published_iso = normalize_dt(
-                    article.get('publishedDate')
-                    or article.get('published_date')
-                    or article.get('published')
-                    or article.get('pubDate')
-                    or article.get('published_at')
-                )
-                # ---------------------------------------------
-                # FULL CONTENT FALLBACK (scrape) when RSS is thin
-                # ---------------------------------------------
-                # If RSS only gives a short summary, scrape the source_url for fuller body text.
-                # Keeps your original summary in 'original_summary' so you can compare later.
-                try:
-                    raw_summary = (article.get("summary") or article.get("content") or "").strip()
-                    url_for_scrape = (article.get("source_url") or article.get("url") or "").strip()
-
-                    should_scrape = bool(url_for_scrape) and (len(raw_summary) < 600)
-                    scraped = None
-
-                    if should_scrape:
-                        scraped = scrape_article(url_for_scrape)
-                        if scraped and scraped.get("ok") and scraped.get("content"):
-                            # Prefer scraped body as main content
-                            article["original_summary"] = raw_summary
-                            article["content"] = scraped["content"]
-                            article["content_source"] = "scrape"
-                            article["scrape_status"] = "ok"
-                            article["scrape_error"] = None
-                            article["scraped_at"] = scraped.get("fetched_at")
-                            # If RSS image missing, use OG image when available
-                            if not article.get("image") and scraped.get("image"):
-                                article["image"] = scraped.get("image")
-                        else:
-                            # Mark failure but keep RSS content
-                            article["content"] = raw_summary
-                            article["content_source"] = "rss"
-                            article["scrape_status"] = "failed"
-                            article["scrape_error"] = (scraped.get("error") if isinstance(scraped, dict) else "scrape_failed")
-                            article["scraped_at"] = (scraped.get("fetched_at") if isinstance(scraped, dict) else None)
-                    else:
-                        article["content"] = raw_summary
-                        article["content_source"] = "rss"
-                        article["scrape_status"] = None
-                        article["scrape_error"] = None
-                        article["scraped_at"] = None
-                except Exception as _scrape_e:
-                    # Never fail the entire sync because one scrape failed
-                    article["content"] = (article.get("summary") or article.get("content") or "").strip()
-                    article["content_source"] = "rss"
-                    article["scrape_status"] = "failed"
-                    article["scrape_error"] = str(_scrape_e)
-                    article["scraped_at"] = None
-
                 article_doc = {
                     'id': str(uuid4()),
                     'title': title,
                     'content': detailed_content,
                     'summary': original_content[:200] + '...' if len(original_content) > 200 else original_content,
                     'original_summary': original_content,
-                    'content_source': 'scrape' if scrape_status == 'ok' else 'rss',
-                    'scrape_status': scrape_status,
-                    'scrape_error': scrape_error,
-                    'scraped_at': datetime.utcnow() if scrape_status not in ('not_attempted','disabled') else None,
                     'image': article.get('image'),
                     'image_source': 'rss_feed',
                     'category': article.get('category', 'Local News'),
@@ -10083,20 +9222,14 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'publishedDate': published_iso,
-                    'published_date': published_iso,
-                    'created_at': datetime.utcnow().isoformat(),
-                    'monetisation_type': 'none',
-                    'affiliate_links': []
+                    'published_date': article.get('published_date'),
+                    'created_at': datetime.utcnow()
                 }
                 
                 await db.articles.insert_one(article_doc)
                 imported_count += 1
                 imported_titles.append(title[:60] + "...")
                 existing_titles.add(title.lower())
-                if source_url:
-                    seen_urls.add(canonicalize_url(source_url))
-                    existing_urls.add(canonicalize_url(source_url))
                 logger.info(f"✅ Imported: {title[:50]}...")
                 
             except Exception as e:
@@ -10109,7 +9242,7 @@ async def sync_rss_now():
             "new_articles_found": len(new_articles),
             "articles_imported": imported_count,
             "imported_titles": imported_titles,
-            "message": f"[FULL_SCRAPE_PROD] Synced RSS feeds - imported {imported_count} new articles"
+            "message": f"Synced RSS feeds - imported {imported_count} new articles"
         }
         
     except Exception as e:
@@ -10298,10 +9431,45 @@ async def emergency_fix_all_images():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include the routers in the main app
+
+# =====================================================================================
+# EXPLICIT HEAD ROUTES FOR SEO (bots/CDNs sometimes probe with HEAD)
+# =====================================================================================
+
+@app.head("/sitemap.xml")
+async def head_sitemap():
+    return await generate_sitemap()
+
+@app.head("/news-sitemap.xml")
+async def head_news_sitemap():
+    return await generate_news_sitemap()
+
+@api_router.head("/seo/article/{article_id}")
+async def head_seo_article_page(article_id: str, request: Request):
+    return await get_seo_article_page(article_id=article_id, request=request)
+
+@api_router.head("/article/{article_id}")
+async def head_api_article(article_id: str):
+    return await serve_article_html(article_id)
+
+@app.head("/article/{article_id}")
+async def head_article(article_id: str):
+    return await serve_article_html(article_id)
+
 app.include_router(api_router)
 app.include_router(rss_routes.router)
 
 # Add GZip compression middleware for faster response delivery
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -10524,14 +9692,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         
         subscriber_emails = unique_emails
         logger.info(f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief")
-        # ============================================================
-        # TEST MODE (migration): send digest ONLY to one email address
-        # Set DIGEST_TEST_EMAIL in Render env to enable this
-        # ============================================================
-        test_digest_email = os.environ.get("DIGEST_TEST_EMAIL", "").strip()
-        if test_digest_email:
-            subscriber_emails = [test_digest_email]
-            logger.warning(f"🧪 TEST MODE ENABLED: Digest will be sent ONLY to {test_digest_email}")
+        
         # Get latest articles (published in last 24 hours for variety)
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
         
@@ -10635,16 +9796,6 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             if not is_similar:
                 seen_titles.add(title_normalized)
                 seen_keywords.append(title_keywords)
-            # Attach affiliate disclosure only when applicable
-
-            if article.get("affiliate_type") in AFFILIATE_DISCLOSURES:
-
-                article["disclosure"] = AFFILIATE_DISCLOSURES[article["affiliate_type"]]
-
-            # HARD RULE: affiliates only allowed in money section
-            if article.get("affiliate_type") and article.get("section") != "money":
-                article["affiliate_type"] = None
-
                 unique_articles.append(article)
         
         # Prioritize Local News (including Cheshire locations) first, Sports LAST
@@ -10661,14 +9812,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             return False
         
         def is_sports(article):
-            # Affiliate disclosure (if applicable)
-            if article.get("affiliate_type"):
-                article["affiliate_disclosure"] = AFFILIATE_DISCLOSURES.get(article["affiliate_type"])
-            # Affiliate disclosure (single article)
-        if article.get('affiliate_type'):
-            article['affiliate_disclosure'] = AFFILIATE_DISCLOSURES.get(article.get('affiliate_type'))
-
-        return article
+            return article.get('category', '').lower() == 'sports'
         
         # Sort: Local News first, then other categories, Sports LAST
         local_news = [a for a in unique_articles if is_local(a)]
@@ -11040,9 +10184,6 @@ async def auto_clean_duplicate_articles():
 async def startup_event():
     """Start scheduler and queue background tasks - fast startup for Kubernetes"""
     try:
-        if LOCAL_DEV_NO_DB or db is None:
-            logger.warning("LOCAL_DEV_NO_DB=1 -> Skipping MongoDB startup DB tasks.")
-            return
         # ============================================
         # ENSURE UNIQUE INDEX ON SCHEDULER_LOCKS
         # This prevents race conditions for digest sends
@@ -11718,189 +10859,3 @@ async def startup_event():
 async def shutdown_db_client():
     scheduler.shutdown()
     client.close()
-
-# -------------------------------
-# Advertise Leads
-# -------------------------------
-
-class AdvertiseLead(BaseModel):
-    name: str = Field(..., min_length=2)
-    business: Optional[str] = None
-    email: EmailStr
-    budget: Optional[str] = None
-    message: Optional[str] = None
-    tier: Optional[str] = None
-    source: str = "advertise_page"
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-
-@app.post("/api/leads/advertise")
-async def submit_advertise_lead(lead: AdvertiseLead):
-    data = lead.dict()
-    data["id"] = str(uuid4())
-
-    if LOCAL_DEV_NO_DB or db is None:
-        # In-memory fallback
-        print("📩 Advertise lead (LOCAL):", data)
-        return {"success": True}
-
-    try:
-        await db.advertise_leads.insert_one(data)
-        return {"success": True}
-    except Exception as e:
-        logging.error(f"Failed to save advertise lead: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save lead")
-
-
-# -------------------------------
-# Admin: View Advertise Leads (Basic Auth)
-# -------------------------------
-
-security = HTTPBasic()
-
-def require_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    admin_user = os.getenv("ADMIN_USER", "")
-    admin_pass = os.getenv("ADMIN_PASS", "")
-
-    # If not configured, deny by default (safe)
-    if not admin_user or not admin_pass:
-        raise HTTPException(status_code=403, detail="Admin access not configured")
-
-    ok_user = secrets.compare_digest(credentials.username, admin_user)
-    ok_pass = secrets.compare_digest(credentials.password, admin_pass)
-
-    if not (ok_user and ok_pass):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    return True
-
-@app.get("/api/leads/advertise")
-async def list_advertise_leads(limit: int = 50, _admin: bool = Depends(require_admin)):
-    limit = max(1, min(limit, 200))
-
-    if LOCAL_DEV_NO_DB or db is None:
-        return {"success": False, "message": "DB not enabled; no persisted leads"}
-
-    try:
-        cursor = db.advertise_leads.find({}, {"_id": 0}).sort("created_at", -1).limit(limit)
-        items = await cursor.to_list(length=limit)
-        return {"success": True, "leads": items}
-    except Exception as e:
-        logging.error(f"Failed to fetch advertise leads: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch leads")
-
-
-@app.get("/api/admin/env-check")
-async def admin_env_check():
-    return {
-        "ADMIN_USER_set": bool(os.getenv("ADMIN_USER")),
-        "ADMIN_PASS_set": bool(os.getenv("ADMIN_PASS")),
-        "ADMIN_USERNAME_set": bool(os.getenv("ADMIN_USERNAME")),
-        "ADMIN_PASSWORD_set": bool(os.getenv("ADMIN_PASSWORD")),
-    }
-
-@app.get("/api/admin/creds-check")
-async def admin_creds_check():
-    """
-    TEMP DIAGNOSTIC: returns masked admin credential info (no secrets).
-    Remove after login is confirmed working.
-    """
-    import os, hashlib
-
-    u = os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_USER") or ""
-    p = os.getenv("ADMIN_PASSWORD") or os.getenv("ADMIN_PASS") or ""
-
-    def sha256(x: str) -> str:
-        return hashlib.sha256(x.encode("utf-8")).hexdigest() if x else ""
-
-    def mask(x: str) -> str:
-        if not x:
-            return ""
-        if len(x) <= 4:
-            return "*" * len(x)
-        return f"{x[:2]}***{x[-2:]}"
-
-    return {
-        "using_username_key": "ADMIN_USERNAME" if os.getenv("ADMIN_USERNAME") else ("ADMIN_USER" if os.getenv("ADMIN_USER") else ""),
-        "using_password_key": "ADMIN_PASSWORD" if os.getenv("ADMIN_PASSWORD") else ("ADMIN_PASS" if os.getenv("ADMIN_PASS") else ""),
-        "username_masked": mask(u),
-        "username_len": len(u),
-        "username_sha256": sha256(u),
-        "password_len": len(p),
-        "password_sha256": sha256(p),
-    }
-
-# ==========================
-# Local feeds debug endpoint
-# ==========================
-@app.get("/api/local-feeds-only")
-async def api_local_feeds_only(limit: int = 200):
-    articles = await news_feed_service.fetch_local_feeds_only()
-    # Optional cap for easier debugging
-    if limit and limit > 0:
-        articles = articles[:limit]
-    return {"count": len(articles), "articles": articles}
-
-
-@app.get("/api/authority-pages/{slug}")
-
-
-@app.get("/api/authority-pages")
-async def list_authority_pages(category: str | None = None, limit: int = 10):
-    query = {"status": "published"}
-    if category:
-        query["category"] = category
-
-    pages = await db.authority_pages.find(
-        query,
-        {"slug": 1, "title": 1, "updated_at": 1, "created_at": 1, "category": 1}
-    ).sort("updated_at", -1).limit(limit).to_list(limit)
-
-    for p in pages:
-        p["id"] = str(p.get("_id"))
-        p.pop("_id", None)
-
-    return {"count": len(pages), "pages": pages}
-
-
-async def get_authority_page(slug: str):
-    page = await db.authority_pages.find_one({"slug": slug, "status": {"$in": ["draft", "published"]}})
-    if not page:
-        raise HTTPException(status_code=404, detail="Not found")
-    page["id"] = str(page.get("_id"))
-    page.pop("_id", None)
-    return page
-
-# -------------------------------
-# SPA catch-all (MUST be last)
-# -------------------------------
-from fastapi import Request
-from fastapi.responses import FileResponse
-
-@app.get("/{full_path:path}", include_in_schema=False)
-async def spa_catch_all(full_path: str, request: Request):
-    # Never handle API or static paths here
-    if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
-        return {"detail": "Not Found"}
-
-    # If it's a request for a file (has an extension), serve it from the build if it exists.
-    # If it doesn't exist, return 404 (do NOT return index.html).
-    if "." in full_path:
-        candidate = FRONTEND_BUILD_DIR / full_path
-        if candidate.exists() and candidate.is_file():
-            return FileResponse(str(candidate))
-        return {"detail": "Not Found"}
-
-    # Otherwise serve SPA index.html
-    index_path = FRONTEND_BUILD_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(str(index_path))
-    return {"detail": "Frontend build not found"}
-    if full_path.startswith("api/") or full_path.startswith("static/") or full_path.startswith("frontend/"):
-        return {"detail": "Not Found"}
-
-    index_path = FRONTEND_BUILD_DIR / "index.html"
-    if index_path.exists():
-        return FileResponse(str(index_path))
-    return {"detail": "Frontend build not found"}
-

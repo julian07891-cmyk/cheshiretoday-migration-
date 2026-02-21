@@ -313,7 +313,7 @@ export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
       </div>
       
       <p className="text-xs text-amber-700 dark:text-gray-300 mt-4 text-center">
-        <a href="/affiliate-disclosure" className="hover:underline">Affiliate links • We may earn commission</a>
+        <a href="/affiliate-disclosure" className="hover:underline underline-offset-2">Affiliate links • We may earn commission</a>
       </p>
     </div>
   );
@@ -379,7 +379,7 @@ export const AffiliateWidgetInline = ({ category = 'default', title = 'You Might
                 
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>
-                  <span className="text-sm text-[#1E3A8A] dark:text-blue-300 font-medium flex items-center gap-1 group-hover:underline">
+                  <span className="text-sm text-[#1E3A8A] dark:text-blue-300 font-medium flex items-center gap-1 group-hover:underline underline-offset-2">
                     Shop now <ExternalLink className="h-3.5 w-3.5" />
                   </span>
                 </div>
@@ -389,7 +389,7 @@ export const AffiliateWidgetInline = ({ category = 'default', title = 'You Might
         </div>
         
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
-          We may earn commission from purchases. <a href="/affiliate-disclosure" className="text-gray-600 dark:text-gray-300 hover:underline">Learn more</a>
+          We may earn commission from purchases. <a href="/affiliate-disclosure" className="text-gray-600 dark:text-gray-300 hover:underline underline-offset-2">Learn more</a>
         </p>
       </div>
       
@@ -512,7 +512,7 @@ export const AffiliateWidgetEndArticle = ({ category = 'default', products: prop
       </div>
       
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-5 text-center">
-        We may earn commission from links on this page. <a href="/affiliate-disclosure" className="text-emerald-600 dark:text-emerald-400 hover:underline">Affiliate disclosure</a>
+        We may earn commission from links on this page. <a href="/affiliate-disclosure" className="text-emerald-600 dark:text-emerald-400 hover:underline underline-offset-2">Affiliate disclosure</a>
       </p>
     </div>
   );

@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ContextTools from "../components/monetisation/ContextTools";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
+import ArticleAffiliateStrip from "../components/ArticleAffiliateStrip";
 
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
 import FestiveTheme from "../components/FestiveTheme";
 import RelatedArticles from "../components/RelatedArticles";
+import SidebarMoreStories from "../components/SidebarMoreStories";
 
 import { Toaster } from "../components/ui/toaster";
 import { toast } from "../hooks/use-toast.js";
@@ -91,21 +94,21 @@ const GuidePromoBlock = ({ guides = [], category }) => {
   const ordered = [preferredGuide, ...others].filter(Boolean).slice(0, 3);
 
   return (
-    <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">🔎 AI Guides</div>
+    <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+      <div className="text-xs font-semibold text-sky-800 dark:text-slate-200 mb-2">🔎 AI Guides</div>
       <div className="space-y-2">
         {ordered.map((g) => (
           <div
             key={g.slug}
-            className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-transparent p-3"
+            className="rounded-lg border border-slate-200 dark:border-slate-800 bg-[#FBFAF7] dark:bg-transparent p-2.5"
           >
             <a
               href={`/guides/${g.slug}`}
-              className="block font-bold text-blue-800 dark:text-blue-200 hover:underline"
+              className="block font-semibold text-sky-900 dark:text-slate-200 hover:underline underline-offset-2"
             >
               {safeText(g.title) || g.slug}
             </a>
-            <div className="text-xs mt-1 text-gray-700 dark:text-gray-400">
+            <div className="text-[11px] mt-1 text-slate-700 dark:text-gray-400">
               Updated: {String(g.updated_at || g.created_at || "").slice(0, 10)}
             </div>
           </div>
@@ -125,12 +128,12 @@ const GuidesInlinePromo = ({ guides }) => {
   const href = slug ? `/guides/${slug}` : "/guides/best-ai-tools-uk";
 
   return (
-    <div className="mt-8 p-5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-      <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">In-depth Guide</div>
-      <a href={href} className="block font-bold text-blue-900 dark:text-blue-200 hover:underline">
+    <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+      <div className="text-xs font-semibold text-sky-800 dark:text-slate-200 mb-1">In-depth Guide</div>
+      <a href={href} className="block font-semibold text-sky-900 dark:text-slate-200 hover:underline underline-offset-2">
         {title}
       </a>
-      <div className="text-sm mt-1 text-gray-700 dark:text-gray-400">
+      <div className="text-[11px] mt-1 text-slate-700 dark:text-gray-400">
         Updated UK guide with recommendations and affiliate disclosures →
       </div>
     </div>
@@ -140,6 +143,47 @@ const GuidesInlinePromo = ({ guides }) => {
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
   const navigate = useNavigate();
+  // --- More stories (below article) ---
+  const [moreStories, setMoreStories] = useState([]);
+  const [moreStoriesOpen, setMoreStoriesOpen] = useState(false);
+
+  const fmtShort = (dateString) => {
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchMoreStories() {
+      try {
+        const API = getApiUrl().replace(/\/$/, "");
+        const res = await fetch(`${API}/api/articles?limit=24`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.articles)
+          ? data.articles
+          : [];
+
+        const cleaned = list
+          .filter((a) => a && (a.id || a._id) && String(a.id || a._id) !== String(articleId))
+          .filter((a) => String(a.title || "").trim().length > 0);
+
+        if (mounted) setMoreStories(cleaned);
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    fetchMoreStories();
+    return () => {
+      mounted = false;
+    };
+  }, [articleId]);
 
   const [article, setArticle] = useState(null);
   const [guides, setGuides] = useState([]);
@@ -162,6 +206,30 @@ export default function ArticlePageV2({ categories }) {
   }, [article]);
 
   const { main: mainContent, attribution } = useMemo(() => splitAttribution(rawBody), [rawBody]);
+
+
+  // Contextual monetisation mapping: convert article metadata -> tool category
+  const contextToolType = useMemo(() => {
+    const sec = String(article?.section || "").toLowerCase();
+    const title = String(article?.title || "").toLowerCase();
+    const cat = String(article?.category || "").toLowerCase();
+    const text = `${sec} ${title} ${cat}`;
+
+    // AI / Tech
+    if (sec.startsWith("ai-") || text.includes(" ai ") || text.includes("chatgpt") || text.includes("gemini")) return "ai";
+
+    // Mortgages / Savings / Property / Tax
+    if (text.includes("mortgage") || text.includes("remortgage") || text.includes("fixed rate") || text.includes("tracker")) return "mortgages";
+    if (text.includes("savings") || text.includes("isa") || text.includes("interest rate") || text.includes("easy-access")) return "savings";
+    if (text.includes("property") || text.includes("house price") || text.includes("rent") || text.includes("landlord")) return "property";
+    if (text.includes("council tax") || text.includes("stamp duty") || text.includes("hmrc") || text.includes("tax")) return "property";
+
+    // Credit / Utilities
+    if (text.includes("credit card") || text.includes("0%") || text.includes("balance transfer") || text.includes("apr")) return "credit";
+    if (text.includes("energy") || text.includes("tariff") || text.includes("broadband") || text.includes("utilities")) return "energy";
+
+    return "";
+  }, [article]);
 
   useEffect(() => {
     let mounted = true;
@@ -219,7 +287,7 @@ export default function ArticlePageV2({ categories }) {
   if (loading) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+        <div className="min-h-screen bg-[#F7F4EE] text-neutral-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <NewsHeader
             categories={categories}
@@ -229,7 +297,7 @@ export default function ArticlePageV2({ categories }) {
           />
           <div className="container mx-auto px-4 py-20">
             <div className="flex flex-col items-center justify-center">
-              <Loader2 className="h-16 w-16 animate-spin text-emerald-600 mb-4" />
+              <Loader2 className="h-16 w-16 animate-spin text-slate-600 mb-4" />
               <p className="text-lg text-muted-foreground">Loading article...</p>
             </div>
           </div>
@@ -242,7 +310,7 @@ export default function ArticlePageV2({ categories }) {
   if (!article) {
     return (
       <HelmetProvider>
-        <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+        <div className="min-h-screen bg-[#F7F4EE] text-neutral-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <Helmet>
             <title>Article Not Found | Cheshire Today</title>
@@ -261,7 +329,7 @@ export default function ArticlePageV2({ categories }) {
             <p className="text-muted-foreground mb-6">{errorMsg || "Sorry, this link may be incorrect."}</p>
             <button
               onClick={() => navigate("/")}
-              className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-white font-medium hover:bg-emerald-700"
+              className="inline-flex items-center justify-center rounded-md bg-sky-700 px-4 py-2 text-white font-medium hover:bg-sky-800"
               data-testid="go-home-btn"
             >
               Go to Homepage
@@ -277,26 +345,63 @@ export default function ArticlePageV2({ categories }) {
 
   const published = formatDateTime(article.publishedDate || article.published_at || article.created_at);
 
+  const canonicalUrl = `${publicUrl}/article/${articleId}`;
+
+  const absoluteImageUrl = (() => {
+    const img = String(article?.image || "").trim();
+    if (!img) return "";
+    if (/^https?:\/\//i.test(img)) return img;
+    // Support relative paths (e.g. /images/x.jpg)
+    return `${publicUrl}${img.startsWith("/") ? "" : "/"}${img}`;
+  })();
+
+  const jsonLdNewsArticle = {
+    "@context": "https://schema.org",
+    "@type": "NewsArticle",
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonicalUrl },
+    headline: safeTitle || "Article",
+    description,
+    image: absoluteImageUrl ? [absoluteImageUrl] : undefined,
+    datePublished: article?.publishedDate || article?.published_at || article?.created_at || undefined,
+    dateModified: article?.updated_at || article?.publishedDate || article?.published_at || article?.created_at || undefined,
+    author: { "@type": "Organization", name: "Cheshire Today" },
+    publisher: {
+      "@type": "Organization",
+      name: "Cheshire Today",
+      logo: {
+        "@type": "ImageObject",
+        url: `${publicUrl}/logo.png`,
+      },
+    },
+  };
+
   return (
     <HelmetProvider>
-      <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+      <div className="min-h-screen bg-[#F7F4EE] text-neutral-900 dark:bg-gray-900 dark:text-white">
         <FestiveTheme />
 
         <Helmet>
           <title>{safeTitle || "Article"} | Cheshire Today</title>
           <meta name="description" content={description} />
 
+          <link rel="canonical" href={canonicalUrl} />
+
+          {/* Structured data for Google */}
+          <script type="application/ld+json">
+            {JSON.stringify(jsonLdNewsArticle)}
+          </script>
+
           <meta property="og:type" content="article" />
           <meta property="og:url" content={`${publicUrl}/article/${articleId}`} />
           <meta property="og:title" content={safeTitle} />
           <meta property="og:description" content={description} />
-          {article.image && <meta property="og:image" content={article.image} />}
+          {absoluteImageUrl && <meta property="og:image" content={absoluteImageUrl} />}
 
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:url" content={`${publicUrl}/article/${articleId}`} />
           <meta name="twitter:title" content={safeTitle} />
           <meta name="twitter:description" content={description} />
-          {article.image && <meta name="twitter:image" content={article.image} />}
+          {absoluteImageUrl && <meta name="twitter:image" content={absoluteImageUrl} />}
         </Helmet>
 
         <NewsHeader
@@ -308,7 +413,7 @@ export default function ArticlePageV2({ categories }) {
 
         <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="mb-6">
-            <button onClick={() => navigate(-1)} className="text-sm text-emerald-700 hover:underline">
+            <button onClick={() => navigate(-1)} className="text-sm text-slate-700 hover:underline underline-offset-2 dark:text-slate-200">
               ← Back
             </button>
           </div>
@@ -319,25 +424,27 @@ export default function ArticlePageV2({ categories }) {
 
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
                 <span>{published}</span>
-                <button onClick={handleShare} className="ml-auto text-emerald-700 hover:underline text-sm">
+                <button onClick={handleShare} className="ml-auto text-slate-700 hover:underline underline-offset-2 text-sm dark:text-slate-200 dark:hover:text-white">
                   Share
                 </button>
               </div>
 
               {article.image && (
                 <img
-                  src={article.image}
+                  src={absoluteImageUrl || article.image}
                   alt={safeTitle || "Article image"}
+                  loading="lazy"
+                  decoding="async"
+                  width="1200"
+                  height="630"
                   className="w-full rounded-xl mt-6 mb-6 object-cover"
                 />
               )}
-
-              <div className="rounded-2xl bg-white/70 dark:bg-transparent border border-slate-200/60 dark:border-border p-5 md:p-8">
-                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-emerald-700 prose-a:underline-offset-2 dark:prose-a:text-emerald-400">
+<div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-4 md:p-6">
+                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
                 {safeText(mainContent)}
               </div>
 
-              <GuidesInlinePromo guides={guides} />
 
               {(article.source || article.source_url) && (
                 <div className="mt-8 pt-6 border-t border-border">
@@ -348,7 +455,7 @@ export default function ArticlePageV2({ categories }) {
                         href={article.sourceUrl || article.source_url}
                         target="_blank"
                         rel="nofollow noopener noreferrer"
-                        className="font-medium text-foreground hover:underline"
+                        className="font-medium text-foreground hover:underline underline-offset-2"
                       >
                         {safeText(article.source) || "View original"}
                       </a>
@@ -365,40 +472,93 @@ export default function ArticlePageV2({ categories }) {
                 </div>
               )}
 
+              {contextToolType ? <ContextTools type={contextToolType} /> : null}
+
+              </div>
+
+              <div className="mt-6">
+                <GuidesInlinePromo guides={guides} />
+                
               <GuidePromoBlock guides={guides} category={article?.category} />
               </div>
+
+              {/* More stories (publisher-style, subtle) */}
+              {Array.isArray(moreStories) && moreStories.length > 0 && (
+                <section className="mt-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-extrabold tracking-tight text-neutral-900 dark:text-white">
+                      More stories
+                    </h2>
+
+                    {moreStories.length > 4 && (
+                      <button
+                        type="button"
+                        onClick={() => setMoreStoriesOpen((v) => !v)}
+                        className="text-xs font-semibold text-slate-700 hover:underline underline-offset-2 dark:text-slate-200"
+                      >
+                        {moreStoriesOpen ? "Show less" : "Show more"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(moreStoriesOpen ? moreStories.slice(0, 12) : moreStories.slice(0, 4)).map((a, idx) => (
+                      <div
+                        key={a.id || a._id || idx}
+                        onClick={() => navigate("/article/" + (a.id || a._id))}
+                        className="cursor-pointer group flex gap-3 rounded-xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/30 p-3 hover:bg-[#F2EEE6] dark:hover:bg-gray-900 transition"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") navigate("/article/" + (a.id || a._id));
+                        }}
+                      >
+                        <div className="relative overflow-hidden rounded-lg flex-shrink-0">
+                          {a.image ? (
+                            <img
+                              src={a.image}
+                              alt={a.title || "Story image"}
+                              className="h-14 w-20 object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="h-14 w-20 bg-[#F2EEE6] rounded-lg" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="mb-1 flex items-center gap-2">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F2EEE6] dark:bg-gray-800 text-neutral-700 dark:text-gray-200">
+                              {a.category || "News"}
+                            </span>
+                            <span className="text-[10px] text-neutral-500 dark:text-gray-400">
+                              {fmtShort(a.publishedDate || a.published_at || a.created_at)}
+                            </span>
+                          </div>
+
+                          <div className="text-sm font-semibold text-neutral-900 dark:text-white line-clamp-2 group-hover:underline underline-offset-2">
+                            {a.title}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </article>
 
             <aside className="lg:col-span-4">
               <div className="sticky top-6 space-y-6">
-                <RelatedArticles
-                  articleId={articleId}
-                  variant="sidebar"
-                  limit={4}
-                  onArticleClick={(a) => navigate(`/article/${a.id}`)}
-                />
+                <div className="rounded-xl border border-[#E6E1D8] bg-[#FBFAF7] p-4 dark:border-gray-800 dark:bg-gray-900/30">
+                  <h3 className="text-sm font-bold mb-3">Similar stories</h3>
+                  <RelatedArticles
+                    articleId={articleId}
+                    variant="sidebar"
+                    limit={6}
+                    onArticleClick={(a) => navigate("/article/" + a.id)}
+                  />
+                </div>
 
-                {Array.isArray(guides) && guides.length > 0 && (
-                  <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-900/10 p-4">
-                    <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 mb-2">
-                      AI Guides
-                    </div>
-                    <ul className="space-y-2 text-sm">
-                      {guides.map((g) => (
-                        <li key={g.slug}>
-                          <a
-                            href={`/guides/${g.slug}`}
-                            className="font-semibold text-foreground hover:underline underline-offset-2"
-                          >
-                            🔥 {safeText(g.title) || g.slug}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="text-xs mt-3 text-muted-foreground">UK-focused comparisons &amp; best picks →</div>
-                  </div>
-                )}
-
+                
                 <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-foreground">Sponsored</div>
@@ -407,7 +567,7 @@ export default function ArticlePageV2({ categories }) {
                   <div>Ad slot / affiliate widget placeholder (monetisation phase).</div>
                   <a
                     href="/advertise"
-                    className="inline-block mt-2 text-emerald-700 hover:underline font-semibold dark:text-emerald-400"
+                    className="inline-block mt-2 text-slate-700 hover:underline underline-offset-2 font-semibold dark:text-slate-200"
                   >
                     Advertise with us →
                   </a>
@@ -431,40 +591,14 @@ export default function ArticlePageV2({ categories }) {
                     />
                     <button
                       type="submit"
-                      className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                      className="rounded-md bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800"
                     >
                       Sign up
                     </button>
                   </form>
                   <p className="mt-2 text-xs text-muted-foreground">You can unsubscribe anytime.</p>
                 </div>
-
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Local news by area</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "chester",
-                      "crewe",
-                      "warrington",
-                      "macclesfield",
-                      "wilmslow",
-                      "northwich",
-                      "congleton",
-                      "nantwich",
-                      "knutsford",
-                      "ellesmere-port",
-                    ].map((slug) => (
-                      <button
-                        key={slug}
-                        onClick={() => navigate(`/`)}
-                        className="rounded-full border border-input bg-background px-3 py-1 text-xs text-foreground hover:border-emerald-300 hover:text-emerald-700 dark:hover:text-emerald-400"
-                      >
-                        {slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                      </button>
-                    ))}
-                  </div>
                 </div>
-              </div>
             </aside>
           </div>
         </main>

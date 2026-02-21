@@ -61,23 +61,23 @@ const NewsFooter = () => {
   };
 
   return (
-    <footer className="bg-gray-900 text-gray-300 mt-12">
+    <footer className="mt-12 border-t border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900 text-neutral-700 dark:text-gray-200">
       {/* Newsletter Section */}
-      <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 py-12">
+      <div className="border-t border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-slate-900 py-8">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <Mail className="h-10 w-10 text-white" />
+              <Mail className="h-7 w-7 text-neutral-700 dark:text-slate-200" />
             </div>
-            <h3 className="text-3xl font-bold text-white mb-3">
+            <h3 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
               The Daily Brief
             </h3>
-            <p className="text-white/90 mb-6 text-lg">
+            <p className="text-neutral-600 dark:text-slate-300 mb-4 text-base">
               Top Cheshire stories delivered to your inbox every morning at 7:30 AM
             </p>
             
             {!subscribed ? (
-              <form onSubmit={handleSubscribe} noValidate className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
+              <form onSubmit={handleSubscribe} noValidate className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto">
                 <input
                   type="email"
                   value={email}
@@ -85,65 +85,45 @@ const NewsFooter = () => {
                   placeholder="Enter your email address"
                   required
                   disabled={loading}
-                  className="flex-1 px-6 py-3 rounded-full text-gray-900 focus:outline-none focus:ring-4 focus:ring-emerald-300 border-2 border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 rounded-full border border-[#E6E1D8] bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-slate-200 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:ring-slate-500/30"
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-white text-emerald-700 font-bold px-8 py-3 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-sky-700 text-white font-bold px-6 py-2 rounded-full hover:bg-sky-800 transition-colors whitespace-nowrap shadow disabled:opacity-50 disabled:cursor-not-allowed dark:bg-sky-600 dark:hover:bg-sky-500"
                 >
                   {loading ? 'Subscribing...' : 'Subscribe Now'}
                 </button>
               </form>
             ) : (
-              <div className="bg-white/90 backdrop-blur-sm border-2 border-emerald-300 rounded-full px-6 py-3 max-w-xl mx-auto shadow-lg">
-                <p className="text-emerald-800 font-semibold flex items-center justify-center gap-2">
+              <div className="border border-[#E6E1D8] bg-[#FBFAF7] rounded-full px-6 py-3 max-w-xl mx-auto dark:border-slate-700 dark:bg-slate-800">
+                <p className="text-neutral-800 dark:text-slate-100 font-semibold flex items-center justify-center gap-2">
                   ✓ Thank you! Your subscription is confirmed!
                 </p>
               </div>
             )}
             
             {errorMessage && (
-              <div className="bg-red-100 border-2 border-red-400 rounded-full px-6 py-3 max-w-xl mx-auto mt-3">
-                <p className="text-red-800 font-semibold text-center">
+              <div className="bg-[#FBFAF7] border border-red-300 rounded-full px-6 py-3 max-w-xl mx-auto mt-3 dark:bg-slate-800 dark:border-red-700">
+                <p className="text-red-800 font-semibold text-center dark:text-red-200">
                   {errorMessage}
                 </p>
               </div>
             )}
             
-            <p className="text-white/80 text-sm mt-4">
+            <p className="text-neutral-500 dark:text-slate-500 dark:text-slate-500 dark:text-slate-400 text-xs mt-3">
               No spam, unsubscribe anytime. Weekly Roundup & Breaking News alerts also available.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-12">
-        {/* Local Areas Section */}
-        <div className="mb-10 pb-8 border-b border-gray-800">
-          <div className="flex items-center gap-2 mb-4">
-            <MapPin className="h-5 w-5 text-emerald-400" />
-            <h4 className="text-white font-bold text-lg">Local News by Area</h4>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {localAreas.map((area) => (
-              <Link
-                key={area.slug}
-                to={`/${area.slug}`}
-                className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 text-gray-300 hover:text-white rounded-full text-sm transition-colors flex items-center gap-1"
-              >
-                <MapPin className="h-3 w-3" />
-                {area.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-
+      <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           {/* Logo & Description */}
           <div className="col-span-2 md:col-span-1">
-            <h3 className="text-white text-2xl font-bold mb-4">Cheshire Today</h3>
-            <p className="text-sm text-gray-400 mb-4">
+            <h3 className="text-neutral-900 text-xl font-extrabold mb-3">Cheshire Today</h3>
+            <p className="text-sm text-neutral-600 dark:text-slate-400 dark:text-slate-400 mb-4">
               Your trusted source for local Cheshire news and updates.
             </p>
             <div className="flex space-x-4">
@@ -165,7 +145,7 @@ const NewsFooter = () => {
           {/* Footer Links */}
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
-              <h4 className="text-white font-bold mb-4">{title}</h4>
+              <h4 className="text-neutral-900 font-bold mb-3">{title}</h4>
               <ul className="space-y-2">
                 {links.map((link) => {
                   // Map specific links to their routes
@@ -180,7 +160,7 @@ const NewsFooter = () => {
                   if (href) {
                     return (
                       <li key={link}>
-                        <Link to={href} className="text-sm hover:text-emerald-400 transition-colors" onClick={() => { if (href === "/advertise") trackEvent("monetisation_click", { placement: "footer_advertise", destination: "/advertise" }); }}> 
+                        <Link to={href} className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors" onClick={() => { if (href === "/advertise") trackEvent("monetisation_click", { placement: "footer_advertise", destination: "/advertise" }); }}> 
                           {link}
                         </Link>
                       </li>
@@ -189,7 +169,7 @@ const NewsFooter = () => {
                   
                   return (
                     <li key={link}>
-                      <a href="#" className="text-sm hover:text-emerald-400 transition-colors">
+                      <a href="#" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
                         {link}
                       </a>
                     </li>
@@ -201,28 +181,28 @@ const NewsFooter = () => {
         </div>
 
         {/* Content Disclaimer */}
-        <div className="border-t border-gray-800 pt-6 mt-8">
-          <p className="text-xs text-gray-500 text-center max-w-3xl mx-auto leading-relaxed">
+        <div className="border-t border-[#E6E1D8] pt-6 mt-8">
+          <p className="text-[11px] text-neutral-500 dark:text-slate-500 dark:text-slate-500/80 text-center max-w-3xl mx-auto leading-relaxed">
             Cheshire Today aggregates news from public RSS feeds provided by publishers. All article content, images, and trademarks belong to their respective original publishers. Click the source links to read full stories on their official websites.
           </p>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 pt-6 mt-6">
+        <div className="border-t border-[#E6E1D8] dark:border-gray-800 pt-6 mt-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-neutral-600 dark:text-slate-400 dark:text-slate-400">
               © {currentYear} Cheshire Today. All rights reserved.
             </p>
             <div className="flex items-center space-x-4 flex-wrap justify-center">
-              <Link to="/privacy" className="text-sm hover:text-emerald-400 transition-colors">Privacy Policy</Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/terms" className="text-sm hover:text-emerald-400 transition-colors">Terms of Service</Link>
-              <span className="text-gray-600">|</span>
-              <Link to="/affiliate-disclosure" className="text-sm hover:text-emerald-400 transition-colors">Affiliate Disclosure</Link>
-              <span className="text-gray-600">|</span>
-              <a href="mailto:news@cheshiretoday.co.uk" className="text-sm hover:text-emerald-400 transition-colors">Contact</a>
-              <span className="text-gray-600">|</span>
-              <Link to="/admin" className="text-sm hover:text-emerald-400 transition-colors flex items-center gap-1">
+              <Link to="/privacy" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Privacy Policy</Link>
+              <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
+              <Link to="/terms" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Terms of Service</Link>
+              <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
+              <Link to="/affiliate-disclosure" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Affiliate Disclosure</Link>
+              <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
+              <a href="mailto:news@cheshiretoday.co.uk" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Contact</a>
+              <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
+              <Link to="/admin" className="text-sm text-neutral-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors flex items-center gap-1">
                 <Settings className="h-3 w-3" />
                 Admin
               </Link>

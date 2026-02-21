@@ -1,39 +1,46 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { monetisationTools } from "../../config/monetisationTools";
 
 export default function HeroMonetisationStrip() {
+  // Choose 3 hero items that do NOT overlap with the Money Toolkit (mortgages/savings/council tax)
+  const items = useMemo(() => {
+    return [
+      monetisationTools.credit[0],  // Credit cards
+      monetisationTools.energy[1],  // Broadband
+      monetisationTools.energy[0],  // Energy
+    ].filter(Boolean);
+  }, []);
+
   return (
     <div className="mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <a
-          href="/guides/best-mortgage-rates-uk"
-          className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
-        >
-          <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-          <div className="text-sm font-extrabold text-slate-900 dark:text-white">Mortgage rates</div>
-          <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">Compare UK deals →</div>
-        </a>
+        {items.map((it) => (
+          <a
+            key={it.href}
+            href={it.href}
+            className="rounded-xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-transparent px-4 py-3 hover:bg-[#F2EEE6] dark:hover:bg-gray-900 transition group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-semibold text-slate-600 dark:text-gray-300">
+                {it.badge || "Affiliate"}
+              </div>
+              <span className="text-[11px] px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 text-slate-700 dark:text-gray-200">
+                Deal
+              </span>
+            </div>
 
-        <a
-          href="/guides/best-credit-cards-uk"
-          className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
-        >
-          <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-          <div className="text-sm font-extrabold text-slate-900 dark:text-white">Credit cards</div>
-          <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">0% offers + rewards →</div>
-        </a>
-
-        <a
-          href="/guides/best-savings-accounts-uk"
-          className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
-        >
-          <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-          <div className="text-sm font-extrabold text-slate-900 dark:text-white">Savings</div>
-          <div className="text-xs text-slate-600 dark:text-gray-400 mt-1">Best easy-access picks →</div>
-        </a>
+            <div className="mt-2 text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+              {it.title}
+            </div>
+            <div className="mt-1 text-sm text-sky-800 dark:text-slate-200 font-semibold group-hover:underline underline-offset-2">
+              {it.desc}
+            </div>
+          </a>
+        ))}
       </div>
 
-      <div className="mt-2 text-[11px] text-slate-500 dark:text-gray-400">
-        We may earn a commission from affiliate links.
+      <div className="text-[11px] mt-2 text-gray-500">
+        We may earn a commission if you use affiliate links.
       </div>
     </div>
   );
