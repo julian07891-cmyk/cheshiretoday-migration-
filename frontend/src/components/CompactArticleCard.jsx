@@ -90,10 +90,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
               <BookOpen className="h-3 w-3" />
               {readTime} min read
             </span>
-            {article.source && (
-              <span className="hidden sm:inline">via {article.source}</span>
-            )}
-          </div>
+            </div>
         </div>
       </div>
     );
@@ -146,12 +143,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
               {readTime} min
             </span>
           </div>
-          {article.source && (
-            <span className="text-[#1E3A8A] dark:text-blue-400 font-medium">
-              {article.source}
-            </span>
-          )}
-        </div>
+          </div>
       </div>
     </div>
   );

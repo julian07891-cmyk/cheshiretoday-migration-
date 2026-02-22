@@ -112,6 +112,8 @@ export default function HomePageV1() {
 
   
   const [showMoreStories, setShowMoreStories] = useState(false);
+  const [showLatest, setShowLatest] = useState(false);
+  const [showAiBiz, setShowAiBiz] = useState(false);
 const navigate = useNavigate();
 
   useEffect(() => {
@@ -615,208 +617,124 @@ return {
       {!loading && !err && (
         <div className="-mt-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left: Latest feed */}
+          
           <main className="lg:col-span-8 lg:-mt-4">
-            
-            {latestFeed.length > 0 && (
+
+            {/* Latest */}
+            {Array.isArray(latestFeed) && latestFeed.length > 0 && (
               <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base font-extrabold tracking-tight">Latest</h2>
-                  <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated</span>
-                </div>
+                  </div>
 
-                <div className="space-y-3">
-                  {latestFeed.map((a, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, 18)).map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
                       <CompactArticleCard
-                        onClick={() =>
-                          navigate(a.url || ("/article/" + (a.id || a._id || "")))
-                        }
-                        article={{
-                          title: a.title,
-                          content: a.summary || a.content || "",
-                          summary: a.summary || "",
-                          image: a.image,
-                          category: a.category,
-                          location: a.town || a.location || "Cheshire",
-                          publishedDate: a.publishedDate,
-                          readTime: a.readTime || 3,
-                          url: a.url || ("/article/" + (a.id || a._id || "")),
-                        }}
-                      />
-
-                      {idx === 2 && (
-                        <div className="mt-3 rounded-xl border border-[#E6E1D8] dark:border-slate-800 bg-[#FBFAF7] dark:bg-slate-900/40 p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm font-semibold">Sponsored</div>
-                            <span className="text-xs px-2 py-1 rounded bg-slate-200 dark:bg-gray-800">
-                              Ad
-                            </span>
-                          </div>
-                          <div className="text-sm mb-2">
-                            Grow your business with Cheshire Today readers.
-                          </div>
-                          <a
-                            href="/advertise"
-                            className="font-semibold text-slate-700 dark:text-slate-200 hover:underline underline-offset-2"
-                          >
-                            View advertising options →
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-<section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-  <div className="flex items-center justify-between mb-3">
-    <h2 className="text-base font-extrabold tracking-tight">Money Toolkit</h2>
-    <span className="text-[11px] px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
-      Affiliate
-    </span>
-  </div>
-
-  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-    <a href="/guides/best-savings-accounts-uk"
-       className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
-      <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Savings</div>
-      <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">
-        Best savings accounts
-      </div>
-      <div className="text-xs text-slate-600 dark:text-gray-400 mt-1"><span className="group-hover:underline underline-offset-2">Easy-access picks →</span></div>
-    </a>
-
-    <a href="/guides/best-mortgage-rates-uk"
-       className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
-      <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Mortgages</div>
-      <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">
-        Compare mortgage rates
-      </div>
-      <div className="text-xs text-slate-600 dark:text-gray-400 mt-1"><span className="group-hover:underline underline-offset-2">UK deals →</span></div>
-    </a>
-
-    <a href="/guides/council-tax-bands-cheshire"
-       className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
-      <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Local</div>
-      <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">
-        Council tax guide
-      </div>
-      <div className="text-xs text-slate-600 dark:text-gray-400 mt-1"><span className="group-hover:underline underline-offset-2">Bands & tips →</span></div>
-    </a>
-  </div>
-
-  <div className="text-[11px] mt-3 text-slate-500 dark:text-gray-400">
-    We may earn a commission if you use affiliate links.
-  </div>
-</section>
-
-            {/* AI & Business Focus (hybrid authority block) */}
-            {Array.isArray(articles) && articles.length > 0 && (() => {
-              const pick = (a) => {
-                const cat = String(a?.category || "").toLowerCase();
-                return (
-                  cat.includes("ai") ||
-                  cat.includes("tech") ||
-                  cat.includes("technology") ||
-                  cat.includes("business") ||
-                  cat.includes("finance") ||
-                  cat.includes("money") ||
-                  cat.includes("tax")
-                );
-              };
-
-              const focus = articles.filter(pick).slice(0, 4);
-              if (focus.length === 0) return null;
-
-              const lead = focus[0];
-              const rest = focus.slice(1);
-
-              return (
-                <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-base font-extrabold tracking-tight">AI &amp; Business Focus</h2>
-                    <a
-                      href="/guides"
-                      className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:underline underline-offset-2"
-                    >
-                      View guides →
-                    </a>
-                  </div>
-
-                  {/* Lead */}
-                  <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 mb-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400">
-                        {lead?.category || "AI & Business"}
-                      </span>
-                      <span className="text-[11px] text-slate-400 dark:text-gray-500">•</span>
-                      <span className="text-[11px] text-slate-500 dark:text-gray-400">
-                        {lead?.publishedDate || lead?.published_at || ""}
-                      </span>
-                    </div>
-
-                    <div
-                      className="text-base font-extrabold text-slate-900 dark:text-white hover:underline underline-offset-2 cursor-pointer"
-                      onClick={() => navigate(lead?.url || ("/article/" + (lead?.id || lead?._id || "")))}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") navigate(lead?.url || ("/article/" + (lead?.id || lead?._id || "")));
-                      }}
-                    >
-                      {lead?.title}
-                    </div>
-
-                    {lead?.summary && (
-                      <div className="mt-2 text-sm text-slate-600 dark:text-gray-300 line-clamp-2">
-                        {lead.summary}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Supporting */}
-                  <div className="space-y-3">
-                    {rest.map((a, i) => (
-                      <div key={a?.id || a?._id || i}>
-                        <CompactArticleCard
-                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
-                          article={a}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="text-[11px] mt-3 text-slate-500 dark:text-gray-400">
-                    Coverage for readers following AI, technology, business and finance.
-                  </div>
-                </section>
-              );
-            })()}
-
-            {Array.isArray(moreStoriesFeed) && moreStoriesFeed.length > 0 && (
-              <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">More stories</h2>
-                  <button type="button"
-                    onClick={() => setShowMoreStories(v => !v)}
-                    className="text-sm font-semibold hover:underline underline-offset-2">
-                    {showMoreStories ? "Show less" : "Show more"}
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(showMoreStories ? moreStoriesFeed : moreStoriesFeed.slice(0,4)).map((a,i)=>(
-                    <div key={a?.id || a?._id || i}>
-                      <CompactArticleCard
-                        onClick={()=>navigate(a.url || ("/article/"+(a.id||a._id||"")))}
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
                         article={a}
                       />
                     </div>
                   ))}
                 </div>
+              
+
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowLatest(v => !v)}
+                    className="text-sm font-semibold hover:underline underline-offset-2"
+                  >
+                    {showLatest ? "Show less" : "Show more"}
+                  </button>
+                </div>
+</section>
+            )}
+
+            {/* Money Toolkit */}
+            <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-extrabold tracking-tight">Money Toolkit</h2>
+                <span className="text-[11px] px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
+                  Affiliate
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <a href="/guides/best-savings-accounts-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                  <div className="text-sm font-extrabold">Best savings accounts</div>
+                </a>
+                <a href="/guides/best-mortgage-rates-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                  <div className="text-sm font-extrabold">Compare mortgage rates</div>
+                </a>
+                <a href="/guides/council-tax-bands-cheshire" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                  <div className="text-sm font-extrabold">Council tax guide</div>
+                </a>
+              </div>
+            </section>
+
+            {/* AI & Business */}
+            {Array.isArray(articles) && articles.length > 0 && (
+              <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-extrabold tracking-tight">AI & Business</h2>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(showAiBiz ? articles.slice(0, 30) : articles.slice(0, 12)).map((a, i) => (
+                    <div key={a?.id || a?._id || i}>
+                      <CompactArticleCard
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        article={a}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAiBiz(v => !v)}
+                    className="text-sm font-semibold hover:underline underline-offset-2"
+                  >
+                    {showAiBiz ? "Show less" : "Show more"}
+                  </button>
+                </div>
               </section>
             )}
 
+            {/* More stories */}
+            {Array.isArray(moreStoriesFeed) && moreStoriesFeed.length > 0 && (
+              <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-extrabold tracking-tight">More stories</h2>
+                  </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(showMoreStories ? moreStoriesFeed.slice(0, 27) : moreStoriesFeed.slice(0, 9)).map((a, i) => (
+                    <div key={a?.id || a?._id || i}>
+                      <CompactArticleCard
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        article={a}
+                      />
+                    </div>
+                  ))}
+                </div>
+              
+
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreStories(v => !v)}
+                    className="text-sm font-semibold hover:underline underline-offset-2"
+                  >
+                    {showMoreStories ? "Show less" : "Show more"}
+                  </button>
+                </div>
+</section>
+            )}
+
           </main>
+
 
           {/* Right: Sidebar widgets */}
           <aside className="lg:col-span-4 space-y-3">

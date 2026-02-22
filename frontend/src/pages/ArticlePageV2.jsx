@@ -455,6 +455,9 @@ export default function ArticlePageV2({ categories }) {
               </div>
 
 
+              
+              {contextToolType ? <ContextTools type={contextToolType} /> : null}
+
               {(article.source || article.source_url) && (
                 <div className="mt-8 pt-6 border-t border-border">
                   <p className="text-xs text-muted-foreground leading-relaxed">
@@ -481,7 +484,6 @@ export default function ArticlePageV2({ categories }) {
                 </div>
               )}
 
-              {contextToolType ? <ContextTools type={contextToolType} /> : null}
 
               </div>
 
