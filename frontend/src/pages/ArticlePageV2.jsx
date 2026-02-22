@@ -3,6 +3,7 @@ import ContextTools from "../components/monetisation/ContextTools";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import ArticleAffiliateStrip from "../components/ArticleAffiliateStrip";
+import AuthorBox from "../components/AuthorBox";
 
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
@@ -196,6 +197,26 @@ export default function ArticlePageV2({ categories }) {
   const description = useMemo(() => buildDescription(article), [article]);
   const safeTitle = useMemo(() => safeText(article?.title), [article]);
 
+  // Pillar label for sidebar (keeps the publication feeling intentional)
+  const pillarLabel = useMemo(() => {
+    const sec = String(article?.section || "").toLowerCase();
+    const cat = String(article?.category || "").toLowerCase();
+    const title = String(article?.title || "").toLowerCase();
+    const blob = `${sec} ${cat} ${title}`;
+
+    if (sec.startsWith("ai-") || blob.includes("artificial intelligence") || blob.includes(" tech ") || blob.includes("technology") || blob.includes(" ai ")) {
+      return "AI & Tech";
+    }
+    if (blob.includes("finance") || blob.includes("money") || blob.includes("mortgage") || blob.includes("savings") || blob.includes("rates") || blob.includes("tax")) {
+      return "Finance";
+    }
+    if (blob.includes("business") || blob.includes("economy") || blob.includes("jobs") || blob.includes("companies")) {
+      return "Business";
+    }
+    return "Local";
+  }, [article?.section, article?.category, article?.title]);
+
+
   const rawBody = useMemo(() => {
     const c = article?.content;
     const s = article?.summary;
@@ -247,18 +268,6 @@ export default function ArticlePageV2({ categories }) {
         if (!mounted) return;
 
         setArticle(data);
-
-        // Load AI Guides (authority pages). Non-blocking: page still works if this fails.
-        try {
-          const gRes = await fetch(getApiUrl().replace(/\/$/, "") + "/api/authority-pages");
-          if (gRes.ok) {
-            const gData = await gRes.json();
-            const pages = Array.isArray(gData?.pages) ? gData.pages : [];
-            if (mounted) setGuides(pages);
-          }
-        } catch (_) {
-          // ignore
-        }
       } catch (e) {
         if (!mounted) return;
         console.error("Error fetching article:", e);
@@ -482,6 +491,11 @@ export default function ArticlePageV2({ categories }) {
               <GuidePromoBlock guides={guides} category={article?.category} />
               </div>
 
+              <AuthorBox
+                name="Cheshire Today Editorial Team"
+                category="AI, technology, finance and tax"
+              />
+
               {/* More stories (publisher-style, subtle) */}
               {Array.isArray(moreStories) && moreStories.length > 0 && (
                 <section className="mt-10">
@@ -549,7 +563,12 @@ export default function ArticlePageV2({ categories }) {
             <aside className="lg:col-span-4">
               <div className="sticky top-6 space-y-6">
                 <div className="rounded-xl border border-[#E6E1D8] bg-[#FBFAF7] p-4 dark:border-gray-800 dark:bg-gray-900/30">
-                  <h3 className="text-sm font-bold mb-3">Similar stories</h3>
+                  <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold">More in {pillarLabel}</h3>
+                  <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
+                    {pillarLabel}
+                  </span>
+                </div>
                   <RelatedArticles
                     articleId={articleId}
                     variant="sidebar"

@@ -6,6 +6,7 @@ import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
+import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
 
 /* ---------- helpers ---------- */
@@ -41,7 +42,7 @@ function isAiTechScience(a) {
   if (cat.includes("ai") || cat.includes("tech") || cat.includes("science")) return true;
   // fallback keyword match
   const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-  return /\b(ai|artificial intelligence|chatgpt|openai|gemini|llm|model|chip|gpu|nvidia|amd|intel|cyber|security|hack|breach|data|cloud|saas|robot)\b/.test(t);
+  return /\b(ai|artificial intelligence|chatgpt|openai|gemini|llm|gpt-?\d*|prompt|machine\s*learning|deep\s*learning|neural|chip|gpu|nvidia|amd|intel|semiconductor|cybersecurity|ransomware|malware|phishing|hack(?:ed|ing)?|data\s*breach|breach|cloud\s*comput(?:ing|e)|saas|robot|automation)\b/.test(t);
 }
 
 function isAiTechFeatured(a) {
@@ -74,6 +75,35 @@ function escapeRegExp(s) {
 }
 
 /* ---------- page ---------- */
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    // keep a console trail too
+    console.error("HomePageV1 crashed:", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-6 rounded-xl border border-red-200 bg-red-50 text-red-900">
+          <div className="font-extrabold mb-2">Homepage crashed (ErrorBoundary)</div>
+          <pre className="text-xs whitespace-pre-wrap leading-relaxed">
+            {String(this.state.error?.stack || this.state.error)}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 export default function HomePageV1() {
   const [articles, setArticles] = useState([]);
   const [guides, setGuides] = useState([]);
@@ -98,19 +128,6 @@ const navigate = useNavigate();
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.articles || [];
         if (mounted) setArticles(list);
-
-        // Load AI Guides (authority pages) — separate fetch so homepage still works if it fails
-        try {
-          const gRes = await fetch(getApiUrl() + "/api/authority-pages");
-          if (gRes.ok) {
-            const gData = await gRes.json();
-            const pages = Array.isArray(gData?.pages) ? gData.pages : [];
-            if (mounted) setGuides(pages);
-          }
-        } catch (_) {
-          // ignore
-        }
-
       } catch (e) {
         if (mounted) setErr(e?.message || "Failed to load");
       } finally {
@@ -144,41 +161,110 @@ const navigate = useNavigate();
     };
 
     // 1) Hero
-    const heroArticle = newestFirst.find(a => String(a?.category || "").toLowerCase().includes("uk")) || newestFirst.find(isLocal) || newestFirst[0] || null;
+    const heroArticle = newestFirst.find(isLocal) || newestFirst.find(a => String(a?.category || "").toLowerCase().includes("business")) || newestFirst.find(isAiTechScience) || newestFirst.find(a => String(a?.category || "").toLowerCase().includes("uk")) || newestFirst[0] || null;
     if (heroArticle) mark(heroArticle);
 
-    // 2) Top Stories (4) — local-first featured, excluding hero and any dupes
+    // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible
+    // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 Tech/Science, 1 Property, 1 Flexible (dedupe-safe)
     const topStoriesCards = [];
 
-    const pushTop = (a) => {
-      if (topStoriesCards.length >= 7) return;
-      if (!mark(a)) return;
-      topStoriesCards.push(toCard(a, `top-${topStoriesCards.length}`));
+    // Top Stories (7) — fixed mix:
+    // 2 Local + 2 Business + 1 AI/Tech + 1 Property + 1 UK (dedupe-safe)
+    const isBusinessishTop = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      if (cat.includes("business") || cat.includes("finance") || cat.includes("money") || cat.includes("tax")) return true;
+      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+      return /\b(business|economy|economic|markets?|inflation|gdp|trade|tariff|company|companies|earnings|profits?|shares?|stocks?|ftse|investment|investor|fund|bank|banking|hmrc|tax|vat|interest\s*rate|rate\s*cut|rate\s*hike|mortgage|mortgages|remortgage|savings|isa|credit\s*card)\b/.test(t);
     };
 
-    // Pass 1: AI/Tech/Science first
+    const isPropertyishTop = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      if (cat.includes("property") || cat.includes("housing") || cat.includes("planning")) return true;
+
+      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+
+      // STRICT property/planning focus only (prevents macro Business being mislabeled as Property)
+      return /\b(planning\s*application|application\s*submitted|plans?\s*submitted|planning\s*permission|approved|refused|housing\s*development|residential\s*development|residential\s*scheme|new\s*homes?|green\s*belt|development\s*site)\b/.test(t);
+    };
+
+    const isUkishTop = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      const scope = String(a?.scope || "").toLowerCase();
+      return cat.includes("uk") || scope === "uk";
+    };
+
+    const counts = { local: 0, business: 0, tech: 0, property: 0, uk: 0 };
+
+    const pushTop = (a, overrideCategory = null) => {
+      if (topStoriesCards.length >= 7) return;
+      if (!mark(a)) return;
+      topStoriesCards.push(
+        toCard(
+          a,
+          `top-${topStoriesCards.length}`,
+          overrideCategory ? { category: overrideCategory } : {}
+        )
+      );
+    };
+
+    // Pass 1: Local (2) — exclude Tech/Business/Property so those slots remain available
+    for (const a of newestFirst) {
+      if (counts.local >= 2) break;
+      if (!isLocal(a)) continue;
+      if (isAiTechScience(a)) continue;
+      if (isBusinessishTop(a)) continue;
+      if (isPropertyishTop(a)) continue;
+      pushTop(a, "Local News");
+      counts.local += 1;
+    }
+
+    // Pass 2: Business (2) — exclude Tech/Property
+    for (const a of newestFirst) {
+      if (counts.business >= 2) break;
+      if (isAiTechScience(a)) continue;
+      if (isPropertyishTop(a)) continue;
+      if (!isBusinessishTop(a)) continue;
+      pushTop(a, "Business");
+      counts.business += 1;
+    }
+
+    // Pass 3: AI/Tech (1)
+    for (const a of newestFirst) {
+      if (counts.tech >= 1) break;
+      if (!isAiTechScience(a)) continue;
+      pushTop(a, "AI & Tech");
+      counts.tech += 1;
+    }
+
+    // Pass 4: Property (1) — ensure it is actually property-ish
+    for (const a of newestFirst) {
+      if (counts.property >= 1) break;
+      if (isAiTechScience(a)) continue;
+      if (!isPropertyishTop(a)) continue;
+      pushTop(a, "Property");
+      counts.property += 1;
+    }
+
+    // Pass 5: UK News (1) — explicitly UK, exclude Local/Business/Property/Tech
+    for (const a of newestFirst) {
+      if (counts.uk >= 1) break;
+      if (isAiTechScience(a)) continue;
+      if (!isUkishTop(a)) continue;
+      if (isLocal(a)) continue;
+      if (isBusinessishTop(a)) continue;
+      if (isPropertyishTop(a)) continue;
+      pushTop(a, "UK News");
+      counts.uk += 1;
+    }
+
+    // Safety fill: if we still have <7 (rare), fill with newest non-tech
     for (const a of newestFirst) {
       if (topStoriesCards.length >= 7) break;
-      if (!isAiTechFeatured(a)) continue;
+      if (isAiTechScience(a)) continue;
       pushTop(a);
     }
 
-    // Pass 2: Local next
-    for (const a of newestFirst) {
-      if (topStoriesCards.length >= 7) break;
-      const sec = String(a?.section || "").toLowerCase();
-      if (!sec.startsWith("ai-")) continue;
-      pushTop(a);
-    }
-
-    // Pass 3: Fill remaining slots with anything
-    for (const a of newestFirst) {
-      if (topStoriesCards.length >= 7) break;
-      pushTop(a);
-    }
-
-
-    // 3) Most Read (5) — use view_count when present, exclude used
+// 3) Most Read (5) — use view_count when present, exclude used
     const mostReadCards = [];
 
     const byViewsThenNewest = [...newestFirst].sort((a, b) => {
@@ -198,42 +284,68 @@ const navigate = useNavigate();
     const aiArticles = [];
     for (const a of newestFirst) {
       if (aiArticles.length >= 4) break;
-      const sec = String(a?.section || "").toLowerCase();
-      if (!sec.startsWith("ai-")) continue;
+      if (!isAiTechScience(a)) continue;
       if (!mark(a)) continue;
-      aiArticles.push(a);
+      aiArticles.push(toCard(a, `ai-${aiArticles.length}`, { category: "AI & Tech" }));
+    }
+
+
+    // Fallback: if AI feed ends up empty, use newest 4 (still dedupe-safe)
+    if (aiArticles.length === 0) {
+      for (const a of newestFirst) {
+        if (aiArticles.length >= 4) break;
+        if (!mark(a)) continue;
+        aiArticles.push(a);
+      }
     }
 
 // 4) Finance feed — structured (4 business, 1 local, 1 business latest)
     const financeArticles = [];
 
-    const isBusiness = (a) =>
-      String(a?.section || "").toLowerCase() === "business-news";
+        const isBusiness = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      if (cat.includes("business") || cat.includes("finance") || cat.includes("money")) return true;
+      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+      return /\b(business|economy|economic|market|markets|inflation|gdp|trade|tariff|company|companies|earnings|profits?|shares?|stocks?|ftse|investment|investor|fund|bank|banking|hmrc|tax|vat|interest\s*rate|rate\s*cut|rate\s*hike|mortgage|mortgages|remortgage)\b/.test(t);
+    };
 
-    const isMoney = (a) =>
-      ["money", "tax", "property", "mortgages"].includes(
-        String(a?.section || "").toLowerCase()
-      );
+const isMoney = (a) => {
+      const sec = String(a?.section || "").toLowerCase();
+      if (["money", "tax", "property", "mortgages"].includes(sec)) return true;
 
-    // Pass 1: 4 business-news
+      const cat = String(a?.category || "").toLowerCase();
+      if (cat.includes("money") || cat.includes("finance") || cat.includes("business") || cat.includes("property") || cat.includes("tax")) return true;
+
+      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+      return /\b(mortgage|mortgages|remortgage|fixed\s*rate|tracker|interest\s*rate|isa|savings|bank|credit\s*card|loan|debt|council\s*tax|stamp\s*duty|hmrc|tax|rebate|refund)\b/.test(t);
+    };
+
+    // Pass 1: Prefer Money-ish first (2), then Business (up to 4)
+    for (const a of newestFirst) {
+      if (financeArticles.length >= 2) break;
+      if (!isMoney(a)) continue;
+      if (!mark(a)) continue;
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+    }
+
     for (const a of newestFirst) {
       if (financeArticles.length >= 4) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(a);
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
     }
 
-    // Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
+// Pass 2: 1 local news// Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
     for (const a of newestFirst) {
       if (financeArticles.length >= 5) break;
 
       const sec = String(a?.section || "").toLowerCase();
       // Avoid pulling AI items into Business & Money
-      if (sec.startsWith("ai-")) continue;
+      if (isAiTechScience(a)) continue;
 
       if (!isLocal(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(a);
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
     }
 
     // Pass 3: 1 more latest business
@@ -241,9 +353,31 @@ const navigate = useNavigate();
       if (financeArticles.length >= 6) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(a);
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
     }
 
+
+    
+    // Fallback: if Business & Money ends up empty, fill with newest 3 non-AI (still dedupe-safe)
+    if (financeArticles.length === 0) {
+      for (const a of newestFirst) {
+        if (financeArticles.length >= 3) break;
+        if (isAiTechScience(a)) continue;
+        if (!mark(a)) continue;
+        financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+      }
+    }
+
+// 4a) Business (3) — business-first, exclude AI and exclude used
+    const businessFeed = [];
+    for (const a of newestFirst) {
+      if (businessFeed.length >= 3) break;
+      const sec = String(a?.section || "").toLowerCase();
+      if (isAiTechScience(a)) continue;
+      if (!isBusiness(a)) continue;
+      if (!mark(a)) continue;
+      businessFeed.push(a);
+    }
 
     // 4b) Mortgages & Savings (3) — keyword + section based, exclude used
     const moneyFeed = [];
@@ -258,13 +392,24 @@ const navigate = useNavigate();
     for (const a of newestFirst) {
       if (moneyFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
-      if (sec.startsWith("ai-")) continue; // keep this block focused
+      if (isAiTechScience(a)) continue; // keep this block focused
       if (!isMoneyish(a)) continue;
       if (!mark(a)) continue;
       moneyFeed.push(a);
     }
 
-    // 4c) Property & Housing (3) — planning, homes, rent, property; exclude used
+    
+    // Fallback: if Mortgages & Savings ends up empty, fill with newest 3 non-AI (still dedupe-safe)
+    if (moneyFeed.length === 0) {
+      for (const a of newestFirst) {
+        if (moneyFeed.length >= 3) break;
+        if (isAiTechScience(a)) continue;
+        if (!mark(a)) continue;
+        moneyFeed.push(a);
+      }
+    }
+
+// 4c) Property & Housing (3) — planning, homes, rent, property; exclude used
     const propertyFeed = [];
 
     const isPropertyish = (a) => {
@@ -278,8 +423,8 @@ const navigate = useNavigate();
     for (const a of newestFirst) {
       if (propertyFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
-      if (sec.startsWith("ai-")) continue;
-      if (["mortgages", "money", "tax"].includes(sec)) continue;
+      if (isAiTechScience(a)) continue;
+      // section is null in backend; no section-based exclude
 
       if (!isPropertyish(a)) continue;
       if (!mark(a)) continue;
@@ -287,38 +432,67 @@ const navigate = useNavigate();
     }
 
 
-// 5) Latest feed (12) — local-first, exclude used
+
+    
+    // (Removed) Property & Housing fallback fill: keep this block strictly property/housing.
+
+
+
+
+// 5) Latest feed (12) — balanced mix for Cheshire Today strategy (dedupe-safe)
+    // Target: 4 Local, 4 Business/Finance, 3 AI/Tech, 1 UK (newest-first within each bucket)
     const latestCards = [];
 
-    const pushLatest = (a) => {
-      if (latestCards.length >= 12) return;
-      if (!mark(a)) return;
-      latestCards.push(toCard(a, `latest-${latestCards.length}`));
+    const isUkishLatest = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      const scope = String(a?.scope || "").toLowerCase();
+      return cat.includes("uk") || scope === "uk";
     };
 
-    // Pass 1: Prefer AI/Tech/Science for the first 8 slots
+    const pushLatest = (a, overrideCategory = null) => {
+      if (latestCards.length >= 12) return;
+      if (!mark(a)) return;
+      latestCards.push(toCard(a, `latest-${latestCards.length}`, overrideCategory ? { category: overrideCategory } : {}));
+    };
+
+    // Pass 1: Local (4) — keep it grounded in Cheshire
+    for (const a of newestFirst) {
+      if (latestCards.length >= 4) break;
+      if (!isLocal(a)) continue;
+      if (isAiTechScience(a)) continue; // reserve AI/Tech quota for later
+      pushLatest(a, "Local News");
+    }
+
+    // Pass 2: Business/Finance (4)
     for (const a of newestFirst) {
       if (latestCards.length >= 8) break;
+      if (isAiTechScience(a)) continue;
+      if (!isBusiness(a) && !isMoney(a)) continue;
+      pushLatest(a, "Business");
+    }
+
+    // Pass 3: AI/Tech (3)
+    for (const a of newestFirst) {
+      if (latestCards.length >= 11) break;
       if (!isAiTechScience(a)) continue;
-      pushLatest(a);
+      pushLatest(a, "AI & Tech");
     }
 
-    // Pass 2: Add Local (non-ai) for the next 4 slots
+    // Pass 4: UK (1) — only if we still have room
     for (const a of newestFirst) {
       if (latestCards.length >= 12) break;
-      const sec = String(a?.section || "").toLowerCase();
-      if (sec.startsWith("ai-")) continue;
-      if (!isLocal(a)) continue;
-      pushLatest(a);
+      if (!isUkishLatest(a)) continue;
+      if (isLocal(a)) continue;
+      pushLatest(a, "UK News");
     }
 
-    // Pass 3: Fill remaining with anything else
+    // Safety fill: anything (rare) to reach 12
     for (const a of newestFirst) {
       if (latestCards.length >= 12) break;
       pushLatest(a);
     }
 
-      // 6) More stories (dedupe-safe leftovers, 16 max)
+// 6) More stories (dedupe-safe leftovers, 16 max)
       const moreStoriesCards = [];
       for (const a of newestFirst) {
         if (moreStoriesCards.length >= 16) break;
@@ -334,6 +508,7 @@ return {
       mostReadFeed: mostReadCards,
       aiFeed: aiArticles,
       financeFeed: financeArticles,
+      businessFeed: businessFeed,
       moneyFeed: moneyFeed,
       latestFeed: latestCards,
         moreStoriesFeed: moreStoriesCards,
@@ -341,18 +516,23 @@ return {
 };
   }, [newestFirst]);
 
-  const hero = home.hero;
-  const topStories = home.topStories;
-  const aiFeed = home.aiFeed;
-  const financeFeed = home.financeFeed;
-  const moneyFeed = home.moneyFeed || [];
-  const latestFeed = home.latestFeed;
-    const moreStoriesFeed = home.moreStoriesFeed || [];
+  const hero = home?.hero || null;
 
-  
-    const propertyFeed = home.propertyFeed || [];return (
-    <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
-    <HomepageLayout>
+  // Always default to arrays to prevent runtime crashes (blank page)
+  const topStories = Array.isArray(home?.topStories) ? home.topStories : [];
+  const aiFeed = Array.isArray(home?.aiFeed) ? home.aiFeed : [];
+  const financeFeed = Array.isArray(home?.financeFeed) ? home.financeFeed : [];
+
+  const businessFeed = Array.isArray(home?.businessFeed) ? home.businessFeed : [];
+  const moneyFeed = Array.isArray(home?.moneyFeed) ? home.moneyFeed : [];
+  const propertyFeed = Array.isArray(home?.propertyFeed) ? home.propertyFeed : [];
+
+  const latestFeed = Array.isArray(home?.latestFeed) ? home.latestFeed : [];
+  const moreStoriesFeed = Array.isArray(home?.moreStoriesFeed) ? home.moreStoriesFeed : [];
+
+  return (
+    <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+    <ErrorBoundary><HomepageLayout>
       <HomepageHeader breakingStories={[]} />
 
       {loading && <div className="py-6">Loading…</div>}
@@ -415,7 +595,7 @@ return {
             </div>
 
             {/* Right: Top Stories (compact) */}
-            <aside className="lg:col-span-4">
+            <aside className="lg:col-span-4 lg:-mt-10">
               {topStories.length > 0 && (
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -530,6 +710,88 @@ return {
   </div>
 </section>
 
+            {/* AI & Business Focus (hybrid authority block) */}
+            {Array.isArray(articles) && articles.length > 0 && (() => {
+              const pick = (a) => {
+                const cat = String(a?.category || "").toLowerCase();
+                return (
+                  cat.includes("ai") ||
+                  cat.includes("tech") ||
+                  cat.includes("technology") ||
+                  cat.includes("business") ||
+                  cat.includes("finance") ||
+                  cat.includes("money") ||
+                  cat.includes("tax")
+                );
+              };
+
+              const focus = articles.filter(pick).slice(0, 4);
+              if (focus.length === 0) return null;
+
+              const lead = focus[0];
+              const rest = focus.slice(1);
+
+              return (
+                <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-extrabold tracking-tight">AI &amp; Business Focus</h2>
+                    <a
+                      href="/guides"
+                      className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:underline underline-offset-2"
+                    >
+                      View guides →
+                    </a>
+                  </div>
+
+                  {/* Lead */}
+                  <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-gray-400">
+                        {lead?.category || "AI & Business"}
+                      </span>
+                      <span className="text-[11px] text-slate-400 dark:text-gray-500">•</span>
+                      <span className="text-[11px] text-slate-500 dark:text-gray-400">
+                        {lead?.publishedDate || lead?.published_at || ""}
+                      </span>
+                    </div>
+
+                    <div
+                      className="text-base font-extrabold text-slate-900 dark:text-white hover:underline underline-offset-2 cursor-pointer"
+                      onClick={() => navigate(lead?.url || ("/article/" + (lead?.id || lead?._id || "")))}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") navigate(lead?.url || ("/article/" + (lead?.id || lead?._id || "")));
+                      }}
+                    >
+                      {lead?.title}
+                    </div>
+
+                    {lead?.summary && (
+                      <div className="mt-2 text-sm text-slate-600 dark:text-gray-300 line-clamp-2">
+                        {lead.summary}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Supporting */}
+                  <div className="space-y-3">
+                    {rest.map((a, i) => (
+                      <div key={a?.id || a?._id || i}>
+                        <CompactArticleCard
+                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          article={a}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="text-[11px] mt-3 text-slate-500 dark:text-gray-400">
+                    Coverage for readers following AI, technology, business and finance.
+                  </div>
+                </section>
+              );
+            })()}
 
             {Array.isArray(moreStoriesFeed) && moreStoriesFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
@@ -557,57 +819,35 @@ return {
           </main>
 
           {/* Right: Sidebar widgets */}
-          <aside className="lg:col-span-4 space-y-10 md:space-y-14">
-            {/* Mortgages & Savings (news cards) */}
-            {/* Mortgages & Savings (news cards) */}
-            {Array.isArray(moneyFeed) && moneyFeed.length > 0 && (
-              <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">Mortgages &amp; Savings</h2>
-                  <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
-                    Money
-                  </span>
-                </div>
+          <aside className="lg:col-span-4 space-y-3">
 
-                <div className="space-y-3">
-                  {moneyFeed.slice(0, 3).map((a, i) => (
-                    <CompactArticleCard
-                      key={a?.id || a?._id || i}
-                      onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
-                      article={{
-                        title: a.title,
-                        content: a.summary || a.content || "",
-                        summary: a.summary || "",
-                        image: a.image,
-                        category: a.category || "Money",
-                        location: a.town || a.location || "Cheshire",
-                        publishedDate: a.publishedDate,
-                        readTime: a.readTime || 3,
-                        url: a.url || ("/article/" + (a.id || a._id || "")),
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
+            {/* Business & Money */}
+            
+            {Array.isArray(financeFeed) && financeFeed.length > 0 && (
+              <LeadSection
+                title="Business & Money"
+                badgeText="Business"
+                items={financeFeed.slice(0, 4)}
+                onNavigate={(url) => navigate(url)}
+              />
             )}
-
-            {/* AI & Tech (only when backend classifies ai-*) */}
+            {/* AI & Tech */}
+            
             {aiFeed.length > 0 && (
-              <section className="rounded-lg border border-slate-200/50 dark:border-gray-800 p-4 bg-white/70 dark:bg-transparent">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-lg font-bold">AI & Tech</h2>
-                  <span className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
-                    Updated
-                  </span>
-                </div>
-
+              <div className="space-y-3">
                 {Array.isArray(guides) && guides.length > 0 && (
-                  <div className="mb-4 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      AI Guides
+                  <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-extrabold text-slate-900 dark:text-white">AI Guides</div>
+                      <a
+                        href="/guides"
+                        className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:underline underline-offset-2"
+                      >
+                        View guides →
+                      </a>
                     </div>
 
-                    <ul className="space-y-2 text-sm">
+                    <ul className="mt-3 space-y-2 text-sm">
                       {guides.slice(0, 3).map((g, idx) => (
                         <li key={g?.id || g?.slug || idx}>
                           <a
@@ -620,81 +860,67 @@ return {
                       ))}
                     </ul>
 
-                    <div className="text-xs mt-2 text-gray-600 dark:text-gray-400">
+                    <div className="text-xs mt-3 text-slate-600 dark:text-gray-300">
                       UK-focused comparisons &amp; best picks →
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {aiFeed.map((a, i) => (
-                    <CompactArticleCard
-                      key={a.id || a._id || i}
-                      onClick={() => navigate("/article/" + (a.id || a._id))}
-                      article={{
-                        title: a.title,
-                        content: a.summary || a.content || "",
-                        summary: a.summary || "",
-                        image: a.image,
-                        category: a.category,
-                        location: a.location || "Cheshire",
-                        publishedDate: a.publishedDate,
-                        readTime: 3,
-                        url: "/article/" + (a.id || a._id),
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
+                <LeadSection
+                  title="AI & Tech"
+                  badgeText="AI Pulse"
+                  badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200"
+                  items={aiFeed.slice(0, 4)}
+                  onNavigate={(url) => navigate(url)}
+                />
+              </div>
+            )}
+            {/* Mortgages & Savings */}
+            
+            {Array.isArray(moneyFeed) && moneyFeed.length > 0 && (
+              <LeadSection
+                title="Mortgages & Savings"
+                badgeText="Finance"
+                items={moneyFeed.slice(0, 4)}
+                onNavigate={(url) => navigate(url)}
+              />
+            )}
+
+            {/* Property & Housing */}
+            
+            {Array.isArray(propertyFeed) && propertyFeed.length > 0 && (
+              <LeadSection
+                title="Property & Housing"
+                badgeText="Property"
+                badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
+                items={propertyFeed.slice(0, 4)}
+                onNavigate={(url) => navigate(url)}
+              />
             )}
 
             {/* Sponsored placeholder */}
-            <section className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-4 text-sm text-gray-600 dark:text-gray-300">
-              <div className="font-semibold mb-1">Sponsored</div>
+            <section className="rounded-xl border border-dashed border-slate-300 dark:border-gray-700 bg-white/50 dark:bg-transparent p-3 text-sm text-slate-600 dark:text-gray-300">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-semibold text-slate-900 dark:text-white">Sponsored</div>
+                <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-slate-200 bg-slate-100 text-slate-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  Ad
+                </span>
+              </div>
               <div>Ad slot / affiliate widget placeholder (monetisation phase).</div>
-              <a href="/advertise" className="inline-block mt-2 text-blue-600 hover:underline underline-offset-2 font-semibold">
+              <a
+                href="/advertise"
+                className="inline-block mt-2 text-slate-800 dark:text-slate-100 hover:underline underline-offset-2 font-semibold"
+              >
                 Advertise with us →
               </a>
             </section>
-
-            {/* Property & Housing */}
-            {Array.isArray(propertyFeed) && propertyFeed.length > 0 && (
-              <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">Property &amp; Housing</h2>
-                  <span className="text-[11px] px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
-                    Property
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {propertyFeed.slice(0, 3).map((a, i) => (
-                    <CompactArticleCard
-                      key={a?.id || a?._id || i}
-                      onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
-                      article={{
-                        title: a.title,
-                        content: a.summary || a.content || "",
-                        summary: a.summary || "",
-                        image: a.image,
-                        category: a.category || "Property",
-                        location: a.town || a.location || "Cheshire",
-                        publishedDate: a.publishedDate,
-                        readTime: a.readTime || 3,
-                        url: a.url || ("/article/" + (a.id || a._id || "")),
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
 
           </aside>
         </div>
                 )}
 
       <NewsFooter />
-</HomepageLayout>
+</HomepageLayout></ErrorBoundary>
     </div>
 
   );

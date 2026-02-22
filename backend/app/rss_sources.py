@@ -57,6 +57,40 @@ CHESHIRE_RSS_SOURCES = [
         "category": "local"
     },
 
+    
+    # -------------------------
+    # Finance / Business
+    # -------------------------
+    {
+        "name": "BBC Business",
+        "url": "http://feeds.bbci.co.uk/news/business/rss.xml",
+        "category": "business"
+    },
+    {
+        "name": "Guardian Business",
+        "url": "https://www.theguardian.com/uk/business/rss",
+        "category": "business"
+    },
+    {
+        "name": "Guardian Money",
+        "url": "https://www.theguardian.com/money/rss",
+        "category": "business"
+    },
+
+    # -------------------------
+    # AI / Technology
+    # -------------------------
+    {
+        "name": "BBC Technology",
+        "url": "http://feeds.bbci.co.uk/news/technology/rss.xml",
+        "category": "business"
+    },
+    {
+        "name": "Ars Technica",
+        "url": "http://feeds.arstechnica.com/arstechnica/index",
+        "category": "business"
+    },
+
     # Business (optional - add only if it actually returns RSS in your environment)
     # If your earlier Insider test returns HTML, we keep it OFF for now.
 ]

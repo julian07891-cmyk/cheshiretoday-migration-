@@ -35,3 +35,9 @@ backend/.env
 backend/.env.*
 .env
 .env.*
+
+# --- Local backup files (do not commit) ---
+*.bak
+*.BACKUP_*
+*.pre_jsonld.*.bak
+*.bak_*

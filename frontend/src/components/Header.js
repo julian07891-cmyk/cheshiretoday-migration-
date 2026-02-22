@@ -11,7 +11,7 @@ const Header = () => {
             />
             <div>
               <h1 className="text-base sm:text-2xl md:text-3xl font-bold tracking-tight">Cheshire Today</h1>
-              <p className="text-emerald-100 text-[10px] sm:text-xs md:text-sm mt-0.5 sm:mt-1">Local News & Updates</p>
+              <p className="text-emerald-100 text-[10px] sm:text-xs md:text-sm mt-0.5 sm:mt-1">Local News · Business · AI & Tech · Finance</p>
             </div>
           </div>
           <div className="text-right hidden sm:block">
