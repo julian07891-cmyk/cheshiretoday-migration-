@@ -78,7 +78,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
               {article.category}
             </Badge>
           </div>
-          <h3 className="font-headline text-base md:text-lg font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors mb-1">
+          <h3 className="font-headline text-base md:text-lg font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 group-hover:underline underline-offset-2 transition-colors mb-1">
             {article.title}
           </h3>
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
@@ -124,7 +124,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
       </div>
       
       <div className="p-4">
-        <h3 className="font-headline text-lg md:text-xl font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 transition-colors mb-2">
+        <h3 className="font-headline text-lg md:text-xl font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 group-hover:underline underline-offset-2 transition-colors mb-2">
           {article.title}
         </h3>
         <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">

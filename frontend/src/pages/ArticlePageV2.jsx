@@ -3,19 +3,17 @@ import ContextTools from "../components/monetisation/ContextTools";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import ArticleAffiliateStrip from "../components/ArticleAffiliateStrip";
-import AuthorBox from "../components/AuthorBox";
 
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
 import FestiveTheme from "../components/FestiveTheme";
 import RelatedArticles from "../components/RelatedArticles";
-import SidebarMoreStories from "../components/SidebarMoreStories";
-
 import { Toaster } from "../components/ui/toaster";
 import { toast } from "../hooks/use-toast.js";
 
 import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
+import CompactArticleCard from "../components/CompactArticleCard";
 
 /**
  * Convert unknown values to a safe string for React rendering.
@@ -333,7 +331,7 @@ export default function ArticlePageV2({ categories }) {
             onSearch={() => {}}
           />
 
-          <main className="container mx-auto px-4 py-16 max-w-6xl">
+          <main className="container mx-auto px-4 py-16 max-w-7xl">
             <h1 className="text-4xl font-extrabold text-foreground mb-3">Article Not Found</h1>
             <p className="text-muted-foreground mb-6">{errorMsg || "Sorry, this link may be incorrect."}</p>
             <button
@@ -420,7 +418,7 @@ export default function ArticlePageV2({ categories }) {
           onSearch={() => {}}
         />
 
-        <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
           <div className="mb-6">
             <button onClick={() => navigate(-1)} className="text-sm text-slate-700 hover:underline underline-offset-2 dark:text-slate-200">
               ← Back
@@ -450,7 +448,7 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 <div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-4 md:p-6">
-                <div className="prose prose-lg prose-slate max-w-3xl whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
+                <div className="prose prose-lg prose-slate max-w-none whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
                 {safeText(mainContent)}
               </div>
 
@@ -492,21 +490,42 @@ export default function ArticlePageV2({ categories }) {
                 
               <GuidePromoBlock guides={guides} category={article?.category} />
               </div>
-
-              <AuthorBox
-                name="Cheshire Today Editorial Team"
-                category="AI, technology, finance and tax"
-              />
-
-              {/* More stories (publisher-style, subtle) */}
+              {/* More stories — match homepage layout */}
+              
+              {/* More stories (publisher-style) — collapsed shows only one row */}
+              
+              {/* More stories (homepage card style) — collapsed shows only one row */}
               {Array.isArray(moreStories) && moreStories.length > 0 && (
                 <section className="mt-10">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-sm font-extrabold tracking-tight text-neutral-900 dark:text-white">
                       More stories
                     </h2>
+                  </div>
 
-                    {moreStories.length > 4 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(moreStoriesOpen ? moreStories.slice(0, 12) : moreStories.slice(0, 3)).map((a, idx) => (
+                      <div key={a?.id || a?._id || idx}>
+                        <CompactArticleCard
+                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          article={{
+                            title: a?.title,
+                            content: a?.summary || a?.content || "",
+                            summary: a?.summary || "",
+                            image: a?.image,
+                            category: a?.category,
+                            location: a?.town || a?.location || "Cheshire",
+                            publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
+                            readTime: a?.readTime || 3,
+                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {moreStories.length > 3 && (
+                    <div className="mt-3 flex justify-center">
                       <button
                         type="button"
                         onClick={() => setMoreStoriesOpen((v) => !v)}
@@ -514,57 +533,19 @@ export default function ArticlePageV2({ categories }) {
                       >
                         {moreStoriesOpen ? "Show less" : "Show more"}
                       </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(moreStoriesOpen ? moreStories.slice(0, 12) : moreStories.slice(0, 4)).map((a, idx) => (
-                      <div
-                        key={a.id || a._id || idx}
-                        onClick={() => navigate("/article/" + (a.id || a._id))}
-                        className="cursor-pointer group flex gap-3 rounded-xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/30 p-3 hover:bg-[#F2EEE6] dark:hover:bg-gray-900 transition"
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") navigate("/article/" + (a.id || a._id));
-                        }}
-                      >
-                        <div className="relative overflow-hidden rounded-lg flex-shrink-0">
-                          {a.image ? (
-                            <img
-                              src={a.image}
-                              alt={a.title || "Story image"}
-                              className="h-14 w-20 object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          ) : (
-                            <div className="h-14 w-20 bg-[#F2EEE6] rounded-lg" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="mb-1 flex items-center gap-2">
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F2EEE6] dark:bg-gray-800 text-neutral-700 dark:text-gray-200">
-                              {a.category || "News"}
-                            </span>
-                            <span className="text-[10px] text-neutral-500 dark:text-gray-400">
-                              {fmtShort(a.publishedDate || a.published_at || a.created_at)}
-                            </span>
-                          </div>
-
-                          <div className="text-sm font-semibold text-neutral-900 dark:text-white line-clamp-2 group-hover:underline underline-offset-2">
-                            {a.title}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </section>
               )}
+
+                        
+
+
             </article>
 
-            <aside className="lg:col-span-4">
-              <div className="sticky top-6 space-y-6">
-                <div className="rounded-xl border border-[#E6E1D8] bg-[#FBFAF7] p-4 dark:border-gray-800 dark:bg-gray-900/30">
+            <aside className="lg:col-span-4 space-y-3">
+              <div className="space-y-6 md:space-y-8">
+                <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold">More in {pillarLabel}</h3>
                   <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
@@ -579,8 +560,9 @@ export default function ArticlePageV2({ categories }) {
                   />
                 </div>
 
-                
-                <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
+                {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}
+
+<div className="rounded-xl border border-dashed border-slate-300 dark:border-gray-700 bg-white/50 dark:bg-transparent p-4 text-sm text-slate-600 dark:text-gray-300">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-foreground">Sponsored</div>
                     <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">Ad</span>
@@ -594,7 +576,7 @@ export default function ArticlePageV2({ categories }) {
                   </a>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
                   <p className="text-sm text-muted-foreground mb-3">A short email with the top local stories — no spam.</p>
                   <form
