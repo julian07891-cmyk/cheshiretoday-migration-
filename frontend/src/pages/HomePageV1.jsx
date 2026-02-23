@@ -494,10 +494,34 @@ const isMoney = (a) => {
       pushLatest(a);
     }
 
-// 6) More stories (dedupe-safe leftovers, 16 max)
+
+// 5b) AI & Business feed (dedupe-safe, 36 max) — hybrid authority block, avoids duplicates via mark()
+    const aiBizFeedCards = [];
+    const isAiBiz = (a) => {
+      // Prefer existing classifiers already defined in this builder scope
+      if (isAiTechScience(a)) return true;
+      if (isBusiness(a) || isMoney(a)) return true;
+
+      // Property/housing/planning often overlaps with finance audience; include it here too
+      // (isPropertyish is defined for propertyFeed in this builder scope)
+      if (typeof isPropertyish === "function" && isPropertyish(a)) return true;
+
+      // Lightweight keyword fallback (title + summary only)
+      const t = (String(a?.title || "") + " " + String(a?.summary || "")).toLowerCase();
+      return /\b(tax|hmrc|vat|budget|inflation|interest\s*rate|rates|mortgage|remortgage|savings|isa|credit\s*card|bank|housing|property|planning)\b/.test(t);
+    };
+
+    for (const a of newestFirst) {
+      if (aiBizFeedCards.length >= 36) break;
+      if (!isAiBiz(a)) continue;
+      if (!mark(a)) continue;
+      aiBizFeedCards.push(toCard(a, `aibiz-${aiBizFeedCards.length}`, { category: a?.category || "AI & Business" }));
+    }
+
+// 6) More stories (dedupe-safe leftovers, 36 max)
       const moreStoriesCards = [];
       for (const a of newestFirst) {
-        if (moreStoriesCards.length >= 16) break;
+        if (moreStoriesCards.length >= 36) break;
         if (!mark(a)) continue;
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
       }
@@ -509,6 +533,7 @@ return {
       topStories: topStoriesCards,
       mostReadFeed: mostReadCards,
       aiFeed: aiArticles,
+      aiBizFeed: aiBizFeedCards,
       financeFeed: financeArticles,
       businessFeed: businessFeed,
       moneyFeed: moneyFeed,
@@ -532,7 +557,11 @@ return {
   const latestFeed = Array.isArray(home?.latestFeed) ? home.latestFeed : [];
   const moreStoriesFeed = Array.isArray(home?.moreStoriesFeed) ? home.moreStoriesFeed : [];
 
-  return (
+  const aiBizFeed = Array.isArray(home?.aiBizFeed) ? home.aiBizFeed : [];
+
+  // AI & Business feed (filtered) — keep cards relevant and avoid dumping all articles here
+  
+return (
     <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
     <ErrorBoundary><HomepageLayout>
       <HomepageHeader breakingStories={[]} />
@@ -606,8 +635,7 @@ return {
                   </div>
                   <TopStoriesGrid stories={topStories} />
                 </div>
-                                
-                )}
+              )}
             </aside>
           </div>
         </section>
@@ -674,14 +702,14 @@ return {
             </section>
 
             {/* AI & Business */}
-            {Array.isArray(articles) && articles.length > 0 && (
+            {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base font-extrabold tracking-tight">AI & Business</h2>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showAiBiz ? articles.slice(0, 30) : articles.slice(0, 12)).map((a, i) => (
+                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, 18)).map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -710,7 +738,7 @@ return {
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showMoreStories ? moreStoriesFeed.slice(0, 27) : moreStoriesFeed.slice(0, 9)).map((a, i) => (
+                  {(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, 18)).map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -835,7 +863,7 @@ return {
 
           </aside>
         </div>
-                )}
+      )}
 
       <NewsFooter />
 </HomepageLayout></ErrorBoundary>

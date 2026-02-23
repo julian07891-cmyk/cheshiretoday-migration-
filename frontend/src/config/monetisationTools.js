@@ -8,6 +8,11 @@ export const monetisationTools = {
     { badge: "Affiliate", title: "Best savings accounts", desc: "Top rates + UK picks", href: "/guides/best-savings-accounts-uk" },
     { badge: "Affiliate", title: "Best ISAs", desc: "Cash ISA + Stocks & Shares", href: "/guides/best-isas-uk" },
   ],
+  tax: [
+    { badge: "Affiliate", title: "Stamp duty guide", desc: "Rates + calculators", href: "/guides/stamp-duty-uk" },
+    { badge: "Affiliate", title: "Council tax guide", desc: "Bands, bills, and tips", href: "/guides/council-tax-bands-cheshire" },
+  ],
+
 
   credit: [
     { badge: "Affiliate", title: "Best credit cards", desc: "0% + rewards", href: "/guides/best-credit-cards-uk" },

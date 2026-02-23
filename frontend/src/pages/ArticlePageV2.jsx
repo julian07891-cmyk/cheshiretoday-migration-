@@ -228,27 +228,48 @@ export default function ArticlePageV2({ categories }) {
 
 
   // Contextual monetisation mapping: convert article metadata -> tool category
+  // Hybrid approach: section-first (if present), then category, then keywords.
   const contextToolType = useMemo(() => {
     const sec = String(article?.section || "").toLowerCase();
-    const title = String(article?.title || "").toLowerCase();
     const cat = String(article?.category || "").toLowerCase();
-    const text = `${sec} ${title} ${cat}`;
+    const title = String(article?.title || "").toLowerCase();
+    const summary = String(article?.summary || "").toLowerCase();
+    const text = `${sec} ${cat} ${title} ${summary}`.replace(/\s+/g, " ").trim();
 
-    // AI / Tech
-    if (sec.startsWith("ai-") || text.includes(" ai ") || text.includes("chatgpt") || text.includes("gemini")) return "ai";
+    // 1) SECTION-FIRST (most reliable when available)
+    if (sec.startsWith("ai-")) return "ai";
+    if (sec === "mortgages" || sec === "mortgage") return "mortgages";
+    if (sec === "savings" || sec === "isas") return "savings";
+    if (sec === "tax") return "tax";
+    if (sec === "property" || sec === "housing" || sec === "planning") return "property";
+    if (sec === "credit") return "credit";
+    if (sec === "energy" || sec === "utilities") return "energy";
 
-    // Mortgages / Savings / Property / Tax
-    if (text.includes("mortgage") || text.includes("remortgage") || text.includes("fixed rate") || text.includes("tracker")) return "mortgages";
-    if (text.includes("savings") || text.includes("isa") || text.includes("interest rate") || text.includes("easy-access")) return "savings";
-    if (text.includes("property") || text.includes("house price") || text.includes("rent") || text.includes("landlord")) return "property";
-    if (text.includes("council tax") || text.includes("stamp duty") || text.includes("hmrc") || text.includes("tax")) return "property";
+    // 2) CATEGORY NEXT
+    if (cat.includes("ai") || cat.includes("tech") || cat.includes("science")) return "ai";
+    if (cat.includes("mortgage")) return "mortgages";
+    if (cat.includes("savings") || cat.includes("isa")) return "savings";
+    if (cat.includes("tax")) return "tax";
+    if (cat.includes("property") || cat.includes("housing") || cat.includes("planning")) return "property";
+    if (cat.includes("credit")) return "credit";
+    if (cat.includes("energy") || cat.includes("utilities") || cat.includes("broadband")) return "energy";
 
-    // Credit / Utilities
-    if (text.includes("credit card") || text.includes("0%") || text.includes("balance transfer") || text.includes("apr")) return "credit";
-    if (text.includes("energy") || text.includes("tariff") || text.includes("broadband") || text.includes("utilities")) return "energy";
+    // 3) KEYWORD FALLBACK (ordered by intent)
+    if (/\b(chatgpt|openai|gemini|llm|ai|artificial intelligence|machine learning)\b/.test(text)) return "ai";
+
+    // Tax first (so “council tax” and “stamp duty” don't fall into generic property)
+    if (/\b(hmrc|tax|vat|self assessment|national insurance|ni contributions|council tax|stamp duty)\b/.test(text)) return "tax";
+
+    if (/\b(remortgage|mortgage|fixed rate|tracker)\b/.test(text)) return "mortgages";
+    if (/\b(isa|savings|easy-access|interest rate)\b/.test(text)) return "savings";
+    if (/\b(property|house price|rent|rental|landlord|tenant|letting|planning permission|green belt)\b/.test(text)) return "property";
+
+    if (/\b(credit card|balance transfer|apr|loan|debt)\b/.test(text)) return "credit";
+    if (/\b(energy|tariff|broadband|utilities)\b/.test(text)) return "energy";
 
     return "";
   }, [article]);
+
 
   useEffect(() => {
     let mounted = true;
