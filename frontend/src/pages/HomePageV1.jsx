@@ -8,6 +8,7 @@ import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
+import { filterEditorialPool } from "../utils/editorialPolicy";
 
 /* ---------- helpers ---------- */
 function safeDateMs(d) {
@@ -53,6 +54,44 @@ function isAiTechFeatured(a) {
 
 function isFeatured(a) {
   return Boolean(a?.featured);
+}
+
+
+/* ---------- editorial policy ---------- */
+// Goal: de-emphasize pure crime/sensational local aggregation.
+// Keep major public-interest incidents (weather, road/rail disruption, emergencies) when relevant.
+
+function isPublicInterestException(a) {
+  const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+
+  // Disruption / safety / essential service impact
+  if (/\b(road|a\d{2,4}|m\d|motorway|rail|train|bus|bridge|closure|closed|shut|blocked|diversion|traffic|crash|collision|accident|delays?)\b/.test(t)) return true;
+  if (/\b(storm|flood|flooding|severe\s+weather|met\s+office|warning|amber\s+warning|red\s+warning|power\s+cut|outage)\b/.test(t)) return true;
+  if (/\b(missing\s+person|appeal\s+for\s+information|public\s+appeal)\b/.test(t)) return true;
+
+  return false;
+}
+
+function isCrimeSensational(a) {
+  const cat = String(a?.category || "").toLowerCase();
+  const sec = String(a?.section || "").toLowerCase();
+  const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+
+  // Category/section hints
+  if (/(crime|police|court|incident)/.test(cat)) return true;
+  if (/(crime|police|court)/.test(sec)) return true;
+
+  // Content hints (sensational / violent crime / courts)
+  if (/\b(stab(bed|bing)?|murder(ed)?|killed|fatal|death|rape(d)?|sex\s+offen[cs]e|assault|rob(bery|bed)|burglar(y|ies)|arson|drug\s+raid|charged|sentenced|jailed|court|magistrates|crown\s+court|trial)\b/.test(t)) return true;
+
+  return false;
+}
+
+function isAllowedByPolicy(a) {
+  if (!a) return false;
+  // Block pure crime/sensational unless it’s a clear public-interest exception
+  if (isCrimeSensational(a) && !isPublicInterestException(a)) return false;
+  return true;
 }
 
 function toCard(a, fallbackId, overrides = {}) {
@@ -130,6 +169,17 @@ const navigate = useNavigate();
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.articles || [];
         if (mounted) setArticles(list);
+
+        // Load published guides (authority pages) for sidebar modules
+        try {
+          const gRes = await fetch(getApiUrl() + "/api/authority-pages?limit=10&status=published");
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            if (mounted) setGuides(Array.isArray(gData) ? gData : []);
+          }
+        } catch (e) {
+          // Non-fatal: guides module can be empty if API unavailable
+        }
       } catch (e) {
         if (mounted) setErr(e?.message || "Failed to load");
       } finally {
@@ -154,6 +204,11 @@ const navigate = useNavigate();
   const home = useMemo(() => {
     const used = new Set();
 
+    // Editorial policy pool (filters out pure crime/sensational unless public-interest)
+    const pool = (Array.isArray(newestFirst) ? newestFirst : []).filter(isAllowedByPolicy);
+    const editorialPool = filterEditorialPool(Array.isArray(newestFirst) ? newestFirst : []);
+    const poolAll = editorialPool.length ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []);
+
     const mark = (a) => {
       const k = articleKey(a);
       if (!k) return false;
@@ -163,7 +218,7 @@ const navigate = useNavigate();
     };
 
     // 1) Hero
-    const heroArticle = newestFirst.find(isLocal) || newestFirst.find(a => String(a?.category || "").toLowerCase().includes("business")) || newestFirst.find(isAiTechScience) || newestFirst.find(a => String(a?.category || "").toLowerCase().includes("uk")) || newestFirst[0] || null;
+    const heroArticle = poolAll.find(isLocal) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) || poolAll.find(isAiTechScience) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) || poolAll[0] || null;
     if (heroArticle) mark(heroArticle);
 
     // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible
@@ -210,7 +265,7 @@ const navigate = useNavigate();
     };
 
     // Pass 1: Local (2) — exclude Tech/Business/Property so those slots remain available
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (counts.local >= 2) break;
       if (!isLocal(a)) continue;
       if (isAiTechScience(a)) continue;
@@ -221,7 +276,7 @@ const navigate = useNavigate();
     }
 
     // Pass 2: Business (2) — exclude Tech/Property
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (counts.business >= 2) break;
       if (isAiTechScience(a)) continue;
       if (isPropertyishTop(a)) continue;
@@ -231,7 +286,7 @@ const navigate = useNavigate();
     }
 
     // Pass 3: AI/Tech (1)
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (counts.tech >= 1) break;
       if (!isAiTechScience(a)) continue;
       pushTop(a, "AI & Tech");
@@ -239,7 +294,7 @@ const navigate = useNavigate();
     }
 
     // Pass 4: Property (1) — ensure it is actually property-ish
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (counts.property >= 1) break;
       if (isAiTechScience(a)) continue;
       if (!isPropertyishTop(a)) continue;
@@ -248,7 +303,7 @@ const navigate = useNavigate();
     }
 
     // Pass 5: UK News (1) — explicitly UK, exclude Local/Business/Property/Tech
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (counts.uk >= 1) break;
       if (isAiTechScience(a)) continue;
       if (!isUkishTop(a)) continue;
@@ -260,7 +315,7 @@ const navigate = useNavigate();
     }
 
     // Safety fill: if we still have <7 (rare), fill with newest non-tech
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (topStoriesCards.length >= 7) break;
       if (isAiTechScience(a)) continue;
       pushTop(a);
@@ -269,7 +324,7 @@ const navigate = useNavigate();
 // 3) Most Read (5) — use view_count when present, exclude used
     const mostReadCards = [];
 
-    const byViewsThenNewest = [...newestFirst].sort((a, b) => {
+    const byViewsThenNewest = [...poolAll].sort((a, b) => {
       const av = Number(a?.view_count || a?.views || 0);
       const bv = Number(b?.view_count || b?.views || 0);
       if (bv !== av) return bv - av;
@@ -284,7 +339,7 @@ const navigate = useNavigate();
 
 // 3) AI feed (4) — exclude used (backend section is source of truth)
     const aiArticles = [];
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (aiArticles.length >= 4) break;
       if (!isAiTechScience(a)) continue;
       if (!mark(a)) continue;
@@ -294,7 +349,7 @@ const navigate = useNavigate();
 
     // Fallback: if AI feed ends up empty, use newest 4 (still dedupe-safe)
     if (aiArticles.length === 0) {
-      for (const a of newestFirst) {
+      for (const a of poolAll) {
         if (aiArticles.length >= 4) break;
         if (!mark(a)) continue;
         aiArticles.push(a);
@@ -323,14 +378,14 @@ const isMoney = (a) => {
     };
 
     // Pass 1: Prefer Money-ish first (2), then Business (up to 4)
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (financeArticles.length >= 2) break;
       if (!isMoney(a)) continue;
       if (!mark(a)) continue;
       financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
     }
 
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (financeArticles.length >= 4) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
@@ -338,7 +393,7 @@ const isMoney = (a) => {
     }
 
 // Pass 2: 1 local news// Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (financeArticles.length >= 5) break;
 
       const sec = String(a?.section || "").toLowerCase();
@@ -351,7 +406,7 @@ const isMoney = (a) => {
     }
 
     // Pass 3: 1 more latest business
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (financeArticles.length >= 6) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
@@ -362,7 +417,7 @@ const isMoney = (a) => {
     
     // Fallback: if Business & Money ends up empty, fill with newest 3 non-AI (still dedupe-safe)
     if (financeArticles.length === 0) {
-      for (const a of newestFirst) {
+      for (const a of poolAll) {
         if (financeArticles.length >= 3) break;
         if (isAiTechScience(a)) continue;
         if (!mark(a)) continue;
@@ -372,7 +427,7 @@ const isMoney = (a) => {
 
 // 4a) Business (3) — business-first, exclude AI and exclude used
     const businessFeed = [];
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (businessFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
       if (isAiTechScience(a)) continue;
@@ -391,7 +446,7 @@ const isMoney = (a) => {
       return /\b(mortgage|mortgages|rate|rates|isa|savings|save|interest|remortgage|fixed\s*rate|tracker|stamp\s*duty|council\s*tax)\b/.test(t);
     };
 
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (moneyFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
       if (isAiTechScience(a)) continue; // keep this block focused
@@ -403,7 +458,7 @@ const isMoney = (a) => {
     
     // Fallback: if Mortgages & Savings ends up empty, fill with newest 3 non-AI (still dedupe-safe)
     if (moneyFeed.length === 0) {
-      for (const a of newestFirst) {
+      for (const a of poolAll) {
         if (moneyFeed.length >= 3) break;
         if (isAiTechScience(a)) continue;
         if (!mark(a)) continue;
@@ -422,7 +477,7 @@ const isMoney = (a) => {
       return /\b(property|housing|planning|application|approved|refused|development|homes|apartments|estate|rent|rental|landlord|tenant|lease|build|green\s*belt)\b/.test(t);
     };
 
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (propertyFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
       if (isAiTechScience(a)) continue;
@@ -458,7 +513,7 @@ const isMoney = (a) => {
     };
 
     // Pass 1: Local (4) — keep it grounded in Cheshire
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (latestCards.length >= 4) break;
       if (!isLocal(a)) continue;
       if (isAiTechScience(a)) continue; // reserve AI/Tech quota for later
@@ -466,7 +521,7 @@ const isMoney = (a) => {
     }
 
     // Pass 2: Business/Finance (4)
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (latestCards.length >= 8) break;
       if (isAiTechScience(a)) continue;
       if (!isBusiness(a) && !isMoney(a)) continue;
@@ -474,14 +529,14 @@ const isMoney = (a) => {
     }
 
     // Pass 3: AI/Tech (3)
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (latestCards.length >= 11) break;
       if (!isAiTechScience(a)) continue;
       pushLatest(a, "AI & Tech");
     }
 
     // Pass 4: UK (1) — only if we still have room
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (latestCards.length >= 12) break;
       if (!isUkishLatest(a)) continue;
       if (isLocal(a)) continue;
@@ -489,7 +544,7 @@ const isMoney = (a) => {
     }
 
     // Safety fill: anything (rare) to reach 12
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (latestCards.length >= 12) break;
       pushLatest(a);
     }
@@ -511,7 +566,7 @@ const isMoney = (a) => {
       return /\b(tax|hmrc|vat|budget|inflation|interest\s*rate|rates|mortgage|remortgage|savings|isa|credit\s*card|bank|housing|property|planning)\b/.test(t);
     };
 
-    for (const a of newestFirst) {
+    for (const a of poolAll) {
       if (aiBizFeedCards.length >= 36) break;
       if (!isAiBiz(a)) continue;
       if (!mark(a)) continue;
@@ -520,7 +575,7 @@ const isMoney = (a) => {
 
 // 6) More stories (dedupe-safe leftovers, 36 max)
       const moreStoriesCards = [];
-      for (const a of newestFirst) {
+      for (const a of poolAll) {
         if (moreStoriesCards.length >= 36) break;
         if (!mark(a)) continue;
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
@@ -779,7 +834,7 @@ return (
             )}
             {/* AI & Tech */}
             
-            {aiFeed.length > 0 && (
+            {(aiFeed.length > 0 || (Array.isArray(guides) && guides.length > 0)) && (
               <div className="space-y-3">
                 {Array.isArray(guides) && guides.length > 0 && (
                   <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">

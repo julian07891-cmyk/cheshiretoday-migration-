@@ -14,6 +14,7 @@ import { toast } from "../hooks/use-toast.js";
 import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
 import CompactArticleCard from "../components/CompactArticleCard";
+import { filterEditorialPool } from "../utils/editorialPolicy";
 
 /**
  * Convert unknown values to a safe string for React rendering.
@@ -172,7 +173,7 @@ export default function ArticlePageV2({ categories }) {
           .filter((a) => a && (a.id || a._id) && String(a.id || a._id) !== String(articleId))
           .filter((a) => String(a.title || "").trim().length > 0);
 
-        if (mounted) setMoreStories(cleaned);
+        if (mounted) setMoreStories(filterEditorialPool(cleaned));
       } catch (_) {
         // ignore
       }
@@ -287,6 +288,17 @@ export default function ArticlePageV2({ categories }) {
         if (!mounted) return;
 
         setArticle(data);
+
+        // Load published authority pages (guides) for monetisation funnel
+        try {
+          const gRes = await fetch(`${API_BASE}/api/authority-pages?limit=50&status=published`);
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            if (mounted) setGuides(Array.isArray(gData) ? gData : []);
+          }
+        } catch (_) {
+          // non-fatal
+        }
       } catch (e) {
         if (!mounted) return;
         console.error("Error fetching article:", e);
