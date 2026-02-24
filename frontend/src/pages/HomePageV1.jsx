@@ -839,7 +839,7 @@ return (
                 {Array.isArray(guides) && guides.length > 0 && (
                   <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-extrabold text-slate-900 dark:text-white">AI Guides</div>
+                      <div className="text-sm font-extrabold text-slate-900 dark:text-white">Guides</div>
                       <a
                         href="/guides"
                         className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:underline underline-offset-2"

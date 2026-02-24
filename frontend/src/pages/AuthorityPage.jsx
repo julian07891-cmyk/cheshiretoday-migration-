@@ -5,6 +5,123 @@ import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import NewsFooter from "../components/NewsFooter";
 
+
+function BestPickCta({ tools = [], monetisation = "affiliate" }) {
+  const list = Array.isArray(tools) ? tools : [];
+  const bestWithLink = list.find((t) => String(t?.affiliate_link || "").trim().length > 0);
+  const best = bestWithLink || (list.length ? list[0] : null);
+  if (!best) return null;
+
+  const name = best?.name || "Recommended option";
+  const rating = Number(best?.rating || 0);
+  const link = String(best?.affiliate_link || "").trim();
+  const why = String(best?.content || best?.title || "").trim();
+
+  return (
+    <div className="mt-6 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/60 dark:bg-emerald-900/10 p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs font-semibold text-emerald-900/80 dark:text-emerald-200 mb-1">
+            Best pick
+          </div>
+          <div className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white">
+            {name}
+          </div>
+          <div className="text-sm text-slate-700 dark:text-gray-300 mt-1">
+            Rating: {rating > 0 ? `${rating}/5` : "—"}
+          </div>
+
+          {why && (
+            <div className="text-sm text-slate-700 dark:text-gray-300 mt-2 leading-relaxed max-w-3xl">
+              {why.length > 180 ? why.slice(0, 180) + "…" : why}
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0">
+          {link ? (
+            <a
+              href={link}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-semibold"
+            >
+              Compare now →
+            </a>
+          ) : (
+            <span className="inline-flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-4 py-2 text-sm font-semibold">
+              Link pending
+            </span>
+          )}
+          {monetisation === "affiliate" && (
+            <div className="mt-2 text-[11px] text-slate-600 dark:text-gray-400">
+              We may earn a commission.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickComparison({ tools = [] }) {
+  const list = Array.isArray(tools) ? tools : [];
+  const top = list.slice(0, 3);
+  if (!top.length) return null;
+
+  return (
+    <div className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+          Quick comparison
+        </div>
+        <div className="text-[11px] text-slate-500 dark:text-gray-400">
+          Top picks (summary)
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {top.map((t, idx) => {
+          const name = t?.name || `Option ${idx + 1}`;
+          const rating = Number(t?.rating || 0);
+          const link = String(t?.affiliate_link || "").trim();
+
+          return (
+            <div
+              key={name + idx}
+              className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4"
+            >
+              <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                {name}
+              </div>
+              <div className="text-xs text-slate-600 dark:text-gray-300 mt-1">
+                Rating: {rating > 0 ? `${rating}/5` : "—"}
+              </div>
+
+              <div className="mt-3">
+                {link ? (
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 text-xs font-semibold"
+                  >
+                    Visit →
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-3 py-2 text-xs font-semibold">
+                    Link pending
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function AuthorityPage() {
   const { slug } = useParams();
 
@@ -89,6 +206,10 @@ export default function AuthorityPage() {
                 {intro}
               </p>
             )}
+            <BestPickCta tools={tools} monetisation={monetisation} />
+            <QuickComparison tools={tools} />
+
+
 
             {monetisation === "affiliate" && (
               <div className="mt-6 rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/70 dark:bg-amber-900/10 p-5">
