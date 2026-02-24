@@ -1359,6 +1359,26 @@ async def verify_admin_token_endpoint(authorized: bool = Depends(get_admin_auth)
     return {"valid": True, "message": "Token is valid"}
 
 
+
+@api_router.get("/admin/articles/counts")
+async def admin_article_counts():
+    """Quick DB counts for operational verification (visible vs archived)."""
+    try:
+        total = await db.articles.count_documents({})
+        visible = await db.articles.count_documents({"$or": [{"archived": {"$exists": False}}, {"archived": False}]})
+        archived = await db.articles.count_documents({"archived": True})
+        featured = await db.articles.count_documents({"featured": True, "$or": [{"archived": {"$exists": False}}, {"archived": False}]})
+        priority = await db.articles.count_documents({"is_priority_cheshire": True, "$or": [{"archived": {"$exists": False}}, {"archived": False}]})
+        return {
+            "total": total,
+            "visible": visible,
+            "archived": archived,
+            "visible_featured": featured,
+            "visible_priority": priority
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/admin/authority-pages/upsert")
 async def upsert_authority_page(payload: AuthorityPageDoc):
     """
