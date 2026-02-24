@@ -1956,6 +1956,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {health_imported} Health + {tech_imported} Tech + {science_imported} Science + {entertainment_imported} Entertainment + {sports_imported} Sports")
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
+        await cap_visible_articles(keep=60)
+
         return {
             "success": True,
             "total_imported": len(imported_articles),
@@ -2255,6 +2257,8 @@ async def remove_duplicate_articles(authorized: bool = Depends(get_admin_auth)):
     result = await _remove_duplicates_internal()
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
+        await cap_visible_articles(keep=60)
+
     return result
 
 
@@ -9656,6 +9660,45 @@ async def cleanup_old_articles():
                 
     except Exception as e:
         logger.error(f"Error cleaning up old articles: {str(e)}")
+
+
+async def cap_visible_articles(keep: int = 60):
+    """
+    Keep the newest `keep` articles visible (archived=False) and archive the rest (archived=True).
+    Also always keep priority/featured items visible.
+    This keeps the site lean during the build phase.
+    """
+    try:
+        # Always keep these unarchived
+        priority_ids_docs = await db.articles.find(
+            {"$or": [{"featured": True}, {"is_priority_cheshire": True}]},
+            {"_id": 1}
+        ).to_list(10000)
+        priority_ids = [d.get("_id") for d in priority_ids_docs if d.get("_id")]
+
+        # Newest N ids
+        newest = await db.articles.find({}, {"_id": 1}).sort("publishedDate", -1).limit(keep).to_list(keep)
+        newest_ids = [d.get("_id") for d in newest if d.get("_id")]
+
+        keep_ids = list({*priority_ids, *newest_ids})
+
+        # Archive everything else
+        await db.articles.update_many(
+            {"_id": {"$nin": keep_ids}},
+            {"$set": {"archived": True, "archived_at": datetime.now(timezone.utc).isoformat(), "archive_reason": "auto_cap"}}
+        )
+
+        # Ensure kept are visible
+        await db.articles.update_many(
+            {"_id": {"$in": keep_ids}},
+            {"$set": {"archived": False}, "$unset": {"archive_reason": "", "archived_at": ""}}
+        )
+
+        logger.info(f"✅ cap_visible_articles: keep={keep}, keep_ids={len(keep_ids)}")
+        return {"success": True, "keep": keep, "keep_ids": len(keep_ids)}
+    except Exception as e:
+        logger.error(f"cap_visible_articles error: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 async def daily_article_generation(count: int = 12):
     """Generate new articles daily with fault tolerance and distributed locking"""
