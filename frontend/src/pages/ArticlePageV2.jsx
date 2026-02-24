@@ -42,6 +42,117 @@ function safeText(v) {
   }
 }
 
+/* ===== Contextual auto-linking (monetisation) =====
+   - Escapes HTML first
+   - Adds limited internal links to relevant guides
+   - Avoids linking inside existing URLs
+*/
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&lt;".replace("&lt;","&lt;")) /* noop to keep build deterministic */
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function autoLinkContent(rawText, pillarLabel) {
+  const text = String(rawText || "");
+  if (!text.trim()) return "";
+
+  // 1) Escape first (safety)
+  let html = escapeHtml(text);
+
+  // 2) Protect plain URLs from being modified
+  const urlRe = /(https?:\/\/[^\s<]+)/gi;
+  const protectedUrls = [];
+  html = html.replace(urlRe, (m) => {
+    const token = `__URLTOKEN_${protectedUrls.length}__`;
+    protectedUrls.push(m);
+    return token;
+  });
+
+  const pillar = String(pillarLabel || "").toLowerCase();
+
+  // 3) Define link targets (ordered by monetisation priority)
+  const links = [];
+
+  const add = (pattern, href) => links.push({ pattern, href });
+
+  // Local tax
+  add(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
+
+  // Finance staples
+  add(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
+  add(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
+  add(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
+
+  // Business (draft pages exist; link anyway — they render)
+  add(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
+  add(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
+  add(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
+
+  // Investing / ISA (draft exists)
+  add(/\b(isa|stocks?\s+and\s+shares\s+isa|cash\s+isa|lifetime\s+isa)\b/i, "/guides/best-isa-platforms-uk");
+
+  // AI (published)
+  add(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
+
+  // 4) Apply with limits (avoid spam)
+  const maxLinks = pillar.includes("ai") ? 3 : 4;
+  let used = 0;
+  const usedHref = new Set();
+
+  const replaceOnce = (re, href) => {
+    if (used >= maxLinks) return;
+    if (usedHref.has(href)) return;
+
+    const m = html.match(re);
+    if (!m) return;
+
+    const matchText = m[0];
+    // Replace only the first match, wrap it
+    html = html.replace(re, `<a href="${href}" class="underline underline-offset-2 font-semibold">${matchText}</a>`);
+    used += 1;
+    usedHref.add(href);
+  };
+
+  // Prioritise by pillar
+  if (pillar.includes("ai")) {
+    replaceOnce(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
+  } else if (pillar.includes("business")) {
+    replaceOnce(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
+    replaceOnce(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
+    replaceOnce(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
+  } else if (pillar.includes("finance")) {
+    replaceOnce(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
+    replaceOnce(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
+    replaceOnce(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
+  } else if (pillar.includes("local")) {
+    replaceOnce(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
+  }
+
+  // Fill remaining in general priority order
+  for (const { pattern, href } of links) {
+    if (used >= maxLinks) break;
+    replaceOnce(pattern, href);
+  }
+
+  // 5) Restore URLs
+  for (let idx = 0; idx < protectedUrls.length; idx++) {
+    const token = `__URLTOKEN_${idx}__`;
+    const url = protectedUrls[idx];
+    html = html.replaceAll(token, url);
+  }
+
+  // 6) Preserve newlines like the current whitespace-pre-wrap behavior
+  html = html.replace(/\n/g, "<br/>");
+
+  return html;
+}
+
+
 function formatDateTime(dateString) {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -74,24 +185,76 @@ function splitAttribution(rawContent) {
   };
 }
 
+
+/* ===== Guide selection (pillar-aware) ===== */
+function pickGuidesForPillar(guides, pillarLabel) {
+  const list = Array.isArray(guides) ? guides : [];
+  const pillar = String(pillarLabel || "").toLowerCase();
+
+  const bySlug = new Map(list.map((g) => [String(g?.slug || ""), g]));
+  const want = [];
+
+  const push = (slug) => {
+    if (!slug) return;
+    if (!bySlug.has(slug)) return;
+    if (want.includes(slug)) return;
+    want.push(slug);
+  };
+
+  if (pillar.includes("ai")) {
+    push("best-ai-tools-uk");
+    push("best-ai-writing-tools-uk");
+    push("best-ai-productivity-tools-uk");
+  } else if (pillar.includes("business")) {
+    push("best-business-bank-accounts-uk");
+    push("best-accounting-software-uk");
+    push("best-business-credit-cards-uk");
+    push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+    push("best-credit-cards-uk");
+  } else if (pillar.includes("finance")) {
+    push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+    push("best-credit-cards-uk");
+    push("best-isa-platforms-uk");
+  } else if (pillar.includes("local")) {
+    push("council-tax-bands-cheshire");
+    push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+    push("best-credit-cards-uk");
+  } else {
+    push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+    push("best-credit-cards-uk");
+    push("best-ai-tools-uk");
+  }
+
+  const out = [];
+  for (const slug of want) {
+    const g = bySlug.get(slug);
+    if (g) out.push(g);
+    if (out.length >= 3) break;
+  }
+
+  if (out.length < 3) {
+    for (const g of list) {
+      const slug = String(g?.slug || "");
+      if (!slug) continue;
+      if (out.some((x) => String(x?.slug || "") === slug)) continue;
+      out.push(g);
+      if (out.length >= 3) break;
+    }
+  }
+
+  return out.slice(0, 3);
+}
+
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
-const GuidePromoBlock = ({ guides = [], category }) => {
+const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
   if (!Array.isArray(guides) || guides.length === 0) return null;
 
   const cat = String(category || "").toLowerCase();
-
-  const preferSlug = () => {
-    if (cat.includes("ai") || cat.includes("tech")) return "best-ai-tools-uk";
-    if (cat.includes("business") || cat.includes("finance") || cat.includes("money"))
-      return "best-ai-productivity-tools-uk";
-    if (cat.includes("writing")) return "best-ai-writing-tools-uk";
-    return "best-ai-tools-uk";
-  };
-
-  const preferred = preferSlug();
-  const preferredGuide = guides.find((g) => String(g?.slug || "") === preferred);
-  const others = guides.filter((g) => String(g?.slug || "") !== preferred);
-  const ordered = [preferredGuide, ...others].filter(Boolean).slice(0, 3);
+  const ordered = pickGuidesForPillar(guides, pillarLabel || category);
 
   return (
     <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
@@ -118,9 +281,10 @@ const GuidePromoBlock = ({ guides = [], category }) => {
   );
 };
 
-const GuidesInlinePromo = ({ guides }) => {
+const GuidesInlinePromo = ({ guides, pillarLabel }) => {
   const list = Array.isArray(guides) ? guides : [];
-  const g = list[0];
+  const picked = pickGuidesForPillar(list, pillarLabel);
+  const g = picked[0];
   if (!g) return null;
 
   const title = safeText(g?.title) || "In-depth Guide";
@@ -482,7 +646,8 @@ export default function ArticlePageV2({ categories }) {
               )}
 <div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-4 md:p-6">
                 <div className="prose prose-lg prose-slate max-w-none whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
-                {safeText(mainContent)}
+                {/* auto-linked content (safe) */}
+                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
               </div>
 
 
@@ -519,9 +684,9 @@ export default function ArticlePageV2({ categories }) {
               </div>
 
               <div className="mt-6">
-                <GuidesInlinePromo guides={guides} />
+                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} />
                 
-              <GuidePromoBlock guides={guides} category={article?.category} />
+              <GuidePromoBlock guides={guides} category={article?.category} pillarLabel={pillarLabel} />
               </div>
               {/* More stories — match homepage layout */}
               
