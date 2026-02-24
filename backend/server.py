@@ -1258,6 +1258,68 @@ class AdminLoginResponse(BaseModel):
     message: str
     expires_in: int = 86400  # 24 hours in seconds
 
+
+# =====================================================================================
+# AUTHORITY PAGES (GUIDES / MONEY PAGES)
+# Purpose: 15–25 commercial + authority pages that power affiliate revenue.
+# Frontend route: /guides/:slug (AuthorityPage.jsx)
+# API:
+#   - GET /api/authority-pages           (list)
+#   - GET /api/authority-pages/{slug}    (detail)
+# Storage: MongoDB collection "authority_pages"
+# =====================================================================================
+
+class AuthoritySection(BaseModel):
+    type: str = Field(..., description="e.g. intro, section, tool, faq")
+    title: Optional[str] = None
+    content: Optional[str] = None
+    name: Optional[str] = None
+    rating: Optional[float] = None
+    affiliate_link: Optional[str] = None
+
+class AuthorityPageDoc(BaseModel):
+    slug: str = Field(..., description="URL slug, e.g. best-mortgage-rates-uk")
+    title: str
+    category: str = "Finance"
+    monetisation: str = "affiliate"  # affiliate | none | other
+    status: str = "draft"  # draft | live
+    sections: List[AuthoritySection] = []
+    updatedAt: Optional[str] = None
+
+def _ap_serialize(doc: dict) -> dict:
+    if not isinstance(doc, dict):
+        return {}
+    out = dict(doc)
+    if "_id" in out:
+        out["id"] = str(out["_id"])
+        del out["_id"]
+    return out
+
+@api_router.get("/authority-pages")
+async def list_authority_pages(limit: int = 50, skip: int = 0, status: Optional[str] = None):
+    """
+    List authority pages for homepage modules / navigation.
+    """
+    q = {}
+    if status:
+        q["status"] = status
+    docs = await db.authority_pages.find(
+        q,
+        {"_id": 1, "slug": 1, "title": 1, "category": 1, "monetisation": 1, "status": 1, "updatedAt": 1}
+    ).sort("updatedAt", -1).skip(skip).limit(limit).to_list(limit)
+    return [_ap_serialize(d) for d in docs]
+
+@api_router.get("/authority-pages/{slug}")
+async def get_authority_page(slug: str):
+    """
+    Get a single authority page by slug.
+    """
+    doc = await db.authority_pages.find_one({"slug": slug})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return _ap_serialize(doc)
+
+
 @api_router.post("/admin/login", response_model=AdminLoginResponse)
 async def admin_login(request: AdminLoginRequest):
     """
@@ -1295,6 +1357,84 @@ async def admin_logout(authorization: Optional[str] = Header(None)):
 async def verify_admin_token_endpoint(authorized: bool = Depends(get_admin_auth)):
     """Verify if the current token is valid"""
     return {"valid": True, "message": "Token is valid"}
+
+
+@api_router.post("/admin/authority-pages/upsert")
+async def upsert_authority_page(payload: AuthorityPageDoc):
+    """
+    Upsert an authority page by slug (local/staging admin utility).
+    """
+    doc = payload.model_dump()
+    if not doc.get("updatedAt"):
+        doc["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    await db.authority_pages.update_one({"slug": doc["slug"]}, {"$set": doc}, upsert=True)
+    saved = await db.authority_pages.find_one({"slug": doc["slug"]})
+    return _ap_serialize(saved)
+
+@api_router.post("/admin/seed-authority-pages")
+async def seed_authority_pages():
+    """
+    Seed a minimal set of authority pages (draft) so /guides/* links resolve.
+    Safe to call multiple times (upsert by slug).
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    seeds = [
+        {
+            "slug": "best-mortgage-rates-uk",
+            "title": "Best mortgage rates in the UK (compare deals & lenders)",
+            "category": "Finance",
+            "monetisation": "affiliate",
+            "status": "draft",
+            "updatedAt": now,
+            "sections": [
+                {"type": "intro", "content": "This guide will compare mortgage options and explain how to find the right deal. (Draft seed)"},
+                {"type": "tool", "name": "Mortgage comparison tool", "rating": 0, "affiliate_link": ""}
+            ]
+        },
+        {
+            "slug": "best-credit-cards-uk",
+            "title": "Best credit cards in the UK (0% offers, rewards, and business cards)",
+            "category": "Finance",
+            "monetisation": "affiliate",
+            "status": "draft",
+            "updatedAt": now,
+            "sections": [
+                {"type": "intro", "content": "This guide will compare card types and show how to choose based on eligibility and APR. (Draft seed)"},
+                {"type": "tool", "name": "Credit card comparison tool", "rating": 0, "affiliate_link": ""}
+            ]
+        },
+        {
+            "slug": "best-savings-accounts-uk",
+            "title": "Best savings accounts in the UK (easy access, fixed, and ISA options)",
+            "category": "Finance",
+            "monetisation": "affiliate",
+            "status": "draft",
+            "updatedAt": now,
+            "sections": [
+                {"type": "intro", "content": "This guide will compare savings types and explain how to maximise interest safely. (Draft seed)"},
+                {"type": "tool", "name": "Savings comparison tool", "rating": 0, "affiliate_link": ""}
+            ]
+        },
+        {
+            "slug": "council-tax-bands-cheshire",
+            "title": "Council tax bands in Cheshire: how to check, challenge, and estimate costs",
+            "category": "Tax",
+            "monetisation": "affiliate",
+            "status": "draft",
+            "updatedAt": now,
+            "sections": [
+                {"type": "intro", "content": "Plain-English guide to council tax bands across Cheshire and what affects your bill. (Draft seed)"},
+            ]
+        },
+    ]
+    col = db.authority_pages
+    upserts = 0
+    for doc in seeds:
+        res = await col.update_one({"slug": doc["slug"]}, {"$set": doc}, upsert=True)
+        if res.upserted_id is not None or res.modified_count:
+            upserts += 1
+    total = await col.count_documents({})
+    return {"success": True, "upserts": upserts, "total": total}
 
 # =====================================================================================
 
