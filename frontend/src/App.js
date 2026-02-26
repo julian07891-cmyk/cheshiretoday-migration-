@@ -182,7 +182,8 @@ const LocationRouteWrapper = () => {
 // Main App with Router
 function App() {
   return (
-    <ThemeProvider>
+    <HelmetProvider>
+      <ThemeProvider>
       <PromoWidgetProvider>
         <BrowserRouter>
           <Routes>
@@ -243,6 +244,7 @@ function App() {
         </BrowserRouter>
       </PromoWidgetProvider>
     </ThemeProvider>
+    </HelmetProvider>
   );
 }
 

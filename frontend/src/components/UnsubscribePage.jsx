@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from '../utils/api';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 import { Mail, CheckCircle, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -64,7 +64,7 @@ const UnsubscribePage = () => {
   };
 
   return (
-    <HelmetProvider>
+    
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       {/* SEO - Prevent indexing of unsubscribe page */}
       <Helmet>
@@ -174,7 +174,7 @@ const UnsubscribePage = () => {
         </p>
       </div>
     </div>
-    </HelmetProvider>
+    
   );
 };
 

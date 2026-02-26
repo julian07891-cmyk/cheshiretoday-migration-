@@ -738,16 +738,20 @@ return (
 </section>
             )}
 
-            {/* Money Toolkit */}
+            {/* Property & Tax Intelligence */}
             <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-extrabold tracking-tight">Money Toolkit</h2>
+                <h2 className="text-base font-extrabold tracking-tight">Property & Tax Intelligence</h2>
                 <span className="text-[11px] px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
                   Affiliate
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <a href="/guides/cost-of-buying-home-cheshire-2026" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                  <div className="text-sm font-extrabold">Cost of buying in Cheshire</div>
+                </a>
+
                 <a href="/guides/best-savings-accounts-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
                   <div className="text-sm font-extrabold">Best savings accounts</div>
                 </a>
@@ -761,6 +765,20 @@ return (
             </section>
 
             {/* AI & Business */}
+            {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
+              <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-extrabold tracking-tight">AI & Business</h2>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, 18)).map((a, i) => (
+                    <div key={a?.id || a?._id || i}>
+                      <CompactArticleCard
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        article={a}
+
+{/* AI & Business */}
             {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">

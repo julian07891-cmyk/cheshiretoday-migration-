@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 import { 
   BarChart3, Users, FileText, Mail, RefreshCw, Trash2, 
   Send, Clock, AlertCircle, CheckCircle, Loader2, ArrowLeft,
@@ -1972,7 +1972,7 @@ const AdminDashboard = ({ onBack }) => {
   }
 
   return (
-    <HelmetProvider>
+    
     <div className="min-h-screen bg-muted dark:bg-gray-900">
       {/* SEO - Prevent indexing of admin pages */}
       <Helmet>
@@ -5020,7 +5020,7 @@ const AdminDashboard = ({ onBack }) => {
         </DialogContent>
       </Dialog>
     </div>
-    </HelmetProvider>
+    
   );
 };
 

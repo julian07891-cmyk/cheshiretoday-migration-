@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 import { Mail, Sun, Calendar, Zap, CheckCircle, AlertCircle, Loader2, ArrowLeft, Save } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -167,7 +167,7 @@ const PreferencesPage = () => {
   };
 
   return (
-    <HelmetProvider>
+    
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       {/* SEO - Prevent indexing of preferences page */}
       <Helmet>
@@ -349,7 +349,7 @@ const PreferencesPage = () => {
         </p>
       </div>
     </div>
-    </HelmetProvider>
+    
   );
 };
 

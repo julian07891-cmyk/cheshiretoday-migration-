@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from "../utils/api";
 import { useParams, useNavigate } from 'react-router-dom';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 import { MapPin, Loader2, Clock, User, ArrowLeft } from 'lucide-react';
 import NewsHeader from './NewsHeader';
 import NewsFooter from './NewsFooter';
@@ -166,19 +166,19 @@ const LocationPage = () => {
 
   if (loading) {
     return (
-      <HelmetProvider>
+      
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-emerald-600 mx-auto mb-4" />
             <p className="text-gray-600 dark:text-gray-400">Loading {locationData.name} news...</p>
           </div>
         </div>
-      </HelmetProvider>
+      
     );
   }
 
   return (
-    <HelmetProvider>
+    
       <Helmet>
         <title>{`${locationData.name} News | Cheshire Today - Local News & Updates`}</title>
         <meta name="description" content={locationData.description} />
@@ -325,7 +325,7 @@ const LocationPage = () => {
       </div>
       
       <Toaster />
-    </HelmetProvider>
+    
   );
 };
 

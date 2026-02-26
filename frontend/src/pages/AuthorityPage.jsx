@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getApiUrl } from "../utils/api";
@@ -169,6 +170,15 @@ export default function AuthorityPage() {
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
       <HomepageLayout>
+        <Helmet>
+          <title>{title} | Cheshire Today</title>
+          <meta name="description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
+          <link rel="canonical" href={`https://cheshiretoday.co.uk/guides/${slug}`} />
+          <meta property="og:title" content={`${title} | Cheshire Today`} />
+          <meta property="og:description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
+          <meta property="og:url" content={`https://cheshiretoday.co.uk/guides/${slug}`} />
+          <meta property="og:type" content="article" />
+        </Helmet>
         <HomepageHeader breakingStories={[]} />
 
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
