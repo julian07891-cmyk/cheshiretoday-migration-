@@ -777,20 +777,6 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
                         article={a}
-
-{/* AI & Business */}
-            {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
-              <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">AI & Business</h2>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, 18)).map((a, i) => (
-                    <div key={a?.id || a?._id || i}>
-                      <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
-                        article={a}
                       />
                     </div>
                   ))}
@@ -807,7 +793,7 @@ return (
               </section>
             )}
 
-            {/* More stories */}
+                        {/* More stories */}
             {Array.isArray(moreStoriesFeed) && moreStoriesFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">

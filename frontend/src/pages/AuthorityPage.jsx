@@ -173,11 +173,37 @@ export default function AuthorityPage() {
         <Helmet>
           <title>{title} | Cheshire Today</title>
           <meta name="description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
-          <link rel="canonical" href={`https://cheshiretoday.co.uk/guides/${slug}`} />
+          <link rel="canonical" href={"https://cheshiretoday.co.uk/guides/" + slug} />
           <meta property="og:title" content={`${title} | Cheshire Today`} />
           <meta property="og:description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
-          <meta property="og:url" content={`https://cheshiretoday.co.uk/guides/${slug}`} />
+          <meta property="og:url" content={"https://cheshiretoday.co.uk/guides/" + slug} />
           <meta property="og:type" content="article" />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": title,
+                "description": intro ? intro.slice(0, 155) : "Cheshire Today guide",
+                "dateModified": page?.updatedAt || undefined,
+                "author": { "@type": "Organization", "name": "Cheshire Today" },
+                "publisher": {
+                  "@type": "Organization",
+                  "name": "Cheshire Today",
+                  "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://cheshiretoday.co.uk/logo.png"
+                  }
+                },
+                "image": "https://cheshiretoday.co.uk/social-share.jpg",
+                "mainEntityOfPage": {
+                  "@type": "WebPage",
+                  "@id": "https://cheshiretoday.co.uk/guides/" + slug
+                }
+              })
+            }}
+          />
         </Helmet>
         <HomepageHeader breakingStories={[]} />
 

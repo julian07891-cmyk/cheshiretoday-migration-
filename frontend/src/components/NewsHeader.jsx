@@ -8,11 +8,22 @@ import { articleService } from '../services/api';
 
 const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange, onArticleClick }) => {
   // Top-nav should be minimal (homepage focus). Keep other categories available elsewhere.
-  const NAV_CATEGORY_IDS = new Set(['all', 'Local News', 'UK News', 'Business']);
-  const navCategories = (categories || []).filter(c => NAV_CATEGORY_IDS.has(c.id));
+  const NAV_CATEGORY_NAMES = new Set(['All','Local','UK','Business']);
+const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.name));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState(() => {
+    try {
+      const allowed = new Set([
+        'chester','warrington','crewe','macclesfield','wilmslow','knutsford','nantwich','northwich','ellesmere-port','winsford'
+      ]);
+      const seg = (window.location.pathname || '/').split('/').filter(Boolean)[0] || '';
+      return allowed.has(seg) ? seg : '';
+    } catch (e) {
+      return '';
+    }
+  });
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isFestive, setIsFestive] = useState(false);
@@ -100,12 +111,37 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
               />
               <div>
                 <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white">Cheshire Today</h1>
-                <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400">Local News · AI · Money</p>
+                <p className="hidden md:block text-sm font-medium text-slate-600 dark:text-gray-300 tracking-wide">Local · Business · Finance</p>
               </div>
             </div>
 
             {/* Desktop Search & Controls */}
             <div className="hidden md:flex items-center space-x-4">
+              <div className="relative mr-2">
+                <select
+                  aria-label="Choose location"
+                  value={selectedLocation}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedLocation(v);
+                    if (!v) return;
+                    window.location.href = "/" + v;
+                  }}
+                  className={`w-44 appearance-none pr-9 h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 ${selectedLocation ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-gray-400"}`}
+                >
+                  <option value="">Cheshire towns</option>
+                  <option value="chester">Chester</option>
+                  <option value="warrington">Warrington</option>
+                  <option value="crewe">Crewe</option>
+                  <option value="macclesfield">Macclesfield</option>
+                  <option value="wilmslow">Wilmslow</option>
+                  <option value="knutsford">Knutsford</option>
+                  <option value="nantwich">Nantwich</option>
+                  <option value="northwich">Northwich</option>
+                  <option value="ellesmere-port">Ellesmere Port</option>
+                  <option value="winsford">Winsford</option>
+                </select>
+</div>
               <div className="relative" ref={searchRef}>
                 <input
                   type="text"
@@ -113,7 +149,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchOpen(true)}
-                  className="w-64 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="w-64 h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 {searchLoading ? (
                   <Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
@@ -170,7 +206,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
               {navCategories.map((category) => (
                 <button
                   key={category.id}
-                  onClick={() => onCategoryChange(category.id)}
+                  onClick={() => onCategoryChange && onCategoryChange(category.id)}
                   className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                     activeCategory === category.id
                       ? 'bg-[#1E3A8A] text-white rounded'
@@ -190,14 +226,41 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800">
             <div className="container mx-auto px-4 py-4">
-              {/* Mobile Search */}
+                            {/* Location selector (mobile) */}
+              <div className="mb-3">
+                <select
+                  aria-label="Choose location (mobile)"
+                  value={selectedLocation}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSelectedLocation(v);
+                    if (!v) return;
+                    window.location.href = "/" + v;
+                  }}
+                  className={`w-44 appearance-none pr-9 h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 ${selectedLocation ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-gray-400"}`}
+                >
+                  <option value="">Cheshire towns</option>
+                  <option value="chester">Chester</option>
+                  <option value="warrington">Warrington</option>
+                  <option value="crewe">Crewe</option>
+                  <option value="macclesfield">Macclesfield</option>
+                  <option value="wilmslow">Wilmslow</option>
+                  <option value="knutsford">Knutsford</option>
+                  <option value="nantwich">Nantwich</option>
+                  <option value="northwich">Northwich</option>
+                  <option value="ellesmere-port">Ellesmere Port</option>
+                  <option value="winsford">Winsford</option>
+                </select>
+              </div>
+
+{/* Mobile Search */}
               <div className="relative mb-4">
                 <input
                   type="text"
                   placeholder="Search news..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:border-emerald-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
@@ -212,7 +275,7 @@ const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange,
                   <button
                     key={category.id}
                     onClick={() => {
-                      onCategoryChange(category.id);
+                      onCategoryChange && onCategoryChange(category.id);
                       setMobileMenuOpen(false);
                     }}
                     className={`block w-full text-left px-4 py-2 rounded transition-colors ${

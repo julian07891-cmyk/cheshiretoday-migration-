@@ -178,6 +178,7 @@ const LocationPage = () => {
   }
 
   return (
+    <>
     
       <Helmet>
         <title>{`${locationData.name} News | Cheshire Today - Local News & Updates`}</title>
@@ -326,6 +327,7 @@ const LocationPage = () => {
       
       <Toaster />
     
+    </>
   );
 };
 
