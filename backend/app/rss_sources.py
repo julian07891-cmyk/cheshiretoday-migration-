@@ -6,93 +6,136 @@
 # We will fetch the linked article pages to extract fuller text when needed.
 
 CHESHIRE_RSS_SOURCES = [
-    # Core local publishers (already proven to return RSS)
     {
-        "name": "Cheshire Live",
-        "url": "https://www.cheshire-live.co.uk/?service=rss",
-        "category": "local"
+        "name": 'Cheshire Live',
+        "url": 'https://www.cheshire-live.co.uk/?service=rss',
+        "category": 'local'
     },
     {
-        "name": "Liverpool Echo",
-        "url": "https://www.liverpoolecho.co.uk/?service=rss",
-        "category": "local"
-    },
-
-    # BBC regional / national
-    {
-        "name": "BBC England",
-        "url": "http://feeds.bbci.co.uk/news/england/rss.xml",
-        "category": "uk"
+        "name": 'Liverpool Echo',
+        "url": 'https://www.liverpoolecho.co.uk/?service=rss',
+        "category": 'local'
     },
     {
-        "name": "BBC UK",
-        "url": "http://feeds.bbci.co.uk/news/uk/rss.xml",
-        "category": "uk"
-    },
-
-    # Town-focused discovery feeds (reliable). We scrape linked articles for full detail.
-    {
-        "name": "Google News: Macclesfield",
-        "url": "https://news.google.com/rss/search?q=Macclesfield%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen",
-        "category": "local"
+        "name": 'BBC England',
+        "url": 'http://feeds.bbci.co.uk/news/england/rss.xml',
+        "category": 'uk'
     },
     {
-        "name": "Google News: Wilmslow",
-        "url": "https://news.google.com/rss/search?q=Wilmslow%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen",
-        "category": "local"
+        "name": 'BBC UK',
+        "url": 'http://feeds.bbci.co.uk/news/uk/rss.xml',
+        "category": 'uk'
     },
     {
-        "name": "Google News: Knutsford",
-        "url": "https://news.google.com/rss/search?q=Knutsford%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen",
-        "category": "local"
+        "name": 'Google News: Macclesfield',
+        "url": 'https://news.google.com/rss/search?q=Macclesfield%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
     },
     {
-        "name": "Google News: Cheshire East",
-        "url": "https://news.google.com/rss/search?q=%22Cheshire%20East%22%20Council%20when%3A30d&hl=en-GB&gl=GB&ceid=GB%3Aen",
-        "category": "local"
+        "name": 'Google News: Wilmslow',
+        "url": 'https://news.google.com/rss/search?q=Wilmslow%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
     },
     {
-        "name": "Google News: Cheshire West & Chester",
-        "url": "https://news.google.com/rss/search?q=%22Cheshire%20West%20and%20Chester%22%20Council%20when%3A30d&hl=en-GB&gl=GB&ceid=GB%3Aen",
-        "category": "local"
-    },
-
-    
-    # -------------------------
-    # Finance / Business
-    # -------------------------
-    {
-        "name": "BBC Business",
-        "url": "http://feeds.bbci.co.uk/news/business/rss.xml",
-        "category": "business"
+        "name": 'Google News: Knutsford',
+        "url": 'https://news.google.com/rss/search?q=Knutsford%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
     },
     {
-        "name": "Guardian Business",
-        "url": "https://www.theguardian.com/uk/business/rss",
-        "category": "business"
+        "name": 'Google News: Cheshire East',
+        "url": 'https://news.google.com/rss/search?q=%22Cheshire%20East%22%20Council%20when%3A30d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
     },
     {
-        "name": "Guardian Money",
-        "url": "https://www.theguardian.com/money/rss",
-        "category": "business"
-    },
-
-    # -------------------------
-    # AI / Technology
-    # -------------------------
-    {
-        "name": "BBC Technology",
-        "url": "http://feeds.bbci.co.uk/news/technology/rss.xml",
-        "category": "business"
+        "name": 'Google News: Cheshire West & Chester',
+        "url": 'https://news.google.com/rss/search?q=%22Cheshire%20West%20and%20Chester%22%20Council%20when%3A30d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
     },
     {
-        "name": "Ars Technica",
-        "url": "http://feeds.arstechnica.com/arstechnica/index",
-        "category": "business"
+        "name": 'BBC Business',
+        "url": 'http://feeds.bbci.co.uk/news/business/rss.xml',
+        "category": 'business'
     },
-
-    # Business (optional - add only if it actually returns RSS in your environment)
-    # If your earlier Insider test returns HTML, we keep it OFF for now.
+    {
+        "name": 'Guardian Business',
+        "url": 'https://www.theguardian.com/uk/business/rss',
+        "category": 'business'
+    },
+    {
+        "name": 'Guardian Money',
+        "url": 'https://www.theguardian.com/money/rss',
+        "category": 'business'
+    },
+    {
+        "name": 'BBC Technology',
+        "url": 'http://feeds.bbci.co.uk/news/technology/rss.xml',
+        "category": 'business'
+    },
+    {
+        "name": 'Ars Technica',
+        "url": 'http://feeds.arstechnica.com/arstechnica/index',
+        "category": 'business'
+    },
+    {
+        "name": 'Sky News UK',
+        "url": 'https://feeds.skynews.com/feeds/rss/uk.xml',
+        "category": 'uk'
+    },
+    {
+        "name": 'Sky News Business',
+        "url": 'https://feeds.skynews.com/feeds/rss/business.xml',
+        "category": 'business'
+    },
+    {
+        "name": 'The Guardian Technology',
+        "url": 'https://www.theguardian.com/uk/technology/rss',
+        "category": 'business'
+    },
+    {
+        "name": 'The Guardian UK News',
+        "url": 'https://www.theguardian.com/uk-news/rss',
+        "category": 'uk'
+    },
+    {
+        "name": 'Google News: Crewe',
+        "url": 'https://news.google.com/rss/search?q=Crewe%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Chester',
+        "url": 'https://news.google.com/rss/search?q=Chester%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Warrington',
+        "url": 'https://news.google.com/rss/search?q=Warrington%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Northwich',
+        "url": 'https://news.google.com/rss/search?q=Northwich%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Nantwich',
+        "url": 'https://news.google.com/rss/search?q=Nantwich%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Congleton',
+        "url": 'https://news.google.com/rss/search?q=Congleton%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Winsford',
+        "url": 'https://news.google.com/rss/search?q=Winsford%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
+    {
+        "name": 'Google News: Ellesmere Port',
+        "url": 'https://news.google.com/rss/search?q=Ellesmere%20Port%20Cheshire%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+    },
 ]
 
 ALL_RSS_SOURCES = CHESHIRE_RSS_SOURCES
