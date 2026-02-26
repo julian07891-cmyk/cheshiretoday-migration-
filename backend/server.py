@@ -1674,10 +1674,8 @@ class HybridNewsRequest(BaseModel):
     uk_articles: int = 12        # 12 UK articles
     max_sports: int = 3          # Limit sports articles
     business_articles: int = 2   # 2 Business articles (FREE from RSS)
-    health_articles: int = 2     # 2 Health articles (FREE from RSS)
     tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
     science_articles: int = 2    # 2 Science articles (FREE from RSS)
-    entertainment_articles: int = 2  # 2 Entertainment articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
 
 
@@ -1712,10 +1710,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         uk_imported = 0
         sports_imported = 0
         business_imported = 0
-        health_imported = 0
         tech_imported = 0
         science_imported = 0
-        entertainment_imported = 0
         max_sports = getattr(request, 'max_sports', 3)  # Default 3 sports articles
 
         # ==========================================
@@ -1788,13 +1784,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Separate articles by category
             sports_articles = [a for a in uk_with_images if a.get('category') == 'Sports']
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
-            health_articles = [a for a in uk_with_images if a.get('category') == 'Health']
             tech_articles = [a for a in uk_with_images if a.get('category') == 'Tech']
             science_articles = [a for a in uk_with_images if a.get('category') == 'Science']
-            entertainment_articles = [a for a in uk_with_images if a.get('category') == 'Entertainment']
             uk_news_articles = [a for a in uk_with_images if a.get('category') in ['UK News', 'Local News'] or a.get('category') not in ['Sports', 'Business', 'Health', 'Tech', 'Science', 'Entertainment']]
             
-            logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(health_articles)} Health, {len(tech_articles)} Tech, {len(science_articles)} Science, {len(entertainment_articles)} Entertainment, {len(sports_articles)} Sports")
+            logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(tech_articles)} Tech, {len(science_articles)} Science, {len(sports_articles)} Sports")
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
@@ -1868,8 +1862,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             business_imported = await import_category_articles(business_articles, "Business", request.business_articles, "business_imported")
             
             # Import Health articles (FREE from RSS)
-            health_imported = await import_category_articles(health_articles, "Health", request.health_articles, "health_imported")
-            
             # Import Tech articles (FREE from RSS)
             tech_imported = await import_category_articles(tech_articles, "Tech", request.tech_articles, "tech_imported")
             
@@ -1877,8 +1869,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             science_imported = await import_category_articles(science_articles, "Science", request.science_articles, "science_imported")
             
             # Import Entertainment articles (FREE from RSS)
-            entertainment_imported = await import_category_articles(entertainment_articles, "Entertainment", request.entertainment_articles, "entertainment_imported")
-            
             # Import Sports articles (limited to max_sports)
             sports_imported = await import_category_articles(sports_articles, "Sports", max_sports, "sports_imported")
         
@@ -2067,7 +2057,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         rss_images_used = len([a for a in imported_articles if a.get('image_source') == 'rss_feed'])
         smart_images_used = len([a for a in imported_articles if a.get('image_source') == 'smart_search'])
         
-        logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {health_imported} Health + {tech_imported} Tech + {science_imported} Science + {entertainment_imported} Entertainment + {sports_imported} Sports")
+        logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {tech_imported} Tech + {science_imported} Science + {sports_imported} Sports")
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
         await cap_visible_articles(keep=60)
@@ -2130,11 +2120,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             "cheshire_from_rss": cheshire_from_rss,
             "uk_articles": uk_imported,
             "business_articles": business_imported,
-            "health_articles": health_imported,
-            "tech_articles": tech_imported,
+"tech_articles": tech_imported,
             "science_articles": science_imported,
-            "entertainment_articles": entertainment_imported,
-            "sports_articles": sports_imported,
+"sports_articles": sports_imported,
             "rss_images_used": rss_images_used,
             "smart_images_used": smart_images_used,
             "estimated_cost_usd": round(perplexity_cost_estimate, 4),
@@ -2189,10 +2177,8 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
             uk_articles=12,        # 12 UK articles
             max_sports=3,          # Limit sports to 3
             business_articles=2,   # 2 Business articles (FREE)
-            health_articles=2,     # 2 Health articles (FREE)
             tech_articles=2,       # 2 Tech articles (FREE)
             science_articles=2,    # 2 Science articles (FREE)
-            entertainment_articles=2,  # 2 Entertainment articles (FREE)
             use_perplexity=False   # Quick refresh - no AI content generation
         )
         
