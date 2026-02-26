@@ -18,6 +18,7 @@ import { toast } from "../hooks/use-toast.js";
 import { Loader2, Clock, ExternalLink, Share2, User } from "lucide-react";
 
 import RelatedArticles from "../components/RelatedArticles";
+import { filterEditorialPool } from "../utils/editorialPolicy";
 
 // --- auto-stubs injected for missing modules (build-safe) ---
 const AffiliateWidgetInline = () => null;

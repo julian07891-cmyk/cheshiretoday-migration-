@@ -8,6 +8,7 @@ import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
 import FestiveTheme from "../components/FestiveTheme";
 import RelatedArticles from "../components/RelatedArticles";
+import SidebarBestPicks from "../components/SidebarBestPicks";
 import { Toaster } from "../components/ui/toaster";
 import { toast } from "../hooks/use-toast.js";
 
@@ -762,7 +763,9 @@ export default function ArticlePageV2({ categories }) {
 
 <div className="rounded-xl border border-dashed border-slate-300 dark:border-gray-700 bg-white/50 dark:bg-transparent p-4 text-sm text-slate-600 dark:text-gray-300">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-foreground">Sponsored</div>
+                    <div className="font-semibold text-foreground"><SidebarBestPicks guides={guides} />
+
+Sponsored</div>
                     <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">Ad</span>
                   </div>
                   <div>Ad slot / affiliate widget placeholder (monetisation phase).</div>

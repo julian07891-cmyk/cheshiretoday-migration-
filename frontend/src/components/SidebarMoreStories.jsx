@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getApiUrl } from "../utils/api";
 import { Clock } from "lucide-react";
+import { filterEditorialPool } from "../utils/editorialPolicy";
 
 function formatDate(dateString) {
   if (!dateString) return "";
@@ -29,6 +30,8 @@ export default function SidebarMoreStories({ currentId, limit = 6, title = "More
           ? data.articles
           : [];
 
+
+        const pool = filterEditorialPool(arr);
         const filtered = arr
           .filter((a) => (a?.id || a?._id) && String(a.id || a._id) !== String(currentId || ""))
           .slice(0, limit);

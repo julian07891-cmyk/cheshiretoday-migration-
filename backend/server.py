@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Body
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
@@ -1019,6 +1019,10 @@ Start writing the article now:"""
         # Send message to Gemini
         user_message = UserMessage(text=prompt)
         full_text = await chat.send_message(user_message)
+        # Guard: some clients return a coroutine from send_message
+        import asyncio
+        if asyncio.iscoroutine(full_text):
+            full_text = await full_text
         full_text = full_text.strip()
         
         # CRITICAL: Check for AI thinking/reasoning in output - this indicates a bad response
@@ -1713,6 +1717,62 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         science_imported = 0
         entertainment_imported = 0
         max_sports = getattr(request, 'max_sports', 3)  # Default 3 sports articles
+
+        # ==========================================
+        # CONTENT POLICY: De-emphasise crime + exclude Manchester sources
+        # - Keep crime-like stories to a very low cap per import run (default 1)
+        # - Hard exclude Manchester sources (per project requirement)
+        # ==========================================
+        crime_cap = int(os.getenv("CRIME_MAX_PER_IMPORT", "1") or "1")
+        crime_count = 0
+
+        def is_manchester_source(article: dict) -> bool:
+            s = (article.get("source") or article.get("source_name") or "").lower()
+            t = (article.get("title") or "").lower()
+            u = (article.get("source_url") or "").lower()
+            return ("manchester" in s) or ("manchester" in t) or ("manchestereveningnews" in u) or ("men." in u)
+
+        def is_crime_like(article: dict) -> bool:
+            """Strict crime filter: only clear violence/courts/sentencing.
+            Avoids broad matches like 'police', 'incident', podcasts, politics, etc.
+            """
+            cat = (article.get("category") or "").lower()
+            title = (article.get("title") or "").lower()
+            summary = (article.get("summary") or "").lower()
+            content = (article.get("content") or "").lower()
+            text = " ".join([title, summary, content])
+
+            # Hard skip obvious non-article formats
+            url = (article.get("source_url") or "").lower()
+            if "/audio/" in url or "podcast" in title:
+                return False
+
+            # Category signals (keep tight)
+            if any(k in cat for k in ("court", "crime")):
+                return True
+
+            # Strict keywords: violence / prosecution / sentencing (NO generic 'police' / 'incident')
+            crime_kw = re.compile(r"("
+                r"murder|killed|manslaughter|homicide|stabb?ing|stabbed|shoot(ing|s)|firearm|gunman|"
+                r"rape(d)?|sexual assault|robbery|burglary|arson|"
+                r"charged|prosecut(ed|ion)|trial|sentenc(ed|ing)|jailed|jail|prison|convict(ed|ion)|inquest"
+            r")", re.I)
+
+            return bool(crime_kw.search(text))
+
+
+            crime_words = [
+                "murder","killed","kill","manslaughter","death","dead",
+                "arrest","charged","court","trial","sentenced","jail","prison",
+                "assault","attack","stab","stabbing","shoot","shooting",
+                "rape","sexual","abuse","domestic","violence",
+                "police","cctv","appeal","wanted","suspect",
+                "crash","collision","fatal","fire","explosion","incident"
+            ]
+            if "crime" in cat or "court" in cat:
+                return True
+            return any(w in text for w in crime_words)
+
         
         if request.uk_articles > 0:
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
@@ -1746,6 +1806,18 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         
                     title = article.get('title', '').strip()
                     rss_image = article.get('image', '').strip()
+
+                    
+                    # Exclude Manchester sources entirely
+                    if is_manchester_source(article):
+                        continue
+
+                    # Keep crime-like content to a very low cap
+                    nonlocal crime_count
+                    if is_crime_like(article):
+                        if crime_count >= crime_cap:
+                            continue
+                        crime_count += 1
                     
                     # Skip if duplicate title or image
                     if not title or title.lower() in existing_titles:
@@ -1812,7 +1884,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         
         # ==========================================
         # STEP 2: Check LOCAL Cheshire newspaper feeds (FREE + Full Content via Perplexity)
-        # Now includes: Cheshire Live, Warrington Guardian, Manchester Evening News
+        # Now includes: Cheshire Live and other Cheshire/UK sources (Manchester excluded by policy)
         # ==========================================
         cheshire_from_rss = 0
         
@@ -1848,6 +1920,18 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
             if not title or title.lower() in existing_titles:
                 continue
+
+            
+            # Exclude Manchester sources entirely
+            if is_manchester_source(article):
+                continue
+
+            # Keep crime-like content to a very low cap
+            # Allow up to crime_cap; skip only if we already hit the cap.
+            if is_crime_like(article):
+                if crime_count >= crime_cap:
+                    continue
+                crime_count += 1
             if rss_image in used_image_urls:
                 continue
             
@@ -1912,62 +1996,72 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 if not title or title.lower() in existing_titles:
                     continue
                 
-                # Generate SMART image search query using Perplexity
-                logger.info(f"Generating smart image query for: {title[:40]}...")
-                smart_query = await perplexity_service.generate_image_search_query(
-                    title=title,
-                    content=content,
-                    category=category
-                )
-                perplexity_cost_estimate += 0.005
-                
-                if not smart_query:
-                    # Fallback to extracting key terms from title
-                    smart_query = ' '.join(title.split()[:4])
-                
-                # Search for image using the smart query
-                image = None
-                
-                # Try Unsplash first with smart query
-                try:
-                    image = await unsplash_service.search_image(smart_query + " UK")
-                    if image and image not in used_image_urls:
-                        logger.info(f"✅ Found Unsplash image for query: '{smart_query}'")
-                    else:
-                        image = None
-                except Exception as e:
-                    logger.warning(f"Unsplash search failed: {e}")
-                
-                # Try Pexels if Unsplash failed
-                if not image:
+                # 1️⃣ Try to use image provided by Perplexity result first
+                image = article.get('image')
+
+                if image and image not in used_image_urls:
+                    article['image'] = image
+                    article['image_source'] = 'perplexity'
+                else:
+                    # 2️⃣ Fallback to smart image search
+                    logger.info(f"Generating smart image query for: {title[:40]}...")
+                    smart_query = await perplexity_service.generate_image_search_query(
+                        title=title,
+                        content=content,
+                        category=category
+                    )
+                    perplexity_cost_estimate += 0.005
+
+                    if not smart_query:
+                        smart_query = ' '.join(title.split()[:4])
+
+                    image = None
+
                     try:
-                        image = await pexels_service.search_image(smart_query)
-                        if image and image not in used_image_urls:
-                            logger.info(f"✅ Found Pexels image for query: '{smart_query}'")
-                        else:
+                        image = await unsplash_service.search_image(smart_query + " UK")
+                        if image in used_image_urls:
                             image = None
-                    except Exception as e:
-                        logger.warning(f"Pexels search failed: {e}")
-                
-                # Skip if no unique image found (quality over quantity)
-                if not image:
-                    logger.warning(f"Skipping article - no unique image found: {title[:40]}...")
-                    continue
-                
-                article['image'] = image
-                article['image_source'] = 'smart_search'
-                article['image_query'] = smart_query
+                    except:
+                        image = None
+
+                    if not image:
+                        try:
+                            image = await pexels_service.search_image(smart_query)
+                            if image in used_image_urls:
+                                image = None
+                        except:
+                            image = None
+
+                    if not image:
+                        # Try RSS fallback image instead of skipping
+                        fallback_image = None
+                        for a in cheshire_with_images:
+                            u = (a.get('image') or '').strip()
+                            if u and u not in used_image_urls:
+                                fallback_image = u
+                                break
+
+                        if fallback_image:
+                            image = fallback_image
+                            article['image_source'] = 'rss_fallback'
+                        else:
+                            logger.warning(f"Skipping article - no usable image found: {title[:40]}...")
+                            continue
+
+                    article['image'] = image
+                    article['image_source'] = 'smart_search'
+
                 article['scope'] = 'cheshire'
                 article['id'] = str(uuid4())
                 article['author'] = 'Cheshire Today'
                 article['publishedDate'] = datetime.now(timezone.utc).isoformat()
-                
+
                 await db.articles.insert_one(article)
                 existing_titles.add(title.lower())
-                used_image_urls.add(image)
+                used_image_urls.add(article['image'])
                 imported_articles.append(article)
                 cheshire_from_perplexity += 1
-                logger.info(f"✅ Imported Cheshire article with smart image: {title[:50]}...")
+                logger.info(f"✅ Imported Cheshire article (hybrid image logic): {title[:50]}...")
         
         total_cheshire = cheshire_from_rss + cheshire_from_perplexity
         rss_images_used = len([a for a in imported_articles if a.get('image_source') == 'rss_feed'])
@@ -1977,6 +2071,56 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
         await cap_visible_articles(keep=60)
+
+        # === RATIO_REBALANCE_45 ===
+        try:
+            MAX_VISIBLE = 45
+            active_filter = {"$or": [{"archived": {"$exists": False}}, {"archived": False}]}
+            active = await db.articles.find(
+                active_filter,
+                {"_id": 1, "publishedDate": 1, "scope": 1, "category": 1}
+            ).sort("publishedDate", -1).to_list(10000)
+
+            local, business, ai, other = [], [], [], []
+
+            for a in active:
+                if a.get("scope") == "cheshire":
+                    local.append(a)
+                elif a.get("category") in ["Business","Finance","Tax"]:
+                    business.append(a)
+                elif a.get("category") in ["Tech","Science","AI & Tech"]:
+                    ai.append(a)
+                else:
+                    other.append(a)
+
+            keep = []
+
+            keep += local[:18]
+            keep += business[:18]
+            keep += ai[:9]
+            keep += other[:5]
+
+            keep = keep[:MAX_VISIBLE]
+
+            keep_ids = [a["_id"] for a in keep]
+
+            archive_query = dict(active_filter)
+            archive_query["_id"] = {"$nin": keep_ids}
+
+            result = await db.articles.update_many(
+                archive_query,
+                {"$set": {
+                    "archived": True,
+                    "archived_at": datetime.now(timezone.utc).isoformat(),
+                    "archive_reason": "ratio_rebalance"
+                }}
+            )
+
+            logger.info(f"[RATIO_REBALANCE] Archived {result.modified_count} articles to enforce strategic distribution.")
+
+        except Exception as cap_err:
+            logger.error(f"[RATIO_REBALANCE_ERROR] {cap_err}")
+
 
         return {
             "success": True,
@@ -2727,8 +2871,7 @@ async def get_articles(
         # For "all" category (Latest News), use interleaved ordering: Local, Local, UK, UK
         if (not category or category == 'all') and not source_type:
             # Fetch local and UK articles separately
-            local_articles = await db.articles.find(
-                {'is_local_source': True},
+            local_articles = await db.articles.find({'$and': [{'is_local_source': True}, {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}]},
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -2736,8 +2879,7 @@ async def get_articles(
                 }
             ).sort('publishedDate', -1).limit(limit).to_list(limit)
             
-            uk_articles = await db.articles.find(
-                {'is_local_source': {'$ne': True}},
+            uk_articles = await db.articles.find({'$and': [{'is_local_source': {'$ne': True}}, {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}]},
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -3277,7 +3419,11 @@ async def get_article_meta(article_id: str):
     """Get article metadata for social sharing. Also searches archived articles."""
     try:
         # Use environment variable for base URL (works across all deployment environments)
-        base_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk')
+        # Domain config:
+        # PUBLIC_URL = frontend domain (React app)
+        # API_PUBLIC_URL = backend domain (serves /api/article/{id} HTML for crawlers)
+        public_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk').rstrip('/')
+        api_public_url = os.environ.get('API_PUBLIC_URL', public_url).rstrip('/')
         
         # Search in main articles collection first
         article = await db.articles.find_one({"_id": ObjectId(article_id)})
@@ -3305,7 +3451,8 @@ async def get_article_meta(article_id: str):
     except Exception as e:
         logging.error(f"Error fetching article meta: {str(e)}")
         # Use environment variable for base URL (works across all deployment environments)
-        base_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk')
+        public_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk').rstrip('/')
+        api_public_url = os.environ.get('API_PUBLIC_URL', public_url).rstrip('/')
         return {
             "title": "Cheshire Today - Local News",
             "description": "Stay informed with the latest news from Cheshire",
@@ -4569,30 +4716,90 @@ async def get_archived_articles(
 
 @api_router.post("/admin/articles/bulk-archive")
 async def bulk_archive_articles(
-    days_old: int = 30,
+    payload: dict = Body(default={}),
     auth: bool = Depends(get_admin_auth)
 ):
-    """Archive all articles older than specified days"""
+    """
+    Bulk archive helper.
+
+    Supports:
+      - {"keep_visible": N}  -> keep newest N active (archive the rest)
+      - {"days_old": D}      -> archive active articles older than D days (legacy behavior)
+    """
     try:
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_old)
-        
+        now = datetime.now(timezone.utc)
+        keep_visible = 0
+        days_old = None
+
+        if isinstance(payload, dict):
+            if payload.get("keep_visible") is not None:
+                try:
+                    keep_visible = int(payload.get("keep_visible") or 0)
+                except Exception:
+                    keep_visible = 0
+            if payload.get("days_old") is not None:
+                try:
+                    days_old = int(payload.get("days_old"))
+                except Exception:
+                    days_old = None
+
+        active_filter = {"$or": [{"archived": {"$exists": False}}, {"archived": False}]}
+
+        # Mode A: keep newest N
+        if keep_visible and keep_visible > 0:
+            active = await db.articles.find(
+                active_filter,
+                {"_id": 1, "publishedDate": 1}
+            ).sort("publishedDate", -1).to_list(10000)
+
+            keep = active[:keep_visible]
+            keep_ids = [a["_id"] for a in keep if a.get("_id") is not None]
+
+            archive_query = dict(active_filter)
+            archive_query["_id"] = {"$nin": keep_ids}
+
+            result = await db.articles.update_many(
+                archive_query,
+                {"$set": {
+                    "archived": True,
+                    "archived_at": now.isoformat(),
+                    "archive_reason": f"bulk_keep_newest_{keep_visible}"
+                }}
+            )
+
+            return {
+                "success": True,
+                "mode": "keep_newest",
+                "kept_visible": keep_visible,
+                "archived_count": result.modified_count,
+                "message": f"Archived {result.modified_count} older articles; kept newest {keep_visible} visible"
+            }
+
+        # Mode B: legacy days_old
+        if days_old is None:
+            days_old = 30
+
+        cutoff_date = now - timedelta(days=days_old)
+
         result = await db.articles.update_many(
             {
                 "publishedDate": {"$lt": cutoff_date.isoformat()},
-                "$or": [{"archived": {"$exists": False}}, {"archived": False}]
+                **active_filter
             },
-            {"$set": {"archived": True, "archived_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"archived": True, "archived_at": now.isoformat(), "archive_reason": f"bulk_days_old_{days_old}"}}
         )
-        
+
         return {
             "success": True,
+            "mode": "days_old",
+            "days_old": days_old,
             "archived_count": result.modified_count,
             "message": f"Archived {result.modified_count} articles older than {days_old} days"
         }
+
     except Exception as e:
         logger.error(f"Error bulk archiving articles: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
 @api_router.get("/admin/articles/by-date")
 async def get_articles_by_date_range(
     start_date: Optional[str] = None,
@@ -8413,11 +8620,10 @@ async def serve_article_html(article_id: str):
             # Use clean production domain URL for og:url (what users see when shared)
             # CRITICAL: Point og:url to the API ENDPOINT (server-side rendered HTML), not the frontend.
             # This ensures Facebook scraper sees this exact HTML again, instead of React's blank index.html
-            share_url = f"{base_url}/api/article/{article_id}"
+            share_url = f"{api_public_url}/api/article/{article_id}"
             
-            # Use regular URL for user redirect (React app will handle routing)
-            # This MUST point to the article page, NOT the homepage
-            app_url = f"{base_url}/article/{article_id}"
+            # User-facing URL (React route)
+            app_url = f"{public_url}/article/{article_id}"
         
         # --- Structured Data (NewsArticle Schema) ---
         import json
@@ -8536,11 +8742,11 @@ async def serve_article_html(article_id: str):
     <meta property="og:title" content="Cheshire Today - Local News">
     <meta property="og:image" content="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop">
     <meta property="fb:app_id" content="2091422248085004">
-    <script>window.location.href = "{base_url}";</script>
+    <script>window.location.href = "{public_url}";</script>
 </head>
 <body>
     <h1>Cheshire Today</h1>
-    <p><a href="{base_url}">Visit Cheshire Today</a></p>
+    <p><a href="{public_url}">Visit Cheshire Today</a></p>
 </body>
 </html>"""
         return HTMLResponse(content=fallback_html)
@@ -10607,7 +10813,7 @@ async def startup_event():
             id='morning_article_generation',
             name='Generate morning news articles',
             replace_existing=True,
-            args=[12]
+            args=[10]
         )
         
         scheduler.add_job(
@@ -10615,7 +10821,8 @@ async def startup_event():
             CronTrigger(hour=12, minute=0),  # Midday: 12:00 PM
             id='midday_article_generation',
             name='Generate midday news articles',
-            replace_existing=True
+            replace_existing=True,
+            args=[8]
         )
         
         scheduler.add_job(
@@ -10623,14 +10830,8 @@ async def startup_event():
             CronTrigger(hour=18, minute=0),  # Evening: 6:00 PM
             id='evening_article_generation',
             name='Generate evening news articles',
-            replace_existing=True
-        )
-        scheduler.add_job(
-            daily_article_generation,
-            CronTrigger(hour=15, minute=0),  # Afternoon: 3:00 PM
-            id='afternoon_article_generation',
-            name='Generate afternoon news articles',
-            replace_existing=True
+            replace_existing=True,
+            args=[7]
         )
         
         # ============================================
@@ -11052,7 +11253,12 @@ async def startup_event():
             replace_existing=True
         )
         
-        scheduler.start()
+        auto_enabled = os.getenv("AUTO_GENERATION_ENABLED", "false").strip().lower() in ("1","true","yes","on")
+        if auto_enabled:
+            scheduler.start()
+            logger.info("AUTO_GENERATION_ENABLED=true → Scheduler started")
+        else:
+            logger.info("AUTO_GENERATION_ENABLED is false → Scheduler NOT started")
         logger.info("Scheduler started. Articles: 6AM, 12PM, 3PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday 9AM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
         
     except Exception as e:

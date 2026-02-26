@@ -5,8 +5,10 @@ import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
+import TopRatedGuides from "../components/TopRatedGuides";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import LeadSection from "../components/homepage/LeadSection";
+import SidebarBestPicks from "../components/SidebarBestPicks";
 import NewsFooter from "../components/NewsFooter";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
@@ -641,6 +643,8 @@ return (
                 />
               )}
 
+              <TopRatedGuides guides={guides} />
+
 {/* Monetisation strip (hero) */}
               <div className="mt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -898,6 +902,8 @@ return (
                 onNavigate={(url) => navigate(url)}
               />
             )}
+
+            <SidebarBestPicks guides={guides} />
 
             {/* Sponsored placeholder */}
             <section className="rounded-xl border border-dashed border-slate-300 dark:border-gray-700 bg-white/50 dark:bg-transparent p-3 text-sm text-slate-600 dark:text-gray-300">

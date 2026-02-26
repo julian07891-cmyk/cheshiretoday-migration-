@@ -3,6 +3,7 @@ import { getApiUrl } from '../utils/api';
 import { Search, X, Clock, TrendingUp, Loader2 } from 'lucide-react';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { filterEditorialPool } from "../utils/editorialPolicy";
 
 const API_URL = getApiUrl();
 
@@ -42,7 +43,7 @@ const MobileSearch = ({ open, onClose, onArticleSelect }) => {
       try {
         const response = await fetch(`${API_URL}/api/articles?search=${encodeURIComponent(query)}&limit=10`);
         const data = await response.json();
-        setResults(data.articles || []);
+        setResults(filterEditorialPool(data.articles || []));
       } catch (e) {
         console.error('Search failed:', e);
       } finally {

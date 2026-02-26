@@ -17,12 +17,14 @@ CHESHIRE_RSS_SOURCES = [
         "category": 'local'
     },
     {
-        "name": 'BBC England',
+        # DISABLED_FOR_RATIO
+        # "name": 'BBC England',
         "url": 'http://feeds.bbci.co.uk/news/england/rss.xml',
         "category": 'uk'
     },
     {
-        "name": 'BBC UK',
+        # DISABLED_FOR_RATIO
+        # "name": 'BBC UK',
         "url": 'http://feeds.bbci.co.uk/news/uk/rss.xml',
         "category": 'uk'
     },
@@ -77,7 +79,8 @@ CHESHIRE_RSS_SOURCES = [
         "category": 'business'
     },
     {
-        "name": 'Sky News UK',
+        # DISABLED_FOR_RATIO
+        # "name": 'Sky News UK',
         "url": 'https://feeds.skynews.com/feeds/rss/uk.xml',
         "category": 'uk'
     },
@@ -92,7 +95,8 @@ CHESHIRE_RSS_SOURCES = [
         "category": 'business'
     },
     {
-        "name": 'The Guardian UK News',
+        # DISABLED_FOR_RATIO
+        # "name": 'The Guardian UK News',
         "url": 'https://www.theguardian.com/uk-news/rss',
         "category": 'uk'
     },

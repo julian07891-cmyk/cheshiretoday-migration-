@@ -276,13 +276,17 @@ NEVER add word count or any statistics about the article at the end."""
 Headline: {title}
 Summary: {summary}
 Source: {source}
+Source URL: {source_url}
+
+If a Source URL is provided, treat it as the primary reference and extract the key facts from it. If the link is unavailable or paywalled, write using the headline/summary context without inventing specifics.
+
 
 Write engaging plain text paragraphs about this story. Focus on the general situation and context. Do not add word count at the end:"""
                         }
                     ],
                     "max_tokens": 800,
                     "temperature": 0.5,
-                    "return_citations": False,
+                    "return_citations": True,
                     "search_recency_filter": "week"
                 }
                 

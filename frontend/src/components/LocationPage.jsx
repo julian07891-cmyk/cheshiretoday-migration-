@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Toaster } from './ui/toaster';
 import { categories } from '../mockData';
+import { filterEditorialPool } from "../utils/editorialPolicy";
 
 // Location metadata for SEO
 const LOCATION_DATA = {
@@ -121,7 +122,7 @@ const LocationPage = () => {
       
       const data = await response.json();
       console.log('Location data received:', data);
-      setArticles(data.articles || []);
+      setArticles(filterEditorialPool(data.articles || []));
       setTotalCount(data.total || 0);
     } catch (error) {
       console.error('Error fetching location articles:', error);
