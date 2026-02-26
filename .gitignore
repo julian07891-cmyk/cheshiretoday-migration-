@@ -41,3 +41,10 @@ backend/.env.*
 *.BACKUP_*
 *.pre_jsonld.*.bak
 *.bak_*
+
+# --- Local operational patch files ---
+patch_*.py
+*_upsert.json
+*_update.json
+*.tmp
+tmp_*.json
