@@ -1730,7 +1730,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
         def is_crime_like(article: dict) -> bool:
             """Strict crime filter: only clear violence/courts/sentencing.
-            Avoids broad matches like 'police', 'incident', podcasts, politics, etc.
+            Avoid broad matches like 'police', 'incident', podcasts, politics, etc.
             """
             cat = (article.get("category") or "").lower()
             title = (article.get("title") or "").lower()
@@ -1738,38 +1738,25 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             content = (article.get("content") or "").lower()
             text = " ".join([title, summary, content])
 
-            # Hard skip obvious non-article formats
             url = (article.get("source_url") or "").lower()
+            # Hard skip obvious non-article formats
             if "/audio/" in url or "podcast" in title:
                 return False
 
             # Category signals (keep tight)
-            if any(k in cat for k in ("court", "crime")):
+            if "court" in cat or "crime" in cat:
                 return True
 
             # Strict keywords: violence / prosecution / sentencing (NO generic 'police' / 'incident')
-            crime_kw = re.compile(r"("
-                r"murder|killed|manslaughter|homicide|stabb?ing|stabbed|shoot(ing|s)|firearm|gunman|"
+            crime_kw = re.compile(
+                r"(murder|killed|manslaughter|homicide|stabb?ing|stabbed|shoot(ing|s)|firearm|gunman|"
                 r"rape(d)?|sexual assault|robbery|burglary|arson|"
-                r"charged|prosecut(ed|ion)|trial|sentenc(ed|ing)|jailed|jail|prison|convict(ed|ion)|inquest"
-            r")", re.I)
-
+                r"charged|prosecut(ed|ion)|trial|sentenc(ed|ing)|jailed|jail|prison|convict(ed|ion)|inquest)",
+                re.I,
+            )
             return bool(crime_kw.search(text))
 
 
-            crime_words = [
-                "murder","killed","kill","manslaughter","death","dead",
-                "arrest","charged","court","trial","sentenced","jail","prison",
-                "assault","attack","stab","stabbing","shoot","shooting",
-                "rape","sexual","abuse","domestic","violence",
-                "police","cctv","appeal","wanted","suspect",
-                "crash","collision","fatal","fire","explosion","incident"
-            ]
-            if "crime" in cat or "court" in cat:
-                return True
-            return any(w in text for w in crime_words)
-
-        
         if request.uk_articles > 0:
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
             
@@ -2872,24 +2859,74 @@ async def get_articles(
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
                 }
             ).sort('publishedDate', -1).limit(limit).to_list(limit)
-            
-            # Interleave: 2 local, 2 UK, repeat
+
+            # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
+            # Keeps crime-like stories to a very low cap in the TOP feed (default 1).
+            crime_cap_top = int(os.getenv("CRIME_MAX_TOP", "1") or "1")
+            crime_count_top = 0
+
+            def is_crime_like_text(a: dict) -> bool:
+                import re
+                cat = (a.get("category") or "").lower()
+                title = (a.get("title") or "").lower()
+                summary = (a.get("summary") or "").lower()
+                content = (a.get("content") or "").lower()
+                text = " ".join([title, summary, content])
+
+                url = (a.get("source_url") or "").lower()
+                if "/audio/" in url or "podcast" in title:
+                    return False
+
+                if "court" in cat or "crime" in cat:
+                    return True
+
+                crime_kw = re.compile(
+                    r"(murder|killed|manslaughter|homicide|stabb?ing|stabbed|shoot(ing|s)|firearm|gunman|"
+                    r"rape(d)?|sexual assault|robbery|burglary|arson|"
+                    r"charged|prosecut(ed|ion)|trial|sentenc(ed|ing)|jailed|jail|prison|convict(ed|ion)|inquest)",
+                    re.I,
+                )
+                return bool(crime_kw.search(text))
+
             articles = []
+            deferred = []  # crime-like overflow items go here
             local_idx = 0
             uk_idx = 0
-            
+
+            def take_next(pool, idx_ref_name: str):
+                nonlocal crime_count_top
+                # idx_ref_name is just for readability; we update via closure vars
+                return
+
             while len(articles) < limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
                 # Add 2 local articles
                 for _ in range(2):
                     if local_idx < len(local_articles) and len(articles) < limit:
-                        articles.append(local_articles[local_idx])
+                        a = local_articles[local_idx]
                         local_idx += 1
-                
+                        if is_crime_like_text(a):
+                            if crime_count_top >= crime_cap_top:
+                                deferred.append(a)
+                                continue
+                            crime_count_top += 1
+                        articles.append(a)
+
                 # Add 2 UK articles
                 for _ in range(2):
                     if uk_idx < len(uk_articles) and len(articles) < limit:
-                        articles.append(uk_articles[uk_idx])
+                        a = uk_articles[uk_idx]
                         uk_idx += 1
+                        if is_crime_like_text(a):
+                            if crime_count_top >= crime_cap_top:
+                                deferred.append(a)
+                                continue
+                            crime_count_top += 1
+                        articles.append(a)
+
+            # If we still have space, append deferred crime-like items at the end
+            if len(articles) < limit and deferred:
+                articles.extend(deferred[: max(0, limit - len(articles))])
+
             
             # Apply skip if needed
             if skip > 0:
