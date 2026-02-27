@@ -2870,6 +2870,7 @@ async def get_articles(
             # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
             # Keeps crime-like stories to a very low cap in the TOP feed (default 1).
             crime_cap_top = int(os.getenv("CRIME_MAX_TOP", "1") or "1")
+            lead_non_crime = int(os.getenv("LEAD_NON_CRIME", "3") or "3")
             crime_count_top = 0
 
             def is_crime_like_text(a: dict) -> bool:
@@ -2912,6 +2913,10 @@ async def get_articles(
                         a = local_articles[local_idx]
                         local_idx += 1
                         if is_crime_like_text(a):
+                            # Keep crime out of the lead positions when possible
+                            if len(articles) < lead_non_crime:
+                                deferred.append(a)
+                                continue
                             if crime_count_top >= crime_cap_top:
                                 deferred.append(a)
                                 continue
@@ -2924,6 +2929,10 @@ async def get_articles(
                         a = uk_articles[uk_idx]
                         uk_idx += 1
                         if is_crime_like_text(a):
+                            # Keep crime out of the lead positions when possible
+                            if len(articles) < lead_non_crime:
+                                deferred.append(a)
+                                continue
                             if crime_count_top >= crime_cap_top:
                                 deferred.append(a)
                                 continue
