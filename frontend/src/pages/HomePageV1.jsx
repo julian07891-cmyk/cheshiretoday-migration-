@@ -1,17 +1,18 @@
+const MONETISATION_ENABLED = false;
 import React, { useEffect, useMemo, useState } from "react";
 import { getApiUrl } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
+import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
-import TopRatedGuides from "../components/TopRatedGuides";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import LeadSection from "../components/homepage/LeadSection";
-import SidebarBestPicks from "../components/SidebarBestPicks";
 import NewsFooter from "../components/NewsFooter";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
+import { FEATURES } from "../config/features";
 /* ---------- helpers ---------- */
 function safeDateMs(d) {
   const t = Date.parse(d);
@@ -642,46 +643,6 @@ return (
                   url={`/article/${articleKey(hero) || "hero"}`}
                 />
               )}
-
-              <TopRatedGuides guides={guides} />
-
-{/* Monetisation strip (hero) */}
-              <div className="mt-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                  <a
-                    href="/guides/best-mortgage-rates-uk"
-                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">Mortgage rates</div>
-                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1"><span className="group-hover:underline underline-offset-2">Compare UK deals →</span></div>
-                  </a>
-
-                  <a
-                    href="/guides/best-credit-cards-uk"
-                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">Compare credit cards</div>
-                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1"><span className="group-hover:underline underline-offset-2">0% offers + rewards →</span></div>
-                  </a>
-
-                  <a
-                    href="/guides/best-savings-accounts-uk"
-                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
-                    <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">Savings accounts</div>
-                    <div className="text-xs text-slate-600 dark:text-gray-400 mt-1"><span className="group-hover:underline underline-offset-2">Best easy-access picks →</span></div>
-                  </a>
-
-                </div>
-
-                <div className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">
-                  We may earn a commission from affiliate links.
-                </div>
-              </div>
             </div>
 
             {/* Right: Top Stories (compact) */}
@@ -693,8 +654,11 @@ return (
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
                   </div>
                   <TopStoriesGrid stories={topStories} />
+
                 </div>
               )}
+
+
             </aside>
           </div>
         </section>
@@ -737,32 +701,6 @@ return (
                 </div>
 </section>
             )}
-
-            {/* Property & Tax Intelligence */}
-            <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-extrabold tracking-tight">Property & Tax Intelligence</h2>
-                <span className="text-[11px] px-2 py-1 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
-                  Affiliate
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <a href="/guides/cost-of-buying-home-cheshire-2026" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
-                  <div className="text-sm font-extrabold">Cost of buying in Cheshire</div>
-                </a>
-
-                <a href="/guides/best-savings-accounts-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
-                  <div className="text-sm font-extrabold">Best savings accounts</div>
-                </a>
-                <a href="/guides/best-mortgage-rates-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
-                  <div className="text-sm font-extrabold">Compare mortgage rates</div>
-                </a>
-                <a href="/guides/council-tax-bands-cheshire" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
-                  <div className="text-sm font-extrabold">Council tax guide</div>
-                </a>
-              </div>
-            </section>
 
             {/* AI & Business */}
             {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
@@ -841,48 +779,14 @@ return (
               />
             )}
             {/* AI & Tech */}
-            
-            {(aiFeed.length > 0 || (Array.isArray(guides) && guides.length > 0)) && (
-              <div className="space-y-3">
-                {Array.isArray(guides) && guides.length > 0 && (
-                  <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-extrabold text-slate-900 dark:text-white">Guides</div>
-                      <a
-                        href="/guides"
-                        className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:underline underline-offset-2"
-                      >
-                        View guides →
-                      </a>
-                    </div>
-
-                    <ul className="mt-3 space-y-2 text-sm">
-                      {guides.slice(0, 3).map((g, idx) => (
-                        <li key={g?.id || g?.slug || idx}>
-                          <a
-                            href={`/guides/${encodeURIComponent(g.slug)}`}
-                            className="font-semibold text-blue-700 dark:text-blue-300 hover:underline underline-offset-2"
-                          >
-                            🔥 {g.title || g.slug}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="text-xs mt-3 text-slate-600 dark:text-gray-300">
-                      UK-focused comparisons &amp; best picks →
-                    </div>
-                  </div>
-                )}
-
-                <LeadSection
-                  title="AI & Tech"
-                  badgeText="AI Pulse"
-                  badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200"
-                  items={aiFeed.slice(0, 4)}
-                  onNavigate={(url) => navigate(url)}
-                />
-              </div>
+            {Array.isArray(aiFeed) && aiFeed.length > 0 && (
+              <LeadSection
+                title="AI & Tech"
+                badgeText="AI Pulse"
+                badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200"
+                items={aiFeed.slice(0, 4)}
+                onNavigate={(url) => navigate(url)}
+              />
             )}
             {/* Mortgages & Savings */}
             
@@ -906,26 +810,7 @@ return (
                 onNavigate={(url) => navigate(url)}
               />
             )}
-
-            <SidebarBestPicks guides={guides} />
-
-            {/* Sponsored placeholder */}
-            <section className="rounded-xl border border-dashed border-slate-300 dark:border-gray-700 bg-white/50 dark:bg-transparent p-3 text-sm text-slate-600 dark:text-gray-300">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-slate-900 dark:text-white">Sponsored</div>
-                <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-slate-200 bg-slate-100 text-slate-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                  Ad
-                </span>
-              </div>
-              <div>Ad slot / affiliate widget placeholder (monetisation phase).</div>
-              <a
-                href="/advertise"
-                className="inline-block mt-2 text-slate-800 dark:text-slate-100 hover:underline underline-offset-2 font-semibold"
-              >
-                Advertise with us →
-              </a>
-            </section>
-
+            <AffiliateWidgetSidebar category="default" />
           </aside>
         </div>
       )}

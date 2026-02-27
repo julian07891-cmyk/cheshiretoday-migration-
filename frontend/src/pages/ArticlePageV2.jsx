@@ -1,22 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ContextTools from "../components/monetisation/ContextTools";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
-import ArticleAffiliateStrip from "../components/ArticleAffiliateStrip";
 
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
 import FestiveTheme from "../components/FestiveTheme";
 import RelatedArticles from "../components/RelatedArticles";
-import SidebarBestPicks from "../components/SidebarBestPicks";
 import { Toaster } from "../components/ui/toaster";
 import { toast } from "../hooks/use-toast.js";
 
 import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
 import CompactArticleCard from "../components/CompactArticleCard";
+import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
+import { FEATURES } from "../config/features";
 /**
  * Convert unknown values to a safe string for React rendering.
  * Prevents React error: "Objects are not valid as a React child" (React #31).
@@ -65,6 +64,13 @@ function autoLinkContent(rawText, pillarLabel) {
   // 1) Escape first (safety)
   let html = escapeHtml(text);
 
+  // Non-Amazon monetisation OFF => do NOT auto-inject /guides/ links into article body.
+  // Keep newline formatting consistent with existing rendering.
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) {
+    html = html.replace(/\n/g, "<br/>");
+    return html;
+  }
+
   // 2) Protect plain URLs from being modified
   const urlRe = /(https?:\/\/[^\s<]+)/gi;
   const protectedUrls = [];
@@ -85,9 +91,6 @@ function autoLinkContent(rawText, pillarLabel) {
   add(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
 
   // Finance staples
-  add(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
-  add(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
-  add(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
 
   // Business (draft pages exist; link anyway — they render)
   add(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
@@ -127,9 +130,6 @@ function autoLinkContent(rawText, pillarLabel) {
     replaceOnce(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
     replaceOnce(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
   } else if (pillar.includes("finance")) {
-    replaceOnce(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
-    replaceOnce(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
-    replaceOnce(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
   } else if (pillar.includes("local")) {
     replaceOnce(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
   }
@@ -189,6 +189,9 @@ function splitAttribution(rawContent) {
 
 /* ===== Guide selection (pillar-aware) ===== */
 function pickGuidesForPillar(guides, pillarLabel) {
+  // Non-Amazon monetisation OFF => hide AI Guides / In-depth Guide module
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return [];
+
   const list = Array.isArray(guides) ? guides : [];
   const pillar = String(pillarLabel || "").toLowerCase();
 
@@ -210,23 +213,11 @@ function pickGuidesForPillar(guides, pillarLabel) {
     push("best-business-bank-accounts-uk");
     push("best-accounting-software-uk");
     push("best-business-credit-cards-uk");
-    push("best-mortgage-rates-uk");
-    push("best-savings-accounts-uk");
-    push("best-credit-cards-uk");
   } else if (pillar.includes("finance")) {
-    push("best-mortgage-rates-uk");
-    push("best-savings-accounts-uk");
-    push("best-credit-cards-uk");
     push("best-isa-platforms-uk");
   } else if (pillar.includes("local")) {
     push("council-tax-bands-cheshire");
-    push("best-mortgage-rates-uk");
-    push("best-savings-accounts-uk");
-    push("best-credit-cards-uk");
   } else {
-    push("best-mortgage-rates-uk");
-    push("best-savings-accounts-uk");
-    push("best-credit-cards-uk");
     push("best-ai-tools-uk");
   }
 
@@ -252,6 +243,7 @@ function pickGuidesForPillar(guides, pillarLabel) {
 
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
 const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
   if (!Array.isArray(guides) || guides.length === 0) return null;
 
   const cat = String(category || "").toLowerCase();
@@ -283,6 +275,7 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
 };
 
 const GuidesInlinePromo = ({ guides, pillarLabel }) => {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
   const picked = pickGuidesForPillar(list, pillarLabel);
   const g = picked[0];
@@ -653,7 +646,7 @@ export default function ArticlePageV2({ categories }) {
 
 
               
-              {contextToolType ? <ContextTools type={contextToolType} /> : null}
+              
 
               {(article.source || article.source_url) && (
                 <div className="mt-8 pt-6 border-t border-border">
@@ -759,20 +752,7 @@ export default function ArticlePageV2({ categories }) {
                   />
                 </div>
 
-                {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}
-
-                {/* Best picks */}
-                <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-bold text-foreground">Best picks</h3>
-                    <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
-                      Guides
-                    </span>
-                  </div>
-                  <SidebarBestPicks guides={guides} />
-                </div>
-
-                {/* Latest (fills sidebar height, compact) */}
+                {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}                {/* Latest (fills sidebar height, compact) */}
                 {Array.isArray(moreStories) && moreStories.length > 0 && (
                   <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -806,20 +786,16 @@ export default function ArticlePageV2({ categories }) {
                   </div>
                 )}
 
-                {/* Sponsored placeholder */}
-                <div className="rounded-xl border border-dashed border-slate-300 dark:border-gray-700 bg-white/50 dark:bg-transparent p-4 text-sm text-slate-600 dark:text-gray-300">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-foreground">Sponsored</div>
-                    <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">Ad</span>
-                  </div>
-                  <div>Ad slot / affiliate widget placeholder (monetisation phase).</div>
-                  <a
-                    href="/advertise"
-                    className="inline-block mt-2 text-slate-700 hover:underline underline-offset-2 font-semibold dark:text-slate-200"
-                  >
-                    Advertise with us →
-                  </a>
-                </div>
+                {/* Sponsored (Amazon affiliate) */}
+                <AffiliateWidgetSidebar 
+                  category={
+                    pillarLabel?.toLowerCase().includes("ai") ? "tech" :
+                    pillarLabel?.toLowerCase().includes("business") ? "business" :
+                    pillarLabel?.toLowerCase().includes("finance") ? "business" :
+                    pillarLabel?.toLowerCase().includes("local") ? "travel" :
+                    "default"
+                  } 
+                />
 
 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
