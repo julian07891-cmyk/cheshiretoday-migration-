@@ -2701,6 +2701,13 @@ async def get_cheshire_general_articles(
         for article in articles:
             article['id'] = str(article['_id'])
             del article['_id']
+
+            # Normalize scope for frontend consistency
+            # Local sources should always be treated as Cheshire scope
+            if article.get('is_local_source') is True:
+                article['scope'] = 'cheshire'
+            elif not article.get('scope'):
+                article['scope'] = 'uk'
         
         return {
             'articles': articles,
@@ -2972,6 +2979,12 @@ async def get_articles(
         for article in articles:
             article['id'] = str(article['_id'])
             del article['_id']
+
+            # Normalize scope for frontend consistency
+            if article.get('is_local_source') is True:
+                article['scope'] = 'cheshire'
+            elif not article.get('scope'):
+                article['scope'] = 'uk'
             
             # Skip duplicate articles by ID
             if article['id'] in seen_ids:
