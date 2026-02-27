@@ -8,7 +8,7 @@ export default function TopStoriesGrid({ stories = [] }) {
 
   return (
     <div className="grid grid-cols-1 gap-3">
-      {stories.slice(0, 7).map((story, idx) => {
+      {stories.slice(0, 8).map((story, idx) => {
         const href = story.url || `/article/${story._id || story.id}`;
         const title = safeText(story.title) || "Untitled";
         const category = safeText(story.category) || "";
@@ -21,7 +21,7 @@ export default function TopStoriesGrid({ stories = [] }) {
           <Link
             key={story.id || story.url || story.title || idx}
             to={href}
-            className="group flex gap-3 overflow-hidden rounded-lg border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
+            className="group flex w-full gap-3 overflow-hidden rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
           >
             {story.image ? (
               <div className="h-20 w-28 flex-none overflow-hidden rounded-md bg-slate-100 dark:bg-gray-800">

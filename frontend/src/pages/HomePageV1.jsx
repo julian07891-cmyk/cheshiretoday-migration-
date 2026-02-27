@@ -255,7 +255,7 @@ const navigate = useNavigate();
     const counts = { local: 0, business: 0, tech: 0, property: 0, uk: 0 };
 
     const pushTop = (a, overrideCategory = null) => {
-      if (topStoriesCards.length >= 7) return;
+      if (topStoriesCards.length >= 8) return;
       if (!mark(a)) return;
       topStoriesCards.push(
         toCard(
@@ -318,7 +318,7 @@ const navigate = useNavigate();
 
     // Safety fill: if we still have <7 (rare), fill with newest non-tech
     for (const a of poolAll) {
-      if (topStoriesCards.length >= 7) break;
+      if (topStoriesCards.length >= 8) break;
       if (isAiTechScience(a)) continue;
       pushTop(a);
     }
@@ -384,14 +384,14 @@ const isMoney = (a) => {
       if (financeArticles.length >= 2) break;
       if (!isMoney(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
     }
 
     for (const a of poolAll) {
       if (financeArticles.length >= 4) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
     }
 
 // Pass 2: 1 local news// Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
@@ -404,7 +404,7 @@ const isMoney = (a) => {
 
       if (!isLocal(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
     }
 
     // Pass 3: 1 more latest business
@@ -412,7 +412,7 @@ const isMoney = (a) => {
       if (financeArticles.length >= 6) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
     }
 
 
@@ -423,7 +423,7 @@ const isMoney = (a) => {
         if (financeArticles.length >= 3) break;
         if (isAiTechScience(a)) continue;
         if (!mark(a)) continue;
-        financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business & Money" }));
+        financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
       }
     }
 
@@ -454,7 +454,7 @@ const isMoney = (a) => {
       if (isAiTechScience(a)) continue; // keep this block focused
       if (!isMoneyish(a)) continue;
       if (!mark(a)) continue;
-      moneyFeed.push(a);
+      moneyFeed.push(toCard(a, `money-${moneyFeed.length}`, { category: "Finance" }));
     }
 
     
@@ -464,7 +464,7 @@ const isMoney = (a) => {
         if (moneyFeed.length >= 3) break;
         if (isAiTechScience(a)) continue;
         if (!mark(a)) continue;
-        moneyFeed.push(a);
+        moneyFeed.push(toCard(a, `money-${moneyFeed.length}`, { category: "Finance" }));
       }
     }
 
@@ -487,7 +487,7 @@ const isMoney = (a) => {
 
       if (!isPropertyish(a)) continue;
       if (!mark(a)) continue;
-      propertyFeed.push(a);
+      propertyFeed.push(toCard(a, `prop-${propertyFeed.length}`, { category: "Property & Tax" }));
     }
 
 
@@ -646,12 +646,12 @@ return (
               <TopRatedGuides guides={guides} />
 
 {/* Monetisation strip (hero) */}
-              <div className="mt-4">
+              <div className="mt-3">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
                   <a
                     href="/guides/best-mortgage-rates-uk"
-                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
                   >
                     <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
                     <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">Mortgage rates</div>
@@ -660,7 +660,7 @@ return (
 
                   <a
                     href="/guides/best-credit-cards-uk"
-                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
                   >
                     <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
                     <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">Compare credit cards</div>
@@ -669,7 +669,7 @@ return (
 
                   <a
                     href="/guides/best-savings-accounts-uk"
-                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+                    className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
                   >
                     <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">Affiliate</div>
                     <div className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:underline underline-offset-2">Savings accounts</div>
@@ -678,14 +678,14 @@ return (
 
                 </div>
 
-                <div className="mt-2 text-[11px] text-slate-500 dark:text-gray-400">
+                <div className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">
                   We may earn a commission from affiliate links.
                 </div>
               </div>
             </div>
 
             {/* Right: Top Stories (compact) */}
-            <aside className="lg:col-span-4 lg:-mt-10">
+            <aside className="lg:col-span-4 lg:-mt-4">
               {topStories.length > 0 && (
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -702,7 +702,7 @@ return (
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
-        <div className="-mt-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="-mt-4 lg:-mt-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left: Latest feed */}
           
           <main className="lg:col-span-8 lg:-mt-4">
@@ -748,17 +748,17 @@ return (
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <a href="/guides/cost-of-buying-home-cheshire-2026" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                <a href="/guides/cost-of-buying-home-cheshire-2026" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
                   <div className="text-sm font-extrabold">Cost of buying in Cheshire</div>
                 </a>
 
-                <a href="/guides/best-savings-accounts-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                <a href="/guides/best-savings-accounts-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
                   <div className="text-sm font-extrabold">Best savings accounts</div>
                 </a>
-                <a href="/guides/best-mortgage-rates-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                <a href="/guides/best-mortgage-rates-uk" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
                   <div className="text-sm font-extrabold">Compare mortgage rates</div>
                 </a>
-                <a href="/guides/council-tax-bands-cheshire" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors">
+                <a href="/guides/council-tax-bands-cheshire" className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors">
                   <div className="text-sm font-extrabold">Council tax guide</div>
                 </a>
               </div>
@@ -828,13 +828,13 @@ return (
 
 
           {/* Right: Sidebar widgets */}
-          <aside className="lg:col-span-4 space-y-3">
+          <aside className="lg:col-span-4 lg:-mt-4 space-y-6">
 
             {/* Business & Money */}
             
             {Array.isArray(financeFeed) && financeFeed.length > 0 && (
               <LeadSection
-                title="Business & Money"
+                title="Business"
                 badgeText="Business"
                 items={financeFeed.slice(0, 4)}
                 onNavigate={(url) => navigate(url)}
@@ -888,7 +888,7 @@ return (
             
             {Array.isArray(moneyFeed) && moneyFeed.length > 0 && (
               <LeadSection
-                title="Mortgages & Savings"
+                title="Finance"
                 badgeText="Finance"
                 items={moneyFeed.slice(0, 4)}
                 onNavigate={(url) => navigate(url)}
@@ -899,7 +899,7 @@ return (
             
             {Array.isArray(propertyFeed) && propertyFeed.length > 0 && (
               <LeadSection
-                title="Property & Housing"
+                title="Property & Tax"
                 badgeText="Property"
                 badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
                 items={propertyFeed.slice(0, 4)}

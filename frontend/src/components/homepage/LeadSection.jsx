@@ -33,14 +33,14 @@ export default function LeadSection({
   });
 
   return (
-    <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-base font-extrabold tracking-tight">{title}</h2>
         {badgeText ? <span className={badgeCls}>{badgeText}</span> : null}
       </div>
 
       {/* One card per row */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {items.map((raw, i) => {
           const a = norm(raw);
           return (

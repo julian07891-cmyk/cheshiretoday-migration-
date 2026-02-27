@@ -16,7 +16,15 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
 
   const readTime = calculateReadTime(article.content);
   
-  const formatDate = (dateString) => {
+  
+  const displayCategory = (() => {
+    const c = article.category || '';
+    if (c === 'Local News') return 'Local';
+    if (c === 'UK News') return 'UK';
+    if (c === 'Tech' || c === 'Science') return 'AI & Tech';
+    return c;
+  })();
+const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
@@ -75,7 +83,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <Badge className="bg-[#1E3A8A]/10 text-[#1E3A8A] dark:bg-blue-900 dark:text-blue-300 text-xs font-medium">
-              {article.category}
+              {displayCategory}
             </Badge>
           </div>
           <h3 className="font-headline text-base md:text-lg font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 group-hover:underline underline-offset-2 transition-colors mb-1">
@@ -119,7 +127,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
           className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         />
         <Badge className="absolute top-2 left-2 bg-[#1E3A8A] text-white text-xs font-medium">
-          {article.category}
+          {displayCategory}
         </Badge>
       </div>
       

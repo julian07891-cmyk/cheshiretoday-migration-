@@ -6,8 +6,8 @@ export default function TopRatedGuides({ guides = [] }) {
   if (!top.length) return null;
 
   return (
-    <section className="mt-5">
-      <div className="flex items-center justify-between mb-3">
+    <section className="mt-3">
+      <div className="flex items-center justify-between mb-2">
         <h2 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
           Top Rated This Month
         </h2>
@@ -24,7 +24,7 @@ export default function TopRatedGuides({ guides = [] }) {
           <a
             key={g?.slug || idx}
             href={`/guides/${encodeURIComponent(g.slug)}`}
-            className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 hover:border-emerald-300 transition-colors"
+            className="group rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-3 hover:border-emerald-300 transition-colors"
           >
             <div className="text-[11px] font-semibold text-slate-500 dark:text-gray-400 mb-1">
               Guide
@@ -39,7 +39,7 @@ export default function TopRatedGuides({ guides = [] }) {
         ))}
       </div>
 
-      <div className="mt-2 text-[11px] text-slate-500 dark:text-gray-400">
+      <div className="mt-1 text-[11px] text-slate-500 dark:text-gray-400">
         We may earn a commission from affiliate links.
       </div>
     </section>
