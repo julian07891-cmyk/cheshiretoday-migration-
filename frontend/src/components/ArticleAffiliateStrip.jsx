@@ -1,4 +1,5 @@
 import React from "react";
+import { FEATURES } from "../config/features";
 
 const items = [
   {
@@ -22,6 +23,8 @@ const items = [
 ];
 
 export default function ArticleAffiliateStrip() {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+
   return (
     <section className="mt-6">
       <div className="rounded-xl border border-gray-200/70 dark:border-gray-800 bg-white/80 dark:bg-transparent p-4">

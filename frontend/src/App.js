@@ -28,6 +28,8 @@ import HeroArticle from "./components/HeroArticle";
 import CompactArticleCard from "./components/CompactArticleCard";
 import HomeSkeleton from "./components/HomeSkeleton";
 import AdvertisePage from "./pages/AdvertisePage";
+import ContactPage from "./components/ContactPage";
+
 import HomePageV1 from "./pages/HomePageV1";
 
 
@@ -58,6 +60,8 @@ const AdminDashboard = lazy(() => import("./components/AdminDashboard"));
 const NewsletterPopup = lazy(() => import("./components/NewsletterPopup"));
 const SocialShare = lazy(() => import("./components/SocialShare"));
 const PrivacyPolicy = lazy(() => import("./components/PrivacyPolicy"));
+const CookiePolicy = lazy(() => import("./components/CookiePolicy"));
+
 const TermsOfService = lazy(() => import("./components/TermsOfService"));
 const AffiliateDisclosure = lazy(
   () => import("./components/AffiliateDisclosure"),
@@ -215,7 +219,10 @@ function App() {
               }
             />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+
             <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
+
             <Route
               path="/affiliate-disclosure"
               element={<AffiliateDisclosure />}
@@ -239,6 +246,8 @@ function App() {
             {/* Location-specific pages for Local SEO */}
             <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/guides/:slug" element={<AuthorityPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+
             <Route path="/:location" element={<LocationRouteWrapper />} />
           </Routes>
         </BrowserRouter>

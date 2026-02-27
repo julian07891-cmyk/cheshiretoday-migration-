@@ -1,3 +1,4 @@
+import { FEATURES } from "../config/features";
 import React, { useMemo } from "react";
 
 function norm(s) {
@@ -39,6 +40,8 @@ function pickBest(guides) {
 }
 
 export default function SidebarBestPicks({ guides = [] }) {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+
   const picks = useMemo(() => pickBest(guides), [guides]);
   if (!picks.length) return null;
 

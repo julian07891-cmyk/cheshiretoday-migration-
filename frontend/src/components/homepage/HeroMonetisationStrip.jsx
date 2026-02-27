@@ -1,7 +1,12 @@
+import {
+  if (!FEATURES.GUIDE_MONETISATION_ENABLED) return null; FEATURES } from "../../config/features";
 import React, { useMemo } from "react";
+import { FEATURES } from "../../config/features";
 import { monetisationTools } from "../../config/monetisationTools";
 
 export default function HeroMonetisationStrip() {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+
   // Choose 3 hero items that do NOT overlap with the Money Toolkit (mortgages/savings/council tax)
   const items = useMemo(() => {
     return [

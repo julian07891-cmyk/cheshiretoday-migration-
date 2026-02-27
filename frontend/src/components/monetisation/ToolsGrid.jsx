@@ -1,10 +1,13 @@
 import React from "react";
+import { FEATURES } from "../../config/features";
 
 /**
  * Editorial-style tools grid (affiliate-friendly without looking like ads).
  * Use this wherever you want "Money Toolkit" / "Financial Tools" blocks.
  */
 export default function ToolsGrid({
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+
   title = "Financial Tools & Comparisons",
   badge = "Tools",
   disclaimer = "We may earn a commission if you use links on this page.",

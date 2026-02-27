@@ -1,7 +1,11 @@
+import { FEATURES } from "../../config/features";
+
 import React from "react";
 import { monetisationTools } from "../../config/monetisationTools";
 
 export default function ContextTools({ type }) {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+
   const tools = monetisationTools[type];
 
   if (!tools || tools.length === 0) return null;

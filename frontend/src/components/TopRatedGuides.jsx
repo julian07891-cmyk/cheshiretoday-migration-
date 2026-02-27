@@ -1,6 +1,9 @@
+import { FEATURES } from "../config/features";
 import React from "react";
 
 export default function TopRatedGuides({ guides = [] }) {
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+
   const list = Array.isArray(guides) ? guides : [];
   const top = list.slice(0, 3);
   if (!top.length) return null;

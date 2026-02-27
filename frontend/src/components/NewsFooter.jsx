@@ -195,6 +195,8 @@ const NewsFooter = () => {
             </p>
             <div className="flex items-center space-x-4 flex-wrap justify-center">
               <Link to="/privacy" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Privacy Policy</Link>
+              <Link to="/cookies" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Cookie Policy</Link>
+
               <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
               <Link to="/terms" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Terms of Service</Link>
               <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
