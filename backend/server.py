@@ -1749,11 +1749,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
             # Strict keywords: violence / prosecution / sentencing (NO generic 'police' / 'incident')
             crime_kw = re.compile(
-                r"(murder|killed|manslaughter|homicide|stabb?ing|stabbed|shoot(ing|s)|firearm|gunman|"
-                r"rape(d)?|sexual assault|robbery|burglary|arson|"
-                r"charged|prosecut(ed|ion)|trial|sentenc(ed|ing)|jailed|jail|prison|convict(ed|ion)|inquest)",
-                re.I,
-            )
+                r"(murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|rape(?:d)?|sexual assault|\bassault(?:ed|s)?\b|\battack(?:ed|s)?\b|robber(?:y|ies)|burglar(?:y|ies)|arson|charged|prosecut(?:ed|ion)|trial|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)", re.I, )
             return bool(crime_kw.search(text))
 
 
@@ -2870,10 +2866,15 @@ async def get_articles(
             # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
             # Keeps crime-like stories to a very low cap in the TOP feed (default 1).
             crime_cap_top = int(os.getenv("CRIME_MAX_TOP", "1") or "1")
+            incident_cap_top = int(os.getenv("INCIDENT_MAX_TOP", "2") or "2")
+            incident_count_top = 0
+            # Apply lead-guard to both crime + incident-like content
+            lead_non_sensitive = int(os.getenv("LEAD_NON_SENSITIVE", os.getenv("LEAD_NON_CRIME", "3")) or "3")
+
             lead_non_crime = int(os.getenv("LEAD_NON_CRIME", "3") or "3")
             crime_count_top = 0
 
-            def is_crime_like_text(a: dict) -> bool:
+            def classify_sensitive(a: dict) -> str | None:
                 import re
                 cat = (a.get("category") or "").lower()
                 title = (a.get("title") or "").lower()
@@ -2883,28 +2884,36 @@ async def get_articles(
 
                 url = (a.get("source_url") or "").lower()
                 if "/audio/" in url or "podcast" in title:
-                    return False
+                    return None
 
                 if "court" in cat or "crime" in cat:
-                    return True
+                    return "crime"
 
                 crime_kw = re.compile(
-                    r"(murder|killed|manslaughter|homicide|stabb?ing|stabbed|shoot(ing|s)|firearm|gunman|"
-                    r"rape(d)?|sexual assault|robbery|burglary|arson|"
-                    r"charged|prosecut(ed|ion)|trial|sentenc(ed|ing)|jailed|jail|prison|convict(ed|ion)|inquest)",
+                    r"(murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|"
+                    r"stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|"
+                    r"rape(?:d)?|sexual assault|robber(?:y|ies)|burglar(?:y|ies)|arson|"
+                    r"charged|prosecut(?:ed|ion)|trial|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)",
                     re.I,
                 )
-                return bool(crime_kw.search(text))
+                if crime_kw.search(text):
+                    return "crime"
+
+                # Incident/traffic (separate from crime; optionally capped in top feed)
+                incident_kw = re.compile(
+                    r"\b(crash|collision|road closed|lane closed|car fire|vehicle fire|queues? building|traffic is slow|delays?|death|dead|died|dies|body found|found dead|police presence|police cordon|cordon|scene|investigation|emergency services|ambulance|paramedics|fire service|air ambulance|assault(?:ed|s)?|cctv appeal)\b", re.I, )
+                if incident_kw.search(text):
+                    return "incident"
+
+                return None
 
             articles = []
-            deferred = []  # crime-like overflow items go here
+            deferred_lead_incident = []  # incident-like items deferred ONLY to protect lead positions
+            deferred_lead_crime = []     # crime-like items deferred ONLY to protect lead positions
+            deferred_overcap_incident = []  # incident-like items skipped due to cap (never re-added)
+            deferred_overcap_crime = []     # crime-like items skipped due to hard cap (never re-added)
             local_idx = 0
             uk_idx = 0
-
-            def take_next(pool, idx_ref_name: str):
-                nonlocal crime_count_top
-                # idx_ref_name is just for readability; we update via closure vars
-                return
 
             while len(articles) < limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
                 # Add 2 local articles
@@ -2912,13 +2921,23 @@ async def get_articles(
                     if local_idx < len(local_articles) and len(articles) < limit:
                         a = local_articles[local_idx]
                         local_idx += 1
-                        if is_crime_like_text(a):
-                            # Keep crime out of the lead positions when possible
-                            if len(articles) < lead_non_crime:
-                                deferred.append(a)
+                        kind = classify_sensitive(a)
+                        if kind == "incident":
+                            # Keep incidents out of lead positions when possible
+                            if len(articles) < lead_non_sensitive:
+                                deferred_lead_incident.append(a)
+                                continue
+                            if incident_count_top >= incident_cap_top:
+                                deferred_overcap_incident.append(a)
+                                continue
+                            incident_count_top += 1
+                        elif kind == "crime":
+                            # Keep crime out of lead positions when possible
+                            if len(articles) < lead_non_sensitive:
+                                deferred_lead_crime.append(a)
                                 continue
                             if crime_count_top >= crime_cap_top:
-                                deferred.append(a)
+                                deferred_overcap_crime.append(a)
                                 continue
                             crime_count_top += 1
                         articles.append(a)
@@ -2928,22 +2947,85 @@ async def get_articles(
                     if uk_idx < len(uk_articles) and len(articles) < limit:
                         a = uk_articles[uk_idx]
                         uk_idx += 1
-                        if is_crime_like_text(a):
-                            # Keep crime out of the lead positions when possible
-                            if len(articles) < lead_non_crime:
-                                deferred.append(a)
+                        kind = classify_sensitive(a)
+                        if kind == "incident":
+                            # Keep incidents out of lead positions when possible
+                            if len(articles) < lead_non_sensitive:
+                                deferred_lead_incident.append(a)
+                                continue
+                            if incident_count_top >= incident_cap_top:
+                                deferred_overcap_incident.append(a)
+                                continue
+                            incident_count_top += 1
+                        elif kind == "crime":
+                            # Keep crime out of lead positions when possible
+                            if len(articles) < lead_non_sensitive:
+                                deferred_lead_crime.append(a)
                                 continue
                             if crime_count_top >= crime_cap_top:
-                                deferred.append(a)
+                                deferred_overcap_crime.append(a)
                                 continue
                             crime_count_top += 1
                         articles.append(a)
 
-            # If we still have space, append deferred crime-like items at the end
-            if len(articles) < limit and deferred:
-                articles.extend(deferred[: max(0, limit - len(articles))])
+            # If we still have space, append ONLY lead-deferred sensitive items.
+            # Re-add incidents first (utility), then crime; both strictly capped.
+            if len(articles) < limit and deferred_lead_incident:
+                for a in deferred_lead_incident:
+                    if len(articles) >= limit:
+                        break
+                    if incident_count_top >= incident_cap_top:
+                        break
+                    incident_count_top += 1
+                    articles.append(a)
+
+            if len(articles) < limit and deferred_lead_crime:
+                for a in deferred_lead_crime:
+                    if len(articles) >= limit:
+                        break
+                    if crime_count_top >= crime_cap_top:
+                        break
+                    crime_count_top += 1
+                    articles.append(a)
 
             
+            # Soft authority boost: gently reorder only the top of the feed
+            # to surface Business/Tech/economic relevance without breaking the
+            # Local/UK interleave structure or overall recency.
+            boost_top_n = int(os.getenv("BOOST_TOP_N", "8") or "8")
+            if boost_top_n > 0 and len(articles) > 1:
+                top_n = min(boost_top_n, len(articles))
+                head = articles[:top_n]
+                tail = articles[top_n:]
+
+                econ_terms = (
+                    "tax","inflation","budget","investment","jobs","housing","mortgage",
+                    "rates","economy","economic","business","finance","growth"
+                )
+                boosted_cats = {"business","tech","finance","ai & tech"}
+
+                def boost_score(a: dict) -> int:
+                    score = 0
+                    cat = (a.get("category") or "").lower().strip()
+                    if cat in boosted_cats:
+                        score += 2
+                    text = " ".join([
+                        (a.get("title") or ""),
+                        (a.get("summary") or ""),
+                        (a.get("content") or ""),
+                    ]).lower()
+                    if any(t in text for t in econ_terms):
+                        score += 1
+                    if a.get("is_priority_cheshire") is True:
+                        score += 1
+                    return score
+
+                # Stable sort by score descending, preserving original order on ties
+                scored = [(i, boost_score(a), a) for i, a in enumerate(head)]
+                scored.sort(key=lambda x: (-x[1], x[0]))
+                head2 = [a for _, _, a in scored]
+                articles = head2 + tail
+
             # Apply skip if needed
             if skip > 0:
                 articles = articles[skip:]
