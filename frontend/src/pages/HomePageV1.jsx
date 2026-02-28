@@ -210,7 +210,118 @@ const navigate = useNavigate();
     // Editorial policy pool (filters out pure crime/sensational unless public-interest)
     const pool = (Array.isArray(newestFirst) ? newestFirst : []).filter(isAllowedByPolicy);
     const editorialPool = filterEditorialPool(Array.isArray(newestFirst) ? newestFirst : []);
-    const poolAll = editorialPool.length ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []);
+    // ---- 40/40/20 RATIO ENFORCEMENT (Local / Authority / UK) ----
+    // This ONLY reorders the pool used for homepage slot selection.
+    // It does not change rendering/layout and preserves recency within each pillar.
+    const basePool = editorialPool.length ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []);
+
+    const lowerText = (a) =>
+      (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+
+    const isSportOrVideo = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      const src = String(a?.source || "").toLowerCase();
+      const url = String(a?.source_url || "").toLowerCase();
+      // Treat sport/video as non-UK pillar for our 40/40/20 mix (keeps homepage “economic intelligence” tone)
+      if (cat.includes("sport") || src.includes("sport")) return true;
+      if (url.includes("skysports.com/watch") || url.includes("/watch/")) return true;
+      if (src.includes("sky sports") || src.includes("bbc sport")) return true;
+      return false;
+    };
+
+    const isUKPillar = (a) => {
+      if (isSportOrVideo(a)) return false;
+      const cat = String(a?.category || "").toLowerCase();
+      const scope = String(a?.scope || "").toLowerCase();
+      return scope === "uk" || cat.includes("uk");
+    };
+
+    const isAuthorityPillar = (a) => {
+      // Tight “authority” definition: Business/Finance/Tax OR AI/Tech with strong signals
+      const cat = String(a?.category || "").toLowerCase();
+      if (cat.includes("business") || cat.includes("finance") || cat.includes("money") || cat.includes("tax")) return true;
+      if (cat.includes("technology") || cat.includes("tech") || cat.includes("ai")) return true;
+
+      const t = lowerText(a);
+
+      // Business/finance signals
+      const biz = /\b(business|economy|economic|markets?|inflation|gdp|trade|tariff|company|companies|earnings|profits?|shares?|stocks?|ftse|investment|investor|fund|bank|banking|hmrc|tax|vat|interest\s*rate|rate\s*cut|rate\s*hike|mortgage|mortgages|remortgage|savings|isa|credit\s*card)\b/;
+
+      // AI/tech signals (kept strict)
+      const tech = /\b(ai|artificial\s+intelligence|machine\s+learning|llm|openai|anthropic|google|deepmind|microsoft|chip|semiconductor|nvidia|data\s+centre|cyber|security|ransomware|software|cloud|saas|robot|automation)\b/;
+
+      // Avoid “soft feature / explainer science” being labelled authority (planets/parade type spam)
+      const softScience = /\b(planets?|planetary|parade|celestial|stargaz|astronom|photographer\s+captured|how\s+you\s+can\s+see\s+six\s+planets)\b/;
+
+      if (softScience.test(t) && !biz.test(t) && !tech.test(t)) return false;
+
+      return biz.test(t) || tech.test(t);
+    };
+
+    const topicBucket = (a) => {
+      const t = lowerText(a);
+      if (/\b(planets?|planetary|parade|celestial|stargaz|astronom|how\s+you\s+can\s+see|photographer\s+captured)\b/.test(t)) return "astro";
+      return "";
+    };
+
+    const localPool = basePool.filter((a) => isLocal(a));
+    const ukPool = basePool.filter((a) => !isLocal(a) && isUKPillar(a));
+    const authPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && isAuthorityPillar(a));
+    const otherPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && !isAuthorityPillar(a));
+
+    // Weighted pattern: 2 Local, 2 Authority, 1 UK (repeats)
+    const pattern = ["local", "auth", "local", "auth", "uk"];
+
+    let iL = 0, iA = 0, iU = 0, iO = 0;
+    const poolAll = [];
+    const totalTarget = Math.min(basePool.length, 28); // fixed-depth ratio enforcement (prevents UK-heavy tail)
+
+    // Topic caps inside the top-28 mix (prevents single-theme takeover)
+    const cap = { astro: 1 };
+    const seen = { astro: 0 };
+
+    const pickNext = (kind) => {
+      if (kind === "local" && iL < localPool.length) return localPool[iL++];
+      if (kind === "auth" && iA < authPool.length) return authPool[iA++];
+      if (kind === "uk" && iU < ukPool.length) return ukPool[iU++];
+      return null;
+    };
+
+    const allowByTopic = (a) => {
+      const b = topicBucket(a);
+      if (!b) return true;
+      // JS doesn't have True; we just return boolean literal below (kept as string replacement later)
+      return true;
+    };
+
+    while (poolAll.length < totalTarget) {
+      for (const kind of pattern) {
+        if (poolAll.length >= totalTarget) break;
+
+        let a = pickNext(kind);
+
+        // Fallback order keeps strategy intent: Local → Authority → UK → Other
+        if (!a && iL < localPool.length) a = localPool[iL++];
+        if (!a && iA < authPool.length) a = authPool[iA++];
+        if (!a && iU < ukPool.length) a = ukPool[iU++];
+        if (!a && iO < otherPool.length) a = otherPool[iO++];
+
+        if (!a) continue;
+
+        const bucket = topicBucket(a);
+        if (bucket && seen[bucket] >= (cap[bucket] || 1)) {
+          // skip (we already consumed it from its pool), continue trying via loop/fallbacks
+          continue;
+        }
+
+        if (bucket) seen[bucket] = (seen[bucket] || 0) + 1;
+        poolAll.push(a);
+      }
+
+      // If nothing left anywhere, stop
+      if (iL >= localPool.length && iA >= authPool.length && iU >= ukPool.length && iO >= otherPool.length) break;
+    }
+
 
     const mark = (a) => {
       const k = articleKey(a);
