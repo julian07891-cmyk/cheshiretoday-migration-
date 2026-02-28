@@ -7,6 +7,18 @@
 
 CHESHIRE_RSS_SOURCES = [
     {
+        "name": 'Chester Standard',
+        "url": 'https://www.chesterstandard.co.uk/news/rss/',
+        "category": 'local'
+    },
+
+    {
+        "name": 'Warrington Guardian',
+        "url": 'https://www.warringtonguardian.co.uk/news/rss/',
+        "category": 'local'
+    },
+
+    {
         "name": 'Cheshire Live',
         "url": 'https://www.cheshire-live.co.uk/?service=rss',
         "category": 'local'

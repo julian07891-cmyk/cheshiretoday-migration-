@@ -2853,7 +2853,7 @@ async def get_articles(
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
                 }
-            ).sort('publishedDate', -1).limit(limit).to_list(limit)
+            ).sort('publishedDate', -1).limit(limit*10).to_list(limit*10)
             
             uk_articles = await db.articles.find({'$and': [{'is_local_source': {'$ne': True}}, {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}]},
                 {
@@ -2861,7 +2861,47 @@ async def get_articles(
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
                 }
-            ).sort('publishedDate', -1).limit(limit).to_list(limit)
+            ).sort('publishedDate', -1).limit(limit*4).to_list(limit*4)
+
+            # UK homepage noise filter (removes sport/video/tabloid-politics filler from 'all' feed)
+            # Toggle: UK_FILTER_NOISE=0 to disable.
+            UK_FILTER_NOISE = os.getenv("UK_FILTER_NOISE", "1") not in ("0", "false", "False")
+            if UK_FILTER_NOISE and uk_articles:
+                import re
+                econ_hint = re.compile(
+                    r"\b(tax|budget|inflation|interest\s*rate|rates|mortgage|rent|wages|jobs|growth|economy|economic|"
+                    r"business|finance|markets?|prices?|bills?|energy|housing|trade|tariff|investment)\b",
+                    re.I,
+                )
+                noise_kw = re.compile(
+                    r"\b(the\s+papers|on\s+ropes|nightmare\s+for|grop(?:e|ing)|pitch\s+invader)\b",
+                    re.I,
+                )
+
+                def is_noise_uk(a: dict) -> bool:
+                    cat = (a.get("category") or "").lower()
+                    src = (a.get("source") or "").lower()
+                    url = (a.get("source_url") or "").lower()
+                    title = (a.get("title") or "").lower()
+
+                    # Sports + highlight/video clips
+                    if "sport" in cat or "sport" in src or "/sport/" in url or "skysports" in url:
+                        return True
+                    if "/watch/" in url or "/video" in url or "watch video" in title:
+                        return True
+
+                    # Tabloid/paper-roundups + low-signal drama
+                    if noise_kw.search(title):
+                        return True
+
+                    # Politics drama in UK News unless it has clear economic impact
+                    if ("uk news" in cat) and re.search(r"\b(mp|labour|conservative|tory|starmer|reeves|parliament|byelection|election)\b", title, re.I):
+                        if not econ_hint.search(title):
+                            return True
+
+                    return False
+
+                uk_articles = [a for a in uk_articles if not is_noise_uk(a)]
 
             # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
             # Keeps crime-like stories to a very low cap in the TOP feed (default 1).
@@ -2901,7 +2941,7 @@ async def get_articles(
 
                 # Incident/traffic (separate from crime; optionally capped in top feed)
                 incident_kw = re.compile(
-                    r"\b(crash|collision|road closed|lane closed|car fire|vehicle fire|queues? building|traffic is slow|delays?|death|dead|died|dies|body found|found dead|police presence|police cordon|cordon|scene|investigation|emergency services|ambulance|paramedics|fire service|air ambulance|assault(?:ed|s)?|cctv appeal)\b", re.I, )
+                    r"\b(crash|collision|road closed|lane closed|car fire|vehicle fire|queues? building|traffic is slow|delays?|death|dead|died|dies|body found|found dead|police presence|police cordon|cordon|scene|investigation|emergency services|ambulance|paramedics|fire service|air ambulance|assault(?:ed|s)?|cctv appeal|reported to police|police probe|police investigating|grop(?:e|ing|ed)|reported to police|police probe|police investigating|grop(?:e|ing|ed))\b", re.I, )
                 if incident_kw.search(text):
                     return "incident"
 
