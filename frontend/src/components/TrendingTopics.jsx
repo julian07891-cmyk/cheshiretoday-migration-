@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Hash, Flame } from 'lucide-react';
+import { getApiUrl } from '../utils/api';
 
 const TrendingTopics = ({ onTopicClick }) => {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const API_URL = process.env.REACT_APP_BACKEND_URL;
-
+const API_URL = getApiUrl();
   useEffect(() => {
     const fetchTopics = async () => {
       try {

@@ -2155,14 +2155,17 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
         # Import fresh news using hybrid approach
         # NOTE: use_perplexity=False for quick refresh (avoids timeout)
         # Use the Import button for full AI-enhanced articles
+        local_target = int(os.getenv("LOCAL_IMPORT_LIMIT", "8") or "8")
+        uk_target = int(os.getenv("UK_IMPORT_LIMIT", str(max(0, 20 - local_target))) or str(max(0, 20 - local_target)))
+
         request = HybridNewsRequest(
-            cheshire_articles=8,   # 8 Cheshire/local articles
-            uk_articles=12,        # 12 UK articles
-            max_sports=3,          # Limit sports to 3
-            business_articles=2,   # 2 Business articles (FREE)
-            tech_articles=2,       # 2 Tech articles (FREE)
-            science_articles=2,    # 2 Science articles (FREE)
-            use_perplexity=False   # Quick refresh - no AI content generation
+            cheshire_articles=local_target,   # Cheshire/local (env: LOCAL_IMPORT_LIMIT)
+            uk_articles=uk_target,            # UK (env: UK_IMPORT_LIMIT; default keeps ~20 total)
+            max_sports=3,                     # Limit sports to 3
+            business_articles=2,              # 2 Business articles (FREE)
+            tech_articles=2,                  # 2 Tech articles (FREE)
+            science_articles=2,               # 2 Science articles (FREE)
+            use_perplexity=False              # Quick refresh - no AI content generation
         )
         
         import_result = await import_hybrid_news(request)
@@ -2898,6 +2901,19 @@ async def get_articles(
                     if ("uk news" in cat) and re.search(r"\b(mp|labour|conservative|tory|starmer|reeves|parliament|byelection|election)\b", title, re.I):
                         if not econ_hint.search(title):
                             return True
+                    # De-emphasize generic human-interest in UK News unless it has clear impact.
+                    # Keeps the UK pillar aligned to economy/business/policy utility.
+                    if cat in ("uk news", "local news"):
+                        impact_kw = re.compile(
+                            r"\b(nhs|hospital|gp|doctor|school|education|council|planning|housing|rent|mortgage|"
+                            r"tax|budget|inflation|interest\s*rate|rates|jobs|wages|economy|economic|business|"
+                            r"finance|markets?|prices?|bills?|energy|transport|rail|road|roadworks|investment|"
+                            r"trade|tariff|regulation|regulator|ofgem|ofwat|boe|bank of england)\b",
+                            re.I,
+                        )
+                        if not econ_hint.search(title) and not impact_kw.search(title):
+                            return True
+
 
                     return False
 
@@ -2915,37 +2931,99 @@ async def get_articles(
             crime_count_top = 0
 
             def classify_sensitive(a: dict) -> str | None:
-                import re
-                cat = (a.get("category") or "").lower()
-                title = (a.get("title") or "").lower()
-                summary = (a.get("summary") or "").lower()
-                content = (a.get("content") or "").lower()
-                text = " ".join([title, summary, content])
 
-                url = (a.get("source_url") or "").lower()
-                if "/audio/" in url or "podcast" in title:
+                import re
+
+                cat = (a.get('category') or '').lower()
+
+                title = (a.get('title') or '').lower()
+
+                summary = (a.get('summary') or '').lower()
+
+                content = (a.get('content') or '').lower()
+
+                text = ' '.join([title, summary, content])
+
+
+                url = (a.get('source_url') or '').lower()
+
+                if '/audio/' in url or 'podcast' in title:
+
                     return None
 
-                if "court" in cat or "crime" in cat:
-                    return "crime"
+
+                # Category signals
+
+                if 'court' in cat or 'crime' in cat:
+
+                    return 'crime'
+
+
+                # HARD CRIME (excluded from homepage feed entirely)
+
+                hard_crime_kw = re.compile(
+        
+                    r"(murder(?:s)?|kill(?:ed|s)?|homicide|manslaughter|"
+
+                    r"found dead|body found|woman found dead|man found dead|"
+
+                    r"stab(?:bing|bed|s)?|shoot(?:ing|s)?|rape(?:d)?|"
+
+                    r"jailed|sentenc(?:ed|ing)|charged|trial|convict(?:ed|ion))",
+
+                    re.I,
+
+                )
+
+                if hard_crime_kw.search(text):
+
+                    return 'hard_crime'
+
 
                 crime_kw = re.compile(
+
                     r"(murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|"
+
                     r"stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|"
+
                     r"rape(?:d)?|sexual assault|robber(?:y|ies)|burglar(?:y|ies)|arson|"
+
                     r"charged|prosecut(?:ed|ion)|trial|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)",
+
                     re.I,
+
                 )
+
                 if crime_kw.search(text):
-                    return "crime"
+
+                    return 'crime'
+
 
                 # Incident/traffic (separate from crime; optionally capped in top feed)
+
                 incident_kw = re.compile(
-                    r"\b(crash|collision|road closed|lane closed|car fire|vehicle fire|queues? building|traffic is slow|delays?|death|dead|died|dies|body found|found dead|police presence|police cordon|cordon|scene|investigation|emergency services|ambulance|paramedics|fire service|air ambulance|assault(?:ed|s)?|cctv appeal|reported to police|police probe|police investigating|grop(?:e|ing|ed)|reported to police|police probe|police investigating|grop(?:e|ing|ed))\b", re.I, )
+
+                    r"\b(crash|collision|road closed|lane closed|car fire|vehicle fire|queues? building|"
+
+                    r"traffic is slow|delays?|death|dead|died|dies|body found|found dead|police presence|"
+
+                    r"police cordon|cordon|scene|investigation|emergency services|ambulance|paramedics|"
+
+                    r"fire service|air ambulance|assault(?:ed|s)?|cctv appeal|reported to police|"
+
+                    r"police probe|police investigating|grop(?:e|ing|ed))\b",
+
+                    re.I,
+
+                )
+
                 if incident_kw.search(text):
-                    return "incident"
+
+                    return 'incident'
+
 
                 return None
+
 
             articles = []
             deferred_lead_incident = []  # incident-like items deferred ONLY to protect lead positions
@@ -2962,6 +3040,8 @@ async def get_articles(
                         a = local_articles[local_idx]
                         local_idx += 1
                         kind = classify_sensitive(a)
+                        if kind == "hard_crime":
+                            continue
                         if kind == "incident":
                             # Keep incidents out of lead positions when possible
                             if len(articles) < lead_non_sensitive:
@@ -2988,6 +3068,8 @@ async def get_articles(
                         a = uk_articles[uk_idx]
                         uk_idx += 1
                         kind = classify_sensitive(a)
+                        if kind == "hard_crime":
+                            continue
                         if kind == "incident":
                             # Keep incidents out of lead positions when possible
                             if len(articles) < lead_non_sensitive:
@@ -3007,6 +3089,38 @@ async def get_articles(
                                 continue
                             crime_count_top += 1
                         articles.append(a)
+
+            # If we still have space, keep filling from whichever pool still has items.
+            # This prevents feed starvation when one side runs low after filtering.
+            while len(articles) < limit and (local_idx < len(local_articles) or uk_idx < len(uk_articles)):
+                if local_idx < len(local_articles):
+                    a = local_articles[local_idx]
+                    local_idx += 1
+                else:
+                    a = uk_articles[uk_idx]
+                    uk_idx += 1
+
+                kind = classify_sensitive(a)
+                if kind == "hard_crime":
+                    continue
+                if kind == "incident":
+                    if len(articles) < lead_non_sensitive:
+                        deferred_lead_incident.append(a)
+                        continue
+                    if incident_count_top >= incident_cap_top:
+                        deferred_overcap_incident.append(a)
+                        continue
+                    incident_count_top += 1
+                elif kind == "crime":
+                    if len(articles) < lead_non_sensitive:
+                        deferred_lead_crime.append(a)
+                        continue
+                    if crime_count_top >= crime_cap_top:
+                        deferred_overcap_crime.append(a)
+                        continue
+                    crime_count_top += 1
+
+                articles.append(a)
 
             # If we still have space, append ONLY lead-deferred sensitive items.
             # Re-add incidents first (utility), then crime; both strictly capped.
@@ -3060,11 +3174,20 @@ async def get_articles(
                         score += 1
                     return score
 
+                # Keep the first N items fixed to preserve Cheshire-first lead ordering.
+                # Only re-rank the remainder of the head slice.
+                keep_prefix = int(os.getenv("BOOST_KEEP_PREFIX", "4") or "4")
+                keep_prefix = max(0, min(keep_prefix, len(head)))
+
+                fixed = head[:keep_prefix]
+                rest = head[keep_prefix:]
+
                 # Stable sort by score descending, preserving original order on ties
-                scored = [(i, boost_score(a), a) for i, a in enumerate(head)]
+                scored = [(i, boost_score(a), a) for i, a in enumerate(rest)]
                 scored.sort(key=lambda x: (-x[1], x[0]))
-                head2 = [a for _, _, a in scored]
-                articles = head2 + tail
+                rest2 = [a for _, _, a in scored]
+
+                articles = fixed + rest2 + tail
 
             # Apply skip if needed
             if skip > 0:
@@ -3116,6 +3239,11 @@ async def get_articles(
                 article['scope'] = 'cheshire'
             elif not article.get('scope'):
                 article['scope'] = 'uk'
+
+            # Normalize misleading category labels:
+            # Some national feeds use 'Local News' even when not local to Cheshire.
+            if article.get('is_local_source') is not True and article.get('category') == 'Local News':
+                article['category'] = 'UK News'
             
             # Skip duplicate articles by ID
             if article['id'] in seen_ids:
@@ -3703,7 +3831,7 @@ async def subscribe_newsletter(request: SubscribeRequest):
         
         # Default preferences
         default_preferences = {
-            "categories": ["Local News", "UK News", "Business", "Health", "Sports", "Tech", "Entertainment"],
+            "categories": ["Local News", "Business", "Finance", "AI & Tech"],
             "frequency": "daily"
         }
         
@@ -3744,6 +3872,15 @@ async def subscribe_newsletter(request: SubscribeRequest):
 # =====================================================================================
 # NEWSLETTER PREFERENCES ENDPOINTS
 # =====================================================================================
+
+# Allowed newsletter categories (used for validating user preference updates)
+NEWSLETTER_ALLOWED_CATEGORIES = [
+    "Local News",
+    "Business",
+    "Finance",
+    "AI & Tech",
+]
+
 
 @api_router.get("/newsletter/preferences/{email}")
 async def get_newsletter_preferences(email: str):
@@ -3795,7 +3932,7 @@ async def update_newsletter_preferences(request: UpdatePreferencesRequest):
             {"email": email},
             {"$set": {
                 "preferences": {
-                    "categories": request.preferences.categories,
+                    "categories": [c for c in (request.preferences.categories or []) if c in NEWSLETTER_ALLOWED_CATEGORIES],
                     "frequency": request.preferences.frequency
                 },
                 "preferences_updated_at": datetime.now(timezone.utc).isoformat()
@@ -3895,13 +4032,9 @@ async def get_available_categories():
         # Legacy categories for backwards compatibility
         "categories": [
             {"id": "Local News", "name": "Local News", "description": "Cheshire & surrounding areas"},
-            {"id": "UK News", "name": "UK News", "description": "National news from across the UK"},
-            {"id": "Business", "name": "Business", "description": "Business & economy updates"},
-            {"id": "Health", "name": "Health", "description": "Health & NHS news"},
-            {"id": "Sports", "name": "Sports", "description": "Sports coverage"},
-            {"id": "Tech", "name": "Tech", "description": "Technology news"},
-            {"id": "Science", "name": "Science", "description": "Science & research"},
-            {"id": "Entertainment", "name": "Entertainment", "description": "Entertainment & celebrity news"}
+            {"id": "Business", "name": "Business", "description": "Business & economic intelligence"},
+            {"id": "Finance", "name": "Finance", "description": "Personal finance, tax & money"},
+            {"id": "AI & Tech", "name": "AI & Tech", "description": "Artificial intelligence & technology"}
         ]
     }
 
@@ -7840,29 +7973,7 @@ async def send_digest_now():
                 seen_keywords.append(title_keywords)
                 unique_articles.append(article)
         
-        # Prioritize Local News (including Cheshire locations) first, Sports LAST
-        local_keywords = ['local news', 'cheshire', 'crewe', 'macclesfield', 'wilmslow', 'chester', 'warrington', 'nantwich', 'congleton', 'northwich', 'knutsford', 'sandbach', 'middlewich', 'alsager', 'winsford', 'ellesmere port']
-        
-        def is_local(article):
-            category = article.get('category', '').lower()
-            title = article.get('title', '').lower()
-            content = article.get('content', '').lower()[:500]
-            
-            for keyword in local_keywords:
-                if keyword in category or keyword in title or keyword in content:
-                    return True
-            return False
-        
-        def is_sports(article):
-            return article.get('category', '').lower() == 'sports'
-        
-        # Sort: Local News first, then other categories, Sports LAST
-        local_news = [a for a in unique_articles if is_local(a)]
-        sports_news = [a for a in unique_articles if is_sports(a) and not is_local(a)]
-        other_news = [a for a in unique_articles if not is_local(a) and not is_sports(a)]
-        
-        # Combine: local first, then others, then max 2 sports at the end
-        sorted_articles = local_news + other_news + sports_news[:2]
+                sorted_articles = local_news + other_news + sports_news[:2]
         sorted_articles = sorted_articles[:10]
         
         logger.info(f"Digest: {len(local_news)} local, {len(other_news)} other, {len(sports_news)} sports (max 2 used), sending {len(sorted_articles)} total")
@@ -9696,6 +9807,7 @@ async def sync_rss_now():
     """
     try:
         from app.news_feed_service import news_feed_service
+        import re
         from app.perplexity_service import perplexity_service
         from uuid import uuid4
         
@@ -9711,24 +9823,134 @@ async def sync_rss_now():
         
         # Filter for new articles with images
         new_articles = []
+        # Import-time editorial filters (project rules)
+        # - block sports and hard-crime at ingestion (not just homepage display)
+        # - de-dupe within this sync batch
+        sport_kw = re.compile(
+            r"(\bsport\b|football|premier league|championship|efl|super league|"
+            r"rugby|cricket|tennis|golf|boxing|f1|formula 1|grand prix|race|"
+            r"var\b|match\b|cup\b|league\b|hull kr|leeds|west ham|"
+            r"arsenal|chelsea|liverpool|manchester|derby|leicester|hull)",
+            re.I
+        )
+        hard_crime_kw = re.compile(r"(murder|kill(?:ed|s)?|killed|homicide|manslaughter|found dead|body found|death|died|dies|stab|shoot|rape|jailed|sentenc|charged|trial|convict)", re.I)
+        crime_kw = re.compile(r"(police|arrest|court|jailed|sentenc|charged|trial|inquest|knife crime|stabb|shoot|assault|drink[- ]driver|drink[- ]driving|drunk[- ]driver|dui|dwi)", re.I)
+        seen_new_titles = set()
+
         for article in rss_articles:
             title = article.get('title', '').strip()
             if not title:
                 continue
-            if title.lower() in existing_titles:
+
+            norm = title.lower().strip()
+            if norm in existing_titles:
                 continue
+            if norm in seen_new_titles:
+                continue
+
+            # Block sports + hard crime at ingestion
+            src = (article.get('source') or '').lower()
+            url = (article.get('source_url') or '').lower()
+
+            # Hard block known sports publishers
+            if 'sky sports' in src or 'bbc sport' in src:
+                continue
+
+            # Block sport URLs
+            if '/sport/' in url or 'skysports' in url:
+                continue
+
+            low = title.lower()
+
+            # Structural sports patterns
+            if ((' vs ' in low) or (' v ' in low)) and ('team news' in low or ' live' in low or 'kick-off' in low or 'kickoff' in low or 'line-up' in low or 'lineup' in low):
+                continue
+
+            low = title.lower()
+            # Structural sports patterns (captures many football/rugby headlines that omit explicit sport words)
+            if ((" vs " in low) or (" v " in low)) and ("team news" in low or " live" in low or "kick-off" in low or "kickoff" in low or "line-up" in low or "lineup" in low):
+                continue
+
+            if sport_kw.search(title):
+                continue
+            if hard_crime_kw.search(title):
+                continue
+            if crime_kw.search(title):
+                continue
+
             if not article.get('image'):
                 continue
+
+            seen_new_titles.add(norm)
             new_articles.append(article)
         
         logger.info(f"Found {len(new_articles)} new articles to import")
-        
+
+        # Rank candidates to match project positioning (Local + economic utility first)
+        econ_kw = re.compile(r"\b(mortgage|rent|rents|tax|budget|inflation|interest\s*rate|rates|jobs|wages|economy|economic|business|finance|markets?|prices?|bills?|energy|council|planning|housing|investment|trade|tariff|regulation|ofgem|ofwat|boe|bank of england)\b", re.I)
+        low_utility_kw = re.compile(r"\b(brit awards|baftas|celebrity|film|tv|ceremony|showbiz|royal fashion)\b", re.I)
+
+        def candidate_score(a: dict) -> int:
+            score = 0
+            title = (a.get("title") or "")
+            cat = (a.get("category") or "").lower()
+            if a.get("is_local_source") is True:
+                score += 3
+            if cat in ("business","tech","science"):
+                score += 2
+            if econ_kw.search(title):
+                score += 2
+            if low_utility_kw.search(title):
+                score -= 2
+            return score
+
+        # Stable sort: higher score first, preserve original order on ties
+        scored = [(i, candidate_score(a), a) for i, a in enumerate(new_articles)]
+        scored.sort(key=lambda x: (-x[1], x[0]))
+        new_articles = [a for _, _, a in scored]
+
         # Import up to 10 new articles
         imported_count = 0
         imported_titles = []
         max_import = 10
         
-        for article in new_articles[:max_import]:
+        # Prefer local items when available; then fill with best non-local.
+        local_target = int(os.getenv("LOCAL_SYNC_TARGET", "4") or "4")
+        local_items = [a for a in new_articles if a.get("is_local_source") is True]
+        non_local_items = [a for a in new_articles if a.get("is_local_source") is not True]
+
+        picked = []
+        seen_titles = set()
+        source_counts = {}
+
+        def pick_from(pool, cap):
+            for a in pool:
+                if len(picked) >= max_import:
+                    break
+                if cap is not None and cap <= 0:
+                    break
+                t = (a.get("title") or "").strip().lower()
+                src = (a.get("source") or "").strip().lower()
+                if not t:
+                    continue
+                if t in seen_titles:
+                    continue
+                # Soft source de-dupe to reduce repetition (allow if needed later)
+                if src:
+                    c = source_counts.get(src, 0)
+                    if c >= 2:
+                        continue
+                picked.append(a)
+                seen_titles.add(t)
+                if src:
+                    source_counts[src] = source_counts.get(src, 0) + 1
+                if cap is not None:
+                    cap -= 1
+
+        pick_from(local_items, local_target)
+        pick_from(non_local_items, None)
+
+        for article in picked:
             try:
                 title = article.get('title', '').strip()
                 original_content = article.get('content', '')
@@ -10374,30 +10596,87 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 seen_keywords.append(title_keywords)
                 unique_articles.append(article)
         
-        # Prioritize Local News (including Cheshire locations) first, Sports LAST
-        local_keywords = ['local news', 'cheshire', 'crewe', 'macclesfield', 'wilmslow', 'chester', 'warrington', 'nantwich', 'congleton', 'northwich', 'knutsford', 'sandbach', 'middlewich', 'alsager', 'winsford', 'ellesmere port']
-        
-        def is_local(article):
-            category = article.get('category', '').lower()
-            title = article.get('title', '').lower()
-            content = article.get('content', '').lower()[:500]
-            
-            for keyword in local_keywords:
-                if keyword in category or keyword in title or keyword in content:
-                    return True
-            return False
-        
-        def is_sports(article):
-            return article.get('category', '').lower() == 'sports'
-        
-        # Sort: Local News first, then other categories, Sports LAST
-        local_news = [a for a in unique_articles if is_local(a)]
-        sports_news = [a for a in unique_articles if is_sports(a) and not is_local(a)]
-        other_news = [a for a in unique_articles if not is_local(a) and not is_sports(a)]
-        
-        # Combine: local first, then others, then max 2 sports at the end
-        unique_articles = (local_news + other_news + sports_news[:2])[:10]
-        
+                
+        # ==========================================================
+        # Authority Pillar Enforcement (Project Model)
+        # Local → Business/Finance → AI & Tech → National Context
+        # (No Sports / Entertainment / generic noise in scheduled brief)
+        # ==========================================================
+
+        towns = [
+            'crewe','macclesfield','wilmslow','chester','warrington','nantwich','congleton',
+            'northwich','knutsford','sandbach','middlewich','alsager','winsford','ellesmere port'
+        ]
+
+        def _is_local(article):
+            category = (article.get('category','') or '').lower()
+            title = (article.get('title','') or '').lower()
+            content = (article.get('content','') or '').lower()[:500]
+            return any(k in category for k in ['local','cheshire']) or any(t in title or t in content for t in towns)
+
+        def _is_business(article):
+            category = (article.get('category','') or '').lower()
+            title = (article.get('title','') or '').lower()
+            return (
+                any(k in category for k in ['business','finance','economy','property'])
+                or any(k in title for k in ['finance','mortgage','rates','tax','budget','inflation','jobs','housing','market'])
+            )
+
+        def _is_tech(article):
+            category = (article.get('category','') or '').lower()
+            title = (article.get('title','') or '').lower()
+
+            # Exclude gaming / entertainment tech explicitly
+            banned_keywords = [
+                'game','gaming','xbox','playstation','nintendo',
+                'resident evil','horror','celebrity','showbiz'
+            ]
+            if any(b in title for b in banned_keywords):
+                return False
+
+            keywords = [
+                'ai','artificial intelligence','chatgpt','openai','gemini','deepmind',
+                'machine learning','ml','automation','robot','cyber','security',
+                'data','digital','software','startup','nvidia','microsoft',
+                'google','apple','tesla','chip','semiconductor','cloud',
+                'enterprise','infrastructure','data centre'
+            ]
+
+            return (
+                any(k in category for k in ['tech','technology','ai'])
+                or any(k in title for k in keywords)
+            )
+
+        def _is_banned(article):
+            category = (article.get('category','') or '').lower()
+            return category in ['sports','sport','entertainment','celebrity','showbiz']
+
+        local_bucket = []
+        business_bucket = []
+        tech_bucket = []
+        national_bucket = []
+
+        for a in unique_articles:
+            if _is_banned(a):
+                continue
+            if _is_local(a):
+                local_bucket.append(a)
+            elif _is_business(a):
+                business_bucket.append(a)
+            elif _is_tech(a):
+                tech_bucket.append(a)
+            else:
+                national_bucket.append(a)
+
+        # Cap per pillar to match email layout expectations
+        local_bucket = local_bucket[:3]
+        business_bucket = business_bucket[:2]
+        tech_bucket = tech_bucket[:1]
+        national_bucket = national_bucket[:2]
+
+        # Final ordered list
+        unique_articles = (local_bucket + business_bucket + tech_bucket + national_bucket)[:10]
+
         logger.info(f"Sending Daily Brief with {len(unique_articles)} unique articles ({len(local_news)} Local, {len(other_news)} Other, max 2 Sports) to {len(subscriber_emails)} subscribers")
         
         # Update status to "sending" with article count
@@ -11433,5 +11712,8 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    scheduler.shutdown()
+    try:
+        scheduler.shutdown()
+    except Exception:
+        pass
     client.close()

@@ -5,9 +5,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import PushNotificationButton from './PushNotificationButton';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-
+import { getApiUrl } from '../utils/api';
+const API_URL = getApiUrl();
 const MobileMenu = ({ open, onClose, onNavigate }) => {
   const { isDark, toggleTheme } = useTheme();
 

@@ -13,9 +13,12 @@ export const getApiUrl = () => {
     }
 
     // Render split-deploy: frontend and backend are on different origins
-    // Frontend: cheshiretoday-frontend-migration.onrender.com
-    // Backend:  
-    
+    // If frontend hostname contains "frontend", derive backend hostname automatically.
+    if (hostname.endsWith("onrender.com") && hostname.includes("frontend")) {
+      const backendHost = hostname.replace("frontend", "backend");
+      return "https://" + backendHost;
+    }
+
     // Default: same-origin (useful once you reverse-proxy backend under the main domain)
     return origin;
   }

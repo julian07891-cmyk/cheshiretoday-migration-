@@ -61,26 +61,26 @@ CHESHIRE_RSS_SOURCES = [
         # "url": 'https://news.google.com/rss/search?q=%22Cheshire%20West%20and%20Chester%22%20Council%20when%3A30d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         # "category": 'local'
     # },
-    # {
-        # "name": 'BBC Business',
-        # "url": 'http://feeds.bbci.co.uk/news/business/rss.xml',
-        # "category": 'business'
-    # },
+    {
+        "name": 'BBC Business',
+        "url": 'http://feeds.bbci.co.uk/news/business/rss.xml',
+        "category": 'business'
+    },
     # {
         # "name": 'Guardian Business',
         # "url": 'https://www.theguardian.com/uk/business/rss',
         # "category": 'business'
     # },
-    # {
-        # "name": 'Guardian Money',
-        # "url": 'https://www.theguardian.com/money/rss',
-        # "category": 'business'
-    # },
-    # {
-        # "name": 'BBC Technology',
-        # "url": 'http://feeds.bbci.co.uk/news/technology/rss.xml',
-        # "category": 'business'
-    # },
+    {
+        "name": 'Guardian Money',
+        "url": 'https://www.theguardian.com/money/rss',
+        "category": 'business'
+    },
+    {
+        "name": 'BBC Technology',
+        "url": 'http://feeds.bbci.co.uk/news/technology/rss.xml',
+        "category": 'business'
+    },
     # {
         # "name": 'Ars Technica',
         # "url": 'http://feeds.arstechnica.com/arstechnica/index',

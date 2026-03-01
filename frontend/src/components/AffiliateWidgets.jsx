@@ -1,6 +1,7 @@
 import React from 'react';
 import { ExternalLink, ShoppingBag, Star, TrendingUp } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { getApiUrl } from '../utils/api';
 
 // Affiliate configuration - Amazon Associates only
 export const AFFILIATE_CONFIG = {
@@ -201,7 +202,7 @@ export const ProductCard = ({ product, compact = false }) => {
 export const fetchDatabaseProducts = async () => {
   try {
     const apiUrl = (
-      process.env.REACT_APP_BACKEND_URL ||
+      getApiUrl() ||
       (typeof window !== 'undefined' ? window.location.origin : '')
     );
     

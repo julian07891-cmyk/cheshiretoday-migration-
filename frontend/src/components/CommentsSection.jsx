@@ -5,9 +5,8 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-
+import { getApiUrl } from '../utils/api';
+const API_URL = getApiUrl();
 // CommentItem component - defined outside to avoid re-creation on each render
 const CommentItem = ({ 
   comment, 

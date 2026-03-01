@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AlertCircle, TrendingUp, ChevronRight } from 'lucide-react';
+import { getApiUrl } from '../utils/api';
 
 const BreakingNewsTicker = ({ onHeadlineClick }) => {
   const [headlines, setHeadlines] = useState([]);
@@ -28,7 +29,7 @@ const BreakingNewsTicker = ({ onHeadlineClick }) => {
   const fetchHeadlines = async () => {
     try {
       // API base URL (backend Render service)
-      const API_URL = "https://cheshiretoday-migration.onrender.com";
+      const API_URL = getApiUrl();
       const response = await fetch(API_URL + "/api/trending-headlines");
       const data = await response.json();
       if (data.headlines && data.headlines.length > 0) {

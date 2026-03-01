@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { getApiUrl } from '../utils/api';
 import { Helmet } from 'react-helmet-async';
 import { Mail, Sun, Calendar, Zap, CheckCircle, AlertCircle, Loader2, ArrowLeft, Save } from 'lucide-react';
 import { Button } from './ui/button';
@@ -7,7 +8,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+const API_URL = getApiUrl();
 
 const SUBSCRIPTION_TYPES = [
   { 

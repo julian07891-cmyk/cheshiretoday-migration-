@@ -1,3 +1,4 @@
+from datetime import datetime
 """
 Email Service for Cheshire Today Newsletter
 Handles sending confirmation and newsletter emails via SMTP
@@ -11,7 +12,6 @@ import hashlib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Tuple
-from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ class EmailService:
         self.smtp_port = int(os.environ.get('SMTP_PORT', '587'))
         self.smtp_user = os.environ.get('SMTP_USER')
         self.smtp_password = os.environ.get('SMTP_PASSWORD')
+        self.smtp_enabled = (os.environ.get('SMTP_ENABLED', 'false').strip().lower() in ('1','true','yes','on'))
         self.from_email = os.environ.get('SMTP_FROM_EMAIL')
         # Updated: From name is now "Editor at Cheshire Today"
         self.from_name = os.environ.get('SMTP_FROM_NAME', 'Editor at Cheshire Today')
@@ -51,55 +52,66 @@ class EmailService:
         from urllib.parse import quote
         return f"{self.api_url}/email/track/click/{tracking_id}?url={quote(original_url, safe='')}"
         
-    def _send_email(self, to_email: str, subject: str, html_content: str, text_content: str = None) -> bool:
+    
+    def _send_email(self, to_email, subject, html_content, text_content=None):
         """Send an email via SMTP (supports Gmail, GoDaddy, etc.)"""
+        import smtplib
+        import ssl
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        if not getattr(self, 'smtp_enabled', False):
+            logger.info('SMTP disabled (SMTP_ENABLED not true) — skipping send')
+            return False
+
+        if not self.smtp_host or not self.smtp_port:
+            logger.error("SMTP not configured (SMTP_HOST/SMTP_PORT missing)")
+            return False
+        if not self.smtp_user or not self.smtp_password:
+            logger.error("SMTP not configured (SMTP_USER/SMTP_PASSWORD missing)")
+            return False
+        if not self.from_email:
+            logger.error("SMTP not configured (SMTP_FROM_EMAIL missing)")
+            return False
+
+        # Build message (multipart/alternative)
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{self.from_name} <{self.from_email}>"
+        msg["To"] = to_email
+
+        # Prefer plain text fallback if provided
+        if text_content:
+            msg.attach(MIMEText(text_content, "plain", "utf-8"))
+        msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+        context = ssl.create_default_context()
+
         try:
-            # Create message
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = f"{self.from_name} <{self.from_email}>"
-            msg['To'] = to_email
-            msg['Reply-To'] = self.reply_to
-            
-            # Add text and HTML parts
-            if text_content:
-                text_part = MIMEText(text_content, 'plain')
-                msg.attach(text_part)
-            
-            html_part = MIMEText(html_content, 'html')
-            msg.attach(html_part)
-            
-            # Send email using appropriate method based on port
-            if self.smtp_port == 465:
-                # Use SMTP_SSL for port 465 (GoDaddy, etc.)
-                import ssl
-                context = ssl.create_default_context()
-                with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, context=context, timeout=30) as server:
+            # Use SMTP_SSL for port 465 (GoDaddy, etc.)
+            if int(self.smtp_port) == 465:
+                with smtplib.SMTP_SSL(self.smtp_host, int(self.smtp_port), context=context, timeout=30) as server:
                     server.login(self.smtp_user, self.smtp_password)
-                    server.send_message(msg)
+                    server.sendmail(self.from_email, to_email, msg.as_string())
             else:
                 # Use SMTP with STARTTLS for port 587 (Gmail, GoDaddy, etc.)
-                import ssl
-                context = ssl.create_default_context()
-                with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30) as server:
+                with smtplib.SMTP(self.smtp_host, int(self.smtp_port), timeout=30) as server:
                     server.ehlo()
                     server.starttls(context=context)
                     server.ehlo()
                     server.login(self.smtp_user, self.smtp_password)
-                    server.send_message(msg)
-            
-            logger.info(f"Email sent successfully to {to_email}")
+                    server.sendmail(self.from_email, to_email, msg.as_string())
+
             return True
-            
+
         except smtplib.SMTPAuthenticationError as e:
             logger.error(f"SMTP AUTHENTICATION FAILED for {to_email}: {str(e)}")
             logger.error(f"  -> Check SMTP_USER ({self.smtp_user}) and SMTP_PASSWORD are correct")
-            logger.error(f"  -> For GoDaddy: Use your full email as username and email password")
             return False
         except smtplib.SMTPConnectError as e:
             logger.error(f"SMTP CONNECTION FAILED for {to_email}: {str(e)}")
             logger.error(f"  -> Check SMTP_HOST ({self.smtp_host}) and SMTP_PORT ({self.smtp_port})")
-            logger.error(f"  -> GoDaddy SMTP: smtpout.secureserver.net (port 465 SSL or 587 TLS)")
+            logger.error("  -> GoDaddy SMTP: smtpout.secureserver.net (port 465 SSL or 587 TLS)")
             return False
         except smtplib.SMTPRecipientsRefused as e:
             logger.error(f"RECIPIENT REFUSED for {to_email}: {str(e)}")
@@ -110,10 +122,11 @@ class EmailService:
         except Exception as e:
             logger.error(f"UNEXPECTED ERROR sending to {to_email}: {type(e).__name__}: {str(e)}")
             return False
-    
+
     def send_welcome_email(self, to_email: str) -> bool:
         """Send welcome/confirmation email to new subscriber"""
         subject = "Welcome to Cheshire Today! 📰 Your Local News Awaits"
+        tracking_id = self._generate_tracking_id("welcome")
         
         html_content = f"""
         <!DOCTYPE html>
@@ -123,7 +136,7 @@ class EmailService:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f3f4f6;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
                 <!-- Header with Logo -->
                 <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 35px 25px; text-align: center; border-radius: 16px 16px 0 0;">
                     <a href="{self.base_url}" style="display: inline-block; margin-bottom: 15px;">
@@ -196,7 +209,19 @@ class EmailService:
                         To unsubscribe, reply to this email with "Unsubscribe" in the subject line.
                     </p>
                 </div>
-            </div>
+            
+                    <div style="margin-top: 25px; padding-top: 18px; border-top: 1px solid #e5e7eb; text-align: center;">
+                        <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280;">
+                            Manage your emails:
+                            <a href="__PREFS_URL__" style="color: #2563eb; text-decoration: none; font-weight: 600;">Preferences</a>
+                            &nbsp;·&nbsp;
+                            <a href="__UNSUB_URL__" style="color: #2563eb; text-decoration: none; font-weight: 600;">Unsubscribe</a>
+                        </p>
+                        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                            You’re receiving this because you subscribed to Cheshire Today.
+                        </p>
+                    </div>
+</div>
         </body>
         </html>
         """
@@ -226,8 +251,25 @@ class EmailService:
         © 2026 Cheshire Today. All rights reserved.
         """
         
-        return self._send_email(to_email, subject, html_content, text_content)
-    
+
+        # Personalise + track footer links (one-click)
+        from urllib.parse import quote
+        prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(to_email)}"
+        unsub_url = f"{self.base_url}/unsubscribe?email={quote(to_email)}"
+        tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+        tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+        html_content = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+        # Personalize prefs/unsub links per-recipient (one-click) + track
+        from urllib.parse import quote
+        tracking_id = self._generate_tracking_id("welcome")
+        prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(to_email)}"
+        unsub_url = f"{self.base_url}/unsubscribe?email={quote(to_email)}"
+        tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+        tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+        html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+
+        return self._send_email(to_email, subject, html_personal, text_content)
+
     def send_verification_code(self, to_email: str, name: str, code: str) -> bool:
         """Send email verification code for comment login"""
         subject = "🔐 Cheshire Today - Your Verification Code"
@@ -458,7 +500,14 @@ class EmailService:
         # Send to each subscriber
         success_count = 0
         for email in to_emails:
-            if self._send_email(email, subject, html_content):
+            # Personalize prefs/unsub links per-recipient (one-click)
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
                 success_count += 1
         
         logger.info(f"News digest sent to {success_count}/{len(to_emails)} subscribers")
@@ -643,7 +692,7 @@ Cheshire Today Jobs Team
         tracking_id = self._generate_tracking_id("daily_brief")
         
         today = datetime.now().strftime('%A, %d %B %Y')
-        subject = f"☀️ The Daily Brief | {today} | Cheshire Today"
+        subject = f"📈 Cheshire Market & Local Briefing | {today} | Cheshire Today"
         
         # Hero article (first article) with tracked URL
         hero = articles[0]
@@ -655,46 +704,328 @@ Cheshire Today Jobs Team
         if hero_summary:
             hero_summary = hero_summary + '...'
         
-        # Secondary headlines (next 3-5 articles) with tracked URLs AND IMAGES
-        secondary_articles = articles[1:6]
-        secondary_html = ""
+        
+        # ================================
+        # Secondary candidates (exclude hero)
+        secondary_articles = articles[1:]
+
+        # =====================================
+        # Authority Segmentation (Cheshire Model)
+        # Order priority: Local → Business/Finance → AI/Tech → National Context
+        # =====================================
+
+        local_articles = []
+        business_articles = []
+        tech_articles = []
+        other_articles = []
+
+        towns = [
+            'crewe','macclesfield','wilmslow','chester',
+            'warrington','nantwich','congleton','northwich',
+            'knutsford','sandbach','middlewich','winsford','ellesmere port'
+        ]
+
+
+        def _is_banned_category(cat: str, title: str) -> bool:
+            c = (cat or "").lower().strip()
+            t = (title or "").lower().strip()
+
+            banned_exact = {
+                "sports","sport",
+                "entertainment","showbiz","celebrity",
+                "gaming","games"
+            }
+            if c in banned_exact:
+                return True
+
+            banned_contains = ["sport", "entertain", "showbiz", "celebrity", "gaming", "game"]
+            if any(x in c for x in banned_contains):
+                return True
+
+            # Title-only noise filters (prevents AI/Tech being polluted by pop culture)
+            title_banned = ["resident evil", "trailer", "review", "episode", "season", "netflix", "film", "movie", "music"]
+            if any(x in t for x in title_banned):
+                return True
+
+            return False
+
+        def _is_local(cat: str, title: str) -> bool:
+            # Local must be truly Cheshire (do NOT infer from category/source alone)
+            t = (title or "").lower()
+            return ("cheshire" in t) or any(town in t for town in towns)
+
+        def _is_business(cat: str, title: str = "") -> bool:
+            # Business + Finance pillar (project aligned)
+            c = (cat or "").lower()
+            t = (title or "").lower()
+            cat_keys = ['business','finance','economy','economic','property','housing','real estate']
+            title_keys = ['budget','tax','hmrc','vat','council tax','interest rate','mortgage','inflation','wages','profits','revenue','funding','investment','shares','stock','bank','house price','rent']
+            return any(k in c for k in cat_keys) or any(k in t for k in title_keys)
+
+        def _is_tech(cat: str, title: str) -> bool:
+
+
+            # AI & Tech pillar (strict). Prevents science/nature drifting into AI section.
+
+
+            c = (cat or '').lower()
+
+
+            t = (title or '').lower()
+
+
+        
+
+
+            # Strong AI/tech signals (allow even if category is messy)
+
+
+            strong = [
+
+
+                'openai','anthropic','chatgpt','gemini','deepmind','artificial intelligence',
+
+
+                'machine learning','ml','llm','gpt','copilot',
+
+
+                'nvidia','semiconductor','chip','gpu',
+
+
+                'cyber','security','ransomware','hack','breach',
+
+
+                'data centre','datacenter','cloud','saas','software','api'
+
+
+            ]
+
+
+        
+
+
+            # Clear non-tech/nature/science terms that must NOT land in AI section
+
+
+            nontech = [
+
+
+                'fungal','seabird','woodland','marine','conservation','biodiversity',
+
+
+                'climate','environment','wildlife','nature','charity says'
+
+
+            ]
+
+
+        
+
+
+            has_strong = any(k in t for k in strong)
+
+
+        
+
+
+            # If it looks like nature/science, only allow if strong AI/tech keyword is present
+
+
+            if any(x in t for x in nontech) or any(x in c for x in ['science','environment']):
+
+
+                return has_strong
+
+
+        
+
+
+            # Category-driven tech (safe)
+
+
+            if any(x in c for x in ['tech','technology','ai']):
+
+
+                return True
+
+
+        
+
+
+            # Title-driven tech
+
+
+            return has_strong
+
+
+        
+        # ===== FORCE CLEAN REBUCKETING (Project Pillar Enforcement) =====
+        local_articles = []
+        business_articles = []
+        tech_articles = []
+        other_articles = []
+
         for article in secondary_articles:
-            art_id = article.get('id', article.get('_id', ''))
-            art_url_original = f"{self.base_url}/article/{art_id}"
-            art_url = self._get_tracked_url(tracking_id, art_url_original)
-            art_image = article.get('image', '')
-            
-            # Add thumbnail image if available
-            image_html = ""
-            if art_image:
-                image_html = f'''
-                    <td style="width: 80px; padding-right: 12px; vertical-align: top;">
-                        <a href="{art_url}">
-                            <img src="{art_image}" alt="" style="width: 80px; height: 60px; object-fit: cover; border-radius: 6px;" />
+            cat = (article.get('category') or '').lower()
+            title = (article.get('title') or '').lower()
+
+            if _is_banned_category(cat, title):
+                continue
+
+            if _is_local(cat, title):
+                local_articles.append(article)
+            elif _is_tech(cat, title):
+                tech_articles.append(article)
+            elif _is_business(cat, title):
+                business_articles.append(article)
+            else:
+                other_articles.append(article)
+
+        
+        # ===== FORCE BUCKET REVALIDATION (ensures strict helper logic applies) =====
+        local_articles = [a for a in local_articles if _is_local((a.get('category') or '').lower(), (a.get('title') or '').lower())]
+        business_articles = [a for a in business_articles if _is_business((a.get('category') or '').lower(), (a.get('title') or '').lower())]
+        tech_articles = [a for a in tech_articles if _is_tech((a.get('category') or '').lower(), (a.get('title') or '').lower())]
+        other_articles = [
+            a for a in other_articles
+            if not _is_banned_category((a.get('category') or '').lower(), (a.get('title') or '').lower())
+        ]
+# Promote into empty buckets (prevents weird “AI empty” / “Business empty” days)
+        def _promote_into(bucket: str):
+            nonlocal local_articles, business_articles, tech_articles, other_articles
+            for a in list(other_articles):
+                c = (a.get('category') or '').lower()
+                t = (a.get('title') or '').lower()
+                if _is_banned_category(c, t):
+                    other_articles.remove(a)
+                    continue
+
+                if bucket == "tech" and _is_tech(c, t):
+                    other_articles.remove(a)
+                    tech_articles.insert(0, a)
+                    return True
+                if bucket == "business" and _is_business(c, t):
+                    other_articles.remove(a)
+                    business_articles.insert(0, a)
+                    return True
+                if bucket == "local" and _is_local(c, t):
+                    other_articles.remove(a)
+                    local_articles.insert(0, a)
+                    return True
+            return False
+
+        if len(business_articles) == 0:
+            _promote_into("business")
+        if len(tech_articles) == 0:
+            _promote_into("tech")
+
+        # Section caps (match email layout)
+        local_articles = local_articles[:3]
+        business_articles = business_articles[:2]
+        tech_articles = tech_articles[:1]
+        other_articles = other_articles[:2]
+
+        # ===== AI/TECH 48h Fallback =====
+        if len(tech_articles) == 0:
+            try:
+                from datetime import timedelta, timezone, datetime
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+                cursor = self.db.articles.find({"publishedDate": {"$gte": cutoff.isoformat()}}, {"_id": 1, "title": 1, "category": 1}).sort("publishedDate", -1).limit(20)
+                for a in cursor:
+                    cat = (a.get("category") or "").lower()
+                    title = (a.get("title") or "").lower()
+                    if _is_tech(cat, title) and (a not in local_articles) and (a not in business_articles):
+                        tech_articles = [a]
+                        break
+            except Exception:
+                pass
+
+        # ===== REBUCKET VALIDATION (post-cap) =====
+        _all = (local_articles + business_articles + tech_articles + other_articles)
+        local_articles = []
+        business_articles = []
+        tech_articles = []
+        other_articles = []
+
+        for article in _all:
+            cat = (article.get('category') or '').lower()
+            title = (article.get('title') or '').lower()
+            if _is_banned_category(cat, title):
+                continue
+            if _is_local(cat, title):
+                local_articles.append(article)
+            elif _is_tech(cat, title):
+                tech_articles.append(article)
+            elif _is_business(cat, title):
+                business_articles.append(article)
+            else:
+                other_articles.append(article)
+
+        # Re-apply caps after validation
+        local_articles = local_articles[:3]
+        business_articles = business_articles[:2]
+        tech_articles = tech_articles[:1]
+        other_articles = other_articles[:2]
+
+        # =====================================
+        # AI/Tech 48h Fallback (Mongo)
+        # Ensures AI authority presence even on slow days
+        # =====================================
+        if len(tech_articles) == 0:
+            try:
+                
+                cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+
+                recent_candidates = []
+                cursor = self.db.articles.find(
+                    {"publishedDate": {"$gte": cutoff.isoformat()}},
+                    {"_id": 1, "title": 1, "category": 1}
+                ).sort("publishedDate", -1).limit(20)
+
+                for a in cursor:
+                    cat = (a.get("category") or "").lower()
+                    title = (a.get("title") or "").lower()
+                    if _is_tech(cat, title):
+                        if (a not in local_articles) and (a not in business_articles):
+                            tech_articles = [a]
+                            break
+            except Exception:
+                # Fail silently — never break email rendering
+                pass
+
+
+        def build_section(title_label, emoji, section_articles):
+            if not section_articles:
+                return ""
+
+            rows = ""
+            for article in section_articles:
+                art_id = article.get('id', article.get('_id', ''))
+                art_url_original = f"{self.base_url}/article/{art_id}"
+                art_url = self._get_tracked_url(tracking_id, art_url_original)
+
+                rows += f'''
+                <tr>
+                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+                        <a href="{art_url}" style="color: #1E3A8A; text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.4;">
+                            {article.get('title')}
                         </a>
                     </td>
+                </tr>
                 '''
-            
-            secondary_html += f'''
-            <tr>
-                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                            {image_html}
-                            <td style="vertical-align: top;">
-                                <a href="{art_url}" style="color: #1E3A8A; text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.3;">
-                                    {article.get('title', 'Untitled')}
-                                </a>
-                                <span style="color: #6b7280; font-size: 12px; display: block; margin-top: 4px;">
-                                    {article.get('category', 'News')}
-                                </span>
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
+
+            return f'''
+            <div style="margin: 30px 0;">
+                <div style="border-top:1px solid #e5e7eb; margin-top:30px; padding-top:20px;">
+                <h3 style="color:#111827; font-size:12px; text-transform:uppercase; letter-spacing:1.5px; font-weight:700; margin:0 0 12px 0;">
+                    {title_label.upper()}
+                </h3>
+                <table width="100%" cellpadding="0" cellspacing="0">
+                    {rows}
+                </table>
+            </div>
             '''
-        
+
         # Utility block (Weather, Travel, Fuel)
         utility_html = ""
         if weather or travel:
@@ -764,17 +1095,17 @@ Cheshire Today Jobs Team
             <meta name="supported-color-schemes" content="light">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f3f4f6;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
                 <!-- Header with Text Logo -->
                 <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;">
                     <div style="font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 5px;">
                         CHESHIRE TODAY
                     </div>
                     <div style="font-size: 12px; letter-spacing: 2px; opacity: 0.9; margin-bottom: 15px;">
-                        YOUR LOCAL NEWS
+                        Local · Business · Finance
                     </div>
                     <div style="background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; display: inline-block;">
-                        <h1 style="margin: 0; font-size: 22px; font-weight: 700;">☀️ The Daily Brief</h1>
+                        <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">📈 Cheshire Market &amp; Local Briefing</h1>
                         <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.95;">{today}</p>
                     </div>
                 </div>
@@ -783,27 +1114,21 @@ Cheshire Today Jobs Team
                 <div style="background: #ffffff; padding: 25px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <!-- Hero Section -->
                     <div style="margin-bottom: 25px;">
-                        {f'<a href="{hero_url}"><img src="{hero_image}" alt="" style="width: 100%; height: 220px; object-fit: cover; border-radius: 10px; margin-bottom: 15px;" /></a>' if hero_image else ''}
+                        {f'<a href="{hero_url}"><img src="{hero_image}" alt="" style="width: 100%; height: 280px; object-fit: cover; border-radius: 10px; margin-bottom: 15px;" /></a>' if hero_image else ''}
                         <h2 style="color: #1E3A8A; margin: 0 0 10px 0; font-size: 22px; line-height: 1.3;">
                             <a href="{hero_url}" style="color: #1E3A8A; text-decoration: none;">{hero.get('title', 'Top Story')}</a>
                         </h2>
                         <p style="color: #374151; font-size: 15px; margin: 0 0 15px 0; line-height: 1.6;">
                             {hero_summary}
                         </p>
-                        <a href="{hero_url}" style="display: inline-block; background: #1E3A8A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
-                            Read More →
-                        </a>
                     </div>
                     
-                    <!-- Secondary Headlines with Images -->
-                    <div style="margin: 25px 0;">
-                        <h3 style="color: #1f2937; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid #1E3A8A; padding-bottom: 8px;">
-                            📰 More Headlines
-                        </h3>
-                        <table width="100%" cellpadding="0" cellspacing="0">
-                            {secondary_html}
-                        </table>
-                    </div>
+                    
+                    {build_section("Local Developments", "📰", local_articles)}
+                    {build_section("Business & Finance", "💼", business_articles)}
+                    {build_section("AI & Technology", "🤖", tech_articles)}
+                    {build_section("National Context", "🇬🇧", other_articles)}
+
                     
                     {utility_html}
                     {community_html}
@@ -814,9 +1139,9 @@ Cheshire Today Jobs Team
                             You're receiving this because you subscribed to The Daily Brief.
                         </p>
                         <p style="margin: 0;">
-                            <a href="{self.base_url}/newsletter/preferences" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Manage Preferences</a>
+                            <a href="__PREFS_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Manage Preferences</a>
                             &nbsp;|&nbsp;
-                            <a href="{self.base_url}/unsubscribe" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Unsubscribe</a>
+                            <a href="__UNSUB_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Unsubscribe</a>
                         </p>
                         <p style="color: #9ca3af; font-size: 11px; margin: 15px 0 0 0;">
                             © {datetime.now().year} Cheshire Today. All rights reserved.
@@ -833,7 +1158,14 @@ Cheshire Today Jobs Team
         # Send to all subscribers with daily_brief preference
         success_count = 0
         for email in to_emails:
-            if self._send_email(email, subject, html_content):
+            # Personalize prefs/unsub links per-recipient (one-click)
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
                 success_count += 1
         
         logger.info(f"Daily Brief sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
@@ -925,7 +1257,7 @@ Cheshire Today Jobs Team
                     <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #e5e7eb; text-align: center;">
                         <p style="color: #6b7280; font-size: 11px; margin: 0;">
                             You received this alert because you're subscribed to Breaking News.
-                            <a href="{self.base_url}/newsletter/preferences" style="color: #dc2626;">Manage preferences</a>
+                            <a href="__PREFS_URL__" style="color: #dc2626;">Manage preferences</a>
                         </p>
                     </div>
                     <!-- Tracking Pixel -->
@@ -939,7 +1271,14 @@ Cheshire Today Jobs Team
         # Send to all subscribers with breaking_news preference
         success_count = 0
         for email in to_emails:
-            if self._send_email(email, subject, html_content):
+            # Personalize prefs/unsub links per-recipient (one-click)
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
                 success_count += 1
         
         logger.info(f"Breaking News alert sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
@@ -1088,9 +1427,9 @@ Cheshire Today Jobs Team
                             You're receiving The Weekly Roundup every Sunday.
                         </p>
                         <p style="margin: 0;">
-                            <a href="{self.base_url}/newsletter/preferences" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Manage Preferences</a>
+                            <a href="__PREFS_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Manage Preferences</a>
                             &nbsp;|&nbsp;
-                            <a href="{self.base_url}/unsubscribe" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Unsubscribe</a>
+                            <a href="__UNSUB_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Unsubscribe</a>
                         </p>
                         <p style="color: #9ca3af; font-size: 11px; margin: 15px 0 0 0;">
                             © {datetime.now().year} Cheshire Today. All rights reserved.
@@ -1106,7 +1445,14 @@ Cheshire Today Jobs Team
         
         success_count = 0
         for email in to_emails:
-            if self._send_email(email, subject, html_content):
+            # Personalize prefs/unsub links per-recipient (one-click)
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
                 success_count += 1
         
         logger.info(f"Weekly Roundup sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
@@ -1166,7 +1512,7 @@ Cheshire Today Jobs Team
                     </p>
                     
                     <div style="text-align: center; margin: 30px 0;">
-                        <a href="{self.base_url}/newsletter/preferences" style="display: inline-block; background: #1E3A8A; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                        <a href="__PREFS_URL__" style="display: inline-block; background: #1E3A8A; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
                             Update My Preferences
                         </a>
                     </div>
@@ -1195,7 +1541,14 @@ Cheshire Today Jobs Team
         
         success_count = 0
         for email in to_emails:
-            if self._send_email(email, subject, html_content):
+            # Personalize prefs/unsub links per-recipient (one-click)
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
                 success_count += 1
         
         logger.info(f"Announcement email sent to {success_count}/{len(to_emails)} subscribers")

@@ -13,9 +13,8 @@ import {
   DialogFooter,
 } from './ui/dialog';
 import { toast } from '../hooks/use-toast';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-
+import { getApiUrl } from '../utils/api';
+const API_URL = getApiUrl();
 // New tiered email subscription options (January 2026)
 const SUBSCRIPTION_TYPES = [
   { 
