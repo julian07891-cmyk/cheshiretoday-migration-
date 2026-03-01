@@ -8454,6 +8454,157 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/send-site-update-part1")
+async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
+    """Send Site Update (Part 1) to ALL subscribers. Requires admin authentication."""
+    try:
+        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+        if not subscribers:
+            return {"success": False, "message": "No subscribers found"}
+
+        subscriber_emails = [s.get("email") for s in subscribers if s.get("email")]
+        success_count = email_service.send_site_update_part1(to_emails=subscriber_emails)
+
+        await db.digest_log.insert_one({
+            "sent_at": datetime.now(timezone.utc),
+            "digest_time": "SiteUpdatePart1",
+            "type": "SiteUpdatePart1",
+            "subscribers_count": len(subscriber_emails),
+            "success_count": success_count
+        })
+
+        return {
+            "success": True,
+            "message": f"Site Update (Part 1) sent to {success_count}/{len(subscriber_emails)} subscribers",
+            "subscribers_targeted": len(subscriber_emails)
+        }
+    except Exception as e:
+        logger.error(f"Error sending site update part 1: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/send-site-update-part2")
+async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
+    """Send Site Update (Part 2) to ALL subscribers. Requires admin authentication."""
+    try:
+        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+        if not subscribers:
+            return {"success": False, "message": "No subscribers found"}
+
+        subscriber_emails = [s.get("email") for s in subscribers if s.get("email")]
+        success_count = email_service.send_site_update_part2(to_emails=subscriber_emails)
+
+        await db.digest_log.insert_one({
+            "sent_at": datetime.now(timezone.utc),
+            "digest_time": "SiteUpdatePart2",
+            "type": "SiteUpdatePart2",
+            "subscribers_count": len(subscriber_emails),
+            "success_count": success_count
+        })
+
+        return {
+            "success": True,
+            "message": f"Site Update (Part 2) sent to {success_count}/{len(subscriber_emails)} subscribers",
+            "subscribers_targeted": len(subscriber_emails)
+        }
+    except Exception as e:
+        logger.error(f"Error sending site update part 2: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CampaignEmailRequest(BaseModel):
+    subject: str
+    html: Optional[str] = None
+    text: Optional[str] = None
+    mode: str = "test"  # "test" or "all"
+    test_email: Optional[str] = None
+
+
+@api_router.post("/admin/send-campaign-email")
+async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = Depends(get_admin_auth)):
+    """Send a manual campaign email. mode=test sends only to test_email; mode=all sends to all subscribers."""
+    try:
+        subject = (request.subject or "").strip()
+        if not subject:
+            raise HTTPException(status_code=400, detail="Subject is required")
+
+        html = (request.html or "").strip()
+        text = (request.text or "").strip()
+
+        if not html and not text:
+            raise HTTPException(status_code=400, detail="Provide at least html or text content")
+
+        mode = (request.mode or "test").strip().lower()
+        if mode not in ("test", "all"):
+            raise HTTPException(status_code=400, detail="mode must be 'test' or 'all'")
+
+        # Determine recipients
+        if mode == "test":
+            test_email = (request.test_email or ADMIN_USERNAME or "").strip().lower()
+            if not test_email:
+                raise HTTPException(status_code=400, detail="test_email is required for test mode")
+            to_emails = [test_email]
+        else:
+            subs = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+            to_emails = [x.get("email") for x in subs if x.get("email")]
+            if not to_emails:
+                return {"success": False, "message": "No subscribers found"}
+
+        tracking_id = email_service._generate_tracking_id("ManualCampaign")
+
+        # If HTML, inject tracking pixel and tracked links placeholders
+        if html:
+            # ensure pixel
+            if "</body>" in html:
+                html_base = html.replace("</body>", f"{email_service._get_tracking_pixel(tracking_id)}</body>")
+            else:
+                html_base = html + email_service._get_tracking_pixel(tracking_id)
+
+        success_count = 0
+        for email in to_emails:
+            from urllib.parse import quote
+            prefs_url = f"{email_service.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{email_service.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = email_service._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = email_service._get_tracked_url(tracking_id, unsub_url)
+
+            html_personal = None
+            if html:
+                html_personal = html_base.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+
+            # text: if placeholders exist, replace them with raw URLs
+            text_personal = None
+            if text:
+                text_personal = text.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+
+            if email_service._send_email(email, subject, html_personal or ("<p>" + (text_personal or "") + "</p>"), text_personal):
+                success_count += 1
+
+        await db.digest_log.insert_one({
+            "sent_at": datetime.now(timezone.utc),
+            "digest_time": "ManualCampaign",
+            "type": "ManualCampaign",
+            "subscribers_count": len(to_emails),
+            "success_count": success_count,
+            "mode": mode,
+            "subject": subject,
+            "tracking_id": tracking_id
+        })
+
+        return {
+            "success": True,
+            "message": f"Campaign sent to {success_count}/{len(to_emails)} recipients",
+            "mode": mode,
+            "tracking_id": tracking_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending manual campaign: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Cheshire News API"}

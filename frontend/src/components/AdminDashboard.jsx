@@ -40,6 +40,42 @@ const StatCard = memo(({ title, value, icon: Icon, color }) => (
 ));
 
 StatCard.displayName = 'StatCard';
+
+class AdminErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, info) {
+    // eslint-disable-next-line no-console
+    console.error('AdminDashboard crashed:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 max-w-3xl mx-auto">
+          <div className="border border-red-300 dark:border-red-800 rounded-lg p-4 bg-red-50 dark:bg-red-900/20">
+            <h2 className="text-lg font-semibold text-red-800 dark:text-red-200">Admin Dashboard crashed</h2>
+            <p className="text-sm text-red-700 dark:text-red-300 mt-2">
+              The UI hit a runtime error while rendering. The exact error is shown below. Copy/paste it here and we’ll fix it.
+            </p>
+            <pre className="mt-3 text-xs overflow-auto whitespace-pre-wrap bg-white/70 dark:bg-black/20 p-3 rounded">
+              {String(this.state.error)}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
 
@@ -84,6 +120,13 @@ const AdminDashboard = ({ onBack }) => {
   // Email analytics state
   const [emailAnalytics, setEmailAnalytics] = useState(null);
   const [emailAnalyticsLoading, setEmailAnalyticsLoading] = useState(false);
+
+  
+  // Manual campaign email (admin)
+  const [campaignSubject, setCampaignSubject] = useState("Cheshire Today update");
+  const [campaignHtml, setCampaignHtml] = useState("<h2>Cheshire Today update</h2><p>Write your announcement here.</p><p><a href='__PREFS_URL__'>Update preferences</a> • <a href='__UNSUB_URL__'>Unsubscribe</a></p>");
+  const [campaignText, setCampaignText] = useState("Cheshire Today update\n\nUpdate preferences: __PREFS_URL__\nUnsubscribe: __UNSUB_URL__");
+  const [campaignTestEmail, setCampaignTestEmail] = useState("news@cheshiretoday.co.uk");
   
   // Activity log state
   const [activityLog, setActivityLog] = useState([]);
@@ -1591,6 +1634,86 @@ const AdminDashboard = ({ onBack }) => {
     } finally {
       setActionLoading(null);
     }
+  
+  // Manual Campaign Email Handlers (test + send all)
+  const handleCampaignSendTest = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Send Test Campaign Email',
+      description: `This will send a test email to: ${campaignTestEmail || 'your admin email'}. Continue?`,
+      variant: 'warning',
+      confirmText: 'Send Test',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
+
+    setActionLoading('campaign-test');
+    logActivity('Campaign Test', `Subject: ${campaignSubject}`);
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/send-campaign-email`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: campaignSubject,
+          html: campaignHtml,
+          text: campaignText,
+          mode: 'test',
+          test_email: campaignTestEmail
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "✅ Test Sent", description: data.message });
+      } else {
+        toast({ title: "❌ Failed", description: data.detail || data.message, variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCampaignSendAll = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Send Campaign to ALL Subscribers',
+      description: 'This will send your custom announcement to ALL subscribers. Make sure the content is final. Continue?',
+      variant: 'destructive',
+      confirmText: 'Send to All',
+      cancelText: 'Cancel'
+    });
+    if (!confirmed) return;
+
+    setActionLoading('campaign-all');
+    logActivity('Campaign All', `Subject: ${campaignSubject}`);
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/send-campaign-email`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: campaignSubject,
+          html: campaignHtml,
+          text: campaignText,
+          mode: 'all'
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "✅ Campaign Sent", description: data.message });
+        // Refresh analytics/logs after send
+        fetchEmailHistory();
+        fetchEmailAnalytics();
+      } else {
+        toast({ title: "❌ Failed", description: data.detail || data.message, variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   };
 
   // Job Board Handlers
@@ -2908,6 +3031,7 @@ const AdminDashboard = ({ onBack }) => {
 
         {/* Digest Tab Content */}
         {activeTab === 'digest' && (
+          <AdminErrorBoundary>
           <div className="space-y-6">
             {/* New Email Strategy Overview */}
             <Card>
@@ -3011,7 +3135,7 @@ const AdminDashboard = ({ onBack }) => {
                           <Send className="h-4 w-4 mr-2" />
                           Send Test
                         </>
-                      )}
+        )}
                     </Button>
                   </div>
                 </div>
@@ -3109,6 +3233,93 @@ const AdminDashboard = ({ onBack }) => {
                   )}
                   Send Migration Announcement to All Subscribers
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Manual Campaign Email */}
+            <Card className="border-2 border-blue-200 dark:border-blue-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                  <Mail className="h-5 w-5" />
+                  Manual Campaign Email
+                </CardTitle>
+                <CardDescription>
+                  Create and send a custom announcement. Supports placeholders: __PREFS_URL__ and __UNSUB_URL__.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Subject</label>
+                  <Input
+                    value={campaignSubject}
+                    onChange={(e) => setCampaignSubject(e.target.value)}
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
+                    data-testid="campaign-subject-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">HTML (optional)</label>
+                  <Textarea
+                    value={campaignHtml}
+                    onChange={(e) => setCampaignHtml(e.target.value)}
+                    rows={6}
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
+                    data-testid="campaign-html-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Plain text (optional)</label>
+                  <Textarea
+                    value={campaignText}
+                    onChange={(e) => setCampaignText(e.target.value)}
+                    rows={4}
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
+                    data-testid="campaign-text-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Send test to</label>
+                  <Input
+                    value={campaignTestEmail}
+                    onChange={(e) => setCampaignTestEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
+                    data-testid="campaign-test-email-input"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Button
+                    onClick={handleCampaignSendTest}
+                    disabled={actionLoading === 'campaign-test'}
+                    variant="outline"
+                    data-testid="campaign-send-test-button"
+                  >
+                    {actionLoading === 'campaign-test' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4 mr-2" />
+                    )}
+                    Send Test
+                  </Button>
+
+                  <Button
+                    onClick={handleCampaignSendAll}
+                    disabled={actionLoading === 'campaign-all'}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="campaign-send-all-button"
+                  >
+                    {actionLoading === 'campaign-all' ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Send to All Subscribers
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
@@ -3246,6 +3457,7 @@ const AdminDashboard = ({ onBack }) => {
               </CardContent>
             </Card>
           </div>
+          </AdminErrorBoundary>
         )}
 
         {/* Analytics Tab Content */}

@@ -1556,4 +1556,74 @@ Cheshire Today Jobs Team
 
 
 # Global email service instance
+
+    def send_site_update_part1(self, to_emails: List[str]) -> int:
+        """Send Site Update (Part 1) — calm authority announcement."""
+        subject = "Cheshire Today is evolving — here’s what it means for you"
+        tracking_id = self._generate_tracking_id("SiteUpdatePart1")
+
+        html_content = f"""<html><body>
+        <h2>Cheshire Today has evolved.</h2>
+        <p>We’ve rebuilt the platform to focus more clearly on what truly affects life across Cheshire.</p>
+        <p><strong>What this means for you:</strong></p>
+        <ul>
+          <li>Stronger focus on Cheshire business and economic impact</li>
+          <li>Clearer reporting on finance, tax and policy changes</li>
+          <li>More insight into AI and technology shaping the region</li>
+          <li>Improved performance and reliability across all devices</li>
+        </ul>
+        <p>Update your preferences: __PREFS_URL__</p>
+        <p>Unsubscribe: __UNSUB_URL__</p>
+        {self._get_tracking_pixel(tracking_id)}
+        </body></html>"""
+
+        success_count = 0
+        for email in to_emails:
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
+                success_count += 1
+
+        logger.info(f"Site Update Part 1 sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        return success_count
+
+    def send_site_update_part2(self, to_emails: List[str]) -> int:
+        """Send Site Update (Part 2) — reinforcement email."""
+        subject = "What’s new on Cheshire Today"
+        tracking_id = self._generate_tracking_id("SiteUpdatePart2")
+
+        html_content = f"""<html><body>
+        <h2>What’s new on Cheshire Today</h2>
+        <ul>
+          <li>Deeper local business coverage</li>
+          <li>Practical finance and tax explainers</li>
+          <li>AI & technology guides relevant to Cheshire</li>
+          <li>Clearer categorisation and improved reading experience</li>
+        </ul>
+        <p>If there’s a topic you’d like us to explore, reply to this email.</p>
+        <p>Update your preferences: __PREFS_URL__</p>
+        <p>Unsubscribe: __UNSUB_URL__</p>
+        {self._get_tracking_pixel(tracking_id)}
+        </body></html>"""
+
+        success_count = 0
+        for email in to_emails:
+            from urllib.parse import quote
+            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
+            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
+            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
+            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            if self._send_email(email, subject, html_personal):
+                success_count += 1
+
+        logger.info(f"Site Update Part 2 sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        return success_count
+
 email_service = EmailService()
+
+
