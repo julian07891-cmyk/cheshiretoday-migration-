@@ -7,6 +7,7 @@ python3 -m pip install -r backend/requirements.txt
 
 echo "==> Building frontend"
 cd frontend
+export PUBLIC_URL="/"
 npm ci
 npm run build
 cd ..
