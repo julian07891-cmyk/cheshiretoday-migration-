@@ -9348,7 +9348,8 @@ async def serve_article_for_api(article_id: str):
 
 # Helper function for robots.txt content
 def get_robots_content():
-    base_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk')
+    base_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk').rstrip('/')
+    host_only = re.sub(r'^https?://', '', base_url).rstrip('/')
     return f"""# =============================================
 # Cheshire Today - robots.txt
 # https://cheshiretoday.co.uk
@@ -9446,11 +9447,11 @@ Disallow: /
 # =============================================
 # Sitemaps
 # =============================================
-Sitemap: {base_url}/api/sitemap.xml
-Sitemap: {base_url}/api/news-sitemap.xml
+Sitemap: {base_url}/sitemap.xml
+Sitemap: {base_url}/news-sitemap.xml
 
 # Preferred domain
-Host: {base_url}
+Host: {host_only}
 """
 
 # Helper function for ads.txt content
