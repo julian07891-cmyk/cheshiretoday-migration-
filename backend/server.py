@@ -9252,176 +9252,86 @@ async def get_related_articles(article_id: str, limit: int = 4):
         logger.error(f"Error getting related articles: {str(e)}")
         return []
 
-async def serve_article_html(article_id: str):
+async def serve_article_html(article_id: str, request=None):
     """
-    Server-side rendered HTML for social media crawlers (Facebook, Twitter, LinkedIn).
-    This endpoint serves static HTML with pre-rendered meta tags since crawlers don't execute JavaScript.
+    HTML endpoint used by social crawlers.
+    Must accept BOTH:
+      - Mongo _id (24-hex) e.g. 69a6cd63d803ba80e6108213
+      - Our public UUID field in article["id"]
     """
     from fastapi.responses import HTMLResponse
-    
+    import urllib.parse
+    import html as _html
+
+    article = None
+
+    # 1) Try Mongo ObjectId if it looks like 24-hex
     try:
-        # Fetch article from database - try both ObjectId and string id field
-        article = None
-        
-        # First try to find by _id (ObjectId)
-        try:
-            article = await db.articles.find_one({"_id": ObjectId(article_id)}, {"_id": 0})
-        except:
-            pass
-        
-        # If not found, try to find by 'id' field (string)
-        if not article:
-            article = await db.articles.find_one({"id": article_id}, {"_id": 0})
-        
-        # Use environment variable for base URL (works across all deployment environments)
-        base_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk')
-        
-        if not article:
-            # Return default meta tags if article not found
-            title = "Cheshire Today - Local News & Updates"
-            description = "Stay informed with the latest news from Cheshire and across the UK."
-            image = "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop&auto=format"
-            share_url = base_url
-            app_url = base_url
-        else:
-            title = article.get('title', 'Cheshire Today Article')
-            description = article.get('content', '')[:200]
-            image = article.get('image', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop&auto=format')
-            # Use clean production domain URL for og:url (what users see when shared)
-            # CRITICAL: Point og:url to the API ENDPOINT (server-side rendered HTML), not the frontend.
-            # This ensures Facebook scraper sees this exact HTML again, instead of React's blank index.html
-            share_url = f"{api_public_url}/api/article/{article_id}"
-            
-            # User-facing URL (React route)
-            app_url = f"{public_url}/article/{article_id}"
-        
-        # --- Structured Data (NewsArticle Schema) ---
-        import json
-        # datetime imported at top-level
-
-        if article:
-            published = article.get("publishedDate")
+        if isinstance(article_id, str) and re.fullmatch(r"[0-9a-fA-F]{24}", article_id):
             try:
-                published_iso = datetime.fromisoformat(str(published).replace("Z","+00:00")).isoformat()
-            except:
-                published_iso = datetime.utcnow().isoformat()
+                from bson import ObjectId
+                article = await db.articles.find_one({"_id": ObjectId(article_id)})
+            except Exception:
+                article = None
+    except Exception:
+        article = None
 
-            structured_data = {
-                "@context": "https://schema.org",
-                "@type": "NewsArticle",
-                "headline": title,
-                "image": [image],
-                "datePublished": published_iso,
-                "dateModified": published_iso,
-                "author": {
-                    "@type": "Person",
-                    "name": article.get("author", "Cheshire Today")
-                },
-                "publisher": {
-                    "@type": "Organization",
-                    "name": "Cheshire Today",
-                    "logo": {
-                        "@type": "ImageObject",
-                        "url": f"{base_url}/logo.png"
-                    }
-                },
-                "mainEntityOfPage": {
-                    "@type": "WebPage",
-                    "@id": app_url
-                }
-            }
+    # 2) Fallback: try our public UUID field
+    if not article:
+        try:
+            article = await db.articles.find_one({"id": article_id})
+        except Exception:
+            article = None
 
-            json_ld_script = f'<script type="application/ld+json">{json.dumps(structured_data)}</script>'
-        else:
-            published_iso = ""
-            json_ld_script = ""
+    # 3) If still missing, return 404 (never 500)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
 
-        # Generate static HTML with meta tags for social media crawlers
-        html_content = f"""<!DOCTYPE html>
+    # Use the public UUID if present (preferred)
+    public_id = str(article.get("id") or article_id)
+
+    title = str(article.get("title") or "Cheshire Today")
+    desc = str(article.get("summary") or "")
+    img = str(article.get("image") or "https://cheshiretoday.co.uk/social-share.jpg")
+
+    # Canonical/OG should point at the real domain (not Render)
+    canonical = f"https://cheshiretoday.co.uk/article/{urllib.parse.quote(public_id)}"
+
+    # Escape to avoid breaking HTML
+    esc_title = _html.escape(title)
+    esc_desc = _html.escape(desc)
+    esc_img = _html.escape(img)
+    esc_canon = _html.escape(canonical)
+
+    html_content = f"""<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title} | Cheshire Today</title>
-    
-    <!-- Primary Meta Tags -->
-    <meta name="title" content="{title}">
-    <meta name="description" content="{description}">
-    
-    <!-- Facebook / Open Graph -->
-    <meta property="fb:app_id" content="2091422248085004" />
-    <meta property="og:type" content="article">
-    <meta property="og:url" content="{share_url}">
-    <meta property="og:title" content="{title}">
-    <meta property="og:description" content="{description}">
-    <meta property="og:image" content="{image}">
-    <meta property="og:image:secure_url" content="{image}">
-    <meta property="og:image:type" content="image/jpeg">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="{title}">
-    <meta property="og:site_name" content="Cheshire Today">
-    <meta property="og:locale" content="en_GB">
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="{share_url}">
-    <meta name="twitter:title" content="{title}">
-    <meta name="twitter:description" content="{description}">
-    <meta name="twitter:image" content="{image}">
-    <meta name="twitter:image:alt" content="{title}">
-    <meta name="twitter:site" content="@CheshireToday">
-
-    {json_ld_script}
-    <link rel="canonical" href="{app_url}">
-    <meta property="article:published_time" content="{published_iso}">
-    <meta property="article:author" content="{article.get('author','Cheshire Today') if article else ''}">
-    
-    <!-- Redirect to React app for actual users -->
-    <script>
-        // Check if this is a bot/crawler
-        var userAgent = navigator.userAgent.toLowerCase();
-        var isCrawler = /bot|crawler|spider|crawling|facebookexternalhit|twitterbot|linkedinbot|whatsapp/i.test(userAgent);
-        
-        // If not a crawler, redirect to main site (React Router will handle article display)
-        if (!isCrawler) {{
-            window.location.href = "{app_url}";
-        }}
-    </script>
-</head>
-<body style="font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6;">
-    <h1>{title}</h1>
-    <p>{description}</p>
-    <p style="color: #666; font-size: 14px;">
-        <a href="{app_url}" style="color: #059669; text-decoration: none;">← Back to Cheshire Today</a>
-    </p>
-</body>
-</html>"""
-        
-        return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
-        
-    except Exception as e:
-        logger.error(f"Error serving article for social crawlers: {str(e)}")
-        # Return a basic HTML page on error
-        # Use environment variable for base URL (works across all deployment environments)
-        base_url = os.environ.get('PUBLIC_URL', 'https://cheshiretoday.co.uk')
-        fallback_html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta property="og:title" content="Cheshire Today - Local News">
-    <meta property="og:image" content="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop">
-    <meta property="fb:app_id" content="2091422248085004">
-    <script>window.location.href = "{public_url}";</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{esc_title}</title>
+  <link rel="canonical" href="{esc_canon}">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Cheshire Today">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:url" content="{esc_canon}">
+  <meta property="og:title" content="{esc_title}">
+  <meta property="og:description" content="{esc_desc}">
+  <meta property="og:image" content="{esc_img}">
+  <meta property="og:image:secure_url" content="{esc_img}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{esc_title}">
+  <meta name="twitter:description" content="{esc_desc}">
+  <meta name="twitter:image" content="{esc_img}">
 </head>
 <body>
-    <h1>Cheshire Today</h1>
-    <p><a href="{public_url}">Visit Cheshire Today</a></p>
+  <h1>{esc_title}</h1>
+  <p>{esc_desc}</p>
+  <p><a href="{esc_canon}">Open article</a></p>
 </body>
 </html>"""
-        return HTMLResponse(content=fallback_html)
 
-# Register article endpoints for social media crawlers
+    # Cache modestly to reduce scraper flapping
+    return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
     """
