@@ -1,4 +1,0 @@
-# Cheshire Today - ads.txt
-# Amazon Associates Program
-
-amazon-adsystem.com, cheshiretoday-21, DIRECT

@@ -10621,37 +10621,44 @@ app.include_router(rss_routes.router)
 
 # =====================================================================================
 # SERVE REACT FRONTEND (Render copies build into backend/frontend_build)
-# - Serve real files when they exist (/static/*, /favicon.ico, etc)
+# - Serve index.html at /
+# - Serve real files when they exist (/static/* etc)
 # - Otherwise return index.html so client-side routes work (/privacy, /terms, etc)
+# - Never hijack /api/*
 # =====================================================================================
 from pathlib import Path
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, Response
 
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"
 _INDEX_HTML = _FRONTEND_DIR / "index.html"
 
-# Serve CRA static assets (JS/CSS chunks)
-if (_FRONTEND_DIR / "static").is_dir():
-    app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR / "static")), name="static")
+def _spa_index_or_500():
+    if _INDEX_HTML.is_file():
+        return FileResponse(str(_INDEX_HTML))
+    raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
+
+@app.get("/")
+async def serve_spa_root():
+    return _spa_index_or_500()
+
+@app.head("/")
+async def head_spa_root():
+    return Response(status_code=200)
 
 @app.get("/{full_path:path}")
 async def serve_react_spa(full_path: str):
-    # Never hijack API routes
-    if full_path.startswith("api"):
+    if full_path.startswith("api/") or full_path == "api":
         raise HTTPException(status_code=404, detail="Not Found")
-
     candidate = (_FRONTEND_DIR / full_path)
-
-    # Serve actual file if it exists in the build dir
     if candidate.is_file():
         return FileResponse(str(candidate))
+    return _spa_index_or_500()
 
-    # Otherwise serve SPA shell (index.html)
-    if _INDEX_HTML.is_file():
-        return FileResponse(str(_INDEX_HTML))
-
-    raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
+@app.head("/{full_path:path}")
+async def head_react_spa(full_path: str):
+    if full_path.startswith("api/") or full_path == "api":
+        raise HTTPException(status_code=404, detail="Not Found")
+    return Response(status_code=200)
 
 
 # Add GZip compression middleware for faster response delivery
