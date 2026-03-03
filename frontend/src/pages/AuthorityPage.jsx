@@ -173,10 +173,10 @@ export default function AuthorityPage() {
         <Helmet>
           <title>{title} | Cheshire Today</title>
           <meta name="description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
-          <link rel="canonical" href={"https://cheshiretoday.co.uk/guides/" + slug} />
+          <link rel="canonical" href={"https://cheshiretoday.co.uk/"} />
           <meta property="og:title" content={`${title} | Cheshire Today`} />
           <meta property="og:description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
-          <meta property="og:url" content={"https://cheshiretoday.co.uk/guides/" + slug} />
+          <meta property="og:url" content={"https://cheshiretoday.co.uk/"} />
           <meta property="og:type" content="article" />
           <script
             type="application/ld+json"
@@ -199,7 +199,7 @@ export default function AuthorityPage() {
                 "image": "https://cheshiretoday.co.uk/social-share.jpg",
                 "mainEntityOfPage": {
                   "@type": "WebPage",
-                  "@id": "https://cheshiretoday.co.uk/guides/" + slug
+                  "@id": "https://cheshiretoday.co.uk/"
                 }
               })
             }}

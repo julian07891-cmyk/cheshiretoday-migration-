@@ -143,8 +143,6 @@ import { toast } from "./hooks/use-toast";
 import { Toaster } from "./components/ui/toaster";
 import { articleService } from "./services/api";
 import LocationPage from "./components/LocationPage";
-import AuthorityPage from "./pages/AuthorityPage";
-
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-20 w-full"></div>
@@ -272,7 +270,6 @@ function App() {
             />
             {/* Location-specific pages for Local SEO */}
             <Route path="/advertise" element={<AdvertisePage />} />
-            <Route path="/guides/:slug" element={<AuthorityPage />} />
             <Route path="/contact" element={<ContactPage />} />
 
             <Route path="/:location" element={<LocationRouteWrapper />} />

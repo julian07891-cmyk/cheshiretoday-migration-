@@ -116,22 +116,12 @@ function autoLinkContent(rawText, pillarLabel) {
   const add = (pattern, href) => links.push({ pattern, href });
 
   // Local tax
-  add(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
-
-  // Finance staples
+// Finance staples
 
   // Business (draft pages exist; link anyway — they render)
-  add(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
-  add(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
-  add(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
-
-  // Investing / ISA (draft exists)
-  add(/\b(isa|stocks?\s+and\s+shares\s+isa|cash\s+isa|lifetime\s+isa)\b/i, "/guides/best-isa-platforms-uk");
-
-  // AI (published)
-  add(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
-
-  // 4) Apply with limits (avoid spam)
+// Investing / ISA (draft exists)
+// AI (published)
+// 4) Apply with limits (avoid spam)
   const maxLinks = pillar.includes("ai") ? 3 : 4;
   let used = 0;
   const usedHref = new Set();
@@ -152,15 +142,10 @@ function autoLinkContent(rawText, pillarLabel) {
 
   // Prioritise by pillar
   if (pillar.includes("ai")) {
-    replaceOnce(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
-  } else if (pillar.includes("business")) {
-    replaceOnce(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
-    replaceOnce(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
-    replaceOnce(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
-  } else if (pillar.includes("finance")) {
+} else if (pillar.includes("business")) {
+} else if (pillar.includes("finance")) {
   } else if (pillar.includes("local")) {
-    replaceOnce(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
-  }
+}
 
   // Fill remaining in general priority order
   for (const { pattern, href } of links) {
@@ -287,7 +272,7 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
             className="rounded-lg border border-slate-200 dark:border-slate-800 bg-[#FBFAF7] dark:bg-transparent p-2.5"
           >
             <a
-              href={`/guides/${g.slug}`}
+              href={"#"}
               className="block font-semibold text-sky-900 dark:text-slate-200 hover:underline underline-offset-2"
             >
               {safeText(g.title) || g.slug}
@@ -311,7 +296,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel }) => {
 
   const title = safeText(g?.title) || "In-depth Guide";
   const slug = String(g?.slug || "").trim();
-  const href = slug ? `/guides/${slug}` : "/guides/best-ai-tools-uk";
+  const href = null;
 
   return (
     <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
