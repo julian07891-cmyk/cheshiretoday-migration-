@@ -1834,14 +1834,13 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
                     
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
-            await db.articles.insert_one(article)
+                    await db.articles.insert_one(article)
                     existing_titles.add(title.lower())
                     used_image_urls.add(rss_image)
                     imported_articles.append(article)
                     imported_count += 1
                     logger.info(f"✅ Imported {category_name} article: {title[:50]}...")
-                
-                return imported_count
+                    return imported_count
             
             # Import UK News articles
             uk_imported = await import_category_articles(uk_news_articles, "UK News", request.uk_articles, "uk_imported")
@@ -2041,7 +2040,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
 
                 article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
-            await db.articles.insert_one(article)
+                await db.articles.insert_one(article)
                 existing_titles.add(title.lower())
                 used_image_urls.add(article['image'])
                 imported_articles.append(article)
@@ -8852,6 +8851,11 @@ async def health_check():
     """Health check endpoint for Kubernetes liveness probes - returns immediately"""
     return {"status": "healthy", "service": "cheshire-news"}
 
+@api_router.get("/health")
+async def api_health_check():
+    """Alias for Render/cron/probes that hit /api/health"""
+    return await health_check()
+
 @app.get("/ready")
 async def readiness_check():
     """Readiness check endpoint for Kubernetes - verifies DB connection"""
@@ -10614,6 +10618,41 @@ async def head_article(article_id: str):
 
 app.include_router(api_router)
 app.include_router(rss_routes.router)
+
+# =====================================================================================
+# SERVE REACT FRONTEND (Render copies build into backend/frontend_build)
+# - Serve real files when they exist (/static/*, /favicon.ico, etc)
+# - Otherwise return index.html so client-side routes work (/privacy, /terms, etc)
+# =====================================================================================
+from pathlib import Path
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+_FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"
+_INDEX_HTML = _FRONTEND_DIR / "index.html"
+
+# Serve CRA static assets (JS/CSS chunks)
+if (_FRONTEND_DIR / "static").is_dir():
+    app.mount("/static", StaticFiles(directory=str(_FRONTEND_DIR / "static")), name="static")
+
+@app.get("/{full_path:path}")
+async def serve_react_spa(full_path: str):
+    # Never hijack API routes
+    if full_path.startswith("api"):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    candidate = (_FRONTEND_DIR / full_path)
+
+    # Serve actual file if it exists in the build dir
+    if candidate.is_file():
+        return FileResponse(str(candidate))
+
+    # Otherwise serve SPA shell (index.html)
+    if _INDEX_HTML.is_file():
+        return FileResponse(str(_INDEX_HTML))
+
+    raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
+
 
 # Add GZip compression middleware for faster response delivery
 app.add_middleware(GZipMiddleware, minimum_size=500)

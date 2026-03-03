@@ -48,3 +48,7 @@ patch_*.py
 *_update.json
 *.tmp
 tmp_*.json
+
+# Build artifacts (generated)
+backend/frontend_build/
+frontend/build/
