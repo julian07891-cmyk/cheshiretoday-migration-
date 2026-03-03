@@ -21,7 +21,7 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
     const c = article.category || '';
     if (c === 'Local News') return 'Local';
     if (c === 'UK News') return 'UK';
-    if (c === 'Tech' || c === 'Science') return 'AI & Tech';
+    if (c === 'Tech') return 'AI & Tech';
     return c;
   })();
 const formatDate = (dateString) => {

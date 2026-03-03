@@ -150,15 +150,42 @@ const LoadingFallback = () => (
   <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-20 w-full"></div>
 );
 
+// Error boundary for /admin (catches lazy import + render crashes)
+class AdminRouteErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    // eslint-disable-next-line no-console
+    console.error('[AdminRouteErrorBoundary]', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24 }}>
+          <h2 style={{ fontWeight: 700, marginBottom: 8 }}>Admin failed to load</h2>
+          <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+            {String(this.state.error)}
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // Admin route wrapper (keeps /admin stable in production)
 const AdminPage = () => (
-  <Suspense fallback={<LoadingFallback />}>
-    <AdminDashboard />
-  </Suspense>
+  <AdminRouteErrorBoundary>
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminDashboard />
+    </Suspense>
+  </AdminRouteErrorBoundary>
 );
-
-
-
 // Valid location slugs
 const VALID_LOCATIONS = [
   "cheshire-general",

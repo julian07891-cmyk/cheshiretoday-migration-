@@ -20,6 +20,34 @@ import { Loader2, Clock, ExternalLink, Share2, User } from "lucide-react";
 import RelatedArticles from "../components/RelatedArticles";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
+function getSourceLabel(article) {
+  const raw = String(article?.source || "").trim();
+  const link = String(article?.sourceUrl || article?.source_url || "").trim();
+
+  // If 'source' is missing, use hostname from source_url
+  const fallbackFromLink = () => {
+    try {
+      if (!link) return "";
+      return new URL(link).hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+
+  // If 'source' itself is a URL, show hostname instead of the full URL
+  const looksLikeUrl = /^https?:\/\//i.test(raw);
+  if (!raw) return fallbackFromLink() || "Source";
+  if (looksLikeUrl) {
+    try {
+      return new URL(raw).hostname.replace(/^www\./, "");
+    } catch {
+      return fallbackFromLink() || "Source";
+    }
+  }
+  return raw;
+}
+
+
 // --- auto-stubs injected for missing modules (build-safe) ---
 const AffiliateWidgetInline = () => null;
 const AffiliateWidgetEndArticle = () => null;
@@ -323,10 +351,10 @@ export default function ArticlePageV2({ categories }) {
                           className="ml-1 text-emerald-600 hover:text-emerald-700 hover:underline font-medium"
                           data-testid="article-source-link"
                         >
-                          {article.source}
+                          {getSourceLabel(article)}
                         </a>
                       ) : (
-                        <span className="ml-1 font-medium">{article.source}</span>
+                        <span className="ml-1 font-medium">{getSourceLabel(article)}</span>
                       )}
                     </div>
                   )}
@@ -390,7 +418,7 @@ export default function ArticlePageV2({ categories }) {
                     data-testid="source-attribution-box"
                   >
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                      This article was originally published by <strong>{article.source}</strong>
+                      This article was originally published by <strong>{getSourceLabel(article)}</strong>
                     </p>
                     <a
                       href={article.source_url}
@@ -400,7 +428,7 @@ export default function ArticlePageV2({ categories }) {
                       data-testid="read-original-link"
                     >
                       <ExternalLink className="h-4 w-4 mr-1" />
-                      Read the original article at {article.source}
+                      Read the original article at {getSourceLabel(article)}
                     </a>
                   </div>
                 )}

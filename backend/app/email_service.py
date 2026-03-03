@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 """
 Email Service for Cheshire Today Newsletter
 Handles sending confirmation and newsletter emails via SMTP
@@ -62,7 +62,10 @@ class EmailService:
 
         if not getattr(self, 'smtp_enabled', False):
             logger.info('SMTP disabled (SMTP_ENABLED not true) — skipping send')
+            # Marker used by callers/admin endpoints to explain why nothing was sent
+            self.smtp_last_status = "SMTP_DISABLED"
             return False
+
 
         if not self.smtp_host or not self.smtp_port:
             logger.error("SMTP not configured (SMTP_HOST/SMTP_PORT missing)")
@@ -928,7 +931,6 @@ Cheshire Today Jobs Team
         # ===== AI/TECH 48h Fallback =====
         if len(tech_articles) == 0:
             try:
-                from datetime import timedelta, timezone, datetime
                 cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
                 cursor = self.db.articles.find({"publishedDate": {"$gte": cutoff.isoformat()}}, {"_id": 1, "title": 1, "category": 1}).sort("publishedDate", -1).limit(20)
                 for a in cursor:

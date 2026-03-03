@@ -87,12 +87,6 @@ export const SAMPLE_PRODUCTS = {
     { name: 'Business Books', price: 'From £8.99', image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=200', url: 'https://www.amazon.co.uk/s?k=business+books+bestsellers', rating: 4.6 },
     { name: 'Noise-Cancelling Headphones', price: 'From £49.99', image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200', url: 'https://www.amazon.co.uk/s?k=noise+cancelling+headphones', rating: 4.5 },
   ],
-  'Science': [
-    { name: 'Science Books', price: 'From £9.99', image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=200', url: 'https://www.amazon.co.uk/s?k=science+books+popular', rating: 4.6 },
-    { name: 'Telescopes', price: 'From £49.99', image: 'https://images.unsplash.com/photo-1502982720700-bfff97f2ecac?w=200', url: 'https://www.amazon.co.uk/s?k=telescope+astronomy', rating: 4.4 },
-    { name: 'Microscopes', price: 'From £29.99', image: 'https://images.unsplash.com/photo-1516728778615-2d590ea1855e?w=200', url: 'https://www.amazon.co.uk/s?k=microscope+kids+educational', rating: 4.5 },
-    { name: 'Science Kits', price: 'From £14.99', image: 'https://images.unsplash.com/photo-1567789884554-0b844b5e7c34?w=200', url: 'https://www.amazon.co.uk/s?k=science+kit+experiments', rating: 4.5 },
-  ],
   'Education': [
     { name: 'Stationery Sets', price: 'From £8.99', image: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=200', url: 'https://www.amazon.co.uk/s?k=stationery+set+school', rating: 4.5 },
     { name: 'Calculators', price: 'From £9.99', image: 'https://images.unsplash.com/photo-1564466809058-bf4114d55352?w=200', url: 'https://www.amazon.co.uk/s?k=scientific+calculator', rating: 4.6 },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { Helmet } from 'react-helmet-async';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { 
   BarChart3, Users, FileText, Mail, RefreshCw, Trash2, 
   Send, Clock, AlertCircle, CheckCircle, Loader2, ArrowLeft,
@@ -40,42 +40,6 @@ const StatCard = memo(({ title, value, icon: Icon, color }) => (
 ));
 
 StatCard.displayName = 'StatCard';
-
-class AdminErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
-    console.error('AdminDashboard crashed:', error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6 max-w-3xl mx-auto">
-          <div className="border border-red-300 dark:border-red-800 rounded-lg p-4 bg-red-50 dark:bg-red-900/20">
-            <h2 className="text-lg font-semibold text-red-800 dark:text-red-200">Admin Dashboard crashed</h2>
-            <p className="text-sm text-red-700 dark:text-red-300 mt-2">
-              The UI hit a runtime error while rendering. The exact error is shown below. Copy/paste it here and we’ll fix it.
-            </p>
-            <pre className="mt-3 text-xs overflow-auto whitespace-pre-wrap bg-white/70 dark:bg-black/20 p-3 rounded">
-              {String(this.state.error)}
-            </pre>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
 
@@ -120,13 +84,12 @@ const AdminDashboard = ({ onBack }) => {
   // Email analytics state
   const [emailAnalytics, setEmailAnalytics] = useState(null);
   const [emailAnalyticsLoading, setEmailAnalyticsLoading] = useState(false);
+  // Manual campaign email state
+  const [campaignSubject, setCampaignSubject] = useState('Cheshire Today update');
+  const [campaignHtml, setCampaignHtml] = useState('');
+  const [campaignText, setCampaignText] = useState('');
+  const [campaignTestEmail, setCampaignTestEmail] = useState('news@cheshiretoday.co.uk');
 
-  
-  // Manual campaign email (admin)
-  const [campaignSubject, setCampaignSubject] = useState("Cheshire Today update");
-  const [campaignHtml, setCampaignHtml] = useState("<h2>Cheshire Today update</h2><p>Write your announcement here.</p><p><a href='__PREFS_URL__'>Update preferences</a> • <a href='__UNSUB_URL__'>Unsubscribe</a></p>");
-  const [campaignText, setCampaignText] = useState("Cheshire Today update\n\nUpdate preferences: __PREFS_URL__\nUnsubscribe: __UNSUB_URL__");
-  const [campaignTestEmail, setCampaignTestEmail] = useState("news@cheshiretoday.co.uk");
   
   // Activity log state
   const [activityLog, setActivityLog] = useState([]);
@@ -214,7 +177,7 @@ const AdminDashboard = ({ onBack }) => {
 
   const CATEGORIES = [
     'Local News', 'UK News', 'Business', 'Tech', 'Sports', 
-    'Health', 'Science', 'Entertainment', 'Education'
+    'Health', 'Education'
   ];
 
   // Helper function to show confirmation dialog
@@ -1384,7 +1347,6 @@ const AdminDashboard = ({ onBack }) => {
           business_articles: 2,
           health_articles: 2,
           tech_articles: 2,
-          science_articles: 2,
           entertainment_articles: 2,
           use_perplexity: true
         })
@@ -1634,7 +1596,75 @@ const AdminDashboard = ({ onBack }) => {
     } finally {
       setActionLoading(null);
     }
-  
+  };
+
+  // Site Update Part 1 (Day 3 style) - broadcast tool (currently sends to ALL subscribers)
+  const handleSendSiteUpdatePart1 = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Send Site Update (Part 1)',
+      description: "This will send Site Update (Part 1) to ALL subscribers. Continue?",
+      variant: 'warning',
+      confirmText: 'Send Part 1',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    setActionLoading('site-update-part1');
+    logActivity('Site Update Part 1', 'Sent Site Update (Part 1) to all subscribers');
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/send-site-update-part1`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "✅ Site Update (Part 1) Sent", description: data.message });
+      } else {
+        toast({ title: "❌ Failed", description: data.detail || data.message || "Failed to send", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Site Update Part 2 (Day 7 style) - broadcast tool (currently sends to ALL subscribers)
+  const handleSendSiteUpdatePart2 = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Send Site Update (Part 2)',
+      description: "This will send Site Update (Part 2) to ALL subscribers. Continue?",
+      variant: 'warning',
+      confirmText: 'Send Part 2',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    setActionLoading('site-update-part2');
+    logActivity('Site Update Part 2', 'Sent Site Update (Part 2) to all subscribers');
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/send-site-update-part2`, {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "✅ Site Update (Part 2) Sent", description: data.message });
+      } else {
+        toast({ title: "❌ Failed", description: data.detail || data.message || "Failed to send", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+
   // Manual Campaign Email Handlers (test + send all)
   const handleCampaignSendTest = async () => {
     const confirmed = await showConfirmation({
@@ -1701,7 +1731,6 @@ const AdminDashboard = ({ onBack }) => {
       const data = await res.json();
       if (data.success) {
         toast({ title: "✅ Campaign Sent", description: data.message });
-        // Refresh analytics/logs after send
         fetchEmailHistory();
         fetchEmailAnalytics();
       } else {
@@ -1714,7 +1743,6 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  };
 
   // Job Board Handlers
   const handleCreateJob = async () => {
@@ -2095,7 +2123,7 @@ const AdminDashboard = ({ onBack }) => {
   }
 
   return (
-    
+    <HelmetProvider>
     <div className="min-h-screen bg-muted dark:bg-gray-900">
       {/* SEO - Prevent indexing of admin pages */}
       <Helmet>
@@ -3031,7 +3059,6 @@ const AdminDashboard = ({ onBack }) => {
 
         {/* Digest Tab Content */}
         {activeTab === 'digest' && (
-          <AdminErrorBoundary>
           <div className="space-y-6">
             {/* New Email Strategy Overview */}
             <Card>
@@ -3135,7 +3162,7 @@ const AdminDashboard = ({ onBack }) => {
                           <Send className="h-4 w-4 mr-2" />
                           Send Test
                         </>
-        )}
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -3236,6 +3263,62 @@ const AdminDashboard = ({ onBack }) => {
               </CardContent>
             </Card>
 
+            {/* Site Update (Part 1) */}
+            <Card className="border-2 border-sky-200 dark:border-sky-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sky-700 dark:text-sky-400">
+                  <Mail className="h-5 w-5" />
+                  Site Update (Part 1)
+                </CardTitle>
+                <CardDescription>
+                  Broadcast update email (intended for “Day 3” message)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={handleSendSiteUpdatePart1}
+                  disabled={actionLoading === 'site-update-part1'}
+                  className="w-full bg-sky-600 hover:bg-sky-700"
+                >
+                  {actionLoading === 'site-update-part1' ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-2" />
+                  )}
+                  Send Site Update (Part 1) to All Subscribers
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Site Update (Part 2) */}
+            <Card className="border-2 border-violet-200 dark:border-violet-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-violet-700 dark:text-violet-400">
+                  <Mail className="h-5 w-5" />
+                  Site Update (Part 2)
+                </CardTitle>
+                <CardDescription>
+                  Broadcast update email (intended for “Day 7” message)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={handleSendSiteUpdatePart2}
+                  disabled={actionLoading === 'site-update-part2'}
+                  className="w-full bg-violet-600 hover:bg-violet-700"
+                >
+                  {actionLoading === 'site-update-part2' ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mail className="h-4 w-4 mr-2" />
+                  )}
+                  Send Site Update (Part 2) to All Subscribers
+                </Button>
+              </CardContent>
+            </Card>
+
+
+            
             {/* Manual Campaign Email */}
             <Card className="border-2 border-blue-200 dark:border-blue-800">
               <CardHeader>
@@ -3249,75 +3332,82 @@ const AdminDashboard = ({ onBack }) => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Subject</label>
+                  <Label className="text-sm">Subject</Label>
                   <Input
                     value={campaignSubject}
                     onChange={(e) => setCampaignSubject(e.target.value)}
                     className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
                     data-testid="campaign-subject-input"
+                    placeholder="Subject line..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">HTML (optional)</label>
-                  <Textarea
-                    value={campaignHtml}
-                    onChange={(e) => setCampaignHtml(e.target.value)}
-                    rows={6}
-                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
-                    data-testid="campaign-html-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Plain text (optional)</label>
-                  <Textarea
-                    value={campaignText}
-                    onChange={(e) => setCampaignText(e.target.value)}
-                    rows={4}
-                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
-                    data-testid="campaign-text-input"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-muted-foreground dark:text-gray-300">Send test to</label>
+                  <Label className="text-sm">Test email (for Send Test)</Label>
                   <Input
                     value={campaignTestEmail}
                     onChange={(e) => setCampaignTestEmail(e.target.value)}
-                    placeholder="you@example.com"
                     className="bg-card dark:bg-gray-700 text-foreground dark:text-white"
                     data-testid="campaign-test-email-input"
+                    placeholder="you@domain.com"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">HTML content</Label>
+                  <Textarea
+                    value={campaignHtml}
+                    onChange={(e) => setCampaignHtml(e.target.value)}
+                    rows={8}
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white font-mono text-xs"
+                    data-testid="campaign-html-input"
+                    placeholder="<h1>Headline</h1><p>Body...</p>"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Tip: include __PREFS_URL__ and __UNSUB_URL__ somewhere near the footer.
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="text-sm">Plain text fallback</Label>
+                  <Textarea
+                    value={campaignText}
+                    onChange={(e) => setCampaignText(e.target.value)}
+                    rows={6}
+                    className="bg-card dark:bg-gray-700 text-foreground dark:text-white text-xs"
+                    data-testid="campaign-text-input"
+                    placeholder="Plain text version..."
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button
                     onClick={handleCampaignSendTest}
-                    disabled={actionLoading === 'campaign-test'}
-                    variant="outline"
+                    disabled={actionLoading === 'campaign-test' || !campaignSubject}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700"
                     data-testid="campaign-send-test-button"
                   >
                     {actionLoading === 'campaign-test' ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <Mail className="h-4 w-4 mr-2" />
+                      <Send className="h-4 w-4 mr-2" />
                     )}
                     Send Test
                   </Button>
 
                   <Button
                     onClick={handleCampaignSendAll}
-                    disabled={actionLoading === 'campaign-all'}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={actionLoading === 'campaign-all' || !campaignSubject}
+                    variant="destructive"
+                    className="flex-1"
                     data-testid="campaign-send-all-button"
                   >
                     {actionLoading === 'campaign-all' ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <Send className="h-4 w-4 mr-2" />
+                      <AlertTriangle className="h-4 w-4 mr-2" />
                     )}
-                    Send to All Subscribers
+                    Send to All
                   </Button>
                 </div>
               </CardContent>
@@ -3457,7 +3547,6 @@ const AdminDashboard = ({ onBack }) => {
               </CardContent>
             </Card>
           </div>
-          </AdminErrorBoundary>
         )}
 
         {/* Analytics Tab Content */}
@@ -4438,10 +4527,10 @@ const AdminDashboard = ({ onBack }) => {
                           </p>
                         </div>
                         <ul className="text-xs text-muted-foreground dark:text-gray-400 text-left space-y-1">
-                          <li>• 8 Cheshire/Local articles</li>
-                          <li>• 12 UK News articles</li>
-                          <li>• 2 each: Business, Health, Tech, Science, Entertainment</li>
-                          <li>• 3 Sports articles</li>
+                                                    <li>• ~8 Cheshire/Local articles (authority-first)</li>
+                          <li>• ~12 UK context articles (supporting coverage)</li>
+                          <li>• 2 Business + 2 AI/Tech articles (pillar mix)</li>
+                          <li>• Sports is capped (≤3) and not prioritised</li>
                         </ul>
                         <Button
                           onClick={handleImportNews}
@@ -4565,34 +4654,18 @@ const AdminDashboard = ({ onBack }) => {
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{importResult.cheshire_articles || 0}</p>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400">Cheshire News</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Local/Cheshire</p>
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{importResult.uk_articles || 0}</p>
                           <p className="text-xs text-muted-foreground dark:text-gray-400">UK News</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{(importResult.business_articles || 0) + (importResult.tech_articles || 0) + (importResult.health_articles || 0)}</p>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400">Business/Tech/Health</p>
+                          <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{(importResult.business_articles || 0) + (importResult.tech_articles || 0)}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Business + AI/Tech</p>
                         </div>
                       </div>
-                      {importResult.science_articles !== undefined && (
-                        <div className="mt-4 grid grid-cols-3 gap-4">
-                          <div className="text-center">
-                            <p className="text-lg font-bold text-cyan-700 dark:text-cyan-300">{importResult.science_articles || 0}</p>
-                            <p className="text-xs text-muted-foreground dark:text-gray-400">Science</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-lg font-bold text-pink-700 dark:text-pink-300">{importResult.entertainment_articles || 0}</p>
-                            <p className="text-xs text-muted-foreground dark:text-gray-400">Entertainment</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-lg font-bold text-green-700 dark:text-green-300">{importResult.sports_articles || 0}</p>
-                            <p className="text-xs text-muted-foreground dark:text-gray-400">Sports</p>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
+                                          </CardContent>
                   </Card>
                 )}
               </CardContent>
@@ -4620,7 +4693,7 @@ const AdminDashboard = ({ onBack }) => {
                     <h4 className="font-medium text-foreground dark:text-white mb-2">National UK Sources</h4>
                     <ul className="space-y-1 text-muted-foreground dark:text-gray-400">
                       <li>• BBC News (UK, Sports, Business)</li>
-                      <li>• The Guardian (UK, Tech, Science)</li>
+                      <li>• The Guardian (UK, Tech)</li>
                       <li>• Sky News (UK News)</li>
                     </ul>
                   </div>
@@ -5232,7 +5305,7 @@ const AdminDashboard = ({ onBack }) => {
         </DialogContent>
       </Dialog>
     </div>
-    
+    </HelmetProvider>
   );
 };
 

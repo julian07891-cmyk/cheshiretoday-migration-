@@ -92,11 +92,16 @@ CHESHIRE_RSS_SOURCES = [
         # "url": 'https://feeds.skynews.com/feeds/rss/uk.xml',
         # "category": 'uk'
     # },
-    # {
-        # "name": 'Sky News Business',
-        # "url": 'https://feeds.skynews.com/feeds/rss/business.xml',
-        # "category": 'business'
-    # },
+        {
+        "name": 'Sky News Business',
+        "url": 'https://feeds.skynews.com/feeds/rss/business.xml',
+        "category": 'business'
+    },
+    {
+        "name": 'Sky News Technology',
+        "url": 'https://feeds.skynews.com/feeds/rss/technology.xml',
+        "category": 'business'
+    },
     # {
         # "name": 'The Guardian Technology',
         # "url": 'https://www.theguardian.com/uk/technology/rss',

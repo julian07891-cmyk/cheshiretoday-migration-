@@ -38,20 +38,20 @@ function isLocal(a) {
   return cat.includes("local") || scope.includes("cheshire");
 }
 
-function isAiTechScience(a) {
+function isAiTech(a) {
   const cat = String(a?.category || "").toLowerCase();
   const sec = String(a?.section || "").toLowerCase();
-  // backend: category may be AI/Tech/Science, and ai feed uses section ai-*
+  // backend: category may be AI/Tech, and ai feed uses section ai-*
   if (sec.startsWith("ai-")) return true;
-  if (cat.includes("ai") || cat.includes("tech") || cat.includes("science")) return true;
+  if (cat.includes("ai") || cat.includes("tech")) return true;
   // fallback keyword match
   const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-  return /\b(ai|artificial intelligence|chatgpt|openai|gemini|llm|gpt-?\d*|prompt|machine\s*learning|deep\s*learning|neural|chip|gpu|nvidia|amd|intel|semiconductor|cybersecurity|ransomware|malware|phishing|hack(?:ed|ing)?|data\s*breach|breach|cloud\s*comput(?:ing|e)|saas|robot|automation)\b/.test(t);
+  return /(?:\bai\b|artificial\s+intelligence|chatgpt|openai|gemini|\bllm\b|gpt-?\d*|\bprompt\b|machine\s*learning|deep\s*learning|neural|\bchip\b|\bgpu\b|nvidia|amd|intel|semiconductor|cybersecurity|ransomware|malware|phishing|hack(?:ed|ing)?|data\s*breach|\bbreach\b|cloud\s*comput(?:ing|e)|\bsaas\b|robot|automation)/i.test(t);
 }
 
 function isAiTechFeatured(a) {
-  // optionally allow manual pinning via featured=true, but still prefer AI/Tech/Science first
-  return isAiTechScience(a) || Boolean(a?.featured);
+  // Only allow manual pinning INSIDE AI/Tech (do not let featured override topic)
+  return isAiTech(a) && Boolean(a?.featured);
 }
 
 
@@ -166,7 +166,7 @@ const navigate = useNavigate();
         setLoading(true);
         setErr("");
 
-        const res = await fetch(getApiUrl() + "/api/articles?limit=300");
+        const res = await fetch(getApiUrl() + "/api/articles?limit=80&with_total=1&include_archived=true");
         if (!res.ok) throw new Error(`API ${res.status}`);
 
         const data = await res.json();
@@ -250,11 +250,6 @@ const navigate = useNavigate();
       // AI/tech signals (kept strict)
       const tech = /\b(ai|artificial\s+intelligence|machine\s+learning|llm|openai|anthropic|google|deepmind|microsoft|chip|semiconductor|nvidia|data\s+centre|cyber|security|ransomware|software|cloud|saas|robot|automation)\b/;
 
-      // Avoid “soft feature / explainer science” being labelled authority (planets/parade type spam)
-      const softScience = /\b(planets?|planetary|parade|celestial|stargaz|astronom|photographer\s+captured|how\s+you\s+can\s+see\s+six\s+planets)\b/;
-
-      if (softScience.test(t) && !biz.test(t) && !tech.test(t)) return false;
-
       return biz.test(t) || tech.test(t);
     };
 
@@ -332,11 +327,11 @@ const navigate = useNavigate();
     };
 
     // 1) Hero
-    const heroArticle = poolAll.find(isLocal) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) || poolAll.find(isAiTechScience) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) || poolAll[0] || null;
+    const heroArticle = poolAll.find(isLocal) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) || poolAll.find(isAiTech) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) || poolAll[0] || null;
     if (heroArticle) mark(heroArticle);
 
     // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible
-    // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 Tech/Science, 1 Property, 1 Flexible (dedupe-safe)
+    // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 Tech, 1 Property, 1 Flexible (dedupe-safe)
     const topStoriesCards = [];
 
     // Top Stories (7) — fixed mix:
@@ -366,6 +361,16 @@ const navigate = useNavigate();
 
     const counts = { local: 0, business: 0, tech: 0, property: 0, uk: 0 };
 
+    // Reserve scarce AI/Tech so Most Read doesn't consume it before the sidebar.
+    // Reserve 5 = 1 for Top Stories AI slot + 4 for AI sidebar.
+    const reservedAiKeys = new Set();
+    for (const a of poolAll) {
+      if (reservedAiKeys.size >= 5) break;
+      if (!isAiTech(a)) continue;
+      const k = articleKey(a);
+      if (k) reservedAiKeys.add(k);
+    }
+
     const pushTop = (a, overrideCategory = null) => {
       if (topStoriesCards.length >= 8) return;
       if (!mark(a)) return;
@@ -382,7 +387,7 @@ const navigate = useNavigate();
     for (const a of poolAll) {
       if (counts.local >= 2) break;
       if (!isLocal(a)) continue;
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       if (isBusinessishTop(a)) continue;
       if (isPropertyishTop(a)) continue;
       pushTop(a, "Local News");
@@ -392,7 +397,7 @@ const navigate = useNavigate();
     // Pass 2: Business (2) — exclude Tech/Property
     for (const a of poolAll) {
       if (counts.business >= 2) break;
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       if (isPropertyishTop(a)) continue;
       if (!isBusinessishTop(a)) continue;
       pushTop(a, "Business");
@@ -402,7 +407,7 @@ const navigate = useNavigate();
     // Pass 3: AI/Tech (1)
     for (const a of poolAll) {
       if (counts.tech >= 1) break;
-      if (!isAiTechScience(a)) continue;
+      if (!isAiTech(a)) continue;
       pushTop(a, "AI & Tech");
       counts.tech += 1;
     }
@@ -410,7 +415,7 @@ const navigate = useNavigate();
     // Pass 4: Property (1) — ensure it is actually property-ish
     for (const a of poolAll) {
       if (counts.property >= 1) break;
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       if (!isPropertyishTop(a)) continue;
       pushTop(a, "Property");
       counts.property += 1;
@@ -419,7 +424,7 @@ const navigate = useNavigate();
     // Pass 5: UK News (1) — explicitly UK, exclude Local/Business/Property/Tech
     for (const a of poolAll) {
       if (counts.uk >= 1) break;
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       if (!isUkishTop(a)) continue;
       if (isLocal(a)) continue;
       if (isBusinessishTop(a)) continue;
@@ -431,7 +436,7 @@ const navigate = useNavigate();
     // Safety fill: if we still have <7 (rare), fill with newest non-tech
     for (const a of poolAll) {
       if (topStoriesCards.length >= 8) break;
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       pushTop(a);
     }
 
@@ -447,27 +452,19 @@ const navigate = useNavigate();
 
     for (const a of byViewsThenNewest) {
       if (mostReadCards.length >= 5) break;
+      const k = articleKey(a);
+      if (k && reservedAiKeys.has(k)) continue; // protect AI/Tech reserve
       if (!mark(a)) continue;
       mostReadCards.push(toCard(a, `most-${mostReadCards.length}`));
     }
 
-// 3) AI feed (4) — exclude used (backend section is source of truth)
+// 3) AI feed (4) — exclude used (exclusive; no duplicates)
     const aiArticles = [];
     for (const a of poolAll) {
       if (aiArticles.length >= 4) break;
-      if (!isAiTechScience(a)) continue;
+      if (!isAiTech(a)) continue;
       if (!mark(a)) continue;
       aiArticles.push(toCard(a, `ai-${aiArticles.length}`, { category: "AI & Tech" }));
-    }
-
-
-    // Fallback: if AI feed ends up empty, use newest 4 (still dedupe-safe)
-    if (aiArticles.length === 0) {
-      for (const a of poolAll) {
-        if (aiArticles.length >= 4) break;
-        if (!mark(a)) continue;
-        aiArticles.push(a);
-      }
     }
 
 // 4) Finance feed — structured (4 business, 1 local, 1 business latest)
@@ -512,7 +509,7 @@ const isMoney = (a) => {
 
       const sec = String(a?.section || "").toLowerCase();
       // Avoid pulling AI items into Business & Money
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
 
       if (!isLocal(a)) continue;
       if (!mark(a)) continue;
@@ -533,7 +530,7 @@ const isMoney = (a) => {
     if (financeArticles.length === 0) {
       for (const a of poolAll) {
         if (financeArticles.length >= 3) break;
-        if (isAiTechScience(a)) continue;
+        if (isAiTech(a)) continue;
         if (!mark(a)) continue;
         financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
       }
@@ -544,7 +541,7 @@ const isMoney = (a) => {
     for (const a of poolAll) {
       if (businessFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
       businessFeed.push(a);
@@ -563,7 +560,7 @@ const isMoney = (a) => {
     for (const a of poolAll) {
       if (moneyFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
-      if (isAiTechScience(a)) continue; // keep this block focused
+      if (isAiTech(a)) continue; // keep this block focused
       if (!isMoneyish(a)) continue;
       if (!mark(a)) continue;
       moneyFeed.push(toCard(a, `money-${moneyFeed.length}`, { category: "Finance" }));
@@ -574,7 +571,7 @@ const isMoney = (a) => {
     if (moneyFeed.length === 0) {
       for (const a of poolAll) {
         if (moneyFeed.length >= 3) break;
-        if (isAiTechScience(a)) continue;
+        if (isAiTech(a)) continue;
         if (!mark(a)) continue;
         moneyFeed.push(toCard(a, `money-${moneyFeed.length}`, { category: "Finance" }));
       }
@@ -594,7 +591,7 @@ const isMoney = (a) => {
     for (const a of poolAll) {
       if (propertyFeed.length >= 3) break;
       const sec = String(a?.section || "").toLowerCase();
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       // section is null in backend; no section-based exclude
 
       if (!isPropertyish(a)) continue;
@@ -613,6 +610,7 @@ const isMoney = (a) => {
 // 5) Latest feed (12) — balanced mix for Cheshire Today strategy (dedupe-safe)
     // Target: 4 Local, 4 Business/Finance, 3 AI/Tech, 1 UK (newest-first within each bucket)
     const latestCards = [];
+    const latestSeen = new Set();
 
     const isUkishLatest = (a) => {
       const cat = String(a?.category || "").toLowerCase();
@@ -622,22 +620,31 @@ const isMoney = (a) => {
 
     const pushLatest = (a, overrideCategory = null) => {
       if (latestCards.length >= 12) return;
-      if (!mark(a)) return;
-      latestCards.push(toCard(a, `latest-${latestCards.length}`, overrideCategory ? { category: overrideCategory } : {}));
+
+      const k = articleKey(a);
+      if (!k) return;
+      if (latestSeen.has(k)) return;
+      latestSeen.add(k);
+
+      // IMPORTANT: Latest should not consume the shared homepage dedupe pool.
+      // Other sections may have already marked items; Latest still needs to fill.
+      latestCards.push(
+        toCard(a, `latest-${latestCards.length}`, overrideCategory ? { category: overrideCategory } : {})
+      );
     };
 
     // Pass 1: Local (4) — keep it grounded in Cheshire
     for (const a of poolAll) {
       if (latestCards.length >= 4) break;
       if (!isLocal(a)) continue;
-      if (isAiTechScience(a)) continue; // reserve AI/Tech quota for later
+      if (isAiTech(a)) continue; // reserve AI/Tech quota for later
       pushLatest(a, "Local News");
     }
 
     // Pass 2: Business/Finance (4)
     for (const a of poolAll) {
       if (latestCards.length >= 8) break;
-      if (isAiTechScience(a)) continue;
+      if (isAiTech(a)) continue;
       if (!isBusiness(a) && !isMoney(a)) continue;
       pushLatest(a, "Business");
     }
@@ -645,7 +652,7 @@ const isMoney = (a) => {
     // Pass 3: AI/Tech (3)
     for (const a of poolAll) {
       if (latestCards.length >= 11) break;
-      if (!isAiTechScience(a)) continue;
+      if (!isAiTech(a)) continue;
       pushLatest(a, "AI & Tech");
     }
 
@@ -668,7 +675,7 @@ const isMoney = (a) => {
     const aiBizFeedCards = [];
     const isAiBiz = (a) => {
       // Prefer existing classifiers already defined in this builder scope
-      if (isAiTechScience(a)) return true;
+      if (isAiTech(a)) return true;
       if (isBusiness(a) || isMoney(a)) return true;
 
       // Property/housing/planning often overlaps with finance audience; include it here too
@@ -787,6 +794,7 @@ return (
               <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base font-extrabold tracking-tight">Latest</h2>
+                  <span className="text-xs text-slate-500 dark:text-gray-400">({latestFeed.length})</span>
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -818,6 +826,7 @@ return (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base font-extrabold tracking-tight">AI & Business</h2>
+                  <span className="text-xs text-slate-500 dark:text-gray-400">({aiBizFeed.length})</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

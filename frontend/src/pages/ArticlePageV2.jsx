@@ -16,6 +16,34 @@ import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
+
+function getSourceLabel(article) {
+  const raw = String(article?.source || "").trim();
+  const link = String(article?.sourceUrl || article?.source_url || "").trim();
+
+  // If 'source' is missing, use hostname from source_url
+  const fallbackFromLink = () => {
+    try {
+      if (!link) return "";
+      return new URL(link).hostname.replace(/^www\./, "");
+    } catch {
+      return "";
+    }
+  };
+
+  // If 'source' itself is a URL, show hostname instead of the full URL
+  const looksLikeUrl = /^https?:\/\//i.test(raw);
+  if (!raw) return fallbackFromLink() || "Source";
+  if (looksLikeUrl) {
+    try {
+      return new URL(raw).hostname.replace(/^www\./, "");
+    } catch {
+      return fallbackFromLink() || "Source";
+    }
+  }
+  return raw;
+}
+
 /**
  * Convert unknown values to a safe string for React rendering.
  * Prevents React error: "Objects are not valid as a React child" (React #31).
@@ -405,7 +433,7 @@ export default function ArticlePageV2({ categories }) {
     if (sec === "energy" || sec === "utilities") return "energy";
 
     // 2) CATEGORY NEXT
-    if (cat.includes("ai") || cat.includes("tech") || cat.includes("science")) return "ai";
+    if (cat.includes("ai") || cat.includes("tech")) return "ai";
     if (cat.includes("mortgage")) return "mortgages";
     if (cat.includes("savings") || cat.includes("isa")) return "savings";
     if (cat.includes("tax")) return "tax";
@@ -659,10 +687,10 @@ export default function ArticlePageV2({ categories }) {
                         rel="nofollow noopener noreferrer"
                         className="font-medium text-foreground hover:underline underline-offset-2"
                       >
-                        {safeText(article.source) || "View original"}
+                        {getSourceLabel(article)}
                       </a>
                     ) : (
-                      <span className="font-medium text-foreground">{safeText(article.source)}</span>
+                      <span className="font-medium text-foreground">{getSourceLabel(article)}</span>
                     )}
                   </p>
 

@@ -1651,6 +1651,9 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
                 )
             
             # Insert into database
+            # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
+            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
             await db.articles.insert_one(article)
             existing_titles.add(title.lower())
             imported += 1
@@ -1675,7 +1678,6 @@ class HybridNewsRequest(BaseModel):
     max_sports: int = 3          # Limit sports articles
     business_articles: int = 2   # 2 Business articles (FREE from RSS)
     tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
-    science_articles: int = 2    # 2 Science articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
 
 
@@ -1711,7 +1713,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         sports_imported = 0
         business_imported = 0
         tech_imported = 0
-        science_imported = 0
         max_sports = getattr(request, 'max_sports', 3)  # Default 3 sports articles
 
         # ==========================================
@@ -1768,10 +1769,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             sports_articles = [a for a in uk_with_images if a.get('category') == 'Sports']
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
             tech_articles = [a for a in uk_with_images if a.get('category') == 'Tech']
-            science_articles = [a for a in uk_with_images if a.get('category') == 'Science']
-            uk_news_articles = [a for a in uk_with_images if a.get('category') in ['UK News', 'Local News'] or a.get('category') not in ['Sports', 'Business', 'Health', 'Tech', 'Science', 'Entertainment']]
+            uk_news_articles = [a for a in uk_with_images if a.get('category') in ['UK News', 'Local News'] or a.get('category') not in ['Sports', 'Business', 'Health', 'Tech', 'Entertainment']]
             
-            logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(tech_articles)} Tech, {len(science_articles)} Science, {len(sports_articles)} Sports")
+            logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(tech_articles)} Tech, {len(sports_articles)} Sports")
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
@@ -1818,7 +1818,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         perplexity_cost_estimate += 0.005
                     else:
                         # Use RSS content directly (faster, no AI)
-                        detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
+                        detailed_content = original_content
                     
                     # Use RSS image (guaranteed perfect match)
                     article['image'] = rss_image
@@ -1829,7 +1829,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     article['author'] = article.get('source', 'BBC News')
                     article['id'] = str(uuid4())
                     
-                    await db.articles.insert_one(article)
+                    # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
+                    
+                    article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+                    
+                    article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+            await db.articles.insert_one(article)
                     existing_titles.add(title.lower())
                     used_image_urls.add(rss_image)
                     imported_articles.append(article)
@@ -1847,9 +1852,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Import Health articles (FREE from RSS)
             # Import Tech articles (FREE from RSS)
             tech_imported = await import_category_articles(tech_articles, "Tech", request.tech_articles, "tech_imported")
-            
-            # Import Science articles (FREE from RSS)
-            science_imported = await import_category_articles(science_articles, "Science", request.science_articles, "science_imported")
             
             # Import Entertainment articles (FREE from RSS)
             # Import Sports articles (limited to max_sports)
@@ -1923,7 +1925,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 perplexity_cost_estimate += 0.005
             else:
                 # Use RSS content directly (faster, no AI)
-                detailed_content = original_content if len(original_content) > 100 else f"{original_content}\n\nRead the full story at the source."
+                detailed_content = original_content
             
             article['image'] = rss_image
             article['image_source'] = 'rss_feed'
@@ -1935,6 +1937,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             article['is_local_source'] = True  # Mark as local source
             article['is_local_newspaper'] = article.get('is_local_feed', False)
             
+            # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
+            
+            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+            
+            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
             await db.articles.insert_one(article)
             existing_titles.add(title.lower())
             used_image_urls.add(rss_image)
@@ -2029,7 +2036,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 article['author'] = 'Cheshire Today'
                 article['publishedDate'] = datetime.now(timezone.utc).isoformat()
 
-                await db.articles.insert_one(article)
+                # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
+
+                article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+
+                article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+            await db.articles.insert_one(article)
                 existing_titles.add(title.lower())
                 used_image_urls.add(article['image'])
                 imported_articles.append(article)
@@ -2040,10 +2052,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         rss_images_used = len([a for a in imported_articles if a.get('image_source') == 'rss_feed'])
         smart_images_used = len([a for a in imported_articles if a.get('image_source') == 'smart_search'])
         
-        logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {tech_imported} Tech + {science_imported} Science + {sports_imported} Sports")
+        logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {tech_imported} Tech + {sports_imported} Sports")
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
-        await cap_visible_articles(keep=60)
+        await cap_visible_articles(keep=200)
 
         # === RATIO_REBALANCE_45 ===
         try:
@@ -2054,27 +2066,47 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 {"_id": 1, "publishedDate": 1, "scope": 1, "category": 1}
             ).sort("publishedDate", -1).to_list(10000)
 
-            local, business, ai, other = [], [], [], []
+            local, business, ai, uk_other = [], [], [], []
 
             for a in active:
-                if a.get("scope") == "cheshire":
+                cat = (a.get("category") or "")
+                scope = (a.get("scope") or "")
+
+                # Treat Local News as local even if scope is wrong
+                if scope == "cheshire" or cat == "Local News":
                     local.append(a)
-                elif a.get("category") in ["Business","Finance","Tax"]:
+                elif cat in ["Business", "Finance", "Tax", "Money", "Property", "Property & Tax"]:
                     business.append(a)
-                elif a.get("category") in ["Tech","Science","AI & Tech"]:
+                elif cat in ["Tech", "AI & Tech", "AI", "Technology"]:
                     ai.append(a)
                 else:
-                    other.append(a)
+                    uk_other.append(a)
+
+            # Quotas sum exactly to 45
+            Q_LOCAL = 18
+            Q_BUSINESS = 12
+            Q_AI = 6
+            Q_UK = 9
 
             keep = []
+            keep += local[:Q_LOCAL]
+            keep += business[:Q_BUSINESS]
+            keep += ai[:Q_AI]
+            keep += uk_other[:Q_UK]
 
-            keep += local[:18]
-            keep += business[:18]
-            keep += ai[:9]
-            keep += other[:5]
+            # Fill any shortfall with newest remaining (dedupe by _id)
+            keep_ids = set([x.get("_id") for x in keep if x.get("_id")])
+            if len(keep) < MAX_VISIBLE:
+                for a in active:
+                    _id = a.get("_id")
+                    if not _id or _id in keep_ids:
+                        continue
+                    keep.append(a)
+                    keep_ids.add(_id)
+                    if len(keep) >= MAX_VISIBLE:
+                        break
 
             keep = keep[:MAX_VISIBLE]
-
             keep_ids = [a["_id"] for a in keep]
 
             archive_query = dict(active_filter)
@@ -2089,7 +2121,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 }}
             )
 
-            logger.info(f"[RATIO_REBALANCE] Archived {result.modified_count} articles to enforce strategic distribution.")
+            logger.info(
+                f"[RATIO_REBALANCE] keep={{local:{min(len(local),Q_LOCAL)}, business:{min(len(business),Q_BUSINESS)}, ai:{min(len(ai),Q_AI)}, uk_other:{min(len(uk_other),Q_UK)}}} archived={result.modified_count}"
+            )
 
         except Exception as cap_err:
             logger.error(f"[RATIO_REBALANCE_ERROR] {cap_err}")
@@ -2104,7 +2138,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             "uk_articles": uk_imported,
             "business_articles": business_imported,
 "tech_articles": tech_imported,
-            "science_articles": science_imported,
 "sports_articles": sports_imported,
             "rss_images_used": rss_images_used,
             "smart_images_used": smart_images_used,
@@ -2164,7 +2197,6 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
             max_sports=3,                     # Limit sports to 3
             business_articles=2,              # 2 Business articles (FREE)
             tech_articles=2,                  # 2 Tech articles (FREE)
-            science_articles=2,               # 2 Science articles (FREE)
             use_perplexity=False              # Quick refresh - no AI content generation
         )
         
@@ -2310,6 +2342,10 @@ async def _remove_duplicates_internal():
     Archives removed articles to archived_articles collection for link preservation.
     """
     try:
+        # SAFETY: disable destructive clear-and-refresh unless explicitly enabled
+        if os.getenv('ENABLE_CLEAR_REFRESH', '0') != '1':
+            raise HTTPException(status_code=403, detail='clear-and-refresh disabled (set ENABLE_CLEAR_REFRESH=1)')
+
         articles = await db.articles.find({}).to_list(1000)
         
         # Group by title
@@ -2393,7 +2429,7 @@ async def remove_duplicate_articles(authorized: bool = Depends(get_admin_auth)):
     result = await _remove_duplicates_internal()
     if not result.get("success"):
         raise HTTPException(status_code=500, detail=result.get("error", "Unknown error"))
-        await cap_visible_articles(keep=60)
+        await cap_visible_articles(keep=200)
 
     return result
 
@@ -2777,15 +2813,28 @@ async def get_articles(
     limit: int = 20,
     source_type: Optional[str] = None,  # "local", "national", or None for all
     include_archived: bool = False,  # By default, exclude archived articles
-    search: Optional[str] = None  # Search query for title and content
+    search: Optional[str] = None,  # Search query for title and content
+    with_total: bool = False  # Return {articles,total} envelope when true
 ):
     """Get all articles with optional filtering by category, source type, and search"""
     try:
         # Check cache for default homepage request (most common)
-        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}"
+        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{with_total}"
         if not search and skip == 0 and limit == 20 and not category:
             cached = api_cache.get(cache_key, ttl_seconds=30)  # 30 second cache
             if cached:
+                # Normalise cached shape (older cache entries may be a list)
+                if isinstance(cached, dict) and "articles" in cached:
+                    return cached
+                if isinstance(cached, list):
+                    return {
+                        "articles": cached,
+                        "total": len(cached),
+                        "skip": skip,
+                        "limit": limit,
+                        "category": category,
+                        "include_archived": include_archived,
+                    }
                 return cached
         
         query = {}
@@ -2837,7 +2886,7 @@ async def get_articles(
             # Special handling for UK News - only show national sources
             elif category == 'UK News':
                 query['is_local_source'] = False
-                query['category'] = {'$in': ['UK News', 'Business', 'Tech', 'Health', 'Science', 'Entertainment', 'Education']}
+                query['category'] = {'$in': ['UK News', 'Business', 'Tech', 'Health', 'Entertainment', 'Education']}
             else:
                 query['category'] = category
         
@@ -2846,11 +2895,28 @@ async def get_articles(
             query['is_local_source'] = True
         elif source_type == 'national':
             query['is_local_source'] = False
+
+        # Total count for pagination/UI (respects include_archived + filters)
+        try:
+            total_count = await db.articles.count_documents(query)
+        except Exception:
+            total_count = 0
         
         # For "all" category (Latest News), use interleaved ordering: Local, Local, UK, UK
-        if (not category or category == 'all') and not source_type:
+        if (not category or category == 'all') and not source_type and not search:
             # Fetch local and UK articles separately
-            local_articles = await db.articles.find({'$and': [{'is_local_source': True}, {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}]},
+            # include_archived support (build-phase cap archives older items)
+            archived_clause = None
+            if not include_archived:
+                archived_clause = {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}
+
+            local_q = {'is_local_source': True}
+            uk_q = {'is_local_source': {'$ne': True}}
+            if archived_clause:
+                local_q = {'$and': [local_q, archived_clause]}
+                uk_q = {'$and': [uk_q, archived_clause]}
+
+            local_articles = await db.articles.find(local_q,
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -2858,7 +2924,7 @@ async def get_articles(
                 }
             ).sort('publishedDate', -1).limit(limit*10).to_list(limit*10)
             
-            uk_articles = await db.articles.find({'$and': [{'is_local_source': {'$ne': True}}, {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}]},
+            uk_articles = await db.articles.find(uk_q,
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
@@ -3267,8 +3333,14 @@ async def get_articles(
         
         # Cache the result for homepage requests
         if not search and skip == 0 and limit == 20 and not category:
-            api_cache.set(cache_key, unique_articles)
-        
+            api_cache.set(
+                cache_key,
+                {"articles": unique_articles, "total": total_count, "skip": skip, "limit": limit, "category": category, "include_archived": include_archived},
+            )
+
+        # Backward compatible: default is LIST; only return envelope when requested
+        if with_total:
+            return {"articles": unique_articles, "total": total_count, "skip": skip, "limit": limit, "category": category, "include_archived": include_archived}
         return unique_articles
     except Exception as e:
         logging.error(f"Error getting articles: {str(e)}")
@@ -3840,6 +3912,9 @@ async def subscribe_newsletter(request: SubscribeRequest):
             "id": str(uuid.uuid4()),
             "email": email,
             "subscribed_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "site_update_part1_sent_at": None,
+            "site_update_part2_sent_at": None,
             "active": True,
             "preferences": request.preferences if request.preferences else default_preferences,
             # New tiered email preferences - daily_brief enabled by default
@@ -5488,7 +5563,7 @@ async def get_affiliate_categories(auth: bool = Depends(get_admin_auth)):
         # Default categories if none exist
         default_categories = [
             "Local News", "Sports", "Tech", "Health", "Entertainment",
-            "UK News", "Business", "Science", "Education", "default"
+            "UK News", "Business",  "Education", "default"
         ]
         
         category_map = {cat["_id"]: cat["count"] for cat in categories}
@@ -8439,6 +8514,7 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
             "sent_at": datetime.now(timezone.utc),
             "digest_time": "Announcement",
             "type": "MigrationAnnouncement",
+            "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subscribers_count": len(subscriber_emails),
             "success_count": success_count
         })
@@ -8469,10 +8545,18 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
             "sent_at": datetime.now(timezone.utc),
             "digest_time": "SiteUpdatePart1",
             "type": "SiteUpdatePart1",
+            "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subscribers_count": len(subscriber_emails),
             "success_count": success_count
         })
 
+
+        # Lock this endpoint after successful send (global one-time)
+        await db.system_flags.update_one(
+            {"key": "site_update_part1_sent_global"},
+            {"$set": {"key": "site_update_part1_sent_global", "value": True, "sent_at": datetime.now(timezone.utc)}},
+            upsert=True
+        )
         return {
             "success": True,
             "message": f"Site Update (Part 1) sent to {success_count}/{len(subscriber_emails)} subscribers",
@@ -8481,6 +8565,7 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
     except Exception as e:
         logger.error(f"Error sending site update part 1: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @api_router.post("/send-site-update-part2")
@@ -8498,6 +8583,158 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
             "sent_at": datetime.now(timezone.utc),
             "digest_time": "SiteUpdatePart2",
             "type": "SiteUpdatePart2",
+            "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "subscribers_count": len(subscriber_emails),
+            "success_count": success_count
+        })
+
+
+        # Lock this endpoint after successful send (global one-time)
+        await db.system_flags.update_one(
+            {"key": "site_update_part2_sent_global"},
+            {"$set": {"key": "site_update_part2_sent_global", "value": True, "sent_at": datetime.now(timezone.utc)}},
+            upsert=True
+        )
+        return {
+            "success": True,
+            "message": f"Site Update (Part 2) sent to {success_count}/{len(subscriber_emails)} subscribers",
+            "subscribers_targeted": len(subscriber_emails)
+        }
+    except Exception as e:
+        logger.error(f"Error sending site update part 2: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/run-onboarding-emails")
+async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get_admin_auth)):
+    """
+    Run onboarding emails based on subscriber age:
+      - Day 3: Site Update Part 1
+      - Day 7: Site Update Part 2
+    Idempotent per-subscriber via site_update_part1_sent_at / site_update_part2_sent_at.
+
+    dry_run=1: returns counts + sample recipients, sends nothing
+    dry_run=0: sends + writes sent_at markers + logs to digest_log
+    """
+    try:
+
+        # Disabled by default (we are using manual one-time buttons post-domain-swap)
+        if os.getenv("ENABLE_ONBOARDING_AUTOMATION", "0") != "1":
+            raise HTTPException(status_code=404, detail="Not Found")
+        now = datetime.now(timezone.utc)
+
+        # Pull subscribers (keep it light: only fields we need)
+        subs = await db.subscribers.find(
+            {},
+            {"_id": 0, "email": 1, "created_at": 1, "subscribed_at": 1,
+             "active": 1, "site_update_part1_sent_at": 1, "site_update_part2_sent_at": 1}
+        ).to_list(20000)
+
+        def parse_iso(dt_str: str):
+            if not dt_str:
+                return None
+            try:
+                # Handles 'Z' sometimes
+                dt_str2 = dt_str.replace("Z", "+00:00")
+                return datetime.fromisoformat(dt_str2)
+            except Exception:
+                return None
+
+        due_part1 = []
+        due_part2 = []
+
+        for sub in subs:
+            email = (sub.get("email") or "").strip().lower()
+            if not email:
+                continue
+
+            # Treat missing active as active=True (back-compat)
+            if sub.get("active") is False:
+                continue
+
+            created = parse_iso(sub.get("created_at")) or parse_iso(sub.get("subscribed_at"))
+            if not created:
+                continue
+
+            age_days = (now - created).total_seconds() / 86400.0
+
+            if (sub.get("site_update_part1_sent_at") in (None, "", False)) and age_days >= 3:
+                due_part1.append(email)
+
+            if (sub.get("site_update_part2_sent_at") in (None, "", False)) and age_days >= 7:
+                due_part2.append(email)
+
+        # De-dupe and make deterministic
+        due_part1 = sorted(set(due_part1))
+        due_part2 = sorted(set(due_part2))
+
+        # If someone qualifies for Day 7 but not Day 3 (old subscriber missing flags),
+        # we still allow Part 2, but we can also optionally send Part 1 first.
+        # We'll keep it simple + explicit: send what is due independently.
+
+        preview = {
+            "success": True,
+            "dry_run": int(dry_run),
+            "due_part1_count": len(due_part1),
+            "due_part2_count": len(due_part2),
+            "sample_part1": due_part1[:10],
+            "sample_part2": due_part2[:10],
+        }
+
+        if int(dry_run) == 1:
+            return preview
+
+        # Actually send
+        sent1 = 0
+        sent2 = 0
+
+        if due_part1:
+            sent1 = email_service.send_site_update_part1(to_emails=due_part1)
+            await db.subscribers.update_many(
+                {"email": {"$in": due_part1}},
+                {"$set": {"site_update_part1_sent_at": now.isoformat(), "created_at": {"$ifNull": ["$created_at", "$subscribed_at"]}}}
+            )
+            await db.digest_log.insert_one({
+                "sent_at": now,
+                "digest_time": "AutoOnboarding",
+                "type": "SiteUpdatePart1Auto",
+                "subscribers_count": len(due_part1),
+                "success_count": sent1
+            })
+
+        if due_part2:
+            sent2 = email_service.send_site_update_part2(to_emails=due_part2)
+            await db.subscribers.update_many(
+                {"email": {"$in": due_part2}},
+                {"$set": {"site_update_part2_sent_at": now.isoformat(), "created_at": {"$ifNull": ["$created_at", "$subscribed_at"]}}}
+            )
+            await db.digest_log.insert_one({
+                "sent_at": now,
+                "digest_time": "AutoOnboarding",
+                "type": "SiteUpdatePart2Auto",
+                "subscribers_count": len(due_part2),
+                "success_count": sent2
+            })
+
+        return {
+            **preview,
+            "sent_part1": sent1,
+            "sent_part2": sent2,
+            "message": f"Onboarding run complete. Part1: {sent1}/{len(due_part1)}, Part2: {sent2}/{len(due_part2)}"
+        }
+
+    except Exception as e:
+        logger.error(f"Error running onboarding emails: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+        subscriber_emails = [s.get("email") for s in subscribers if s.get("email")]
+        success_count = email_service.send_site_update_part2(to_emails=subscriber_emails)
+
+        await db.digest_log.insert_one({
+            "sent_at": datetime.now(timezone.utc),
+            "digest_time": "SiteUpdatePart2",
+            "type": "SiteUpdatePart2",
+            "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subscribers_count": len(subscriber_emails),
             "success_count": success_count
         })
@@ -8640,7 +8877,7 @@ async def api_sitemap():
 async def generate_sitemap():
     """Generate dynamic sitemap.xml for Google Search Console"""
     from fastapi.responses import Response
-    from datetime import datetime
+    # datetime imported at top-level
     import xml.sax.saxutils as saxutils
     
     try:
@@ -8726,7 +8963,7 @@ async def generate_sitemap():
 async def generate_news_sitemap():
     """Generate Google News sitemap for recent articles (last 48 hours)"""
     from fastapi.responses import Response
-    from datetime import datetime, timedelta
+    # datetime, timedelta imported at top-level
     import xml.sax.saxutils as saxutils
     
     try:
@@ -9056,7 +9293,7 @@ async def serve_article_html(article_id: str):
         
         # --- Structured Data (NewsArticle Schema) ---
         import json
-        from datetime import datetime
+        # datetime imported at top-level
 
         if article:
             published = article.get("publishedDate")
@@ -10047,7 +10284,7 @@ async def sync_rss_now():
             cat = (a.get("category") or "").lower()
             if a.get("is_local_source") is True:
                 score += 3
-            if cat in ("business","tech","science"):
+            if cat in ("business","tech"):
                 score += 2
             if econ_kw.search(title):
                 score += 2
@@ -10256,25 +10493,34 @@ async def fix_duplicate_images():
 
 @api_router.get("/scheduler-status")
 async def get_scheduler_status():
-    """Get scheduler status and next run time"""
+    """Get scheduler status and next run time (version-safe)"""
     try:
         jobs = scheduler.get_jobs()
         job_info = []
+
         for job in jobs:
+            # APScheduler versions differ: some expose next_run_time, some don't
+            nrt = getattr(job, "next_run_time", None)
+
+            # Convert to ISO if possible
+            if hasattr(nrt, "isoformat"):
+                nrt_iso = nrt.isoformat()
+            else:
+                nrt_iso = None
+
             job_info.append({
-                "id": job.id,
-                "name": job.name,
-                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None
+                "id": getattr(job, "id", None),
+                "name": getattr(job, "name", None),
+                "next_run_time": nrt_iso
             })
+
         return {
-            "scheduler_running": scheduler.running,
+            "scheduler_running": bool(getattr(scheduler, "running", False)),
             "jobs": job_info,
             "total_jobs": len(job_info)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
 @api_router.post("/emergency-fix-all-images")
 @api_router.post("/force-clean-newspaper-images")
 async def force_clean_newspaper_images():
@@ -10387,6 +10633,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# =====================================================================================
+# RSS CONTENT HYGIENE
+# - Strip naked URLs (esp. the original source_url) from RSS content/summary
+# - Strip "Read more / Continue reading" tails
+# =====================================================================================
+def sanitize_rss_text(text: str, source_url: str = "") -> str:
+    if text is None:
+        return ""
+    t = str(text)
+
+    su = (source_url or "").strip()
+    if su:
+        t = t.replace(su, "")
+
+    # Remove common "read more" tails that include a URL (line-based)
+    t = re.sub(r'(?im)^\s*(read\s+more|continue\s+reading|full\s+story|source)\s*[:\-]?\s*https?://\S+\s*$', '', t)
+
+    # Remove lines that are ONLY a URL
+    t = re.sub(r'(?im)^\s*https?://\S+\s*$', '', t)
+
+    # Remove leftover "Read more:" without URL (sometimes after replacement)
+    t = re.sub(r'(?im)^\s*(read\s+more|continue\s+reading|full\s+story)\s*[:\-]?\s*$', '', t)
+
+    # Collapse excessive whitespace/newlines
+    t = re.sub(r'\n{3,}', '\n\n', t).strip()
+    return t
+
+
 # Initialize scheduler
 scheduler = AsyncIOScheduler()
 
@@ -10428,7 +10702,7 @@ async def cleanup_old_articles():
         logger.error(f"Error cleaning up old articles: {str(e)}")
 
 
-async def cap_visible_articles(keep: int = 60):
+async def cap_visible_articles(keep: int = 200):
     """
     Keep the newest `keep` articles visible (archived=False) and archive the rest (archived=True).
     Also always keep priority/featured items visible.
@@ -11868,3 +12142,21 @@ async def shutdown_db_client():
     except Exception:
         pass
     client.close()
+
+# ============================================
+# ADMIN FEATURE FLAGS (UI SAFETY GATES)
+# ============================================
+
+@api_router.get("/admin/feature-flags")
+async def get_admin_feature_flags(auth: bool = Depends(get_admin_auth)):
+    """
+    Returns backend feature flags so Admin UI can safely enable/disable
+    dangerous operations (Archive & Refresh, etc.)
+    """
+    return {
+        "enable_clear_refresh": os.environ.get("ENABLE_CLEAR_REFRESH") == "1",
+        "smtp_enabled": os.environ.get("SMTP_ENABLED") in ["1", "true", "True"],
+        "auto_generation_enabled": os.environ.get("AUTO_GENERATION_ENABLED") in ["1", "true", "True"],
+        "environment": os.environ.get("ENVIRONMENT", "local")
+    }
+
