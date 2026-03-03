@@ -13,4 +13,4 @@ services:
   - type: cron
     name: cheshiretoday-backend-warmup
     schedule: "*/10 * * * *"
-    command: curl -fsS https://cheshiretoday-migration.onrender.com/api/health
+    command: curl -fsS https://cheshiretoday-migration.onrender.com/health
