@@ -90,8 +90,8 @@ Disallow: /
 # =============================================
 # Sitemaps
 # =============================================
-Sitemap: https://cheshiretoday.co.uk/api/sitemap.xml
-Sitemap: https://cheshiretoday.co.uk/api/news-sitemap.xml
+Sitemap: https://cheshiretoday.co.uk/sitemap.xml
+Sitemap: https://cheshiretoday.co.uk/news-sitemap.xml
 
 # Preferred domain
-Host: https://cheshiretoday.co.uk
+Host: cheshiretoday.co.uk
