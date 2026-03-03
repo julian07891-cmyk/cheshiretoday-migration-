@@ -9349,10 +9349,40 @@ async def serve_article_for_api_slug(article_id: str, slug: str):
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
     """
-    Endpoint for social media crawlers at /article/{id}
-    Returns server-rendered HTML with meta tags for proper sharing
+    Redirect non-slug article URLs to the slug canonical.
     """
-    return await serve_article_html(article_id)
+    from fastapi.responses import RedirectResponse
+
+    # Try to fetch the article so we can build the slug (supports Mongo _id and public UUID)
+    article = None
+    try:
+        if isinstance(article_id, str) and re.fullmatch(r"[0-9a-fA-F]{24}", article_id):
+            try:
+                from bson import ObjectId
+                article = await db.articles.find_one({"_id": ObjectId(article_id)})
+            except Exception:
+                article = None
+    except Exception:
+        article = None
+
+    if not article:
+        try:
+            article = await db.articles.find_one({"id": article_id})
+        except Exception:
+            article = None
+
+    # If we cannot find it, fall back to the HTML handler (will return 404)
+    if not article:
+        return await serve_article_html(article_id)
+
+    public_id = str(article.get("id") or article_id)
+    title = str(article.get("title") or "")
+    slug = re.sub(r"[^a-z0-9]+","-", title.lower()).strip("-")
+    slug = (slug[:80] if slug else "article")
+
+    canonical = f"https://cheshiretoday.co.uk/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
+    return RedirectResponse(url=canonical, status_code=301)
+
 
 @api_router.get("/article/{article_id}")
 async def serve_article_for_api(article_id: str):
