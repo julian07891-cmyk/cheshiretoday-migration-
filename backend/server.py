@@ -9295,7 +9295,10 @@ async def serve_article_html(article_id: str, request=None):
     img = str(article.get("image") or "https://cheshiretoday.co.uk/social-share.jpg")
 
     # Canonical/OG should point at the real domain (not Render)
-    canonical = f"https://cheshiretoday.co.uk/article/{urllib.parse.quote(public_id)}"
+    slug = re.sub(r"[^a-z0-9]+","-", title.lower()).strip("-")
+    slug = (slug[:80] if slug else "article")
+
+    canonical = f"https://cheshiretoday.co.uk/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
 
     # Escape to avoid breaking HTML
     esc_title = _html.escape(title)
@@ -9332,6 +9335,17 @@ async def serve_article_html(article_id: str, request=None):
 
     # Cache modestly to reduce scraper flapping
     return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
+@app.get("/article/{article_id}/{slug}")
+async def serve_article_for_production_slug(article_id: str, slug: str):
+    """Slug URL variant for crawlers: /article/{id}/{slug}"""
+    return await serve_article_html(article_id)
+
+@api_router.get("/article/{article_id}/{slug}")
+async def serve_article_for_api_slug(article_id: str, slug: str):
+    """Slug URL variant (API router)"""
+    return await serve_article_html(article_id)
+
+
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
     """
