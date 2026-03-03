@@ -8851,6 +8851,12 @@ async def health_check():
     """Health check endpoint for Kubernetes liveness probes - returns immediately"""
     return {"status": "healthy", "service": "cheshire-news"}
 
+
+
+@api_router.get("/health")
+async def api_health_check():
+    """Alias for health check under /api"""
+    return {"status": "healthy", "service": "cheshire-news"}
 @api_router.get("/health")
 async def api_health_check():
     """Alias for Render/cron/probes that hit /api/health"""
