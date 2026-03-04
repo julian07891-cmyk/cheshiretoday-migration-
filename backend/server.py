@@ -8994,7 +8994,10 @@ async def generate_news_sitemap():
         
         for article in articles:
             article_id = str(article.get('id', article.get('_id', '')))
-            title = saxutils.escape(str(article.get('title', 'News Article'))[:100])
+            raw_title = str(article.get("title","News Article"))
+            title = saxutils.escape(raw_title[:100])
+            slug = re.sub(r"[^a-z0-9]+","-", raw_title.lower()).strip("-")
+            slug = (slug[:80] if slug else "article")
             
             # Parse published date
             pub_date = article.get('publishedDate', '')
@@ -9005,7 +9008,7 @@ async def generate_news_sitemap():
                     pub_date = datetime.utcnow()
             
             xml_content += '  <url>\n'
-            xml_content += f'    <loc>{base_url}/article/{article_id}</loc>\n'
+            xml_content += f'    <loc>{base_url}/article/{article_id}/{slug}</loc>\n'
             xml_content += '    <news:news>\n'
             xml_content += '      <news:publication>\n'
             xml_content += '        <news:name>Cheshire Today</news:name>\n'
