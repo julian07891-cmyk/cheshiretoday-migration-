@@ -8932,7 +8932,10 @@ async def generate_sitemap():
         
         # Add all articles with images
         for article in articles:
-            article_id = str(article['_id'])
+            article_id = str(article.get("id") or article["_id"])
+            raw_title = str(article.get("title") or "Cheshire Today Article")
+            slug = re.sub(r"[^a-z0-9]+","-", raw_title.lower()).strip("-")
+            slug = (slug[:80] if slug else "article")
             published_date = article.get('publishedDate', datetime.utcnow())
             if isinstance(published_date, str):
                 try:
@@ -8945,7 +8948,7 @@ async def generate_sitemap():
             article_title = article.get('title', 'Cheshire Today Article')
             
             xml_content += '  <url>\n'
-            xml_content += f'    <loc>{saxutils.escape(base_url)}/article/{article_id}</loc>\n'
+            xml_content += f'    <loc>{saxutils.escape(base_url)}/article/{article_id}/{slug}</loc>\n'
             xml_content += f'    <lastmod>{published_date.strftime("%Y-%m-%d")}</lastmod>\n'
             xml_content += '    <changefreq>weekly</changefreq>\n'
             xml_content += '    <priority>0.6</priority>\n'
