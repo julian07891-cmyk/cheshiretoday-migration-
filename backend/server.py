@@ -9354,9 +9354,41 @@ async def serve_article_for_api_slug(article_id: str, slug: str):
 
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
-    """HTML endpoint for crawlers at /article/{id}."""
-    return await serve_article_html(article_id)
+    """Redirect /article/{id} -> /article/{id}/{slug} on the current host (pre-swap safe)."""
+    from fastapi.responses import RedirectResponse
+    import urllib.parse
+    import html as _html
 
+    # Reuse the same lookup logic as serve_article_html()
+    article = None
+    try:
+        if isinstance(article_id, str) and re.fullmatch(r"[0-9a-fA-F]{24}", article_id):
+            try:
+                from bson import ObjectId
+                article = await db.articles.find_one({"_id": ObjectId(article_id)})
+            except Exception:
+                article = None
+    except Exception:
+        article = None
+
+    if not article:
+        try:
+            article = await db.articles.find_one({"id": article_id})
+        except Exception:
+            article = None
+
+    if not article:
+        # Fall back to serving HTML (keeps behaviour stable if missing)
+        return await serve_article_html(article_id)
+
+    public_id = str(article.get("id") or article_id)
+    title = str(article.get("title") or "article")
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    slug = (slug[:80] if slug else "article")
+
+    # Redirect on CURRENT HOST (relative URL)
+    target = f"/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
+    return RedirectResponse(url=target, status_code=302)
 @api_router.get("/article/{article_id}")
 async def serve_article_for_api(article_id: str):
     """API endpoint for programmatic access"""
