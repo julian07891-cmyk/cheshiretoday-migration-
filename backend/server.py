@@ -9352,14 +9352,19 @@ async def serve_article_for_api_slug(article_id: str, slug: str):
     return await serve_article_html(article_id)
 
 
+@app.head("/article/{article_id}")
+async def serve_article_for_production_head(article_id: str):
+    """HEAD: 301 /article/{id} -> canonical slug URL."""
+    return await serve_article_for_production(article_id)
+
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
-    """Redirect /article/{id} -> /article/{id}/{slug} on the current host (pre-swap safe)."""
+    """301 /article/{id} -> /article/{uuid}/{slug} (uses PUBLIC_URL)."""
     from fastapi.responses import RedirectResponse
-    import urllib.parse
-    import html as _html
 
-    # Reuse the same lookup logic as serve_article_html()
+    base_url = (os.environ.get("PUBLIC_URL", "https://cheshiretoday.co.uk") or "").rstrip("/") or "https://cheshiretoday.co.uk"
+
+    # Lookup article by Mongo _id (24-hex) or public UUID
     article = None
     try:
         if isinstance(article_id, str) and re.fullmatch(r"[0-9a-fA-F]{24}", article_id):
@@ -9378,17 +9383,16 @@ async def serve_article_for_production(article_id: str):
             article = None
 
     if not article:
-        # Fall back to serving HTML (keeps behaviour stable if missing)
+        # If missing, keep crawler HTML behaviour (no redirect)
         return await serve_article_html(article_id)
 
     public_id = str(article.get("id") or article_id)
-    title = str(article.get("title") or "article")
-    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    raw_title = str(article.get("title") or "article")
+    slug = re.sub(r"[^a-z0-9]+", "-", raw_title.lower()).strip("-")
     slug = (slug[:80] if slug else "article")
 
-    # Redirect on CURRENT HOST (relative URL)
-    target = f"/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
-    return RedirectResponse(url=target, status_code=302)
+    target = f"{base_url}/article/{public_id}/{slug}"
+    return RedirectResponse(url=target, status_code=301)
 @api_router.get("/article/{article_id}")
 async def serve_article_for_api(article_id: str):
     """API endpoint for programmatic access"""
