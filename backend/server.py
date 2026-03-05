@@ -2382,9 +2382,11 @@ async def _remove_duplicates_internal():
 
             # Many RSS/Atom feeds have short summaries while building (PERPLEXITY disabled).
             # Only remove items that are basically empty.
-            blob_len = len((content + " " + summary).strip())
+            blob_len = len(((content + " " + summary).strip()))
+            link = (article.get("source_url") or article.get("url") or article.get("link") or "").strip()
 
-            if blob_len < 30:
+            # Only delete if it is essentially empty AND has no outbound link (broken ingest)
+            if blob_len < 10 and not link:
                 article['archived_at'] = datetime.now(timezone.utc).isoformat()
                 article['archive_reason'] = 'short_content'
                 original_id = article.pop('_id', None)
