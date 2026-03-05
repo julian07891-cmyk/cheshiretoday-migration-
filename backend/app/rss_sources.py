@@ -199,6 +199,72 @@ CHESHIRE_RSS_SOURCES = [
         "url": 'https://news.google.com/rss/search?q=(AI%20OR%20artificial%20intelligence%20OR%20ChatGPT%20OR%20OpenAI%20OR%20Gemini%20OR%20DeepMind%20OR%20Nvidia)%20(UK%20OR%20Britain)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'business'
     },
+
+    {
+        "name": "GOV.UK: Department for Business and Trade (Atom)",
+        "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+        "category": "business"
+    },
+    {
+        "name": "GOV.UK: DSIT (Atom)",
+        "url": "https://www.gov.uk/government/organisations/department-for-science-innovation-and-technology.atom",
+        "category": "business"
+    },
+    {
+        "name": "GOV.UK: Competition and Markets Authority (Atom)",
+        "url": "https://www.gov.uk/government/organisations/competition-and-markets-authority.atom",
+        "category": "business"
+    },
+    {
+        "name": "GOV.UK: Insolvency Service (Atom)",
+        "url": "https://www.gov.uk/government/organisations/insolvency-service.atom",
+        "category": "business"
+    },
+    {
+        "name": "GOV.UK: Intellectual Property Office (Atom)",
+        "url": "https://www.gov.uk/government/organisations/intellectual-property-office.atom",
+        "category": "business"
+    },
+    {
+        "name": 'GOV.UK: Companies House (Atom)',
+        "url": 'https://www.gov.uk/government/organisations/companies-house.atom',
+        "category": 'business'
+    },
+    {
+        "name": 'GOV.UK: Office for National Statistics (Atom)',
+        "url": 'https://www.gov.uk/government/organisations/office-for-national-statistics.atom',
+        "category": 'business'
+    },
+    {
+        "name": 'Google News: UK Startups & VC',
+        "url": 'https://news.google.com/rss/search?q=(UK%20startup%20OR%20startups%20OR%20venture%20capital%20OR%20VC%20OR%20funding%20round)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'business'
+    },
+    {
+        "name": 'Google News: UK Fintech & Banking',
+        "url": 'https://news.google.com/rss/search?q=(fintech%20OR%20neobank%20OR%20banking%20OR%20lender%20OR%20payments)%20(UK%20OR%20Britain)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'business'
+    },
+    {
+        "name": 'Google News: UK Housing & Property Market',
+        "url": 'https://news.google.com/rss/search?q=(UK%20house%20prices%20OR%20property%20market%20OR%20housing%20market%20OR%20rent%20rents)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'business'
+    },
+    {
+        "name": 'Google News: UK Energy Bills & Tariffs',
+        "url": 'https://news.google.com/rss/search?q=(energy%20bills%20OR%20price%20cap%20OR%20Ofgem%20OR%20tariffs)%20(UK%20OR%20Britain)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'business'
+    },
+    {
+        "name": 'Google News: UK Cybersecurity',
+        "url": 'https://news.google.com/rss/search?q=(cybersecurity%20OR%20ransomware%20OR%20data%20breach%20OR%20cyber%20attack)%20(UK%20OR%20Britain)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'business'
+    },
+    {
+        "name": 'Google News: UK AI Regulation & Policy',
+        "url": 'https://news.google.com/rss/search?q=(AI%20regulation%20OR%20AI%20safety%20OR%20DSIT%20OR%20AI%20policy)%20(UK%20OR%20Britain)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'business'
+    },
 ]
 
 ALL_RSS_SOURCES = CHESHIRE_RSS_SOURCES

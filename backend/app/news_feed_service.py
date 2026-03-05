@@ -400,6 +400,87 @@ RSS_FEEDS = {
         'is_local': True,
         'location': 'warrington'
     },
+    # --- Business/Finance/Tech (extra via RSS sources expansion) ---
+    'companies_house_atom': {
+        'url': 'https://www.gov.uk/government/organisations/companies-house.atom',
+        'source': 'GOV.UK',
+        'category': 'Business',
+        'priority': 3
+    },
+    'ons_atom': {
+        'url': 'https://www.gov.uk/government/organisations/office-for-national-statistics.atom',
+        'source': 'GOV.UK',
+        'category': 'Business',
+        'priority': 3
+    },
+    'gn_uk_startups_vc': {
+        'url': 'https://news.google.com/rss/search?q=(UK%20startup%20OR%20startups%20OR%20venture%20capital%20OR%20VC%20OR%20funding%20OR%20seed%20round%20OR%20Series%20A)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        'source': 'Google News',
+        'category': 'Business',
+        'priority': 3
+    },
+    'gn_uk_fintech_banking': {
+        'url': 'https://news.google.com/rss/search?q=(UK%20fintech%20OR%20banking%20OR%20challenger%20bank%20OR%20payments)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        'source': 'Google News',
+        'category': 'Money',
+        'priority': 3
+    },
+    'gn_uk_housing_property': {
+        'url': 'https://news.google.com/rss/search?q=(UK%20housing%20OR%20property%20market%20OR%20house%20prices%20OR%20rent%20rents)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        'source': 'Google News',
+        'category': 'Property',
+        'priority': 3
+    },
+    'gn_uk_energy_bills': {
+        'url': 'https://news.google.com/rss/search?q=(UK%20energy%20bills%20OR%20tariffs%20OR%20Ofgem%20OR%20price%20cap)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        'source': 'Google News',
+        'category': 'Money',
+        'priority': 3
+    },
+    'gn_uk_cybersecurity': {
+        'url': 'https://news.google.com/rss/search?q=(UK%20cybersecurity%20OR%20ransomware%20OR%20data%20breach%20OR%20NCSC)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        'source': 'Google News',
+        'category': 'Tech',
+        'priority': 3
+    },
+    'gn_uk_ai_regulation': {
+        'url': 'https://news.google.com/rss/search?q=(UK%20AI%20regulation%20OR%20artificial%20intelligence%20policy%20OR%20DSIT)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        'source': 'Google News',
+        'category': 'Tech',
+        'priority': 3
+    },
+
+    # --- GOV.UK org feeds (Business/Tech) ---
+    'govuk_dbit_atom': {
+        'url': 'https://www.gov.uk/government/organisations/department-for-business-and-trade.atom',
+        'source': 'GOV.UK',
+        'category': 'Business',
+        'priority': 3
+    },
+    'govuk_dsit_atom': {
+        'url': 'https://www.gov.uk/government/organisations/department-for-science-innovation-and-technology.atom',
+        'source': 'GOV.UK',
+        'category': 'Tech',
+        'priority': 3
+    },
+    'govuk_cma_atom': {
+        'url': 'https://www.gov.uk/government/organisations/competition-and-markets-authority.atom',
+        'source': 'GOV.UK',
+        'category': 'Business',
+        'priority': 3
+    },
+    'govuk_insolvency_atom': {
+        'url': 'https://www.gov.uk/government/organisations/insolvency-service.atom',
+        'source': 'GOV.UK',
+        'category': 'Business',
+        'priority': 3
+    },
+    'govuk_ipo_atom': {
+        'url': 'https://www.gov.uk/government/organisations/intellectual-property-office.atom',
+        'source': 'GOV.UK',
+        'category': 'Business',
+        'priority': 3
+    },
 
 }
 
@@ -906,7 +987,165 @@ class NewsFeedService:
                     }
                     
                     items = root.findall('.//item')
-                    
+
+                    # -------- Atom (<feed><entry>) support (GOV.UK etc.) --------
+                    # Atom feeds use a default namespace, so plain './/entry' will return 0.
+                    ATOM_NS = 'http://www.w3.org/2005/Atom'
+                    atom_entries = root.findall(f'.//{{{ATOM_NS}}}entry')
+                    if not items and atom_entries:
+                        for entry in atom_entries:
+                            try:
+                                t = entry.find(f'{{{ATOM_NS}}}title')
+                                title = self._clean_html(t.text if t is not None else '')
+                                if not title:
+                                    continue
+
+                                s = entry.find(f'{{{ATOM_NS}}}summary')
+                                summary = self._clean_html(s.text if s is not None else '')
+
+                                # Prefer alternate HTML link
+                                link = ''
+                                for l in entry.findall(f'{{{ATOM_NS}}}link'):
+                                    rel = (l.attrib.get('rel') or '').lower()
+                                    href = l.attrib.get('href') or ''
+                                    if rel == 'alternate' and href:
+                                        link = href
+                                        break
+                                    if not link and href:
+                                        link = href
+
+                                u = entry.find(f'{{{ATOM_NS}}}updated')
+                                pub_date = (u.text if u is not None else '') or ''
+                                pub_iso = self._parse_date(pub_date)
+
+                                # GOV.UK Atom doesn't reliably provide images; keep empty and let later logic handle it
+                                image = None
+
+                                category = default_category
+                                is_local = self._is_cheshire_related(title, summary)
+                                if is_local and default_category not in ['Sports', 'Tech']:
+                                    category = 'Local News'
+
+                                override_category = get_category_override(title, summary, default_category)
+                                if override_category:
+                                    category = override_category
+
+                                feed_location = self.feeds.get(feed_key, {}).get('location')
+                                detected_location = get_article_priority_location(title, summary)
+                                article_location = feed_location or detected_location
+
+                                article = {
+                                    'id': str(uuid4()),
+                                    'title': title,
+                                    'content': summary,
+                                    'summary': summary[:200] + '...' if len(summary) > 200 else summary,
+                                    'source': source,
+                                    'source_url': link,
+                                    'category': category,
+                                    'image': image,
+                                    'publishedDate': pub_iso,
+                                    'author': source,
+                                    'is_local_source': is_local_source,
+                                    'is_local': bool(is_local),
+                                    'priority_location': article_location,
+                                }
+                                articles.append(article)
+                            except Exception:
+                                continue
+
+                        # If Atom parsing produced articles, skip RSS <item> parsing below
+                        if articles:
+                            return articles
+                    # -------- end Atom support --------
+
+
+                    # -------- end Atom support --------
+
+
+                    # Atom fallback (e.g. GOV.UK org feeds) use <entry> not <item>
+                    if not items:
+                        atom_ns = {'atom': 'http://www.w3.org/2005/Atom'}
+                        entries = root.findall('.//atom:entry', atom_ns) or root.findall('.//entry')
+                        for entry in entries:
+                            try:
+                                title_elem = entry.find('atom:title', atom_ns) or entry.find('title')
+                                title = self._clean_html(title_elem.text if title_elem is not None else '')
+                                if not title:
+                                    continue
+
+                                summary_elem = entry.find('atom:summary', atom_ns) or entry.find('summary')
+                                content_elem = entry.find('atom:content', atom_ns) or entry.find('content')
+                                raw_desc = ""
+                                if summary_elem is not None and getattr(summary_elem, "text", None):
+                                    raw_desc = summary_elem.text or ""
+                                elif content_elem is not None and getattr(content_elem, "text", None):
+                                    raw_desc = content_elem.text or ""
+                                description = self._clean_html(raw_desc)
+
+                                # SPAM FILTER
+                                if is_spam_or_product_article(title, description):
+                                    logger.debug(f"Skipping spam/product article: {title[:50]}...")
+                                    continue
+
+                                # Atom link is usually <link rel="alternate" href="..."/>
+                                link = ""
+                                link_elem = entry.find("atom:link[@rel='alternate']", atom_ns) or entry.find("link[@rel='alternate']")
+                                if link_elem is None:
+                                    link_elem = entry.find("atom:link", atom_ns) or entry.find("link")
+                                if link_elem is not None:
+                                    link = (link_elem.attrib.get("href") or link_elem.text or "").strip()
+
+                                updated_elem = entry.find('atom:updated', atom_ns) or entry.find('updated')
+                                published_elem = entry.find('atom:published', atom_ns) or entry.find('published')
+                                date_str = ""
+                                if updated_elem is not None and getattr(updated_elem, "text", None):
+                                    date_str = updated_elem.text or ""
+                                elif published_elem is not None and getattr(published_elem, "text", None):
+                                    date_str = published_elem.text or ""
+                                pub_date = date_str
+
+                                image = None  # GOV.UK Atom typically doesn't include images
+
+                                category = default_category
+                                is_local = self._is_cheshire_related(title, description)
+                                if is_local and default_category not in ['Sports', 'Tech']:
+                                    category = 'Local News'
+
+                                override_category = get_category_override(title, description, default_category)
+                                if override_category:
+                                    category = override_category
+
+                                feed_location = self.feeds.get(feed_key, {}).get('location')
+                                detected_location = get_article_priority_location(title, description)
+                                article_location = feed_location or detected_location
+
+                                article = {
+                                    'id': str(uuid4()),
+                                    'title': title,
+                                    'content': description,
+                                    'summary': description[:200] + '...' if len(description) > 200 else description,
+                                    'source': source,
+                                    'source_url': link,
+                                    'category': category,
+                                    'image': image,
+                                    'publishedDate': self._parse_date(pub_date),
+                                    'author': source,
+                                    'is_local_source': is_local_source,
+                                    'tags': [],
+                                    'scope': 'uk',
+                                }
+                                if article_location:
+                                    article['priority_location'] = article_location
+
+                                articles.append(article)
+                            except Exception as e:
+                                logger.debug(f"Atom parse error for {feed_key}: {e}")
+                                continue
+
+                        # Atom parsed -> return and skip RSS item loop
+                    if articles:
+                        return articles
+
                     for item in items:
                         try:
                             title_elem = item.find('title')
