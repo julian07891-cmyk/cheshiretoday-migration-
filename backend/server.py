@@ -29,9 +29,6 @@ load_dotenv(ROOT_DIR / '.env')
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
-from app.unsplash_service import unsplash_service
-from app.pexels_service import pexels_service
-from app.pixabay_service import pixabay_service
 from app.news_feed_service import news_feed_service
 from app.perplexity_service import perplexity_service
 
@@ -333,32 +330,32 @@ email_verification_codes = {}
 # CHESHIRE LOCATION-SPECIFIC IMAGES 
 LOCATION_IMAGES = {
     'knutsford': [
-        'https://images.unsplash.com/photo-1591027590129-4de51a2fb3f6?w=800&h=500&fit=crop',  # English market town cobbles
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=500&fit=crop',  # English high street shops
+        '',  # English market town cobbles
+        '',  # English high street shops
     ],
     'wilmslow': [
-        'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&h=500&fit=crop',  # English town center
-        'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&h=500&fit=crop',  # UK town street
+        '',  # English town center
+        '',  # UK town street
     ],
     'alderley': [
-        'https://images.unsplash.com/photo-1588152850700-c82ecb8ba9b1?w=800&h=500&fit=crop',  # English countryside woodland
-        'https://images.unsplash.com/photo-1566159196936-b4f3dc52dbfc?w=800&h=500&fit=crop',  # British countryside path
+        '',  # English countryside woodland
+        '',  # British countryside path
     ],
     'prestbury': [
-        'https://images.unsplash.com/photo-1670620800086-3b9a345967fc?w=800&h=500&fit=crop',  # Cotswolds stone buildings
-        'https://images.unsplash.com/photo-1670620800060-b90889e9f7d9?w=800&h=500&fit=crop',  # English village street
+        '',  # Cotswolds stone buildings
+        '',  # English village street
     ],
     'chester': [
-        'https://images.unsplash.com/photo-1590058175032-5e68d70e3e2b?w=800&h=500&fit=crop',  # UK stone bridge historic
-        'https://images.unsplash.com/photo-1567610018053-7f1b5c2d7f01?w=800&h=500&fit=crop',  # English town square
+        '',  # UK stone bridge historic
+        '',  # English town square
     ],
     'macclesfield': [
-        'https://images.unsplash.com/photo-1763238638505-76f22e816560?w=800&h=500&fit=crop',  # English market town
-        'https://images.unsplash.com/photo-1696113073939-213d3d9610b1?w=800&h=500&fit=crop',  # UK village scene
+        '',  # English market town
+        '',  # UK village scene
     ],
     'golden triangle': [
-        'https://images.unsplash.com/photo-1508325739122-c57a76313bf4?w=800&h=500&fit=crop',  # Castle Combe wealthy village
-        'https://images.unsplash.com/photo-1524919131051-b29c762a8356?w=800&h=500&fit=crop',  # Historic British manor
+        '',  # Castle Combe wealthy village
+        '',  # Historic British manor
     ],
 }
 
@@ -366,287 +363,287 @@ LOCATION_IMAGES = {
 CATEGORY_IMAGES = {
     'Local News': [
         # CHESHIRE & ENGLISH VILLAGES ONLY - countryside, villages, market towns
-        'https://images.unsplash.com/photo-1591027590129-4de51a2fb3f6?w=800&h=500&fit=crop',  # English cobbled market town
-        'https://images.unsplash.com/photo-1650117790243-d659112e532c?w=800&h=500&fit=crop',  # Cheshire pastoral green fields
-        'https://images.unsplash.com/photo-1588152850700-c82ecb8ba9b1?w=800&h=500&fit=crop',  # English sheep countryside
-        'https://images.unsplash.com/photo-1568190538421-53523065d4b8?w=800&h=500&fit=crop',  # Yorkshire Dales road
-        'https://images.unsplash.com/photo-1670620800086-3b9a345967fc?w=800&h=500&fit=crop',  # Cotswolds stone cottages
-        'https://images.unsplash.com/photo-1670620800060-b90889e9f7d9?w=800&h=500&fit=crop',  # English village lane
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=500&fit=crop',  # Historic English shopfront
-        'https://images.unsplash.com/photo-1567610018053-7f1b5c2d7f01?w=800&h=500&fit=crop',  # English village green grass
-        'https://images.unsplash.com/photo-1590058175032-5e68d70e3e2b?w=800&h=500&fit=crop',  # UK stone bridge river
-        'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800&h=500&fit=crop',  # English town square
-        'https://images.unsplash.com/photo-1566159196936-b4f3dc52dbfc?w=800&h=500&fit=crop',  # British countryside footpath
-        'https://images.unsplash.com/photo-1599974331560-c4d5c209a005?w=800&h=500&fit=crop',  # English village houses
-        'https://images.unsplash.com/photo-1590182844668-a09d1fa27c1f?w=800&h=500&fit=crop',  # UK village church spire
-        'https://images.unsplash.com/photo-1584530782379-886b08e3c9b5?w=800&h=500&fit=crop',  # English rolling hills
-        'https://images.unsplash.com/photo-1542566604-6d30ead97cfe?w=800&h=500&fit=crop',  # UK farmland scene
-        'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&h=500&fit=crop',  # English high street
-        'https://images.unsplash.com/photo-1527489377706-5bf97e608852?w=800&h=500&fit=crop',  # UK market town center
-        'https://images.unsplash.com/photo-1508325739122-c57a76313bf4?w=800&h=500&fit=crop',  # Castle Combe village
-        'https://images.unsplash.com/photo-1549544131-35406370c265?w=800&h=500&fit=crop',  # UK green pastoral valley
-        'https://images.unsplash.com/photo-1524919131051-b29c762a8356?w=800&h=500&fit=crop',  # Historic British manor
-        'https://images.unsplash.com/photo-1763238638505-76f22e816560?w=800&h=500&fit=crop',  # English market town street
-        'https://images.unsplash.com/photo-1696113073939-213d3d9610b1?w=800&h=500&fit=crop',  # UK village cottages
+        '',  # English cobbled market town
+        '',  # Cheshire pastoral green fields
+        '',  # English sheep countryside
+        '',  # Yorkshire Dales road
+        '',  # Cotswolds stone cottages
+        '',  # English village lane
+        '',  # Historic English shopfront
+        '',  # English village green grass
+        '',  # UK stone bridge river
+        '',  # English town square
+        '',  # British countryside footpath
+        '',  # English village houses
+        '',  # UK village church spire
+        '',  # English rolling hills
+        '',  # UK farmland scene
+        '',  # English high street
+        '',  # UK market town center
+        '',  # Castle Combe village
+        '',  # UK green pastoral valley
+        '',  # Historic British manor
+        '',  # English market town street
+        '',  # UK village cottages
     ],
     'Business': [
         # UK BUSINESS - London offices, Canary Wharf (NO newspaper images)
-        'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&h=500&fit=crop',  # London Shard business
-        'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800&h=500&fit=crop',  # Tower Bridge London
-        'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=500&fit=crop',  # London city skyline
-        'https://images.unsplash.com/photo-1520986606214-8b456906c813?w=800&h=500&fit=crop',  # UK modern office building
-        'https://images.unsplash.com/photo-1454117096348-e4abbeba002c?w=800&h=500&fit=crop',  # London office towers
-        'https://images.unsplash.com/photo-1526129318478-62ed807ebdf9?w=800&h=500&fit=crop',  # British street scene
-        'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=500&fit=crop',  # UK corporate glass building
-        'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=500&fit=crop',  # British office interior
-        'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=800&h=500&fit=crop',  # UK workspace
-        'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=500&fit=crop',  # British business exterior
-        'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=800&h=500&fit=crop',  # UK business meeting
-        'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=800&h=500&fit=crop',  # London financial district
+        '',  # London Shard business
+        '',  # Tower Bridge London
+        '',  # London city skyline
+        '',  # UK modern office building
+        '',  # London office towers
+        '',  # British street scene
+        '',  # UK corporate glass building
+        '',  # British office interior
+        '',  # UK workspace
+        '',  # British business exterior
+        '',  # UK business meeting
+        '',  # London financial district
     ],
     'Tech': [
         # UK TECH - servers, coding, innovation
-        'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=500&fit=crop',  # UK data globe
-        'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&h=500&fit=crop',  # Circuit board tech
-        'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&h=500&fit=crop',  # Cybersecurity lock
-        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&h=500&fit=crop',  # UK tech workspace laptops
-        'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=800&h=500&fit=crop',  # Coding screen
-        'https://images.unsplash.com/photo-1535378620166-273708d44e4c?w=800&h=500&fit=crop',  # UK tech office
-        'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&h=500&fit=crop',  # Digital matrix code
-        'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&h=500&fit=crop',  # Server room
-        'https://images.unsplash.com/photo-1547658719-da2b51169166?w=800&h=500&fit=crop',  # Web development screen
-        'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=500&fit=crop',  # UK scientist lab
-        'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=500&fit=crop',  # UK robotics tech
-        'https://images.unsplash.com/photo-1555255707-c07966088b7b?w=800&h=500&fit=crop',  # Innovation tech
+        '',  # UK data globe
+        '',  # Circuit board tech
+        '',  # Cybersecurity lock
+        '',  # UK tech workspace laptops
+        '',  # Coding screen
+        '',  # UK tech office
+        '',  # Digital matrix code
+        '',  # Server room
+        '',  # Web development screen
+        '',  # UK scientist lab
+        '',  # UK robotics tech
+        '',  # Innovation tech
     ],
     'Finance': [
         # UK FINANCE - City of London, currency
-        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=500&fit=crop',  # UK stock trading screens
-        'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&h=500&fit=crop',  # British pound notes
-        'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&h=500&fit=crop',  # UK finance chart
-        'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=800&h=500&fit=crop',  # Financial planning
-        'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?w=800&h=500&fit=crop',  # UK coins stack
-        'https://images.unsplash.com/photo-1460472178825-e5240623afd5?w=800&h=500&fit=crop',  # London financial skyline
-        'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800&h=500&fit=crop',  # UK banking ATM
-        'https://images.unsplash.com/photo-1565372195458-9de0b320ef04?w=800&h=500&fit=crop',  # British currency coins
-        'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&h=500&fit=crop',  # UK financial services
-        'https://images.unsplash.com/photo-1621761191319-c6fb62004040?w=800&h=500&fit=crop',  # Banking app UK
+        '',  # UK stock trading screens
+        '',  # British pound notes
+        '',  # UK finance chart
+        '',  # Financial planning
+        '',  # UK coins stack
+        '',  # London financial skyline
+        '',  # UK banking ATM
+        '',  # British currency coins
+        '',  # UK financial services
+        '',  # Banking app UK
     ],
     'Health': [
         # UK HEALTH - NHS, British healthcare
-        'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=500&fit=crop',  # NHS doctor consultation
-        'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800&h=500&fit=crop',  # UK hospital corridor
-        'https://images.unsplash.com/photo-1571772996211-2f02c9727629?w=800&h=500&fit=crop',  # UK hospital building
-        'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=800&h=500&fit=crop',  # UK doctor stethoscope
-        'https://images.unsplash.com/photo-1551076805-e1869033e561?w=800&h=500&fit=crop',  # UK medical equipment
-        'https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&h=500&fit=crop',  # UK patient care
-        'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=800&h=500&fit=crop',  # UK nurse healthcare
-        'https://images.unsplash.com/photo-1584432810601-6c7f27d2362b?w=800&h=500&fit=crop',  # NHS vaccination injection
-        'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800&h=500&fit=crop',  # UK medical research
-        'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=800&h=500&fit=crop',  # UK dentist healthcare
-        'https://images.unsplash.com/photo-1581594693702-fbdc51b2763b?w=800&h=500&fit=crop',  # UK medical lab
+        '',  # NHS doctor consultation
+        '',  # UK hospital corridor
+        '',  # UK hospital building
+        '',  # UK doctor stethoscope
+        '',  # UK medical equipment
+        '',  # UK patient care
+        '',  # UK nurse healthcare
+        '',  # NHS vaccination injection
+        '',  # UK medical research
+        '',  # UK dentist healthcare
+        '',  # UK medical lab
     ],
     'Weather': [
         # UK WEATHER - British weather over UK landscapes
-        'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=500&fit=crop',  # UK rain storm clouds
-        'https://images.unsplash.com/photo-1478719059408-592965723cbc?w=800&h=500&fit=crop',  # UK grey cloudy sky
-        'https://images.unsplash.com/photo-1500740516770-92bd004b996e?w=800&h=500&fit=crop',  # UK sunset countryside
-        'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=800&h=500&fit=crop',  # UK sunrise field
-        'https://images.unsplash.com/photo-1428592953211-077101b2021b?w=800&h=500&fit=crop',  # UK storm clouds dark
-        'https://images.unsplash.com/photo-1527482797697-8795b05a13fe?w=800&h=500&fit=crop',  # UK fog mist morning
-        'https://images.unsplash.com/photo-1530908295418-a12e326966ba?w=800&h=500&fit=crop',  # UK dramatic sky
-        'https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=800&h=500&fit=crop',  # UK autumn leaves weather
-        'https://images.unsplash.com/photo-1561553590-267fc716698a?w=800&h=500&fit=crop',  # UK spring weather
-        'https://images.unsplash.com/photo-1605451523461-b48c9d0ec3c9?w=800&h=500&fit=crop',  # UK winter snow scene
+        '',  # UK rain storm clouds
+        '',  # UK grey cloudy sky
+        '',  # UK sunset countryside
+        '',  # UK sunrise field
+        '',  # UK storm clouds dark
+        '',  # UK fog mist morning
+        '',  # UK dramatic sky
+        '',  # UK autumn leaves weather
+        '',  # UK spring weather
+        '',  # UK winter snow scene
     ],
     'Food': [
         # BRITISH FOOD - UK restaurants, British cuisine
-        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&h=500&fit=crop',  # British restaurant table
-        'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&h=500&fit=crop',  # British pub meal
-        'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=500&fit=crop',  # UK plated dinner
-        'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800&h=500&fit=crop',  # British full breakfast
-        'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&h=500&fit=crop',  # UK pizza meal
-        'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&h=500&fit=crop',  # British cafe pancakes
-        'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&h=500&fit=crop',  # UK roast dinner
-        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=500&fit=crop',  # British healthy salad
-        'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=800&h=500&fit=crop',  # UK fine dining
-        'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&h=500&fit=crop',  # British vegetable dish
+        '',  # British restaurant table
+        '',  # British pub meal
+        '',  # UK plated dinner
+        '',  # British full breakfast
+        '',  # UK pizza meal
+        '',  # British cafe pancakes
+        '',  # UK roast dinner
+        '',  # British healthy salad
+        '',  # UK fine dining
+        '',  # British vegetable dish
     ],
     'Festive': [
         # BRITISH FESTIVE - UK Christmas, celebrations
-        'https://images.unsplash.com/photo-1512389142860-9c449e58a543?w=800&h=500&fit=crop',  # UK Christmas decorations
-        'https://images.unsplash.com/photo-1482517967863-00e15c9b44be?w=800&h=500&fit=crop',  # British Christmas scene
-        'https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=800&h=500&fit=crop',  # UK Christmas tree lights
-        'https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?w=800&h=500&fit=crop',  # British Christmas lights
-        'https://images.unsplash.com/photo-1544986581-efac024faf62?w=800&h=500&fit=crop',  # UK Christmas market stall
-        'https://images.unsplash.com/photo-1512909006721-3d6018887383?w=800&h=500&fit=crop',  # British festive lights
-        'https://images.unsplash.com/photo-1481653125770-b78c206c59d4?w=800&h=500&fit=crop',  # UK Christmas street
-        'https://images.unsplash.com/photo-1511407192727-02e0a49e8a0f?w=800&h=500&fit=crop',  # British New Year
-        'https://images.unsplash.com/photo-1607447009832-c18dafe4b61b?w=800&h=500&fit=crop',  # UK winter festive
-        'https://images.unsplash.com/photo-1513297887119-d46091b24bfa?w=800&h=500&fit=crop',  # British Christmas morning
+        '',  # UK Christmas decorations
+        '',  # British Christmas scene
+        '',  # UK Christmas tree lights
+        '',  # British Christmas lights
+        '',  # UK Christmas market stall
+        '',  # British festive lights
+        '',  # UK Christmas street
+        '',  # British New Year
+        '',  # UK winter festive
+        '',  # British Christmas morning
     ],
     'Events': [
         # UK EVENTS - British festivals, local fairs
-        'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&h=500&fit=crop',  # UK festival lights
-        'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&h=500&fit=crop',  # British celebration balloons
-        'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800&h=500&fit=crop',  # UK concert crowd
-        'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800&h=500&fit=crop',  # British party sparklers
-        'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800&h=500&fit=crop',  # UK music event stage
-        'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=500&fit=crop',  # British conference hall
-        'https://images.unsplash.com/photo-1464047736614-af63643285bf?w=800&h=500&fit=crop',  # UK country fair
-        'https://images.unsplash.com/photo-1472653431158-6364773b2a56?w=800&h=500&fit=crop',  # British local event
-        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=500&fit=crop',  # UK nightlife
-        'https://images.unsplash.com/photo-1492538368677-f6e0afe31dcc?w=800&h=500&fit=crop',  # British outdoor gathering
+        '',  # UK festival lights
+        '',  # British celebration balloons
+        '',  # UK concert crowd
+        '',  # British party sparklers
+        '',  # UK music event stage
+        '',  # British conference hall
+        '',  # UK country fair
+        '',  # British local event
+        '',  # UK nightlife
+        '',  # British outdoor gathering
     ],
     'Sports': [
         # UK SPORTS - Football, rugby, cricket
-        'https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&h=500&fit=crop',  # UK football stadium
-        'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&h=500&fit=crop',  # British football ball
-        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=500&fit=crop',  # UK football match
-        'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&h=500&fit=crop',  # British rugby scrum
-        'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800&h=500&fit=crop',  # UK cricket match
-        'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=500&fit=crop',  # British athletics track
-        'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=800&h=500&fit=crop',  # UK swimming pool
-        'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&h=500&fit=crop',  # British golf course
-        'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&h=500&fit=crop',  # UK basketball court
-        'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&h=500&fit=crop',  # British gym fitness
+        '',  # UK football stadium
+        '',  # British football ball
+        '',  # UK football match
+        '',  # British rugby scrum
+        '',  # UK cricket match
+        '',  # British athletics track
+        '',  # UK swimming pool
+        '',  # British golf course
+        '',  # UK basketball court
+        '',  # British gym fitness
     ],
     'Community': [
         # UK COMMUNITY - British village life, gatherings
-        'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=800&h=500&fit=crop',  # UK countryside field
-        'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=500&fit=crop',  # British community garden
-        'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=500&fit=crop',  # UK friends group
-        'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&h=500&fit=crop',  # British family park
-        'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800&h=500&fit=crop',  # UK wedding celebration
-        'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=500&fit=crop',  # British team meeting
-        'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&h=500&fit=crop',  # UK volunteer group
-        'https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?w=800&h=500&fit=crop',  # British friends laughing
-        'https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800&h=500&fit=crop',  # UK community meal
-        'https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&h=500&fit=crop',  # British team office
+        '',  # UK countryside field
+        '',  # British community garden
+        '',  # UK friends group
+        '',  # British family park
+        '',  # UK wedding celebration
+        '',  # British team meeting
+        '',  # UK volunteer group
+        '',  # British friends laughing
+        '',  # UK community meal
+        '',  # British team office
     ],
     'UK News': [
         # UK NATIONAL NEWS - London landmarks, Parliament
-        'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800&h=500&fit=crop',  # London skyline sunset
-        'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800&h=500&fit=crop',  # Tower Bridge night
-        'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&h=500&fit=crop',  # London Shard building
-        'https://images.unsplash.com/photo-1520986606214-8b456906c813?w=800&h=500&fit=crop',  # UK Parliament area
-        'https://images.unsplash.com/photo-1454117096348-e4abbeba002c?w=800&h=500&fit=crop',  # British cityscape evening
-        'https://images.unsplash.com/photo-1526129318478-62ed807ebdf9?w=800&h=500&fit=crop',  # London street lamps
-        'https://images.unsplash.com/photo-1485201543483-f06c8d2a8fb4?w=800&h=500&fit=crop',  # British landmark
-        'https://images.unsplash.com/photo-1505092670810-fb7d4ff03ee5?w=800&h=500&fit=crop',  # UK city life
-        'https://images.unsplash.com/photo-1508966319062-b5bc8fb46d38?w=800&h=500&fit=crop',  # British urban scene
-        'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=800&h=500&fit=crop',  # London financial district
+        '',  # London skyline sunset
+        '',  # Tower Bridge night
+        '',  # London Shard building
+        '',  # UK Parliament area
+        '',  # British cityscape evening
+        '',  # London street lamps
+        '',  # British landmark
+        '',  # UK city life
+        '',  # British urban scene
+        '',  # London financial district
     ]
 }
 # TOPIC-SPECIFIC IMAGE MAPPINGS (Keywords -> Images)
 TOPIC_IMAGE_MAPPINGS = {
     'police': [
-        'https://images.unsplash.com/photo-1455735459330-969b65c65b1c?w=800&h=500&fit=crop', # UK Police car
-        'https://images.unsplash.com/photo-1595329088732-d853e3ceba74?w=800&h=500&fit=crop', # Police officer
-        'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=800&h=500&fit=crop', # Law/Justice
-        'https://images.unsplash.com/photo-1453873531674-2151bcd01707?w=800&h=500&fit=crop', # Police lights
-        'https://images.unsplash.com/photo-1532375810709-75b1da00537c?w=800&h=500&fit=crop', # Emergency lights
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=500&fit=crop', # UK street at night
-        'https://images.unsplash.com/photo-1594312915251-48db9280c8f1?w=800&h=500&fit=crop', # Urban night scene
-        'https://images.unsplash.com/photo-1569863959165-56dae551d4fc?w=800&h=500&fit=crop', # City night
+        '', # UK Police car
+        '', # Police officer
+        '', # Law/Justice
+        '', # Police lights
+        '', # Emergency lights
+        '', # UK street at night
+        '', # Urban night scene
+        '', # City night
     ],
     'crime': [
-        'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=800&h=500&fit=crop', # Law/Justice
-        'https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=800&h=500&fit=crop', # Pillars of justice
-        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=500&fit=crop', # UK street at night
-        'https://images.unsplash.com/photo-1453873531674-2151bcd01707?w=800&h=500&fit=crop', # Emergency lights
+        '', # Law/Justice
+        '', # Pillars of justice
+        '', # UK street at night
+        '', # Emergency lights
     ],
     'arrest': [
-        'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=800&h=500&fit=crop', # Handcuffs/Law
-        'https://images.unsplash.com/photo-1453873531674-2151bcd01707?w=800&h=500&fit=crop', # Police lights
+        '', # Handcuffs/Law
+        '', # Police lights
     ],
     'court': [
-        'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=800&h=500&fit=crop', # Gavel/Law
-        'https://images.unsplash.com/photo-1505664194779-8beaceb93744?w=800&h=500&fit=crop', # Pillars of justice
+        '', # Gavel/Law
+        '', # Pillars of justice
     ],
     'fire': [
-        'https://images.unsplash.com/photo-1486551937199-baf066858de7?w=800&h=500&fit=crop', # Fire truck
-        'https://images.unsplash.com/photo-1517213849290-bbbfffdc6da3?w=800&h=500&fit=crop', # Fire scene
-        'https://images.unsplash.com/photo-1560635070-c7d8e83e1a71?w=800&h=500&fit=crop', # Emergency response
+        '', # Fire truck
+        '', # Fire scene
+        '', # Emergency response
     ],
     'crash': [
-        'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&h=500&fit=crop', # Car/Road
-        'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&h=500&fit=crop', # Motorway
-        'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=500&fit=crop', # Road at night
+        '', # Car/Road
+        '', # Motorway
+        '', # Road at night
     ],
     'motorway': [
-        'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&h=500&fit=crop', # Motorway
-        'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=500&fit=crop', # Road at night
-        'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&h=500&fit=crop', # Car/Road
+        '', # Motorway
+        '', # Road at night
+        '', # Car/Road
     ],
     'nhs': [
-        'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=500&fit=crop', # Hospital building
-        'https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=800&h=500&fit=crop', # Medical staff
+        '', # Hospital building
+        '', # Medical staff
     ],
     'hospital': [
-        'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&h=500&fit=crop', # Hospital building
-        'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=800&h=500&fit=crop', # Ambulance
+        '', # Hospital building
+        '', # Ambulance
     ],
     'school': [
-        'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=500&fit=crop', # Classroom
-        'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&h=500&fit=crop', # School building
+        '', # Classroom
+        '', # School building
     ],
     'transport': [
-        'https://images.unsplash.com/photo-1517355163-39cc70762df7?w=800&h=500&fit=crop', # Train station
-        'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&h=500&fit=crop', # Car/Traffic
+        '', # Train station
+        '', # Car/Traffic
     ],
     'train': [
-        'https://images.unsplash.com/photo-1517355163-39cc70762df7?w=800&h=500&fit=crop', # Train station
-        'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=800&h=500&fit=crop', # Train tracks
+        '', # Train station
+        '', # Train tracks
     ],
     'weather': [
-        'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=500&fit=crop', # Rain
-        'https://images.unsplash.com/photo-1561553590-267fc716698a?w=800&h=500&fit=crop', # Sunny sky
+        '', # Rain
+        '', # Sunny sky
     ],
     'council': [
-        'https://images.unsplash.com/photo-1555848962-6e79363ec58f?w=800&h=500&fit=crop', # Meeting room
-        'https://images.unsplash.com/photo-1577495508048-b635879837f1?w=800&h=500&fit=crop', # Official building
+        '', # Meeting room
+        '', # Official building
     ]
 }
 
 # CHESHIRE & UK GENERIC POOL (Safe for any Cheshire story fallback)
 CHESHIRE_FALLBACK_IMAGES = [
     # Villages / Market Towns
-    'https://images.unsplash.com/photo-1549544131-35406370c265?w=800&h=500&fit=crop',  # Green valley
-    'https://images.unsplash.com/photo-1568190538421-53523065d4b8?w=800&h=500&fit=crop',  # Country road
-    'https://images.unsplash.com/photo-1508325739122-c57a76313bf4?w=800&h=500&fit=crop',  # Village stone
-    'https://images.unsplash.com/photo-1599974331560-c4d5c209a005?w=800&h=500&fit=crop',  # Brick houses
-    'https://images.unsplash.com/photo-1590182844668-a09d1fa27c1f?w=800&h=500&fit=crop',  # Church spire
-    'https://images.unsplash.com/photo-1524919131051-b29c762a8356?w=800&h=500&fit=crop',  # Manor house
-    'https://images.unsplash.com/photo-1696113073939-213d3d9610b1?w=800&h=500&fit=crop',  # Cottage
-    'https://images.unsplash.com/photo-1566159196936-b4f3dc52dbfc?w=800&h=500&fit=crop',  # Path
-    'https://images.unsplash.com/photo-1588152850700-c82ecb8ba9b1?w=800&h=500&fit=crop',  # Sheep
-    'https://images.unsplash.com/photo-1542566604-6d30ead97cfe?w=800&h=500&fit=crop',  # Farmland
-    'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&h=500&fit=crop',  # High street
-    'https://images.unsplash.com/photo-1527489377706-5bf97e608852?w=800&h=500&fit=crop',  # Town center
-    'https://images.unsplash.com/photo-1591027590129-4de51a2fb3f6?w=800&h=500&fit=crop',  # Cobbles
-    'https://images.unsplash.com/photo-1570193628474-5ba0c21b8f3f?w=800&h=500&fit=crop',  # Village green
-    'https://images.unsplash.com/photo-1500343673619-3aa6d5c281c1?w=800&h=500&fit=crop',  # Fields
-    'https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?w=800&h=500&fit=crop',  # Rural
-    'https://images.unsplash.com/photo-1516815231560-8f41ec531527?w=800&h=500&fit=crop',  # Rural buildings
-    'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=800&h=500&fit=crop',  # Street scene
-    'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&h=500&fit=crop',  # Lane
-    'https://images.unsplash.com/photo-1502139214982-d0ad755818d8?w=800&h=500&fit=crop',  # Village
-    'https://images.unsplash.com/photo-1518378188025-22bd89516ee2?w=800&h=500&fit=crop',  # Historic house
-    'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?w=800&h=500&fit=crop',  # Road
-    'https://images.unsplash.com/photo-1598513431456-ebedfd60c98f?w=800&h=500&fit=crop',  # Landscape
+    '',  # Green valley
+    '',  # Country road
+    '',  # Village stone
+    '',  # Brick houses
+    '',  # Church spire
+    '',  # Manor house
+    '',  # Cottage
+    '',  # Path
+    '',  # Sheep
+    '',  # Farmland
+    '',  # High street
+    '',  # Town center
+    '',  # Cobbles
+    '',  # Village green
+    '',  # Fields
+    '',  # Rural
+    '',  # Rural buildings
+    '',  # Street scene
+    '',  # Lane
+    '',  # Village
+    '',  # Historic house
+    '',  # Road
+    '',  # Landscape
 ]
 
 # EXPLICITLY BANNED IMAGES (Newspapers, generic business text, etc)
 BANNED_IMAGES = [
-    'https://images.unsplash.com/photo-1504711434969-e33886168f5c',  # World Business newspapers
-    'https://images.unsplash.com/photo-1586339949916-3e9457bef6d3',  # Generic newspapers
-    'https://images.unsplash.com/photo-1566378246598-5b11a0d486cc',  # Newspapers stack
-    'https://images.unsplash.com/photo-1595152772835-219674b2a8a6',  # Newspaper rack
-    'https://images.unsplash.com/photo-1523995462485-3d171b5c8fa9',  # Newspaper close up
-    'https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf',  # Blue gloves PPE (Medical)
-    'https://images.unsplash.com/photo-1553484771-047a44eee27b',  # Old newspaper/business image
-    'https://images.unsplash.com/photo-1560179707-f14e90ef3623',  # London financial district (often generic)
+    '',  # World Business newspapers
+    '',  # Generic newspapers
+    '',  # Newspapers stack
+    '',  # Newspaper rack
+    '',  # Newspaper close up
+    '',  # Blue gloves PPE (Medical)
+    '',  # Old newspaper/business image
+    '',  # London financial district (often generic)
 ]
 
 # Build a GLOBAL pool of ALL unique images for fallback
@@ -667,7 +664,6 @@ def extract_photo_id(url: str) -> str:
     URL parameters like timestamps/session IDs that make same photos look different.
     
     Examples:
-    - Unsplash: photo-1632207857925-a4d52c54d683?ixid=ABC -> unsplash:photo-1632207857925-a4d52c54d683
     - Pexels: /photos/12345/pexels-photo-12345.jpeg -> pexels:12345
     - Pixabay: /photo/city-123456_1280.jpg -> pixabay:123456
     - Static: https://example.com/image.jpg?w=800 -> https://example.com/image.jpg
@@ -676,11 +672,6 @@ def extract_photo_id(url: str) -> str:
         return ""
     
     # Unsplash: extract photo-XXXX identifier
-    if 'unsplash.com' in url or 'photo-' in url:
-        match = re.search(r'photo-([a-zA-Z0-9_-]+)', url)
-        if match:
-            return f'unsplash:{match.group(0)}'
-    
     # Pexels: extract numeric photo ID
     if 'pexels.com' in url:
         match = re.search(r'/photos/(\d+)', url)
@@ -841,67 +832,13 @@ def select_unique_image(category: str, used_photo_ids: set, title: str = "", con
 
 async def get_dynamic_image(title: str, category: str, content: str, scope: str, used_photo_ids: set) -> str:
     """
-    Get an image for an article using multiple free image APIs.
-    Priority: 1) Unsplash  2) Pexels  3) Pixabay  4) Static fallback pool
-    All sources configured to return UK/Cheshire specific images.
-    CRITICAL: Ensures no duplicate images across all sources.
+    Get an image for an article.
+    Current policy: RSS-only images + static fallback pool (no external image APIs).
+    Ensures no duplicate images across the pool.
     """
     if used_photo_ids is None:
         used_photo_ids = set()
-    
-    # Try Unsplash API first (great UK content)
-    if unsplash_service.enabled:
-        try:
-            unsplash_image = await unsplash_service.get_article_image(
-                title=title,
-                category=category,
-                content=content,
-                scope=scope,
-                used_images=used_photo_ids  # Pass used_photo_ids to check duplicates
-            )
-            if unsplash_image and not is_image_used(unsplash_image, used_photo_ids):
-                logger.info(f"✅ Unsplash UK image matched for: {title[:40]}...")
-                return unsplash_image
-            elif unsplash_image:
-                logger.warning("Unsplash image already used, trying Pexels...")
-        except Exception as e:
-            logger.warning(f"Unsplash API error: {str(e)}")
-    
-    # Try Pexels API second (excellent UK content)
-    if pexels_service.enabled:
-        try:
-            pexels_image = await pexels_service.get_article_image(
-                title=title,
-                category=category,
-                scope=scope,
-                used_images=used_photo_ids
-            )
-            if pexels_image and not is_image_used(pexels_image, used_photo_ids):
-                logger.info(f"✅ Pexels UK image matched for: {title[:40]}...")
-                return pexels_image
-            elif pexels_image:
-                logger.warning("Pexels image already used, trying Pixabay...")
-        except Exception as e:
-            logger.warning(f"Pexels API error: {str(e)}")
-    
-    # Try Pixabay API third (good UK/British content)
-    if pixabay_service.enabled:
-        try:
-            pixabay_image = await pixabay_service.get_article_image(
-                title=title,
-                category=category,
-                scope=scope,
-                used_images=used_photo_ids
-            )
-            if pixabay_image and not is_image_used(pixabay_image, used_photo_ids):
-                logger.info(f"✅ Pixabay UK image matched for: {title[:40]}...")
-                return pixabay_image
-            elif pixabay_image:
-                logger.warning("Pixabay image already used, using static fallback...")
-        except Exception as e:
-            logger.warning(f"Pixabay API error: {str(e)}")
-    
-    # Fallback to static Unsplash pool
+
     static_image = select_unique_image(category, used_photo_ids, title, content)
     if static_image:
         logger.info(f"Using static pool image for: {title[:40]}...")
@@ -1496,7 +1433,7 @@ async def generate_from_headline(request: GenerateFromHeadlineRequest):
         
         if not image:
             # Use a default image if none found
-            image = "https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&h=500&fit=crop"
+            image = ""
         
         # Create the article
         article = {
@@ -1997,7 +1934,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     image = None
 
                     try:
-                        image = await unsplash_service.search_image(smart_query + " UK")
+                        image = None
                         if image in used_image_urls:
                             image = None
                     except:
@@ -2005,7 +1942,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
                     if not image:
                         try:
-                            image = await pexels_service.search_image(smart_query)
+                            image = None  # Pexels disabled (RSS-only images)
                             if image in used_image_urls:
                                 image = None
                         except:
@@ -3804,14 +3741,14 @@ async def get_article_meta(article_id: str):
             return {
                 "title": "Cheshire Today - Local News",
                 "description": "Stay informed with the latest news from Cheshire",
-                "image": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop",
+                "image": "",
                 "url": base_url
             }
         
         return {
             "title": article.get('title', 'Cheshire Today Article'),
             "description": article.get('content', '')[:200],
-            "image": article.get('image', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop'),
+            "image": article.get('image', ''),
             "url": f"{base_url}/article/{article_id}",
             "author": article.get('author', 'Cheshire Today'),
             "publishedDate": article.get('publishedDate', article.get('created_at'))
@@ -3824,7 +3761,7 @@ async def get_article_meta(article_id: str):
         return {
             "title": "Cheshire Today - Local News",
             "description": "Stay informed with the latest news from Cheshire",
-            "image": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=630&fit=crop",
+            "image": "",
             "url": base_url
         }
 
@@ -4793,7 +4730,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
         article_id = str(uuid.uuid4())
         
         # Use default image if not provided
-        default_image = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&h=500&fit=crop"
+        default_image = ""
         
         # Auto-detect location from title and content
         detected_location = get_article_priority_location(article.title, article.content)
@@ -9579,26 +9516,26 @@ async def fix_cheshire_images():
     try:
         # CHESHIRE-SPECIFIC images - countryside, villages, towns
         CHESHIRE_IMAGES = [
-            'https://images.unsplash.com/photo-1564760055775-d63b17a55c44?w=800&h=500&fit=crop',  # UK countryside village
-            'https://images.unsplash.com/photo-1599809275671-b5942cabc7a2?w=800&h=500&fit=crop',  # British countryside
-            'https://images.unsplash.com/photo-1570193628474-5ba0c21b8f3f?w=800&h=500&fit=crop',  # English village
-            'https://images.unsplash.com/photo-1583083527882-4bee9aba2eea?w=800&h=500&fit=crop',  # UK countryside
-            'https://images.unsplash.com/photo-1500343673619-3aa6d5c281c1?w=800&h=500&fit=crop',  # British rural
-            'https://images.unsplash.com/photo-1542718610-a1d656d1884c?w=800&h=500&fit=crop',  # English countryside
-            'https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?w=800&h=500&fit=crop',  # UK rural scene
-            'https://images.unsplash.com/photo-1598513431456-ebedfd60c98f?w=800&h=500&fit=crop',  # British landscape
-            'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800&h=500&fit=crop',  # Rural UK
-            'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&h=500&fit=crop',  # English countryside
-            'https://images.unsplash.com/photo-1516815231560-8f41ec531527?w=800&h=500&fit=crop',  # Rural buildings
-            'https://images.unsplash.com/photo-1508766206392-8bd5cf550d1c?w=800&h=500&fit=crop',  # British town
-            'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=800&h=500&fit=crop',  # UK village street
-            'https://images.unsplash.com/photo-1548013146-72479768bada?w=800&h=500&fit=crop',  # Country lane
-            'https://images.unsplash.com/photo-1502139214982-d0ad755818d8?w=800&h=500&fit=crop',  # British village
-            'https://images.unsplash.com/photo-1605616857458-e9e191ba3158?w=800&h=500&fit=crop',  # Rural scene
-            'https://images.unsplash.com/photo-1617952739847-6593487e7d95?w=800&h=500&fit=crop',  # UK countryside
-            'https://images.unsplash.com/photo-1518378188025-22bd89516ee2?w=800&h=500&fit=crop',  # Country house
-            'https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=800&h=500&fit=crop',  # British architecture
-            'https://images.unsplash.com/photo-1568084680786-a84f91d1153c?w=800&h=500&fit=crop',  # Countryside road
+            '',  # UK countryside village
+            '',  # British countryside
+            '',  # English village
+            '',  # UK countryside
+            '',  # British rural
+            '',  # English countryside
+            '',  # UK rural scene
+            '',  # British landscape
+            '',  # Rural UK
+            '',  # English countryside
+            '',  # Rural buildings
+            '',  # British town
+            '',  # UK village street
+            '',  # Country lane
+            '',  # British village
+            '',  # Rural scene
+            '',  # UK countryside
+            '',  # Country house
+            '',  # British architecture
+            '',  # Countryside road
         ]
         
         # Get all LOCAL NEWS articles
