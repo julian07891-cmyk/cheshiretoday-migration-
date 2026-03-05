@@ -322,329 +322,18 @@ class ManualArticleCreate(BaseModel):
 email_verification_codes = {}
 
 # =====================================================================================
-# UK-ONLY IMAGE LIBRARY - CHESHIRE & UK SCENES ONLY
-# NO NEWSPAPER IMAGES, NO GENERIC STOCK PHOTOS
-# All images must be authentic UK locations matching article content
+
+# =====================================================================================
+# RSS-ONLY IMAGE MODE
+# External providers removed. No static image pools are used for generation.
+# These stubs remain only to avoid breaking legacy admin/debug code paths.
 # =====================================================================================
 
-# CHESHIRE LOCATION-SPECIFIC IMAGES 
-LOCATION_IMAGES = {
-    'knutsford': [
-        '',  # English market town cobbles
-        '',  # English high street shops
-    ],
-    'wilmslow': [
-        '',  # English town center
-        '',  # UK town street
-    ],
-    'alderley': [
-        '',  # English countryside woodland
-        '',  # British countryside path
-    ],
-    'prestbury': [
-        '',  # Cotswolds stone buildings
-        '',  # English village street
-    ],
-    'chester': [
-        '',  # UK stone bridge historic
-        '',  # English town square
-    ],
-    'macclesfield': [
-        '',  # English market town
-        '',  # UK village scene
-    ],
-    'golden triangle': [
-        '',  # Castle Combe wealthy village
-        '',  # Historic British manor
-    ],
-}
-
-# UK-ONLY CATEGORY IMAGES - NO NEWSPAPER IMAGES, ALL AUTHENTIC UK SCENES
-CATEGORY_IMAGES = {
-    'Local News': [
-        # CHESHIRE & ENGLISH VILLAGES ONLY - countryside, villages, market towns
-        '',  # English cobbled market town
-        '',  # Cheshire pastoral green fields
-        '',  # English sheep countryside
-        '',  # Yorkshire Dales road
-        '',  # Cotswolds stone cottages
-        '',  # English village lane
-        '',  # Historic English shopfront
-        '',  # English village green grass
-        '',  # UK stone bridge river
-        '',  # English town square
-        '',  # British countryside footpath
-        '',  # English village houses
-        '',  # UK village church spire
-        '',  # English rolling hills
-        '',  # UK farmland scene
-        '',  # English high street
-        '',  # UK market town center
-        '',  # Castle Combe village
-        '',  # UK green pastoral valley
-        '',  # Historic British manor
-        '',  # English market town street
-        '',  # UK village cottages
-    ],
-    'Business': [
-        # UK BUSINESS - London offices, Canary Wharf (NO newspaper images)
-        '',  # London Shard business
-        '',  # Tower Bridge London
-        '',  # London city skyline
-        '',  # UK modern office building
-        '',  # London office towers
-        '',  # British street scene
-        '',  # UK corporate glass building
-        '',  # British office interior
-        '',  # UK workspace
-        '',  # British business exterior
-        '',  # UK business meeting
-        '',  # London financial district
-    ],
-    'Tech': [
-        # UK TECH - servers, coding, innovation
-        '',  # UK data globe
-        '',  # Circuit board tech
-        '',  # Cybersecurity lock
-        '',  # UK tech workspace laptops
-        '',  # Coding screen
-        '',  # UK tech office
-        '',  # Digital matrix code
-        '',  # Server room
-        '',  # Web development screen
-        '',  # UK scientist lab
-        '',  # UK robotics tech
-        '',  # Innovation tech
-    ],
-    'Finance': [
-        # UK FINANCE - City of London, currency
-        '',  # UK stock trading screens
-        '',  # British pound notes
-        '',  # UK finance chart
-        '',  # Financial planning
-        '',  # UK coins stack
-        '',  # London financial skyline
-        '',  # UK banking ATM
-        '',  # British currency coins
-        '',  # UK financial services
-        '',  # Banking app UK
-    ],
-    'Health': [
-        # UK HEALTH - NHS, British healthcare
-        '',  # NHS doctor consultation
-        '',  # UK hospital corridor
-        '',  # UK hospital building
-        '',  # UK doctor stethoscope
-        '',  # UK medical equipment
-        '',  # UK patient care
-        '',  # UK nurse healthcare
-        '',  # NHS vaccination injection
-        '',  # UK medical research
-        '',  # UK dentist healthcare
-        '',  # UK medical lab
-    ],
-    'Weather': [
-        # UK WEATHER - British weather over UK landscapes
-        '',  # UK rain storm clouds
-        '',  # UK grey cloudy sky
-        '',  # UK sunset countryside
-        '',  # UK sunrise field
-        '',  # UK storm clouds dark
-        '',  # UK fog mist morning
-        '',  # UK dramatic sky
-        '',  # UK autumn leaves weather
-        '',  # UK spring weather
-        '',  # UK winter snow scene
-    ],
-    'Food': [
-        # BRITISH FOOD - UK restaurants, British cuisine
-        '',  # British restaurant table
-        '',  # British pub meal
-        '',  # UK plated dinner
-        '',  # British full breakfast
-        '',  # UK pizza meal
-        '',  # British cafe pancakes
-        '',  # UK roast dinner
-        '',  # British healthy salad
-        '',  # UK fine dining
-        '',  # British vegetable dish
-    ],
-    'Festive': [
-        # BRITISH FESTIVE - UK Christmas, celebrations
-        '',  # UK Christmas decorations
-        '',  # British Christmas scene
-        '',  # UK Christmas tree lights
-        '',  # British Christmas lights
-        '',  # UK Christmas market stall
-        '',  # British festive lights
-        '',  # UK Christmas street
-        '',  # British New Year
-        '',  # UK winter festive
-        '',  # British Christmas morning
-    ],
-    'Events': [
-        # UK EVENTS - British festivals, local fairs
-        '',  # UK festival lights
-        '',  # British celebration balloons
-        '',  # UK concert crowd
-        '',  # British party sparklers
-        '',  # UK music event stage
-        '',  # British conference hall
-        '',  # UK country fair
-        '',  # British local event
-        '',  # UK nightlife
-        '',  # British outdoor gathering
-    ],
-    'Sports': [
-        # UK SPORTS - Football, rugby, cricket
-        '',  # UK football stadium
-        '',  # British football ball
-        '',  # UK football match
-        '',  # British rugby scrum
-        '',  # UK cricket match
-        '',  # British athletics track
-        '',  # UK swimming pool
-        '',  # British golf course
-        '',  # UK basketball court
-        '',  # British gym fitness
-    ],
-    'Community': [
-        # UK COMMUNITY - British village life, gatherings
-        '',  # UK countryside field
-        '',  # British community garden
-        '',  # UK friends group
-        '',  # British family park
-        '',  # UK wedding celebration
-        '',  # British team meeting
-        '',  # UK volunteer group
-        '',  # British friends laughing
-        '',  # UK community meal
-        '',  # British team office
-    ],
-    'UK News': [
-        # UK NATIONAL NEWS - London landmarks, Parliament
-        '',  # London skyline sunset
-        '',  # Tower Bridge night
-        '',  # London Shard building
-        '',  # UK Parliament area
-        '',  # British cityscape evening
-        '',  # London street lamps
-        '',  # British landmark
-        '',  # UK city life
-        '',  # British urban scene
-        '',  # London financial district
-    ]
-}
-# TOPIC-SPECIFIC IMAGE MAPPINGS (Keywords -> Images)
-TOPIC_IMAGE_MAPPINGS = {
-    'police': [
-        '', # UK Police car
-        '', # Police officer
-        '', # Law/Justice
-        '', # Police lights
-        '', # Emergency lights
-        '', # UK street at night
-        '', # Urban night scene
-        '', # City night
-    ],
-    'crime': [
-        '', # Law/Justice
-        '', # Pillars of justice
-        '', # UK street at night
-        '', # Emergency lights
-    ],
-    'arrest': [
-        '', # Handcuffs/Law
-        '', # Police lights
-    ],
-    'court': [
-        '', # Gavel/Law
-        '', # Pillars of justice
-    ],
-    'fire': [
-        '', # Fire truck
-        '', # Fire scene
-        '', # Emergency response
-    ],
-    'crash': [
-        '', # Car/Road
-        '', # Motorway
-        '', # Road at night
-    ],
-    'motorway': [
-        '', # Motorway
-        '', # Road at night
-        '', # Car/Road
-    ],
-    'nhs': [
-        '', # Hospital building
-        '', # Medical staff
-    ],
-    'hospital': [
-        '', # Hospital building
-        '', # Ambulance
-    ],
-    'school': [
-        '', # Classroom
-        '', # School building
-    ],
-    'transport': [
-        '', # Train station
-        '', # Car/Traffic
-    ],
-    'train': [
-        '', # Train station
-        '', # Train tracks
-    ],
-    'weather': [
-        '', # Rain
-        '', # Sunny sky
-    ],
-    'council': [
-        '', # Meeting room
-        '', # Official building
-    ]
-}
-
-# CHESHIRE & UK GENERIC POOL (Safe for any Cheshire story fallback)
-CHESHIRE_FALLBACK_IMAGES = [
-    # Villages / Market Towns
-    '',  # Green valley
-    '',  # Country road
-    '',  # Village stone
-    '',  # Brick houses
-    '',  # Church spire
-    '',  # Manor house
-    '',  # Cottage
-    '',  # Path
-    '',  # Sheep
-    '',  # Farmland
-    '',  # High street
-    '',  # Town center
-    '',  # Cobbles
-    '',  # Village green
-    '',  # Fields
-    '',  # Rural
-    '',  # Rural buildings
-    '',  # Street scene
-    '',  # Lane
-    '',  # Village
-    '',  # Historic house
-    '',  # Road
-    '',  # Landscape
-]
-
-# EXPLICITLY BANNED IMAGES (Newspapers, generic business text, etc)
-BANNED_IMAGES = [
-    '',  # World Business newspapers
-    '',  # Generic newspapers
-    '',  # Newspapers stack
-    '',  # Newspaper rack
-    '',  # Newspaper close up
-    '',  # Blue gloves PPE (Medical)
-    '',  # Old newspaper/business image
-    '',  # London financial district (often generic)
-]
+LOCATION_IMAGES = {}
+CATEGORY_IMAGES = {}
+TOPIC_IMAGE_MAPPINGS = {}
+CHESHIRE_FALLBACK_IMAGES = []
+BANNED_IMAGES = []
 
 def extract_photo_id(url: str) -> str:
     """Return a stable ID for an image URL (strip query params only)."""
@@ -711,61 +400,49 @@ def select_topic_image(title: str, content: str, used_photo_ids: set) -> str:
 
 def select_unique_image(category: str, used_photo_ids: set, title: str = "", content: str = "") -> str:
     """
-    STRICT unique UK-only image selection - NEVER returns a duplicate image.
-    Returns None if no unique image is available (signals to skip article generation).
-    
-    Priority:
-    1. Location-specific image (if article mentions a UK location)
-    2. Category-specific UK image
-    3. Any available UK image from pool
-    """
-    # FIRST: Try topic-specific image (keyword matching)
-    if title or content:
-        topic_image = select_topic_image(title, content, used_photo_ids)
-        if topic_image:
-            return topic_image
+    RSS-only image selection.
+    - Never returns empty strings.
+    - No external providers (Unsplash/Pexels/Pixabay).
+    - No static fallback pools.
 
-    # SECOND: Try location-specific image based on article content
+    If no configured non-empty URL matches, return None.
+    """
+    # Topic-specific (only if configured and non-empty)
     if title or content:
-        location_image = select_location_image(title, content, used_photo_ids)
-        if location_image:
-            return location_image
-    
-    # SECOND: Try category-specific UK images
-    category_images = CATEGORY_IMAGES.get(category, [])
+        try:
+            topic_image = select_topic_image(title, content, used_photo_ids)
+            topic_image = _clean_img(topic_image)
+            if topic_image and not is_image_used(topic_image, used_photo_ids) and not any(b and (b in topic_image) for b in BANNED_IMAGES):
+                return topic_image
+        except Exception:
+            pass
+
+    # Location-specific (currently disabled in RSS-only mode, but keep safe)
+    if title or content:
+        try:
+            location_image = select_location_image(title, content, used_photo_ids)
+            location_image = _clean_img(location_image)
+            if location_image and not is_image_used(location_image, used_photo_ids) and not any(b and (b in location_image) for b in BANNED_IMAGES):
+                return location_image
+        except Exception:
+            pass
+
+    # Category-specific list (only if you later populate with real URLs)
+    category_images = [ _clean_img(i) for i in CATEGORY_IMAGES.get(category, []) ]
+    category_images = [i for i in category_images if i]
+
     available = [
-        img for img in category_images 
+        img for img in category_images
         if not is_image_used(img, used_photo_ids)
-        and not any(b in img for b in BANNED_IMAGES)
+        and not any(b and (b in img) for b in BANNED_IMAGES)
     ]
-    
+
     if available:
+        import random
         image = random.choice(available)
-        logger.info(f"Selected unique UK {category} image: {image[-50:]}")
         return image
-    
-    # THIRD: If category images exhausted, try ALL UK images pool
-    # CRITICAL: If scope is 'cheshire', ONLY fall back to Cheshire/Village images
-    # Do NOT fallback to London/City images for local news
-    
-    fallback_pool = []  # RSS-only: no static fallback pool
-    if title and ('cheshire' in title.lower() or 'golden triangle' in title.lower() or 'knutsford' in title.lower() or 'wilmslow' in title.lower()):
-        # Force Cheshire fallback for local stories
-        fallback_pool = CHESHIRE_FALLBACK_IMAGES + CATEGORY_IMAGES.get('Local News', [])
-        
-    all_available = [
-        img for img in fallback_pool
-        if not is_image_used(img, used_photo_ids)
-        and not any(b in img for b in BANNED_IMAGES)
-    ]
-    
-    if all_available:
-        image = random.choice(all_available)
-        logger.info(f"Selected unique fallback image from pool: {image[-50:]}")
-        return image
-    
-    # NO unique UK images available - return None to signal skip
-    logger.warning(f"No unique UK images available! {len(used_photo_ids)} images already in use, 0 total in pool")
+
+    # RSS-only: no static fallback pool
     return None
 
 async def get_dynamic_image(title: str, category: str, content: str, scope: str, used_photo_ids: set) -> str:
@@ -9504,6 +9181,12 @@ async def fix_cheshire_images():
 async def update_local_news_images():
     """Update ONLY Local News articles with Cheshire-specific images - Production Safe"""
     try:
+        return {
+            "success": True,
+            "message": "update_local_news_images is disabled in RSS-only image mode.",
+            "disabled": True
+        }
+
         # Get all Local News articles from the current database
         local_news_articles = await db.articles.find({"category": "Local News"}).to_list(1000)
         
@@ -9572,6 +9255,12 @@ async def reassign_all_images_uk():
     This ensures images are both unique AND category-appropriate.
     """
     try:
+        return {
+            "success": True,
+            "message": "reassign_all_images_uk is disabled in RSS-only image mode.",
+            "disabled": True
+        }
+
         # Get all articles sorted by category for efficient assignment
         all_articles = await db.articles.find({}).to_list(1000)
         
@@ -9649,7 +9338,11 @@ async def reassign_all_images_uk():
 @api_router.post("/fix-all-images-uk")
 async def fix_all_images_uk():
     """Alias for reassign-all-images-uk"""
-    return await reassign_all_images_uk()
+    return {
+        "success": True,
+        "message": "reassign_all_images_uk is disabled in RSS-only image mode.",
+        "disabled": True
+    }
 
 @api_router.post("/admin/clean-duplicate-articles")
 async def clean_duplicate_articles(authorized: bool = Depends(get_admin_auth)):
