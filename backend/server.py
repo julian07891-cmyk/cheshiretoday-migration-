@@ -2818,7 +2818,7 @@ async def get_articles(
     """Get all articles with optional filtering by category, source type, and search"""
     try:
         # Check cache for default homepage request (most common)
-        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{with_total}"
+        cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{with_total}:{search or ''}"
         if not search and skip == 0 and limit == 20 and not category:
             cached = api_cache.get(cache_key, ttl_seconds=30)  # 30 second cache
             if cached:

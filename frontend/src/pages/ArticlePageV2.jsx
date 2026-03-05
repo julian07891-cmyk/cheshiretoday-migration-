@@ -805,9 +805,8 @@ export default function ArticlePageV2({ categories }) {
                     pillarLabel?.toLowerCase().includes("ai") ? "tech" :
                     pillarLabel?.toLowerCase().includes("business") ? "business" :
                     pillarLabel?.toLowerCase().includes("finance") ? "business" :
-                    pillarLabel?.toLowerCase().includes("local") ? "travel" :
                     "default"
-                  } 
+                  }
                 />
 
 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">

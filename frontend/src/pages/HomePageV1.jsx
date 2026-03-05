@@ -330,11 +330,11 @@ const navigate = useNavigate();
     const heroArticle = poolAll.find(isLocal) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) || poolAll.find(isAiTech) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) || poolAll[0] || null;
     if (heroArticle) mark(heroArticle);
 
-    // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible
-    // 2) Top Stories (7) — fixed mix: 2 Local, 2 Business, 1 Tech, 1 Property, 1 Flexible (dedupe-safe)
+    // 2) Top Stories (8) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible
+    // 2) Top Stories (8) — fixed mix: 2 Local, 2 Business, 1 Tech, 1 Property, 1 Flexible (dedupe-safe)
     const topStoriesCards = [];
 
-    // Top Stories (7) — fixed mix:
+    // Top Stories (8) — fixed mix:
     // 2 Local + 2 Business + 1 AI/Tech + 1 Property + 1 UK (dedupe-safe)
     const isBusinessishTop = (a) => {
       const cat = String(a?.category || "").toLowerCase();
@@ -372,7 +372,7 @@ const navigate = useNavigate();
     }
 
     const pushTop = (a, overrideCategory = null) => {
-      if (topStoriesCards.length >= 8) return;
+      if (topStoriesCards.length >= 7) return;
       if (!mark(a)) return;
       topStoriesCards.push(
         toCard(
@@ -435,7 +435,7 @@ const navigate = useNavigate();
 
     // Safety fill: if we still have <7 (rare), fill with newest non-tech
     for (const a of poolAll) {
-      if (topStoriesCards.length >= 8) break;
+      if (topStoriesCards.length >= 7) break;
       if (isAiTech(a)) continue;
       pushTop(a);
     }
@@ -736,7 +736,6 @@ return {
   const aiBizFeed = Array.isArray(home?.aiBizFeed) ? home.aiBizFeed : [];
 
   // AI & Business feed (filtered) — keep cards relevant and avoid dumping all articles here
-  
 return (
     <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
     <ErrorBoundary><HomepageLayout>
