@@ -22,7 +22,17 @@ import random
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import asyncio
-from app import rss_routes
+from pathlib import Path
+import sys
+_THIS_DIR = Path(__file__).resolve().parent
+_PARENT_DIR = _THIS_DIR.parent
+# Ensure imports work both locally and on Render
+if str(_THIS_DIR) not in sys.path: sys.path.insert(0, str(_THIS_DIR))
+if str(_PARENT_DIR) not in sys.path: sys.path.insert(0, str(_PARENT_DIR))
+try:
+    from app import rss_routes
+except ModuleNotFoundError:
+    from backend.app import rss_routes
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
