@@ -646,51 +646,11 @@ BANNED_IMAGES = [
     '',  # London financial district (often generic)
 ]
 
-# Build a GLOBAL pool of ALL unique images for fallback
-def get_all_unique_images():
-    """Get all unique images from all categories"""
-    all_images = set()
-    for images in CATEGORY_IMAGES.values():
-        all_images.update(images)
-    return list(all_images)
-
-ALL_UNIQUE_IMAGES = get_all_unique_images()
-print(f"[INFO] Initialized {len(ALL_UNIQUE_IMAGES)} unique images across all categories")
-
 def extract_photo_id(url: str) -> str:
-    """
-    Extract the unique photo ID from an image URL.
-    CRITICAL: This function extracts the actual photo identifier, ignoring
-    URL parameters like timestamps/session IDs that make same photos look different.
-    
-    Examples:
-    - Pexels: /photos/12345/pexels-photo-12345.jpeg -> pexels:12345
-    - Pixabay: /photo/city-123456_1280.jpg -> pixabay:123456
-    - Static: https://example.com/image.jpg?w=800 -> https://example.com/image.jpg
-    """
+    """Return a stable ID for an image URL (strip query params only)."""
     if not url:
         return ""
-    
-    # Unsplash: extract photo-XXXX identifier
-    # Pexels: extract numeric photo ID
-    if 'pexels.com' in url:
-        match = re.search(r'/photos/(\d+)', url)
-        if match:
-            return f'pexels:{match.group(1)}'
-        # Try alternate format
-        match = re.search(r'pexels-photo-(\d+)', url)
-        if match:
-            return f'pexels:{match.group(1)}'
-    
-    # Pixabay: extract numeric ID from URL
-    if 'pixabay.com' in url:
-        match = re.search(r'[_-](\d{5,})', url)  # Look for 5+ digit IDs
-        if match:
-            return f'pixabay:{match.group(1)}'
-    
-    # Static/fallback URL - remove query params and use base URL as ID
-    base_url = url.split('?')[0]
-    return base_url
+    return url.split("?")[0]
 
 def is_image_used(url: str, used_photo_ids: set) -> bool:
     """
@@ -722,29 +682,7 @@ async def get_used_images_from_db() -> set:
         return set()
 
 def select_location_image(title: str, content: str, used_photo_ids: set) -> str:
-    """
-    Select a UK image that matches the article's location if possible.
-    Checks article title and content for location mentions.
-    """
-    text = (title + ' ' + content).lower()
-    
-    # Check for Cheshire location mentions
-    location_matches = []
-    for location, images in LOCATION_IMAGES.items():
-        if location in text:
-            available = [
-                img for img in images 
-                if not is_image_used(img, used_photo_ids)
-                and not any(b in img for b in BANNED_IMAGES)
-            ]
-            if available:
-                location_matches.extend(available)
-    
-    if location_matches:
-        image = random.choice(location_matches)
-        logger.info(f"Selected location-specific UK image: {image[-50:]}")
-        return image
-    
+    """RSS-only mode: no location-based fallback images."""
     return None
 
 
@@ -810,7 +748,7 @@ def select_unique_image(category: str, used_photo_ids: set, title: str = "", con
     # CRITICAL: If scope is 'cheshire', ONLY fall back to Cheshire/Village images
     # Do NOT fallback to London/City images for local news
     
-    fallback_pool = ALL_UNIQUE_IMAGES
+    fallback_pool = []  # RSS-only: no static fallback pool
     if title and ('cheshire' in title.lower() or 'golden triangle' in title.lower() or 'knutsford' in title.lower() or 'wilmslow' in title.lower()):
         # Force Cheshire fallback for local stories
         fallback_pool = CHESHIRE_FALLBACK_IMAGES + CATEGORY_IMAGES.get('Local News', [])
@@ -827,7 +765,7 @@ def select_unique_image(category: str, used_photo_ids: set, title: str = "", con
         return image
     
     # NO unique UK images available - return None to signal skip
-    logger.warning(f"No unique UK images available! {len(used_photo_ids)} images already in use, {len(ALL_UNIQUE_IMAGES)} total in pool")
+    logger.warning(f"No unique UK images available! {len(used_photo_ids)} images already in use, 0 total in pool")
     return None
 
 async def get_dynamic_image(title: str, category: str, content: str, scope: str, used_photo_ids: set) -> str:
@@ -9670,7 +9608,7 @@ async def reassign_all_images_uk():
                     category_match_count += 1
                 else:
                     # Fallback: Use any unused image from the global pool
-                    all_unused = [img for img in ALL_UNIQUE_IMAGES if img not in used_images]
+                    all_unused = []  # RSS-only
                     if all_unused:
                         new_image = random.choice(all_unused)
                         category_fallback += 1
@@ -9701,7 +9639,6 @@ async def reassign_all_images_uk():
             "fallback_images": fallback_count,
             "match_rate": f"{(category_match_count / updated_count * 100):.1f}%" if updated_count > 0 else "0%",
             "category_breakdown": category_stats,
-            "total_unique_images_available": len(ALL_UNIQUE_IMAGES),
             "images_used": len(used_images)
         }
         
@@ -11280,7 +11217,7 @@ async def auto_fix_duplicate_images():
                         break
             
             # Only flag non-RSS images that are banned or not in verified list
-            if current_image and (is_banned or current_image not in ALL_UNIQUE_IMAGES):
+            if current_image and (is_banned):
                 articles_with_invalid_images.append(article)
         
         if articles_with_invalid_images:
@@ -11293,7 +11230,7 @@ async def auto_fix_duplicate_images():
                 if img:
                     if is_rss_image(img):
                         used_images.add(img)  # Count RSS images as used
-                    elif img in ALL_UNIQUE_IMAGES and not any(b in img for b in BANNED_IMAGES):
+                    elif img and not any(b in img for b in BANNED_IMAGES):
                         used_images.add(img)
             
             for article in articles_with_invalid_images:
