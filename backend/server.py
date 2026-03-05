@@ -1384,7 +1384,7 @@ async def admin_article_counts():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/admin/authority-pages/upsert")
-async def upsert_authority_page(payload: AuthorityPageDoc):
+async def upsert_authority_page(payload: AuthorityPageDoc, auth: bool = Depends(get_admin_auth)):
     """
     Upsert an authority page by slug (local/staging admin utility).
     """
@@ -1396,7 +1396,7 @@ async def upsert_authority_page(payload: AuthorityPageDoc):
     return _ap_serialize(saved)
 
 @api_router.post("/admin/seed-authority-pages")
-async def seed_authority_pages():
+async def seed_authority_pages(auth: bool = Depends(get_admin_auth)):
     """
     Seed a minimal set of authority pages (draft) so /guides/* links resolve.
     Safe to call multiple times (upsert by slug).
