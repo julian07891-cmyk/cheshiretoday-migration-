@@ -2341,10 +2341,6 @@ async def _remove_duplicates_internal():
     Archives removed articles to archived_articles collection for link preservation.
     """
     try:
-        # SAFETY: disable destructive clear-and-refresh unless explicitly enabled
-        if os.getenv('ENABLE_CLEAR_REFRESH', '0') != '1':
-            raise HTTPException(status_code=403, detail='clear-and-refresh disabled (set ENABLE_CLEAR_REFRESH=1)')
-
         articles = await db.articles.find({}).to_list(1000)
         
         # Group by title
