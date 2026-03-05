@@ -9489,21 +9489,6 @@ User-agent: WhatsApp
 Allow: /
 
 # =============================================
-# Block bad bots and scrapers
-# =============================================
-User-agent: AhrefsBot
-Disallow: /
-
-User-agent: SemrushBot
-Disallow: /
-
-User-agent: DotBot
-Disallow: /
-
-User-agent: MJ12bot
-Disallow: /
-
-# =============================================
 # Sitemaps
 # =============================================
 Sitemap: {base_url}/sitemap.xml

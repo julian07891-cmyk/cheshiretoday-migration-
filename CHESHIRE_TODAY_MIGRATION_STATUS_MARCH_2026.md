@@ -281,3 +281,89 @@ Sponsored placements
 Newsletter monetisation
 
 End of document
+
+---
+
+# Project Status Update — March 2026 (Current)
+
+## Working baseline (verified recently)
+- Backend: FastAPI running locally on `http://127.0.0.1:8000`
+  - `/api/health` responds
+  - `/api/articles` supports `with_total=1` and returns `{articles,total,skip,limit,...}`
+  - Cache key bug fixed (f-string `search or ''`), removing server SyntaxError risk
+- Frontend: React/CRACO project in `frontend/`
+  - IMPORTANT: Dev server (`npm start`) is currently unreliable on this machine (CRACO prints “Compiled successfully” but no TCP listener is opened on 3000; `curl localhost:3000` = connection refused).
+  - Approved workflow for local work is **static build + serve**:
+    - `npm run build`
+    - `npx serve -s build`
+
+## Homepage system (production-intent logic now in place)
+- HomePageV1 has an enforced editorial pool selection + ordering system aligned with Cheshire Today strategy:
+  - Editorial filtering applied before slotting
+  - Fixed-depth ratio enforcement (top 28 cap to prevent UK-heavy tail)
+  - Weighted pattern mixing across pools: Local + Authority + UK
+  - Topic cap example present: `astro: 1` to prevent single-theme takeover
+- Top Stories:
+  - Target is **8 items** (not 7) to prevent left-column gaps and align with right sidebar height.
+  - TopStoriesGrid component currently slices to 7 by default (`stories.slice(0, 7)`), but homepage selection logic and layout intent is 8.
+  - Action item: ensure TopStoriesGrid and selection logic both support 8 consistently.
+
+## SEO and crawl surface (already present)
+- `robots.txt` exists and includes sitemap pointers:
+  - `Sitemap: https://cheshiretoday.co.uk/sitemap.xml`
+  - `Sitemap: https://cheshiretoday.co.uk/news-sitemap.xml`
+- Dynamic sitemap endpoints exist in backend:
+  - `/sitemap.xml` and `/api/sitemap.xml`
+  - `/news-sitemap.xml` and `/api/news-sitemap.xml`
+  - `/rss.xml` and `/api/rss.xml`
+- Article canonical routes include `/article/:articleId/:slug` routing support in App.
+
+## Guides / authority pages (built but must remain hidden pre-approval)
+- Authority pages exist in DB (confirmed ~12, mix of published/draft).
+- `/api/authority-pages` endpoints exist.
+- Monetisation plan rule (strict): guides must be **ready** but **NOT visible** until affiliate networks approved.
+- Current implementation status:
+  - Feature flag `NON_AMAZON_MONETISATION_ENABLED: false` (guides and non-Amazon tools should not render)
+  - `/guides/:slug` route has been removed from `frontend/src/App.js` (good)
+  - Action item: confirm no remaining visible `/guides` links in current homepage/sidebar components (only backups contain them).
+
+## Git state (latest commit)
+- Latest commit recorded:
+  - `6e77dd4` — “Stabilise homepage system: 40/40/20 ratio, Top Stories 8 layout alignment, editorial policy filtering, API cache fix, affiliate sidebar correction”
+
+---
+
+# Outstanding work to go live (production checklist)
+
+## A) Local run reliability (static build path)
+1. Build frontend (`npm run build` in `frontend/`)
+2. Serve build (`npx serve -s build`) and verify HTTP listener works
+3. Confirm frontend can reach backend API and render homepage + article page
+
+## B) Top Stories = 8 consistency
+- Update TopStoriesGrid to slice 8 (or accept a prop for limit) to match homepage slotting intent.
+
+## C) “Guides hidden” guarantee
+- Verify current (non-backup) UI has zero public links to `/guides`:
+  - Homepage modules
+  - Sidebar components
+  - Article page related/affiliate strips
+- Keep feature flag OFF until affiliate network approvals complete.
+
+## D) Production readiness gates (per handover constraints)
+- Legal pages present (privacy/cookies/terms/affiliate disclosure/contact) — verify in production build
+- Analytics: GA4 + Search Console already set on live domain; confirm migration build has no blockers
+- No “pending monetisation” messaging or broken affiliate widgets in production
+
+## E) Deployment protocol (Render)
+- Auto-deploy remains disabled; deploy manually only after local verification.
+- Confirm env vars and service names match current plan before switching domains.
+
+---
+
+# Workflow rules (do not break)
+- One terminal command at a time (no manual file editing).
+- Prefer `grep` (no `rg`).
+- Prefer running from project root when possible.
+- Avoid piping raw JSON into heredoc python (use `python3 -m json.tool` / `python3 -c` / save-to-file).
+
