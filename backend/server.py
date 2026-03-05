@@ -2374,24 +2374,28 @@ async def _remove_duplicates_internal():
                     duplicates_removed += 1
                     logger.info(f"Archived duplicate: {title[:40]}...")
         
-        # Remove articles with very short content (< 50 chars) - likely broken/incomplete
-        # Note: RSS summaries can be short but valid - only remove truly empty articles
+        # Remove truly empty/broken articles only (do NOT delete valid short RSS/Atom summaries)
         remaining = await db.articles.find({}).to_list(1000)
         for article in remaining:
-            content_len = len(article.get('content', ''))
-            if content_len < 50:
-                # Archive before deletion
+            content = (article.get('content') or '').strip()
+            summary = (article.get('summary') or '').strip()
+
+            # Many RSS/Atom feeds have short summaries while building (PERPLEXITY disabled).
+            # Only remove items that are basically empty.
+            blob_len = len((content + " " + summary).strip())
+
+            if blob_len < 30:
                 article['archived_at'] = datetime.now(timezone.utc).isoformat()
                 article['archive_reason'] = 'short_content'
                 original_id = article.pop('_id', None)
                 try:
                     await db.archived_articles.insert_one(article)
                 except:
-                    pass  # Continue even if archival fails
-                
+                    pass
+
                 await db.articles.delete_one({'_id': original_id})
                 short_removed += 1
-                logger.info(f"Archived short article ({content_len} chars): {article.get('title', '')[:40]}...")
+                logger.info(f"Archived empty/broken article ({blob_len} chars): {article.get('title', '')[:40]}...")
         
         final_count = await db.articles.count_documents({})
         

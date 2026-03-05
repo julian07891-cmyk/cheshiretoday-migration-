@@ -21,7 +21,8 @@ PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
 # =========================
 from datetime import date
 
-DAILY_AI_SPEND_GBP = 0.65  # ~£20/month hard cap
+DAILY_AI_SPEND_GBP = float(os.getenv("PERPLEXITY_DAILY_BUDGET_GBP", "0.70"))  # ~£20/mo soft target by default
+PERPLEXITY_HARD_CAP = os.getenv("PERPLEXITY_HARD_CAP", "0").strip().lower() in ("1","true","yes","y")
 _ai_usage = {"date": date.today().isoformat(), "calls": 0}
 
 def ai_call_allowed(cost_estimate_gbp: float = 0.05) -> bool:
@@ -30,8 +31,13 @@ def ai_call_allowed(cost_estimate_gbp: float = 0.05) -> bool:
         _ai_usage["date"] = today
         _ai_usage["calls"] = 0
 
-    if (_ai_usage["calls"] + 1) * cost_estimate_gbp > DAILY_AI_SPEND_GBP:
-        return False
+    projected = (_ai_usage["calls"] + 1) * cost_estimate_gbp
+    if projected > DAILY_AI_SPEND_GBP:
+        logger.warning(
+            f"Perplexity spend guard: projected £{projected:.2f} exceeds daily budget £{DAILY_AI_SPEND_GBP:.2f}. Proceeding (soft cap)."
+        )
+        if PERPLEXITY_HARD_CAP:
+            return False
 
     _ai_usage["calls"] += 1
     return True
@@ -71,6 +77,11 @@ class PerplexityService:
         """
         if not self.api_key:
             logger.error("Perplexity API key not configured")
+            return []
+
+        # Soft budget guard (optional hard cap via PERPLEXITY_HARD_CAP=1)
+        if not ai_call_allowed(0.05):
+            logger.warning("Perplexity budget guard: skipping search_cheshire_news() call")
             return []
         
         # Build search query focused on Cheshire
@@ -242,6 +253,11 @@ class PerplexityService:
         if not self.api_key:
             logger.error("Perplexity API key not configured")
             return summary  # Return original summary as fallback
+
+        # Soft budget guard (optional hard cap via PERPLEXITY_HARD_CAP=1)
+        if not ai_call_allowed(0.05):
+            logger.warning("Perplexity budget guard: skipping generate_article_content() call")
+            return self._expand_summary(title, summary, source)
         
         try:
             async with httpx.AsyncClient() as client:
