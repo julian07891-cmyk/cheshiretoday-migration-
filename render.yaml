@@ -7,7 +7,8 @@ services:
       ./render_build.sh
 
     startCommand: |
-      uvicorn backend.server:app --host 0.0.0.0 --port $PORT
+      cd backend
+      uvicorn server:app --host 0.0.0.0 --port $PORT
 
   - type: cron
     name: cheshiretoday-backend-warmup
