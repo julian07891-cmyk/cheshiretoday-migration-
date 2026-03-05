@@ -8590,6 +8590,10 @@ async def generate_news_sitemap():
 
 
 @api_router.get("/rss.xml")
+@app.get("/api/rss.xml")
+async def api_rss_xml_alias():
+    return RedirectResponse(url="/rss.xml", status_code=301)
+
 @app.get("/rss.xml")
 async def generate_rss_feed():
     """Generate RSS feed for news readers and Google News"""

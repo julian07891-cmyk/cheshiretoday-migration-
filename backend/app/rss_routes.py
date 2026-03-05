@@ -13,7 +13,7 @@ from app.rss_service import RSSService
 from app.rss_sources import get_rss_sources, get_sources_by_category
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api", tags=["rss"])
+router = APIRouter(prefix="/api/rss", tags=["rss"])
 
 def get_database():
     """Get database instance (MongoDB). In LOCAL_DEV_NO_DB mode this is disabled."""
@@ -143,7 +143,7 @@ async def generate_rss_feed(
             fg.title('Cheshire Today')
             fg.subtitle('Your trusted source for Cheshire local stories')
             fg.link(href=base_url, rel='alternate')
-            fg.link(href=base_url + '/api/feed.xml', rel='self')
+            fg.link(href=base_url + "/api/rss/feed.xml", rel="self")
             fg.language('en')
             fg.author({'name': 'Cheshire Today', 'email': 'contact@cheshiretoday.co.uk'})
             fg.description('Latest news and updates from Cheshire, Manchester, Liverpool & Northwest UK')
@@ -163,7 +163,7 @@ async def generate_rss_feed(
         fg.title('Cheshire Today')
         fg.subtitle('Your trusted source for Cheshire local stories')
         fg.link(href=base_url, rel='alternate')
-        fg.link(href=f'{base_url}/api/feed.xml', rel='self')
+        fg.link(href=f"{base_url}/api/rss/feed.xml", rel="self")
         fg.language('en')
         fg.author({'name': 'Cheshire Today', 'email': 'contact@cheshiretoday.co.uk'})
         fg.description('Latest news and updates from Cheshire, Manchester, Liverpool & Northwest UK')
