@@ -305,7 +305,7 @@ End of document
   - Topic cap example present: `astro: 1` to prevent single-theme takeover
 - Top Stories:
   - Target is **8 items** (not 7) to prevent left-column gaps and align with right sidebar height.
-  - TopStoriesGrid component currently slices to 7 by default (`stories.slice(0, 7)`), but homepage selection logic and layout intent is 8.
+  - TopStoriesGrid component currently slices to 8 (`stories.slice(0, 8)`), matching homepage slotting intent.
   - Action item: ensure TopStoriesGrid and selection logic both support 8 consistently.
 
 ## SEO and crawl surface (already present)
