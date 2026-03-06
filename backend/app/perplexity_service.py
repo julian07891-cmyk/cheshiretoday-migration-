@@ -46,7 +46,7 @@ class PerplexityService:
     """Service for searching Cheshire-specific news using Perplexity API"""
     
     def __init__(self):
-        self.timeout = 30.0
+        self.timeout = 60.0
     
     @property
     def api_key(self):
