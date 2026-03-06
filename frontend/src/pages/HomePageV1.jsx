@@ -372,7 +372,7 @@ const navigate = useNavigate();
     }
 
     const pushTop = (a, overrideCategory = null) => {
-      if (topStoriesCards.length >= 7) return;
+      if (topStoriesCards.length >= 5) return;
       if (!mark(a)) return;
       topStoriesCards.push(
         toCard(
@@ -433,9 +433,9 @@ const navigate = useNavigate();
       counts.uk += 1;
     }
 
-    // Safety fill: if we still have <7 (rare), fill with newest non-tech
+    // Safety fill: if we still have <5 (rare), fill with newest non-tech
     for (const a of poolAll) {
-      if (topStoriesCards.length >= 7) break;
+      if (topStoriesCards.length >= 5) break;
       if (isAiTech(a)) continue;
       pushTop(a);
     }
