@@ -11268,7 +11268,7 @@ async def startup_event():
             id='morning_article_generation',
             name='Generate morning news articles',
             replace_existing=True,
-            args=[10]
+            args=[4]
         )
         
         scheduler.add_job(
@@ -11277,7 +11277,7 @@ async def startup_event():
             id='midday_article_generation',
             name='Generate midday news articles',
             replace_existing=True,
-            args=[8]
+            args=[4]
         )
         
         scheduler.add_job(
@@ -11286,7 +11286,7 @@ async def startup_event():
             id='evening_article_generation',
             name='Generate evening news articles',
             replace_existing=True,
-            args=[7]
+            args=[4]
         )
         
         # ============================================
@@ -11312,6 +11312,15 @@ async def startup_event():
             id='weekly_roundup',
             name='Send The Weekly Roundup (Sunday 09:00 AM)',
             replace_existing=True
+        )
+
+        scheduler.add_job(
+            bulk_archive_articles,
+            CronTrigger(hour=1, minute=30),
+            id='daily_archive_old_articles',
+            name='Archive articles older than 7 days',
+            replace_existing=True,
+            kwargs={'payload': {'days_old': 7}, 'auth': True}
         )
         
         # OLD SCHEDULE DISABLED - Keeping commented for reference
@@ -11714,7 +11723,7 @@ async def startup_event():
             logger.info("AUTO_GENERATION_ENABLED=true → Scheduler started")
         else:
             logger.info("AUTO_GENERATION_ENABLED is false → Scheduler NOT started")
-        logger.info("Scheduler started. Articles: 6AM, 12PM, 3PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday 9AM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
+        logger.info("Scheduler started. Articles: 6AM, 12PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday 9AM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
         
     except Exception as e:
         logger.error(f"Error during startup: {str(e)}")
