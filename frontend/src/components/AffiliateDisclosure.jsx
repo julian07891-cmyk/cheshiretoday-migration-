@@ -44,12 +44,12 @@ const AffiliateDisclosure = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Our Affiliate Partners</h2>
             <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-              We work with several trusted affiliate networks and retailers:
+              We currently work with the following affiliate programme:
             </p>
             <ul className="space-y-3 text-gray-600 dark:text-gray-300">
               <li className="flex items-start gap-2">
                 <ExternalLink className="h-5 w-5 text-[#1E3A8A] mt-0.5 flex-shrink-0" />
-                <span><strong>Amazon Associates</strong> – As an Amazon Associate, we earn from qualifying purchases made through links to Amazon.co.uk</span>
+                <span><strong>Amazon Associates</strong> – As an Amazon Associate, Cheshire Today earns from qualifying purchases made through links to Amazon.co.uk. Additional affiliate partners may be added in future and will be disclosed where relevant.</span>
               </li>
             </ul>
           </section>
@@ -57,16 +57,16 @@ const AffiliateDisclosure = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">How we choose what to recommend</h2>
             <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
-              Our editorial team selects products based on:
+              Products and commercial recommendations may be selected based on:
             </p>
             <ul className="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-2">
               <li>Relevance to our readers in Cheshire and the UK</li>
               <li>Quality and value for money</li>
               <li>Customer reviews and ratings</li>
-              <li>Our own research and, where possible, hands-on testing</li>
+              <li>Our own research and review of publicly available information where appropriate</li>
             </ul>
             <p className="text-gray-600 dark:text-gray-300 leading-relaxed mt-4">
-              We never recommend products solely because they offer higher commissions. Our readers&apos; trust is more valuable than any affiliate payment.
+              We do not publish recommendations solely because they may generate commission. Reader trust, relevance and editorial usefulness remain the priority.
             </p>
           </section>
 
@@ -103,7 +103,6 @@ const AffiliateDisclosure = () => {
             <ul className="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-2">
               <li>Go directly to the retailer&apos;s website</li>
               <li>Search for the product yourself</li>
-              <li>Use an ad blocker (though this may affect some site functionality)</li>
             </ul>
             <p className="text-gray-600 dark:text-gray-300 leading-relaxed mt-4">
               We appreciate when you do use our links, as it directly supports our journalism at no cost to you.

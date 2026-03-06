@@ -1,10 +1,15 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 export default function CookiePolicy() {
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
       <div className="container mx-auto px-4 py-10 max-w-4xl">
+        <Link to="/" className="inline-flex items-center text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 mb-4 transition-colors">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Home
+        </Link>
         <h1 className="text-3xl font-extrabold tracking-tight">Cookie Policy</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-gray-300">
           Last updated: {new Date().toLocaleDateString("en-GB")}
@@ -59,7 +64,11 @@ export default function CookiePolicy() {
             If you have questions about this Cookie Policy, contact us via the{" "}
             <Link to="/contact" className="font-semibold underline underline-offset-2">
               Contact page
-            </Link>.
+            </Link>{" "}
+            or email{" "}
+            <a href="mailto:news@cheshiretoday.co.uk" className="font-semibold underline underline-offset-2">
+              news@cheshiretoday.co.uk
+            </a>.
           </p>
 
           <hr />

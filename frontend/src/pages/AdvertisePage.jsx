@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { getApiUrl } from "../utils/api";
 import { trackEvent } from "../utils/trackEvent";
 
@@ -39,14 +40,16 @@ const PRICING = [
 ];
 
 const AdvertisePage = () => {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = React.useState(false);
   const [selectedTier, setSelectedTier] = React.useState(null);
 
-  const email = "advertise@cheshiretoday.co.uk";
+  const email = "news@cheshiretoday.co.uk";
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       <div className="container mx-auto px-4 py-10 max-w-5xl">
+        <button onClick={() => navigate("/")} className="text-sm text-emerald-600 hover:underline mb-4">← Back to Home</button>
         <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
           Advertise on Cheshire Today
         </h1>

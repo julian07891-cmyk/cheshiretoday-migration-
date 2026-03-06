@@ -177,13 +177,16 @@ class AdminRouteErrorBoundary extends React.Component {
 }
 
 // Admin route wrapper (keeps /admin stable in production)
-const AdminPage = () => (
-  <AdminRouteErrorBoundary>
-    <Suspense fallback={<LoadingFallback />}>
-      <AdminDashboard />
-    </Suspense>
-  </AdminRouteErrorBoundary>
-);
+const AdminPage = () => {
+  const navigate = useNavigate();
+  return (
+    <AdminRouteErrorBoundary>
+      <Suspense fallback={<LoadingFallback />}>
+        <AdminDashboard onBack={() => navigate('/')} />
+      </Suspense>
+    </AdminRouteErrorBoundary>
+  );
+};
 // Valid location slugs
 const VALID_LOCATIONS = [
   "cheshire-general",
@@ -244,14 +247,39 @@ function App() {
                 </Suspense>
               }
             />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route
+              path="/privacy"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <PrivacyPolicy />
+                </Suspense>
+              }
+            />
 
-            <Route path="/terms" element={<TermsOfService />} />
-            <Route path="/cookies" element={<CookiePolicy />} />
+            <Route
+              path="/terms"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <TermsOfService />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/cookies"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <CookiePolicy />
+                </Suspense>
+              }
+            />
 
             <Route
               path="/affiliate-disclosure"
-              element={<AffiliateDisclosure />}
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <AffiliateDisclosure />
+                </Suspense>
+              }
             />
             <Route
               path="/unsubscribe"

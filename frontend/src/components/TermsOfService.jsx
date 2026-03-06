@@ -36,22 +36,23 @@ const TermsOfService = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Description of Service</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              Cheshire Today is a news aggregation website that curates and presents news headlines and summaries from various UK news sources. We provide links to original articles published by third-party news organisations such as BBC, Sky News, The Guardian, and local Cheshire publications.
+              Cheshire Today is a digital publication covering Cheshire local news, business, finance, AI & technology and selected UK developments. Our content may include original reporting, curated summaries, RSS-sourced coverage and AI-assisted editorial workflows, alongside links to relevant third-party sources where appropriate.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Content and Copyright</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
-              The news content displayed on our website consists of:
+              Content published on Cheshire Today may consist of:
             </p>
             <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 ml-4">
-              <li>Headlines and summaries sourced from publicly available RSS feeds</li>
+              <li>Original Cheshire Today reporting, analysis and explainers</li>
+              <li>Headlines and summaries sourced or adapted from publicly available feeds and third-party reporting</li>
               <li>Links to original articles on third-party websites</li>
               <li>Images provided by the original publishers</li>
             </ul>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-4">
-              All original content remains the property of the respective publishers. We encourage users to visit the original sources for full articles.
+              Original Cheshire Today content belongs to Cheshire Today. Third-party source material, images, trademarks and publisher content remain the property of their respective owners. Where relevant, we encourage readers to visit original sources for full reporting.
             </p>
           </section>
 
@@ -79,7 +80,7 @@ const TermsOfService = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Advertising</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              Our website displays advertisements through Google AdSense. These advertisements may be personalised based on your browsing history. For more information about how Google uses your data, please visit <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Google's Privacy Policy</a>.
+              Cheshire Today may feature sponsored placements, commercial partnerships and affiliate links. Where readers click eligible affiliate links and complete a purchase, Cheshire Today may earn a commission at no extra cost to the reader. Commercial content and monetised links may appear across editorial, guide and product-related pages. For more information, please visit <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">our Affiliate Disclosure and Privacy Policy</a>.
             </p>
           </section>
 

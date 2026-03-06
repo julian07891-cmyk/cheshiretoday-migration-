@@ -62,8 +62,8 @@ const PrivacyPolicy = () => {
               We use cookies and similar technologies to enhance your experience. Our website uses:
             </p>
             <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 ml-4">
-              <li><strong>Google AdSense:</strong> To display advertisements. Google may use cookies to serve ads based on your prior visits to our website or other websites. You can opt out of personalised advertising at <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Google Ads Settings</a>.</li>
-              <li><strong>Google Analytics:</strong> To understand how visitors use our site. This helps us improve our content and services.</li>
+              <li><strong>Commercial & Affiliate Tracking:</strong> Some pages may contain affiliate links, sponsored placements or partner tracking technologies used to measure referral performance and commercial campaign activity.</li>
+              <li><strong>Analytics Tools:</strong> To understand how visitors use our site, measure content performance and improve our editorial products and services.</li>
               <li><strong>Essential Cookies:</strong> Required for the website to function properly.</li>
             </ul>
           </section>
@@ -74,8 +74,9 @@ const PrivacyPolicy = () => {
               We use the following third-party services:
             </p>
             <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 space-y-2 ml-4">
-              <li><strong>Google AdSense:</strong> For advertising - <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Google Privacy Policy</a></li>
-              <li><strong>Google Analytics:</strong> For website analytics - <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:underline">Google Privacy Policy</a></li>
+              <li><strong>Analytics Providers:</strong> For website usage measurement and performance reporting.</li>
+              <li><strong>Email & Newsletter Services:</strong> For newsletter delivery, subscription management and email performance tracking.</li>
+              <li><strong>Affiliate & Commercial Partners:</strong> Where relevant, to attribute qualifying referrals, sponsored placements or commercial campaign activity.</li>
             </ul>
           </section>
 
@@ -92,6 +93,13 @@ const PrivacyPolicy = () => {
               <li>Withdraw consent at any time</li>
               <li>Unsubscribe from our newsletter at any time</li>
             </ul>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">AI-Assisted Editorial Workflows</h2>
+            <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+              Cheshire Today may use AI-assisted editorial tools as part of research, drafting, summarisation and publishing workflows. These tools are used to support content production and operational efficiency.
+            </p>
           </section>
 
           <section className="mb-8">

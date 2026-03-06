@@ -11,9 +11,9 @@ const NewsFooter = () => {
   const [errorMessage, setErrorMessage] = React.useState('');
 
   const footerLinks = {
-    'News': ['Local News', 'UK News', 'Business', 'Tech', 'Sports'],
-    'More': ['Events', 'Community', 'Weather', 'Health', 'Food'],
-    'About': ['About Us', 'Contact', 'Advertise', 'Terms', 'Privacy', 'Affiliates']
+    'Coverage': ['Local', 'Business', 'UK'],
+    'Guides': ['AI & Tech', 'Finance'],
+    'Company': ['Contact', 'Advertise']
   };
 
   const localAreas = [
@@ -119,14 +119,14 @@ const NewsFooter = () => {
       </div>
 
       <div className="container mx-auto px-4 py-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12 mb-8">
           {/* Logo & Description */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="sm:col-span-2 lg:col-span-1">
             <h3 className="text-neutral-900 text-xl font-extrabold mb-3">Cheshire Today</h3>
             <p className="text-sm text-neutral-600 dark:text-slate-400 dark:text-slate-400 mb-4">
-              Your trusted source for local Cheshire news and updates.
+              Cheshire’s local economic intelligence platform covering local news, business, finance and AI & tech.
             </p>
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 pt-1">
               <a href="#" className="hover:text-emerald-400 transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
@@ -146,14 +146,20 @@ const NewsFooter = () => {
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
               <h4 className="text-neutral-900 font-bold mb-3">{title}</h4>
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {links.map((link) => {
                   // Map specific links to their routes
                   const linkMap = {
+                    'Local': '/',
+                    'Business': '/',
+                    'UK': '/',
+                    'AI & Tech': '/',
+                    'Finance': '/',
                     'Privacy': '/privacy',
                     'Terms': '/terms',
                     'Affiliates': '/affiliate-disclosure',
                     'Advertise': '/advertise',
+                    'Contact': '/contact',
                   };
                   const href = linkMap[link];
                   
@@ -183,7 +189,7 @@ const NewsFooter = () => {
         {/* Content Disclaimer */}
         <div className="border-t border-[#E6E1D8] pt-6 mt-8">
           <p className="text-[11px] text-neutral-500 dark:text-slate-500 dark:text-slate-500/80 text-center max-w-3xl mx-auto leading-relaxed">
-            Cheshire Today aggregates news from public RSS feeds provided by publishers. All article content, images, and trademarks belong to their respective original publishers. Click the source links to read full stories on their official websites.
+            Cheshire Today publishes a mix of original, curated and RSS-sourced coverage. Where articles reference or summarise reporting from third-party publishers, copyright, images and trademarks remain with the original publisher. Use source links to access original reporting.
           </p>
         </div>
 
