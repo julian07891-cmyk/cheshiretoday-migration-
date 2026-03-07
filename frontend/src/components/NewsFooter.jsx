@@ -150,11 +150,11 @@ const NewsFooter = () => {
                 {links.map((link) => {
                   // Map specific links to their routes
                   const linkMap = {
-                    'Local': '/',
-                    'Business': '/',
-                    'UK': '/',
-                    'AI & Tech': '/',
-                    'Finance': '/',
+                    'Local': '/?category=Local',
+                    'Business': '/?category=Business',
+                    'UK': '/?category=UK',
+                    'AI & Tech': '/?category=AI%20%26%20Tech',
+                    'Finance': '/?category=Finance',
                     'Privacy': '/privacy',
                     'Terms': '/terms',
                     'Affiliates': '/affiliate-disclosure',

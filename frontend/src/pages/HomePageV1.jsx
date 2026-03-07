@@ -1,7 +1,7 @@
 const MONETISATION_ENABLED = false;
 import React, { useEffect, useMemo, useState } from "react";
 import { getApiUrl } from "../utils/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
@@ -157,6 +157,32 @@ export default function HomePageV1() {
   const [showLatest, setShowLatest] = useState(false);
   const [showAiBiz, setShowAiBiz] = useState(false);
 const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const selectedCategory = (searchParams.get("category") || "All").trim();
+
+  const headerCategories = [
+    { id: "all", name: "All" },
+    { id: "local", name: "Local" },
+    { id: "uk", name: "UK" },
+    { id: "business", name: "Business" },
+  ];
+
+  const activeHeaderCategory =
+    selectedCategory === "Local" ? "local" :
+    selectedCategory === "UK" ? "uk" :
+    selectedCategory === "Business" ? "business" :
+    "all";
+
+  const handleHeaderCategoryChange = (id) => {
+    const value =
+      id === "local" ? "Local" :
+      id === "uk" ? "UK" :
+      id === "business" ? "Business" :
+      "";
+    setSearchParams(value ? { category: value } : {});
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {}
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -197,11 +223,55 @@ const navigate = useNavigate();
   }, []);
 
   /* ---------- ordering ---------- */
+  const filteredArticles = useMemo(() => {
+    const list = Array.isArray(articles) ? articles : [];
+    if (!selectedCategory || selectedCategory === "All") return list;
+
+    return list.filter((a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      const scope = String(a?.scope || "").toLowerCase();
+      const text = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+
+      if (selectedCategory === "Local") {
+        return isLocal(a);
+      }
+
+      if (selectedCategory === "UK") {
+        return cat.includes("uk") || scope === "uk";
+      }
+
+      if (selectedCategory === "Business") {
+        return (
+          cat.includes("business") ||
+          cat.includes("finance") ||
+          cat.includes("money") ||
+          cat.includes("tax") ||
+          /\b(business|economy|economic|market|markets|inflation|trade|tariff|company|companies|earnings|profit|profits|shares|stocks|ftse|investment|investor|fund|bank|banking|hmrc|tax|vat|interest\s*rate|mortgage|mortgages|remortgage|savings|isa|credit\s*card)\b/.test(text)
+        );
+      }
+
+      if (selectedCategory === "AI & Tech") {
+        return isAiTech(a);
+      }
+
+      if (selectedCategory === "Finance") {
+        return (
+          cat.includes("finance") ||
+          cat.includes("money") ||
+          cat.includes("tax") ||
+          /\b(mortgage|mortgages|rate|rates|isa|savings|interest|remortgage|stamp\s*duty|council\s*tax|budget|hmrc|vat)\b/.test(text)
+        );
+      }
+
+      return true;
+    });
+  }, [articles, selectedCategory]);
+
   const newestFirst = useMemo(() => {
-    return [...(articles || [])].sort(
+    return [...filteredArticles].sort(
       (a, b) => safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate),
     );
-  }, [articles]);
+  }, [filteredArticles]);
 
   /* ---------- ALL homepage slots with shared dedupe ---------- */
   const home = useMemo(() => {
@@ -493,14 +563,14 @@ const isMoney = (a) => {
       if (financeArticles.length >= 2) break;
       if (!isMoney(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`));
     }
 
     for (const a of poolAll) {
       if (financeArticles.length >= 4) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`));
     }
 
 // Pass 2: 1 local news// Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
@@ -513,7 +583,7 @@ const isMoney = (a) => {
 
       if (!isLocal(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`));
     }
 
     // Pass 3: 1 more latest business
@@ -521,7 +591,7 @@ const isMoney = (a) => {
       if (financeArticles.length >= 6) break;
       if (!isBusiness(a)) continue;
       if (!mark(a)) continue;
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
+      financeArticles.push(toCard(a, `fin-${financeArticles.length}`));
     }
 
 
@@ -532,7 +602,7 @@ const isMoney = (a) => {
         if (financeArticles.length >= 3) break;
         if (isAiTech(a)) continue;
         if (!mark(a)) continue;
-        financeArticles.push(toCard(a, `fin-${financeArticles.length}`, { category: "Business" }));
+        financeArticles.push(toCard(a, `fin-${financeArticles.length}`));
       }
     }
 
@@ -596,7 +666,7 @@ const isMoney = (a) => {
 
       if (!isPropertyish(a)) continue;
       if (!mark(a)) continue;
-      propertyFeed.push(toCard(a, `prop-${propertyFeed.length}`, { category: "Property & Tax" }));
+      propertyFeed.push(toCard(a, `prop-${propertyFeed.length}`, { category: "Property" }));
     }
 
 
@@ -671,8 +741,9 @@ const isMoney = (a) => {
     }
 
 
-// 5b) AI & Business feed (dedupe-safe, 36 max) — hybrid authority block, avoids duplicates via mark()
+// 5b) AI & Business feed (section-local dedupe, 36 max) — hybrid authority block
     const aiBizFeedCards = [];
+    const aiBizSeen = new Set();
     const isAiBiz = (a) => {
       // Prefer existing classifiers already defined in this builder scope
       if (isAiTech(a)) return true;
@@ -690,15 +761,20 @@ const isMoney = (a) => {
     for (const a of poolAll) {
       if (aiBizFeedCards.length >= 36) break;
       if (!isAiBiz(a)) continue;
-      if (!mark(a)) continue;
+      const k = articleKey(a);
+      if (!k || aiBizSeen.has(k)) continue;
+      aiBizSeen.add(k);
       aiBizFeedCards.push(toCard(a, `aibiz-${aiBizFeedCards.length}`, { category: a?.category || "AI & Business" }));
     }
 
-// 6) More stories (dedupe-safe leftovers, 36 max)
+// 6) More stories (section-local dedupe, 36 max)
       const moreStoriesCards = [];
+      const moreStoriesSeen = new Set();
       for (const a of poolAll) {
         if (moreStoriesCards.length >= 36) break;
-        if (!mark(a)) continue;
+        const k = articleKey(a);
+        if (!k || moreStoriesSeen.has(k)) continue;
+        moreStoriesSeen.add(k);
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
       }
 
@@ -739,7 +815,7 @@ return {
 return (
     <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
     <ErrorBoundary><HomepageLayout>
-      <HomepageHeader breakingStories={[]} />
+      <HomepageHeader breakingStories={[]} categories={headerCategories} activeCategory={activeHeaderCategory} onCategoryChange={handleHeaderCategoryChange} />
 
       {loading && <div className="py-6">Loading…</div>}
       {!loading && err && <div className="py-6 text-red-600">{err}</div>}

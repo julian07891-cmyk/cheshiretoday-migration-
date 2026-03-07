@@ -208,7 +208,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                   key={category.id}
                   onClick={() => onCategoryChange && onCategoryChange(category.id)}
                   className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                    activeCategory === category.id
+                    String(activeCategory).toLowerCase() === String(category.id).toLowerCase()
                       ? 'bg-[#1E3A8A] text-white rounded'
                       : 'text-gray-700 dark:text-gray-300 hover:text-[#1E3A8A] dark:hover:text-blue-400'
                   }`}
@@ -279,7 +279,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                       setMobileMenuOpen(false);
                     }}
                     className={`block w-full text-left px-4 py-2 rounded transition-colors ${
-                      activeCategory === category.id
+                      String(activeCategory).toLowerCase() === String(category.id).toLowerCase()
                         ? 'bg-[#1E3A8A] text-white'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
