@@ -16,11 +16,11 @@ export default function LeadSection({
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const [isMobile, setIsMobile] = React.useState(() =>
-    typeof window !== "undefined" ? window.innerWidth < 1024 : false
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
 
   React.useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 1024);
+    const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -43,8 +43,8 @@ export default function LeadSection({
     url: a?.url || (a?.id || a?._id ? `/article/${a.id || a._id}` : "/"),
   });
 
-  const collapsedCount = isMobile ? 4 : 6;
-  const visibleItems = expanded ? items : items.slice(0, collapsedCount);
+  const collapsedCount = 4;
+  const visibleItems = isMobile ? (expanded ? items : items.slice(0, collapsedCount)) : items;
 
   return (
     <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
@@ -66,7 +66,7 @@ export default function LeadSection({
         })}
       </div>
 
-      {items.length > collapsedCount && (
+      {isMobile && items.length > collapsedCount && (
         <div className="mt-3 flex justify-end">
           <button
             type="button"
