@@ -528,10 +528,10 @@ const navigate = useNavigate();
       mostReadCards.push(toCard(a, `most-${mostReadCards.length}`));
     }
 
-// 3) AI feed (4) — exclude used (exclusive; no duplicates)
+// 3) AI feed (6) — exclude used (exclusive; no duplicates)
     const aiArticles = [];
     for (const a of poolAll) {
-      if (aiArticles.length >= 4) break;
+      if (aiArticles.length >= 6) break;
       if (!isAiTech(a)) continue;
       if (!mark(a)) continue;
       aiArticles.push(toCard(a, `ai-${aiArticles.length}`, { category: "AI & Tech" }));
@@ -617,7 +617,7 @@ const isMoney = (a) => {
       businessFeed.push(a);
     }
 
-    // 4b) Mortgages & Savings (3) — keyword + section based, exclude used
+    // 4b) Mortgages & Savings (6) — keyword + section based, exclude used
     const moneyFeed = [];
 
     const isMoneyish = (a) => {
@@ -628,7 +628,7 @@ const isMoney = (a) => {
     };
 
     for (const a of poolAll) {
-      if (moneyFeed.length >= 3) break;
+      if (moneyFeed.length >= 6) break;
       const sec = String(a?.section || "").toLowerCase();
       if (isAiTech(a)) continue; // keep this block focused
       if (!isMoneyish(a)) continue;
@@ -637,17 +637,17 @@ const isMoney = (a) => {
     }
 
     
-    // Fallback: if Mortgages & Savings ends up empty, fill with newest 3 non-AI (still dedupe-safe)
+    // Fallback: if Mortgages & Savings ends up empty, fill with newest 6 non-AI (still dedupe-safe)
     if (moneyFeed.length === 0) {
       for (const a of poolAll) {
-        if (moneyFeed.length >= 3) break;
+        if (moneyFeed.length >= 6) break;
         if (isAiTech(a)) continue;
         if (!mark(a)) continue;
         moneyFeed.push(toCard(a, `money-${moneyFeed.length}`, { category: "Finance" }));
       }
     }
 
-// 4c) Property & Housing (3) — planning, homes, rent, property; exclude used
+// 4c) Property & Housing (6) — planning, homes, rent, property; exclude used
     const propertyFeed = [];
 
     const isPropertyish = (a) => {
@@ -659,7 +659,7 @@ const isMoney = (a) => {
     };
 
     for (const a of poolAll) {
-      if (propertyFeed.length >= 3) break;
+      if (propertyFeed.length >= 6) break;
       const sec = String(a?.section || "").toLowerCase();
       if (isAiTech(a)) continue;
       // section is null in backend; no section-based exclude
