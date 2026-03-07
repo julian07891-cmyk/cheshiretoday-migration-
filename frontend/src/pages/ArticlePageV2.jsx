@@ -748,7 +748,7 @@ export default function ArticlePageV2({ categories }) {
 
             </article>
 
-            <aside className="lg:col-span-4 space-y-3">
+            <aside className="hidden lg:block lg:col-span-4 space-y-3">
               <div className="space-y-6 md:space-y-8">
                 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">

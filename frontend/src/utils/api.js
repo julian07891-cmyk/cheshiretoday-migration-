@@ -12,6 +12,16 @@ export const getApiUrl = () => {
       return "http://127.0.0.1:8000";
     }
 
+    // Local network testing on phone/tablet: frontend on :3000, backend on same host :8000
+    const isPrivateIpv4 =
+      /^192\.168\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+
+    if (isPrivateIpv4) {
+      return "http://" + hostname + ":8000";
+    }
+
     // Render split-deploy: frontend and backend are on different origins
     // If frontend hostname contains "frontend", derive backend hostname automatically.
     if (hostname.endsWith("onrender.com") && hostname.includes("frontend")) {

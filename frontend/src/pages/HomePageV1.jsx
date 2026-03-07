@@ -961,7 +961,7 @@ return (
 
 
           {/* Right: Sidebar widgets */}
-          <aside className="lg:col-span-4 lg:-mt-4 space-y-6">
+          <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 space-y-6">
 
             {/* Business & Money */}
             
