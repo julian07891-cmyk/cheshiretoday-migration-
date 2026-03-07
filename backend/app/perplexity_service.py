@@ -225,7 +225,7 @@ class PerplexityService:
         # Set PERPLEXITY_ENABLED=true to allow paid generation.
         # =========================
         import os
-        enabled = os.getenv("PERPLEXITY_ENABLED", "false").strip().lower() in ("1", "true", "yes", "y")
+        enabled = os.getenv("PERPLEXITY_ENABLED", "true").strip().lower() in ("1", "true", "yes", "y")
         if not enabled:
             # Return a free fallback (RSS summary + link) instead of calling Perplexity
             fallback = (summary or "").strip()
@@ -248,7 +248,7 @@ class PerplexityService:
             source_url: URL to original article
             
         Returns:
-            Detailed article content (300-400 words)
+            Detailed article content aiming for 700-900 words and 2000+ characters.
         """
         if not self.api_key:
             logger.error("Perplexity API key not configured")
@@ -274,12 +274,14 @@ CRITICAL RULES:
 1. Write the article based on the headline and summary PROVIDED - do not question or refuse
 2. If specific numbers are mentioned (like arrests), write about the general situation without confirming exact figures
 3. Focus on the overall story and context, not verifying specific claims
-4. Write 300-400 words of engaging, factual content
-5. Use British English, short paragraphs for mobile reading
-6. DO NOT include any refusal messages or explanations about what you can/cannot verify
-7. DO NOT use asterisks, markdown, or special formatting - plain text only
-8. DO NOT include headlines or subheadings - just flowing paragraphs
-9. DO NOT include word counts, character counts, or any meta information at the end
+4. Write a substantial, publication-quality article of roughly 700-900 words
+5. Target at least 2000 characters of clean body text; absolute minimum acceptable is 1500 characters
+6. Use British English, short paragraphs for mobile reading
+7. Add meaningful context, implications, and why the story matters locally or economically where relevant
+8. DO NOT include any refusal messages or explanations about what you can/cannot verify
+9. DO NOT use asterisks, markdown, or special formatting - plain text only
+10. DO NOT include headlines or subheadings - just flowing paragraphs
+11. DO NOT include word counts, character counts, or any meta information at the end
 
 If you cannot write about specific claims, write about the general topic and situation instead.
 NEVER output a refusal or explanation - always output a proper news article.
@@ -297,10 +299,10 @@ Source URL: {source_url}
 If a Source URL is provided, treat it as the primary reference and extract the key facts from it. If the link is unavailable or paywalled, write using the headline/summary context without inventing specifics.
 
 
-Write engaging plain text paragraphs about this story. Focus on the general situation and context. Do not add word count at the end:"""
+Write engaging plain text paragraphs about this story. Use the source URL as the primary reference when available, and enrich with other reputable context if helpful. Produce a substantial article targeting 2000+ characters and never less than 1500 characters unless the source material is genuinely too thin. Do not add word count at the end:"""
                         }
                     ],
-                    "max_tokens": 800,
+                    "max_tokens": 2000,
                     "temperature": 0.5,
                     "return_citations": True,
                     "search_recency_filter": "week"
@@ -310,7 +312,7 @@ Write engaging plain text paragraphs about this story. Focus on the general situ
                     PERPLEXITY_API_URL,
                     headers=self._get_headers(),
                     json=payload,
-                    timeout=45.0  # Longer timeout for content generation
+                    timeout=90.0  # Longer timeout for long-form content generation
                 )
                 
                 if response.status_code != 200:
@@ -354,16 +356,65 @@ Write engaging plain text paragraphs about this story. Focus on the general situ
                 is_refusal = any(indicator.lower() in content_lower for indicator in refusal_indicators)
                 
                 if is_refusal:
-                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Using summary instead.")
-                    # Return expanded summary instead
+                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Using expanded summary fallback.")
                     return self._expand_summary(title, summary, source)
-                
-                if content and len(content) > 100:
+
+                min_chars = int(os.getenv("PERPLEXITY_MIN_CHARS", "1500"))
+                target_chars = int(os.getenv("PERPLEXITY_TARGET_CHARS", "2000"))
+
+                if content and len(content) >= min_chars:
                     logger.info(f"Generated {len(content)} chars of content for: {title[:40]}...")
                     return content
-                else:
-                    logger.warning(f"Content too short, using original summary for: {title[:40]}...")
-                    return summary
+
+                logger.warning(f"Content below target ({len(content)} chars) for: {title[:40]}... Retrying with stronger long-form prompt.")
+
+                retry_payload = {
+                    "model": "sonar",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "You are a senior news writer for Cheshire Today. Write a strong, detailed, publication-quality article in British English using plain text only. Produce flowing paragraphs with context, implications, and useful detail. Aim for 700-900 words and at least 2000 characters. Minimum acceptable output is 1500 characters. Do not refuse, do not explain limitations, do not include headings, bullet points, markdown, or meta commentary."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Write a detailed Cheshire Today article based on this story. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference when available. Enrich the story with relevant context and explain why it matters. Return plain text paragraphs only."
+                        }
+                    ],
+                    "max_tokens": 2400,
+                    "temperature": 0.4,
+                    "return_citations": True,
+                    "search_recency_filter": "week"
+                }
+
+                retry_response = await client.post(
+                    PERPLEXITY_API_URL,
+                    headers=self._get_headers(),
+                    json=retry_payload,
+                    timeout=90.0
+                )
+
+                if retry_response.status_code == 200:
+                    retry_data = retry_response.json()
+                    retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                    import re
+                    retry_content = re.sub(r'\[\d+\]', '', retry_content)
+                    retry_content = re.sub(r'\*+', '', retry_content)
+                    retry_content = re.sub(r'#+\s*', '', retry_content)
+                    retry_content = re.sub(r'_+', '', retry_content)
+                    retry_content = re.sub(r'\s*\(Word count:?\s*\d+\)', '', retry_content, flags=re.IGNORECASE)
+                    retry_content = re.sub(r'\s*\(Character count:?\s*\d+\)', '', retry_content, flags=re.IGNORECASE)
+                    retry_content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', retry_content, flags=re.IGNORECASE)
+                    retry_content = re.sub(r'\s+', ' ', retry_content).strip()
+
+                    retry_lower = retry_content.lower()
+                    retry_refusal = any(indicator.lower() in retry_lower for indicator in refusal_indicators)
+
+                    if not retry_refusal and len(retry_content) >= min_chars:
+                        logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
+                        return retry_content
+
+                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Using expanded summary fallback.")
+                return self._expand_summary(title, summary, source)
                     
         except httpx.TimeoutException:
             logger.error(f"Timeout generating content for: {title[:40]}...")

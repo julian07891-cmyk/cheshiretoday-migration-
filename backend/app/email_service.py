@@ -9,6 +9,7 @@ import smtplib
 import os
 import uuid
 import hashlib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Tuple
@@ -51,6 +52,14 @@ class EmailService:
         """Generate tracked URL that redirects through our tracking endpoint"""
         from urllib.parse import quote
         return f"{self.api_url}/email/track/click/{tracking_id}?url={quote(original_url, safe='')}"
+
+    def _article_url(self, article: dict) -> str:
+        """Build canonical article URL with slug."""
+        article_id = article.get('id', article.get('_id', ''))
+        raw_title = str(article.get('title') or 'article')
+        slug = re.sub(r"[^a-z0-9]+", "-", raw_title.lower()).strip("-")
+        slug = (slug[:80] if slug else "article")
+        return f"{self.base_url}/article/{article_id}/{slug}"
         
     
     def _send_email(self, to_email, subject, html_content, text_content=None):
@@ -377,7 +386,7 @@ class EmailService:
         featured_html = ""
         if featured_article:
             article_id = featured_article.get('id', featured_article.get('_id', ''))
-            article_url = f"{self.base_url}/article/{article_id}"
+            article_url = self._article_url(featured_article)
             # DEBUG: Log article URL generation
             logger.info(f"DIGEST DEBUG - Featured article: id={article_id}, url={article_url}, title={featured_article.get('title', '')[:40]}")
             image_url = featured_article.get('image', '')
@@ -411,7 +420,7 @@ class EmailService:
         
         for i, article in enumerate(remaining_articles):
             article_id_val = article.get('id', article.get('_id', ''))
-            article_url = f"{self.base_url}/article/{article_id_val}"
+            article_url = self._article_url(article)
             # DEBUG: Log each article URL
             logger.info(f"DIGEST DEBUG - Article {i+2}: id={article_id_val}, url={article_url}, title={article.get('title', '')[:30]}")
             image_url = article.get('image', '')
@@ -700,7 +709,7 @@ Cheshire Today Jobs Team
         # Hero article (first article) with tracked URL
         hero = articles[0]
         hero_id = hero.get('id', hero.get('_id', ''))
-        hero_url_original = f"{self.base_url}/article/{hero_id}"
+        hero_url_original = self._article_url(hero)
         hero_url = self._get_tracked_url(tracking_id, hero_url_original)
         hero_image = hero.get('image', '')
         hero_summary = hero.get('content', '')[:200].strip()
@@ -1003,7 +1012,7 @@ Cheshire Today Jobs Team
             rows = ""
             for article in section_articles:
                 art_id = article.get('id', article.get('_id', ''))
-                art_url_original = f"{self.base_url}/article/{art_id}"
+                art_url_original = self._article_url(article)
                 art_url = self._get_tracked_url(tracking_id, art_url_original)
 
                 rows += f'''
@@ -1314,7 +1323,7 @@ Cheshire Today Jobs Team
         
         # Big Read section with tracked URL
         big_read_id = big_read.get('id', big_read.get('_id', ''))
-        big_read_url_original = f"{self.base_url}/article/{big_read_id}"
+        big_read_url_original = self._article_url(big_read)
         big_read_url = self._get_tracked_url(tracking_id, big_read_url_original)
         big_read_image = big_read.get('image', '')
         big_read_excerpt = big_read.get('content', '')[:300].strip() + '...'
@@ -1323,7 +1332,7 @@ Cheshire Today Jobs Team
         icymi_html = ""
         for i, article in enumerate(icymi_articles[:5], 1):
             art_id = article.get('id', article.get('_id', ''))
-            art_url_original = f"{self.base_url}/article/{art_id}"
+            art_url_original = self._article_url(article)
             art_url = self._get_tracked_url(tracking_id, art_url_original)
             icymi_html += f'''
             <tr>

@@ -187,6 +187,13 @@ function buildDescription(article) {
   return safeText(article?.content).trim().slice(0, 200);
 }
 
+
+function slugifyArticleTitle(title) {
+  const raw = safeText(title).toLowerCase();
+  const slug = raw.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return (slug || "article").slice(0, 80);
+}
+
 // Split out any appended attribution block so it doesn't dominate the article body.
 function splitAttribution(rawContent) {
   const content = safeText(rawContent);
@@ -488,7 +495,7 @@ export default function ArticlePageV2({ categories }) {
   }, [articleId]);
 
   const handleShare = () => {
-    const shareUrl = `${publicUrl}/article/${articleId}`;
+    const shareUrl = canonicalUrl;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareUrl);
       toast({ title: "Link Copied!", description: "Article link copied to clipboard!" });
@@ -556,7 +563,8 @@ export default function ArticlePageV2({ categories }) {
 
   const published = formatDateTime(article.publishedDate || article.published_at || article.created_at);
 
-  const canonicalUrl = `${publicUrl}/article/${articleId}`;
+  const articleSlug = slugifyArticleTitle(safeTitle || article?.title || "article");
+  const canonicalUrl = `${publicUrl}/article/${articleId}/${articleSlug}`;
 
   const absoluteImageUrl = (() => {
     const img = String(article?.image || "").trim();
@@ -603,13 +611,13 @@ export default function ArticlePageV2({ categories }) {
           </script>
 
           <meta property="og:type" content="article" />
-          <meta property="og:url" content={`${publicUrl}/article/${articleId}`} />
+          <meta property="og:url" content={canonicalUrl} />
           <meta property="og:title" content={safeTitle} />
           <meta property="og:description" content={description} />
           {absoluteImageUrl && <meta property="og:image" content={absoluteImageUrl} />}
 
           <meta name="twitter:card" content="summary_large_image" />
-          <meta name="twitter:url" content={`${publicUrl}/article/${articleId}`} />
+          <meta name="twitter:url" content={canonicalUrl} />
           <meta name="twitter:title" content={safeTitle} />
           <meta name="twitter:description" content={description} />
           {absoluteImageUrl && <meta name="twitter:image" content={absoluteImageUrl} />}

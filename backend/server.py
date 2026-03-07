@@ -1097,7 +1097,8 @@ async def generate_articles(request: GenerateArticlesRequest):
         hybrid_request = HybridNewsRequest(
             cheshire_articles=int(request.count * 0.6),  # 60% Cheshire
             uk_articles=int(request.count * 0.4) if request.include_uk_news else 0,
-            use_perplexity=True
+            use_perplexity=True,
+            rewrite_delay_seconds=900
         )
         
         result = await import_hybrid_news(hybrid_request)
@@ -1241,6 +1242,7 @@ class HybridNewsRequest(BaseModel):
     business_articles: int = 2   # 2 Business articles (FREE from RSS)
     tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
+    rewrite_delay_seconds: int = 900  # Wait before AI rewrite so sources can propagate/index
 
 
 @api_router.post("/import-hybrid-news")
@@ -1256,6 +1258,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         imported_articles = []
         perplexity_cost_estimate = 0
         used_image_urls = set()  # Track ALL image URLs to prevent duplicates
+
+        rewrite_delay_seconds = max(0, int(getattr(request, "rewrite_delay_seconds", 900) or 0))
+        if request.use_perplexity and rewrite_delay_seconds > 0:
+            logger.info(f"Delaying AI rewrite stage for {rewrite_delay_seconds}s to allow source coverage/indexing...")
+            await asyncio.sleep(rewrite_delay_seconds)
         
         # Get existing article titles to avoid duplicates
         existing_titles = set()
@@ -1747,8 +1754,7 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
         logger.info(f"Archived {archived_count} articles, cleared {result.deleted_count} from main collection")
         
         # Import fresh news using hybrid approach
-        # NOTE: use_perplexity=False for quick refresh (avoids timeout)
-        # Use the Import button for full AI-enhanced articles
+        # Cheshire Today policy: ALL imported articles must be AI-enriched before going live
         local_target = int(os.getenv("LOCAL_IMPORT_LIMIT", "8") or "8")
         uk_target = int(os.getenv("UK_IMPORT_LIMIT", str(max(0, 20 - local_target))) or str(max(0, 20 - local_target)))
 
@@ -1758,7 +1764,8 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
             max_sports=3,                     # Limit sports to 3
             business_articles=2,              # 2 Business articles (FREE)
             tech_articles=2,                  # 2 Tech articles (FREE)
-            use_perplexity=False              # Quick refresh - no AI content generation
+            use_perplexity=True,              # Force AI rewrite for all refreshed imports
+            rewrite_delay_seconds=0            # Manual/admin refresh should not wait 15 minutes
         )
         
         import_result = await import_hybrid_news(request)
@@ -1790,7 +1797,7 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
 async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
     """
     Regenerate content for all existing articles using Perplexity.
-    Only processes articles with short content (< 500 chars).
+    Only processes articles with short content (< 1000 chars).
     Cost: ~$0.005 per article
     Requires admin authentication.
     """
@@ -1800,7 +1807,7 @@ async def regenerate_article_content(authorized: bool = Depends(get_admin_auth))
         
         short_content_articles = [
             a for a in articles 
-            if len(a.get('content', '')) < 500
+            if len(a.get('content', '')) < 1000
         ]
         
         logger.info(f"Found {len(short_content_articles)} articles with short content to regenerate")
