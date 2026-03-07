@@ -156,7 +156,16 @@ export default function HomePageV1() {
   const [showMoreStories, setShowMoreStories] = useState(false);
   const [showLatest, setShowLatest] = useState(false);
   const [showAiBiz, setShowAiBiz] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
 const navigate = useNavigate();
+
+  useEffect(() => {
+    const onResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const selectedCategory = (searchParams.get("category") || "All").trim();
@@ -873,7 +882,7 @@ return (
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, 4)).map((a, idx) => (
+                  {(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, isMobileView ? 4 : 12)).map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -905,7 +914,7 @@ return (
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, 4)).map((a, i) => (
+                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, isMobileView ? 4 : 12)).map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -934,7 +943,7 @@ return (
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, 4)).map((a, i) => (
+                  {(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, isMobileView ? 4 : 12)).map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
