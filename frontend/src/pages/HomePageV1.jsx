@@ -969,7 +969,7 @@ return (
               <LeadSection
                 title="Business"
                 badgeText="Business"
-                items={financeFeed.slice(0, 4)}
+                items={financeFeed.slice(0, 6)}
                 onNavigate={(url) => navigate(url)}
               />
             )}
@@ -979,7 +979,7 @@ return (
                 title="AI & Tech"
                 badgeText="AI Pulse"
                 badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-200"
-                items={aiFeed.slice(0, 4)}
+                items={aiFeed.slice(0, 6)}
                 onNavigate={(url) => navigate(url)}
               />
             )}
@@ -989,7 +989,7 @@ return (
               <LeadSection
                 title="Finance"
                 badgeText="Finance"
-                items={moneyFeed.slice(0, 4)}
+                items={moneyFeed.slice(0, 6)}
                 onNavigate={(url) => navigate(url)}
               />
             )}
@@ -1001,7 +1001,7 @@ return (
                 title="Property & Tax"
                 badgeText="Property"
                 badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
-                items={propertyFeed.slice(0, 4)}
+                items={propertyFeed.slice(0, 6)}
                 onNavigate={(url) => navigate(url)}
               />
             )}
