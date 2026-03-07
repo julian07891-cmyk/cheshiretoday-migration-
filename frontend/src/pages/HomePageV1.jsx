@@ -703,10 +703,10 @@ const isMoney = (a) => {
       const k = articleKey(a);
       if (!k) return;
       if (latestSeen.has(k)) return;
+      if (used.has(k)) return;
       latestSeen.add(k);
+      used.add(k);
 
-      // IMPORTANT: Latest should not consume the shared homepage dedupe pool.
-      // Other sections may have already marked items; Latest still needs to fill.
       latestCards.push(
         toCard(a, `latest-${latestCards.length}`, overrideCategory ? { category: overrideCategory } : {})
       );
@@ -771,8 +771,9 @@ const isMoney = (a) => {
       if (aiBizFeedCards.length >= 36) break;
       if (!isAiBiz(a)) continue;
       const k = articleKey(a);
-      if (!k || aiBizSeen.has(k)) continue;
+      if (!k || aiBizSeen.has(k) || used.has(k)) continue;
       aiBizSeen.add(k);
+      used.add(k);
       aiBizFeedCards.push(toCard(a, `aibiz-${aiBizFeedCards.length}`, { category: a?.category || "AI & Business" }));
     }
 
@@ -782,8 +783,9 @@ const isMoney = (a) => {
       for (const a of poolAll) {
         if (moreStoriesCards.length >= 36) break;
         const k = articleKey(a);
-        if (!k || moreStoriesSeen.has(k)) continue;
+        if (!k || moreStoriesSeen.has(k) || used.has(k)) continue;
         moreStoriesSeen.add(k);
+        used.add(k);
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
       }
 
