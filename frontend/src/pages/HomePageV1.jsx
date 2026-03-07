@@ -773,9 +773,10 @@ const isMoney = (a) => {
     }
 
 
-// 5b) AI & Business feed (section-local dedupe, 36 max) — hybrid authority block
+// 5b) AI & Business feed (avoid overlap with Latest, keep section-local dedupe)
     const aiBizFeedCards = [];
     const aiBizSeen = new Set();
+    const latestKeys = new Set(latestCards.map((a) => a?.id).filter(Boolean));
     const isAiBiz = (a) => {
       // Prefer existing classifiers already defined in this builder scope
       if (isAiTech(a)) return true;
@@ -794,18 +795,19 @@ const isMoney = (a) => {
       if (aiBizFeedCards.length >= 36) break;
       if (!isAiBiz(a)) continue;
       const k = articleKey(a);
-      if (!k || aiBizSeen.has(k)) continue;
+      if (!k || aiBizSeen.has(k) || latestKeys.has(k)) continue;
       aiBizSeen.add(k);
       aiBizFeedCards.push(toCard(a, `aibiz-${aiBizFeedCards.length}`, { category: a?.category || "AI & Business" }));
     }
 
-// 6) More stories (section-local dedupe, 36 max)
+// 6) More stories (avoid overlap with Latest and AI & Business)
       const moreStoriesCards = [];
       const moreStoriesSeen = new Set();
+      const aiBizKeys = new Set(aiBizFeedCards.map((a) => a?.id).filter(Boolean));
       for (const a of poolAll) {
         if (moreStoriesCards.length >= 36) break;
         const k = articleKey(a);
-        if (!k || moreStoriesSeen.has(k)) continue;
+        if (!k || moreStoriesSeen.has(k) || latestKeys.has(k) || aiBizKeys.has(k)) continue;
         moreStoriesSeen.add(k);
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
       }
