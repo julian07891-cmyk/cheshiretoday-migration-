@@ -4,7 +4,7 @@ import CompactArticleCard from "../CompactArticleCard";
 /**
  * LeadSection
  * - One-column layout (one card per row)
- * - Keeps same number of items provided via `items`
+ * - Mobile-friendly collapsed state: 4 items initially
  * - Optional badge styling via badgeClassName
  */
 export default function LeadSection({
@@ -14,6 +14,8 @@ export default function LeadSection({
   items = [],
   onNavigate,
 }) {
+  const [expanded, setExpanded] = React.useState(false);
+
   if (!Array.isArray(items) || items.length === 0) return null;
 
   const badgeCls =
@@ -32,6 +34,8 @@ export default function LeadSection({
     url: a?.url || (a?.id || a?._id ? `/article/${a.id || a._id}` : "/"),
   });
 
+  const visibleItems = expanded ? items : items.slice(0, 4);
+
   return (
     <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
       <div className="flex items-center justify-between mb-3">
@@ -39,9 +43,8 @@ export default function LeadSection({
         {badgeText ? <span className={badgeCls}>{badgeText}</span> : null}
       </div>
 
-      {/* One card per row */}
       <div className="space-y-3">
-        {items.map((raw, i) => {
+        {visibleItems.map((raw, i) => {
           const a = norm(raw);
           return (
             <CompactArticleCard
@@ -52,6 +55,18 @@ export default function LeadSection({
           );
         })}
       </div>
+
+      {items.length > 4 && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-sm font-semibold hover:underline underline-offset-2"
+          >
+            {expanded ? "Show less" : "Show more"}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
