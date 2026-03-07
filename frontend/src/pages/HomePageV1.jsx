@@ -873,7 +873,7 @@ return (
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, 18)).map((a, idx) => (
+                  {(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, 4)).map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -905,7 +905,7 @@ return (
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, 18)).map((a, i) => (
+                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, 4)).map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -934,7 +934,7 @@ return (
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, 18)).map((a, i) => (
+                  {(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, 4)).map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}

@@ -709,7 +709,7 @@ export default function ArticlePageV2({ categories }) {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {(moreStoriesOpen ? moreStories.slice(0, 12) : moreStories.slice(0, 3)).map((a, idx) => (
+                    {(moreStoriesOpen ? moreStories.slice(0, 12) : moreStories.slice(0, 4)).map((a, idx) => (
                       <div key={a?.id || a?._id || idx}>
                         <CompactArticleCard
                           onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
@@ -729,7 +729,7 @@ export default function ArticlePageV2({ categories }) {
                     ))}
                   </div>
 
-                  {moreStories.length > 3 && (
+                  {moreStories.length > 4 && (
                     <div className="mt-3 flex justify-center">
                       <button
                         type="button"
