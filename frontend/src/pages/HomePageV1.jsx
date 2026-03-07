@@ -338,10 +338,33 @@ const navigate = useNavigate();
       return "";
     };
 
-    const localPool = basePool.filter((a) => isLocal(a));
-    const ukPool = basePool.filter((a) => !isLocal(a) && isUKPillar(a));
-    const authPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && isAuthorityPillar(a));
-    const otherPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && !isAuthorityPillar(a));
+    const rankScore = (a) => {
+      let score = 0;
+      if (a?.is_priority_cheshire) score += 1000;
+      if (a?.featured) score += 300;
+      if (a?.is_secondary_cheshire) score += 120;
+
+      const ageHours = Math.max(0, (Date.now() - safeDateMs(a?.publishedDate)) / 36e5);
+      score += Math.max(0, 72 - ageHours); // gentle freshness decay over ~3 days
+
+      const t = lowerText(a);
+      if (/\b(investment|economy|economic|business|finance|tax|hmrc|mortgage|savings|ai|artificial\s+intelligence|tech|technology)\b/.test(t)) {
+        score += 40;
+      }
+
+      return score;
+    };
+
+    const byRankThenNewest = (a, b) => {
+      const diff = rankScore(b) - rankScore(a);
+      if (diff !== 0) return diff;
+      return safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate);
+    };
+
+    const localPool = basePool.filter((a) => isLocal(a)).sort(byRankThenNewest);
+    const ukPool = basePool.filter((a) => !isLocal(a) && isUKPillar(a)).sort(byRankThenNewest);
+    const authPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && isAuthorityPillar(a)).sort(byRankThenNewest);
+    const otherPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && !isAuthorityPillar(a)).sort(byRankThenNewest);
 
     // Weighted pattern: 2 Local, 2 Authority, 1 UK (repeats)
     const pattern = ["local", "auth", "local", "auth", "uk"];
