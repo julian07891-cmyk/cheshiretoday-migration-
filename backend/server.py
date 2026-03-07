@@ -3444,6 +3444,7 @@ async def delete_article(article_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/subscribe", response_model=SubscribeResponse)
+@api_router.post("/newsletter/subscribe", response_model=SubscribeResponse)
 async def subscribe_newsletter(request: SubscribeRequest):
     """Subscribe to newsletter with optional preferences"""
     try:
@@ -4135,91 +4136,6 @@ async def unsubscribe_newsletter(request: UnsubscribeRequest):
     except Exception as e:
         logger.error(f"Error unsubscribing: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process unsubscribe request")
-
-
-@api_router.get("/newsletter/preferences/{email}")
-async def get_newsletter_preferences(email: str):
-    """
-    Get current newsletter preferences for an email.
-    Returns preferences if found, or defaults if not.
-    """
-    try:
-        email = email.lower().strip()
-        subscriber = await db.subscribers.find_one({"email": email})
-        
-        if not subscriber:
-            return {
-                "found": False,
-                "email": email,
-                "message": "Email not found in subscriber list",
-                "preferences": None
-            }
-        
-        return {
-            "found": True,
-            "email": email,
-            "preferences": {
-                "daily_brief": subscriber.get("daily_brief", True),
-                "weekly_roundup": subscriber.get("weekly_roundup", False),
-                "breaking_news": subscriber.get("breaking_news", False)
-            },
-            "subscribed_at": str(subscriber.get("subscribed_at")) if subscriber.get("subscribed_at") else None
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to get preferences")
-
-
-@api_router.post("/newsletter/preferences")
-async def update_newsletter_preferences(request: PreferencesUpdateRequest):
-    """
-    Update newsletter preferences for a subscriber.
-    If all preferences are disabled, effectively unsubscribes them from all emails.
-    """
-    try:
-        email = request.email.lower().strip()
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email is required")
-        
-        # Check if subscriber exists
-        subscriber = await db.subscribers.find_one({"email": email})
-        
-        if not subscriber:
-            raise HTTPException(status_code=404, detail="Email not found. Please subscribe first.")
-        
-        # Update preferences
-        await db.subscribers.update_one(
-            {"email": email},
-            {"$set": {
-                "daily_brief": request.daily_brief,
-                "weekly_roundup": request.weekly_roundup,
-                "breaking_news": request.breaking_news,
-                "preferences_updated_at": datetime.now(timezone.utc)
-            }}
-        )
-        
-        # If ALL preferences are False, log it (user might as well unsubscribe)
-        if not request.daily_brief and not request.weekly_roundup and not request.breaking_news:
-            logger.info(f"Subscriber {email[:3]}*** disabled all email preferences")
-        
-        return {
-            "success": True,
-            "message": "Your email preferences have been updated.",
-            "preferences": {
-                "daily_brief": request.daily_brief,
-                "weekly_roundup": request.weekly_roundup,
-                "breaking_news": request.breaking_news
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update preferences")
-
 
 @api_router.post("/admin/backfill-locations")
 async def backfill_article_locations(authorized: bool = Depends(get_admin_auth)):
@@ -7005,14 +6921,14 @@ async def send_subscriber_milestone_email(subscriber_count: int):
         from email.mime.text import MIMEText
         from email.mime.multipart import MIMEMultipart
         
-        smtp_server = os.environ.get('SMTP_SERVER', 'smtp.office365.com')
+        smtp_server = os.environ.get('SMTP_HOST', 'smtp.office365.com')
         smtp_port = int(os.environ.get('SMTP_PORT', 587))
-        smtp_username = os.environ.get('SMTP_USERNAME')
+        smtp_username = os.environ.get('SMTP_USER')
         smtp_password = os.environ.get('SMTP_PASSWORD')
         admin_email = os.environ.get('ADMIN_EMAIL', 'news@cheshiretoday.co.uk')
         
         if not smtp_username or not smtp_password:
-            logger.warning("SMTP not configured - skipping milestone email")
+            logger.warning("SMTP not configured (SMTP_USER/SMTP_PASSWORD missing) - skipping milestone email")
             return
         
         # Create email
@@ -8917,8 +8833,8 @@ async def serve_article_html(article_id: str, request=None):
     return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
 @app.get("/article/{article_id}/{slug}")
 async def serve_article_for_production_slug(article_id: str, slug: str):
-    """Slug URL variant for crawlers: /article/{id}/{slug}"""
-    return await serve_article_html(article_id)
+    """Public slug URL should load the React SPA article page."""
+    return _spa_index_or_500()
 
 @api_router.get("/article/{article_id}/{slug}")
 async def serve_article_for_api_slug(article_id: str, slug: str):
