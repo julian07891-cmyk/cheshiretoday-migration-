@@ -10,19 +10,24 @@ export default function HeroStoryCard({
   readTime,
   url,
 }) {
+  const [showImage, setShowImage] = React.useState(Boolean(image));
+
   return (
     <article className="w-full">
       <Link to={url} className="block group">
-        <div className="relative w-full aspect-[16/9] md:aspect-[4/3] overflow-hidden rounded-xl">
-          <img
-            src={image}
-            alt={headline}
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="eager"
-          />
-        </div>
+        {showImage && (
+          <div className="relative w-full aspect-[16/9] md:aspect-[4/3] overflow-hidden rounded-xl">
+            <img
+              src={image}
+              alt={headline}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="eager"
+              onError={() => setShowImage(false)}
+            />
+          </div>
+        )}
 
-        <div className="mt-4 space-y-2">
+        <div className={`${showImage ? "mt-4" : "mt-0"} space-y-2`}>
           <div className="text-sm text-emerald-600 font-semibold uppercase tracking-wide">
             {category} {town && `• ${town}`}
           </div>
