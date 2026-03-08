@@ -2866,14 +2866,6 @@ async def get_articles(
         # Convert ObjectId to string and clean content
         seen_ids = set()
         unique_articles = []
-        def is_local(article):
-            return article.get("category") == "Local News"
-
-        def is_sports(article):
-            title = (article.get("title") or "").lower()
-            sports_keywords = ["football","rugby","fa cup","premier league","six nations","match","goal"]
-            return any(k in title for k in sports_keywords)
-
         for article in articles:
             article['id'] = str(article['_id'])
             del article['_id']
@@ -7494,17 +7486,7 @@ async def send_digest_now():
         
         # Convert IDs to string format for email links
         # IMPORTANT: Use mongo_id (ObjectId hex) as the primary ID since that's what the API expects
-        
-        # Helper functions for digest grouping
-        def is_local(article):
-            return (article.get("category") or "").lower() == "local news"
-
-        def is_sports(article):
-            title = (article.get("title") or "").lower()
-            sports = ["football","rugby","fa cup","premier league","six nations","match","goal","championship"]
-            return any(k in title for k in sports)
-
-for article in recent_articles:
+        for article in recent_articles:
             # Prefer mongo_id as the primary identifier (matches what /api/articles/{id} expects)
             if article.get('mongo_id'):
                 article['id'] = str(article['mongo_id'])
