@@ -10145,6 +10145,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# Digest helper functions
+def is_local(article):
+    return (article.get("category") or "").lower() == "local news"
+
+def is_sports(article):
+    title = (article.get("title") or "").lower()
+    sports = ["football", "rugby", "fa cup", "premier league", "six nations", "match", "goal", "championship"]
+    return any(k in title for k in sports)
+
+
+
+# --- Digest helper functions ---
+def is_local(article):
+    return (article.get("category") or "").lower() == "local news"
+
+def is_sports(article):
+    title = (article.get("title") or "").lower()
+    sports = ["football","rugby","fa cup","premier league","six nations","match","goal","championship"]
+    return any(k in title for k in sports)
+
+
 # =====================================================================================
 # RSS CONTENT HYGIENE
 # - Strip naked URLs (esp. the original source_url) from RSS content/summary
