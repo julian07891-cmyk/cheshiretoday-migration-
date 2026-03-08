@@ -2866,6 +2866,14 @@ async def get_articles(
         # Convert ObjectId to string and clean content
         seen_ids = set()
         unique_articles = []
+        def is_local(article):
+            return article.get("category") == "Local News"
+
+        def is_sports(article):
+            title = (article.get("title") or "").lower()
+            sports_keywords = ["football","rugby","fa cup","premier league","six nations","match","goal"]
+            return any(k in title for k in sports_keywords)
+
         for article in articles:
             article['id'] = str(article['_id'])
             del article['_id']
