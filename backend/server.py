@@ -9834,8 +9834,8 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'published_date': article.get('published_date'),
-                    'created_at': datetime.utcnow()
+                    'publishedDate': article.get('publishedDate') or article.get('published_date') or datetime.utcnow().isoformat(),
+                    'created_at': datetime.utcnow().isoformat()
                 }
                 
                 await db.articles.insert_one(article_doc)
