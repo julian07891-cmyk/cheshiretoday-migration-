@@ -7494,7 +7494,17 @@ async def send_digest_now():
         
         # Convert IDs to string format for email links
         # IMPORTANT: Use mongo_id (ObjectId hex) as the primary ID since that's what the API expects
-        for article in recent_articles:
+        
+        # Helper functions for digest grouping
+        def is_local(article):
+            return (article.get("category") or "").lower() == "local news"
+
+        def is_sports(article):
+            title = (article.get("title") or "").lower()
+            sports = ["football","rugby","fa cup","premier league","six nations","match","goal","championship"]
+            return any(k in title for k in sports)
+
+for article in recent_articles:
             # Prefer mongo_id as the primary identifier (matches what /api/articles/{id} expects)
             if article.get('mongo_id'):
                 article['id'] = str(article['mongo_id'])
