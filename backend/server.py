@@ -7534,7 +7534,11 @@ async def send_digest_now():
                 seen_keywords.append(title_keywords)
                 unique_articles.append(article)
         
-                sorted_articles = local_news + other_news + sports_news[:2]
+        local_news = [a for a in unique_articles if is_local(a)]
+        sports_news = [a for a in unique_articles if is_sports(a)]
+        other_news = [a for a in unique_articles if not is_local(a) and not is_sports(a)]
+        
+        sorted_articles = local_news + other_news + sports_news[:2]
         sorted_articles = sorted_articles[:10]
         
         logger.info(f"Digest: {len(local_news)} local, {len(other_news)} other, {len(sports_news)} sports (max 2 used), sending {len(sorted_articles)} total")
