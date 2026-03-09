@@ -189,16 +189,10 @@ const AdminPage = () => {
 };
 // Valid location slugs
 const VALID_LOCATIONS = [
-  "cheshire-general",
   "chester",
   "warrington",
-  "crewe",
-  "wirral",
   "macclesfield",
-  "wilmslow",
   "knutsford",
-  "stockport",
-  "northwich",
 ];
 
 // Wrapper to validate location routes
