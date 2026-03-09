@@ -579,14 +579,14 @@ def get_article_priority_location(title: str, content: str = '') -> Optional[str
     Uses word boundary matching to avoid false positives (e.g., 'chester' in 'manchester').
     """
     import re
-    text = f"{title} {content}".lower()
+    text = f"{title} {content}".lower(); cheshire_context = "cheshire" in text
     
     for location in PRIORITY_LOCATIONS:
         for keyword in location['keywords']:
             # Use word boundary regex to ensure exact word match
             # This prevents 'chester' matching 'manchester' or 'colchester'
             pattern = r'\b' + re.escape(keyword) + r'\b'
-            if re.search(pattern, text):
+            if re.search(pattern, text) and cheshire_context:
                 return location['name']
     return None
 
@@ -656,10 +656,10 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'prescription charge', 'waiting list crisis'
     ],
     'Tech': [
-        'apple announces', 'google launches', 'microsoft releases', 'amazon tech',
+        'apple announces', 'apple releases', 'google launches', 'microsoft releases', 'amazon tech',
         'meta platform', 'facebook policy', 'twitter change', 'ai technology',
         'artificial intelligence', 'chatgpt update', 'robot technology', 'smartphone launch',
-        'iphone release', 'android update', 'app store', 'software update',
+        'iphone release', 'iphone', 'android update', 'app store', 'software update',
         'cybersecurity breach', 'hacker attack', 'data breach', 'tech startup',
         'blockchain technology', 'cryptocurrency market', 'bitcoin price'
     ],
@@ -668,7 +668,10 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'revenue growth', 'ceo resigns', 'company merger', 'acquisition deal',
         'bankruptcy filing', 'inflation rate', 'interest rate decision', 'bank of england',
         'budget announcement', 'tax increase', 'employment figures', 'unemployment rate',
-        'job losses', 'redundancy plan', 'strike action', 'union dispute'
+        'job losses', 'redundancy plan', 'strike action', 'union dispute',
+        'energy bills', 'energy price cap', 'ofgem', 'mortgage', 'mortgages',
+        'housing market', 'house prices', 'insurance', 'savings', 'tax bill',
+        'cost of living', 'interest rates', 'property market'
     ],
     'Weather': [
         'weather warning', 'storm warning', 'met office', 'snow forecast', 'flood warning',
@@ -678,7 +681,7 @@ CATEGORY_KEYWORD_OVERRIDES = {
 }
 
 # Categories that should NOT be overridden (preserve original RSS category)
-PROTECTED_CATEGORIES = ['Weather', 'UK News', 'Local News']
+PROTECTED_CATEGORIES = ['Weather', 'Local News']
 
 # ============================================
 # SPAM/PRODUCT/ADVERTISING FILTER
@@ -947,9 +950,34 @@ class NewsFeedService:
         return datetime.now(timezone.utc).isoformat()
     
     def _is_cheshire_related(self, title: str, description: str) -> bool:
-        """Check if article is related to Cheshire area"""
+        """Strict local check for genuine Cheshire civic/community relevance."""
         text = f"{title} {description}".lower()
-        return any(keyword in text for keyword in CHESHIRE_KEYWORDS)
+
+        place_terms = [
+            "cheshire", "warrington", "chester", "wilmslow", "knutsford",
+            "macclesfield", "crewe", "nantwich", "northwich", "winsford",
+            "congleton", "sandbach", "middlewich", "frodsham", "runcorn",
+            "ellesmere port", "halton", "jodrell bank", "davesbury", "darebury"
+        ]
+        local_context_terms = [
+            "council", "planning", "application", "approved", "refused", "scheme",
+            "development", "homes", "housing", "school", "college", "community",
+            "charity", "funding", "partnership", "road", "traffic", "m6", "m56",
+            "station", "police", "court", "hospital", "nhs", "business park",
+            "visitor attraction", "cafe", "restaurant", "shop", "town centre",
+            "borough", "ward", "election", "committee", "consultation"
+        ]
+        non_local_noise = [
+            "martin lewis", "hmrc", "tax-free", "energy price cap", "budget",
+            "mortgage rate", "credit score", "iphone", "chatgpt", "anthropic",
+            "dubai", "iran", "trump", "apple", "google", "microsoft"
+        ]
+
+        has_place = any(term in text for term in place_terms)
+        has_context = any(term in text for term in local_context_terms)
+        has_noise = any(term in text for term in non_local_noise)
+
+        return has_place and has_context and not has_noise
     
     async def fetch_feed(self, feed_key: str) -> List[Dict[str, Any]]:
         """Fetch and parse a single RSS feed"""

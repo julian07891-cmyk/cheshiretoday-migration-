@@ -25,7 +25,13 @@ const CompactArticleCard = ({ article, onClick, horizontal = false, priority = f
     return c;
   })();
 const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    if (!dateString) return '';
+    const normalized =
+      typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)
+        ? `${dateString}Z`
+        : dateString;
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) return '';
     const now = new Date();
     const diffMs = now - date;
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));

@@ -374,6 +374,13 @@ export default function ArticlePageV2({ categories }) {
   const description = useMemo(() => buildDescription(article), [article]);
   const safeTitle = useMemo(() => safeText(article?.title), [article]);
 
+  const readingTime = useMemo(() => {
+    const text = String(article?.content || "");
+    const words = text.trim().split(/\s+/).length;
+    return Math.max(1, Math.round(words / 200));
+  }, [article]);
+
+
   // Pillar label for sidebar (keeps the publication feeling intentional)
   const pillarLabel = useMemo(() => {
     const sec = String(article?.section || "").toLowerCase();
@@ -639,10 +646,15 @@ export default function ArticlePageV2({ categories }) {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <article className="lg:col-span-8">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {String(article?.category || "Article")}
+                {article?.location ? ` · ${String(article.location).toUpperCase()}` : ""}
+              </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">{safeTitle}</h1>
 
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
                 <span>{published}</span>
+                <span>• {readingTime} min read</span>
                 <button onClick={handleShare} className="ml-auto text-slate-700 hover:underline underline-offset-2 text-sm dark:text-slate-200 dark:hover:text-white">
                   Share
                 </button>

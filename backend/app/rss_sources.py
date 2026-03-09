@@ -36,32 +36,32 @@ CHESHIRE_RSS_SOURCES = [
         # "url": 'http://feeds.bbci.co.uk/news/uk/rss.xml',
         # "category": 'uk'
     # },
-    # {
-        # "name": 'Google News: Macclesfield',
-        # "url": 'https://news.google.com/rss/search?q=Macclesfield%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
-        # "category": 'local'
-    # },
-    # {
-        # "name": 'Google News: Wilmslow',
-        # "url": 'https://news.google.com/rss/search?q=Wilmslow%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
-        # "category": 'local'
-    # },
-    # {
-        # "name": 'Google News: Knutsford',
-        # "url": 'https://news.google.com/rss/search?q=Knutsford%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
-        # "category": 'local'
-    # },
-    # {
-        # "name": 'Google News: Cheshire East',
-        # "url": 'https://news.google.com/rss/search?q=%22Cheshire%20East%22%20Council%20when%3A30d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
-        # "category": 'local'
-    # },
-    # {
-        # "name": 'Google News: Cheshire West & Chester',
-        # "url": 'https://news.google.com/rss/search?q=%22Cheshire%20West%20and%20Chester%22%20Council%20when%3A30d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
-        # "category": 'local'
-    # },
     {
+        "name": 'Google News: Macclesfield',
+        "location": "macclesfield",
+        "url": 'https://news.google.com/rss/search?q=Macclesfield%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+        },    {
+        "name": 'Google News: Wilmslow',
+        "location": "wilmslow",
+        "url": 'https://news.google.com/rss/search?q=Wilmslow%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+        },    {
+        "name": 'Google News: Knutsford',
+        "location": "knutsford",
+        "url": 'https://news.google.com/rss/search?q=Knutsford%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+        },    {
+        "name": 'Google News: Cheshire East',
+        "location": "cheshire east",
+        "url": 'https://news.google.com/rss/search?q=%22Cheshire%20East%22%20Council%20when%3A30d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+        },    {
+        "name": 'Google News: Cheshire West & Chester',
+        "location": "cheshire west and chester",
+        "url": 'https://news.google.com/rss/search?q=%22Cheshire%20West%20and%20Chester%22%20Council%20when%3A30d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
+        "category": 'local'
+        },    {
         "name": 'BBC Business',
         "url": 'http://feeds.bbci.co.uk/news/business/rss.xml',
         "category": 'business'
@@ -115,41 +115,49 @@ CHESHIRE_RSS_SOURCES = [
     # },
     {
         "name": 'Google News: Crewe',
+        "location": "crewe",
         "url": 'https://news.google.com/rss/search?q=Crewe%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Chester',
+        "location": "chester",
         "url": 'https://news.google.com/rss/search?q=Chester%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Warrington',
+        "location": "warrington",
         "url": 'https://news.google.com/rss/search?q=Warrington%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Northwich',
+        "location": "northwich",
         "url": 'https://news.google.com/rss/search?q=Northwich%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Nantwich',
+        "location": "nantwich",
         "url": 'https://news.google.com/rss/search?q=Nantwich%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Congleton',
+        "location": "congleton",
         "url": 'https://news.google.com/rss/search?q=Congleton%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Winsford',
+        "location": "winsford",
         "url": 'https://news.google.com/rss/search?q=Winsford%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },
     {
         "name": 'Google News: Ellesmere Port',
+        "location": "ellesmere port",
         "url": 'https://news.google.com/rss/search?q=Ellesmere%20Port%20Cheshire%20%28council%20OR%20planning%20OR%20consultation%20OR%20regeneration%20OR%20investment%20OR%20jobs%20OR%20business%20OR%20housing%20OR%20transport%20OR%20rail%20OR%20roadworks%20OR%20school%20OR%20nhs%20OR%20clinic%20OR%20gp%20OR%20festival%20OR%20opening%29%20when%3A14d%20-police%20-cctv%20-appeal%20-assault%20-death%20-dead%20-died%20-crash%20-collision%20-road%20-lane%20-closure%20-cordon%20-arrest%20-charged%20-court%20-trial%20-sentenced%20-jailed%20-burglary%20-robbery%20-stabbing%20-shooting%20-rape&hl=en-GB&gl=GB&ceid=GB%3Aen',
         "category": 'local'
     },

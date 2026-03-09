@@ -2295,7 +2295,9 @@ async def get_cheshire_general_articles(
             {
                 '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                 'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                'featured': 1, 'source': 1, 'source_url': 1,
+                    'priority_location': 1,
+                    'location': 1, 'scope': 1, 'is_local_source': 1,
                 'location': 1
             }
         ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
@@ -2435,7 +2437,8 @@ async def get_articles(
                 {
                     '_id': 1, 'id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                    'location': 1, 'priority_location': 1
                 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
             
@@ -2490,7 +2493,8 @@ async def get_articles(
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                    'location': 1, 'priority_location': 1
                 }
             ).sort('publishedDate', -1).limit(limit*10).to_list(limit*10)
             
@@ -2498,7 +2502,8 @@ async def get_articles(
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
                     'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                    'location': 1, 'priority_location': 1
                 }
             ).sort('publishedDate', -1).limit(limit*4).to_list(limit*4)
 
@@ -9692,6 +9697,7 @@ async def sync_rss_now():
         )
         hard_crime_kw = re.compile(r"(murder|kill(?:ed|s)?|killed|homicide|manslaughter|found dead|body found|death|died|dies|stab|shoot|rape|jailed|sentenc|charged|trial|convict)", re.I)
         crime_kw = re.compile(r"(police|arrest|court|jailed|sentenc|charged|trial|inquest|knife crime|stabb|shoot|assault|drink[- ]driver|drink[- ]driving|drunk[- ]driver|dui|dwi)", re.I)
+        obituary_kw = re.compile(r"(death notice|funeral notice|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)", re.I)
         seen_new_titles = set()
 
         for article in rss_articles:
@@ -9718,6 +9724,10 @@ async def sync_rss_now():
                 continue
 
             low = title.lower()
+
+            # Block obituary / memorial notice-style content, but not general news reporting
+            if obituary_kw.search(title):
+                continue
 
             # Structural sports patterns
             if ((' vs ' in low) or (' v ' in low)) and ('team news' in low or ' live' in low or 'kick-off' in low or 'kickoff' in low or 'line-up' in low or 'lineup' in low):
@@ -9772,7 +9782,7 @@ async def sync_rss_now():
         max_import = 10
         
         # Prefer local items when available; then fill with best non-local.
-        local_target = int(os.getenv("LOCAL_SYNC_TARGET", "4") or "4")
+        local_target = int(os.getenv("LOCAL_SYNC_TARGET", "6") or "6")
         local_items = [a for a in new_articles if a.get("is_local_source") is True]
         non_local_items = [a for a in new_articles if a.get("is_local_source") is not True]
 
@@ -9795,7 +9805,7 @@ async def sync_rss_now():
                 # Soft source de-dupe to reduce repetition (allow if needed later)
                 if src:
                     c = source_counts.get(src, 0)
-                    if c >= 2:
+                    if c >= 1:
                         continue
                 picked.append(a)
                 seen_titles.add(t)
@@ -10190,7 +10200,11 @@ def sanitize_rss_text(text: str, source_url: str = "") -> str:
     # Remove leftover "Read more:" without URL (sometimes after replacement)
     t = re.sub(r'(?im)^\s*(read\s+more|continue\s+reading|full\s+story)\s*[:\-]?\s*$', '', t)
 
-    # Collapse excessive whitespace/newlines
+    # Light readability formatting: keep content length, improve paragraph spacing
+    sentences = re.split(r'(?<=[.!?])\s+', t)
+    if len(sentences) >= 4:
+        chunks = [' '.join(sentences[i:i+2]).strip() for i in range(0, len(sentences), 2)]
+        t = '\n\n'.join([c for c in chunks if c])
     t = re.sub(r'\n{3,}', '\n\n', t).strip()
     return t
 

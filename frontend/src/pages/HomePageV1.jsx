@@ -361,62 +361,92 @@ const navigate = useNavigate();
       return safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate);
     };
 
-    const localPool = basePool.filter((a) => isLocal(a)).sort(byRankThenNewest);
-    const ukPool = basePool.filter((a) => !isLocal(a) && isUKPillar(a)).sort(byRankThenNewest);
-    const authPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && isAuthorityPillar(a)).sort(byRankThenNewest);
-    const otherPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && !isAuthorityPillar(a)).sort(byRankThenNewest);
+    let poolAll = [];
 
-    // Weighted pattern: 2 Local, 2 Authority, 1 UK (repeats)
-    const pattern = ["local", "auth", "local", "auth", "uk"];
+    if (selectedCategory && selectedCategory !== "All") {
+      let localFiltered = [...basePool];
 
-    let iL = 0, iA = 0, iU = 0, iO = 0;
-    const poolAll = [];
-    const totalTarget = Math.min(basePool.length, 28); // fixed-depth ratio enforcement (prevents UK-heavy tail)
-
-    // Topic caps inside the top-28 mix (prevents single-theme takeover)
-    const cap = { astro: 1 };
-    const seen = { astro: 0 };
-
-    const pickNext = (kind) => {
-      if (kind === "local" && iL < localPool.length) return localPool[iL++];
-      if (kind === "auth" && iA < authPool.length) return authPool[iA++];
-      if (kind === "uk" && iU < ukPool.length) return ukPool[iU++];
-      return null;
-    };
-
-    const allowByTopic = (a) => {
-      const b = topicBucket(a);
-      if (!b) return true;
-      // JS doesn't have True; we just return boolean literal below (kept as string replacement later)
-      return true;
-    };
-
-    while (poolAll.length < totalTarget) {
-      for (const kind of pattern) {
-        if (poolAll.length >= totalTarget) break;
-
-        let a = pickNext(kind);
-
-        // Fallback order keeps strategy intent: Local → Authority → UK → Other
-        if (!a && iL < localPool.length) a = localPool[iL++];
-        if (!a && iA < authPool.length) a = authPool[iA++];
-        if (!a && iU < ukPool.length) a = ukPool[iU++];
-        if (!a && iO < otherPool.length) a = otherPool[iO++];
-
-        if (!a) continue;
-
-        const bucket = topicBucket(a);
-        if (bucket && seen[bucket] >= (cap[bucket] || 1)) {
-          // skip (we already consumed it from its pool), continue trying via loop/fallbacks
-          continue;
-        }
-
-        if (bucket) seen[bucket] = (seen[bucket] || 0) + 1;
-        poolAll.push(a);
+      if (selectedCategory === "Local") {
+        localFiltered = basePool.filter(a => {
+          const cat = String(a?.category || "").toLowerCase();
+          return cat === "local news" || cat === "local";
+        });
       }
 
-      // If nothing left anywhere, stop
-      if (iL >= localPool.length && iA >= authPool.length && iU >= ukPool.length && iO >= otherPool.length) break;
+      const sortedBase = [...localFiltered].sort((a, b) => safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate));
+
+      if (selectedCategory === "Local") {
+        const perTown = new Map();
+        const balanced = [];
+
+        for (const a of sortedBase) {
+          if (balanced.length >= 28) break;
+
+          const town = String(a?.priority_location || a?.location || "").toLowerCase().trim();
+          if (!town) {
+            balanced.push(a);
+            continue;
+          }
+
+          const count = perTown.get(town) || 0;
+          if (count >= 2) continue;
+
+          perTown.set(town, count + 1);
+          balanced.push(a);
+        }
+
+        poolAll = balanced;
+      } else {
+        poolAll = sortedBase.slice(0, 28);
+      }
+    } else {
+      const localPool = basePool.filter((a) => isLocal(a)).sort(byRankThenNewest);
+      const ukPool = basePool.filter((a) => !isLocal(a) && isUKPillar(a)).sort(byRankThenNewest);
+      const authPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && isAuthorityPillar(a)).sort(byRankThenNewest);
+      const otherPool = basePool.filter((a) => !isLocal(a) && !isUKPillar(a) && !isAuthorityPillar(a)).sort(byRankThenNewest);
+
+      // Weighted pattern: 2 Local, 2 Authority, 1 UK (repeats)
+      const pattern = ["local", "auth", "local", "auth", "uk"];
+
+      let iL = 0, iA = 0, iU = 0, iO = 0;
+      const totalTarget = Math.min(basePool.length, 28); // fixed-depth ratio enforcement (prevents UK-heavy tail)
+
+      // Topic caps inside the top-28 mix (prevents single-theme takeover)
+      const cap = { astro: 1 };
+      const seen = { astro: 0 };
+
+      const pickNext = (kind) => {
+        if (kind === "local" && iL < localPool.length) return localPool[iL++];
+        if (kind === "auth" && iA < authPool.length) return authPool[iA++];
+        if (kind === "uk" && iU < ukPool.length) return ukPool[iU++];
+        return null;
+      };
+
+      while (poolAll.length < totalTarget) {
+        for (const kind of pattern) {
+          if (poolAll.length >= totalTarget) break;
+
+          let a = pickNext(kind);
+
+          // Fallback order keeps strategy intent: Local → Authority → UK → Other
+          if (!a && iL < localPool.length) a = localPool[iL++];
+          if (!a && iA < authPool.length) a = authPool[iA++];
+          if (!a && iU < ukPool.length) a = ukPool[iU++];
+          if (!a && iO < otherPool.length) a = otherPool[iO++];
+
+          if (!a) continue;
+
+          const bucket = topicBucket(a);
+          if (bucket && seen[bucket] >= (cap[bucket] || 1)) {
+            continue;
+          }
+
+          if (bucket) seen[bucket] = (seen[bucket] || 0) + 1;
+          poolAll.push(a);
+        }
+
+        if (iL >= localPool.length && iA >= authPool.length && iU >= ukPool.length && iO >= otherPool.length) break;
+      }
     }
 
 
@@ -731,7 +761,11 @@ const isMoney = (a) => {
       // IMPORTANT: Latest should not consume the shared homepage dedupe pool.
       // Other sections may have already marked items; Latest still needs to fill.
       latestCards.push(
-        toCard(a, `latest-${latestCards.length}`, overrideCategory ? { category: overrideCategory } : {})
+        toCard(
+          a,
+          `latest-${latestCards.length}`,
+          selectedCategory === "All" && overrideCategory ? { category: overrideCategory } : {}
+        )
       );
     };
 
@@ -797,7 +831,13 @@ const isMoney = (a) => {
       const k = articleKey(a);
       if (!k || aiBizSeen.has(k) || latestKeys.has(k)) continue;
       aiBizSeen.add(k);
-      aiBizFeedCards.push(toCard(a, `aibiz-${aiBizFeedCards.length}`, { category: a?.category || "AI & Business" }));
+      aiBizFeedCards.push(
+        toCard(
+          a,
+          `aibiz-${aiBizFeedCards.length}`,
+          selectedCategory === "All" ? { category: a?.category || "AI & Business" } : {}
+        )
+      );
     }
 
 // 6) More stories (avoid overlap with Latest and AI & Business)
@@ -829,7 +869,7 @@ return {
 };
   }, [newestFirst]);
 
-  const hero = home?.hero || null;
+  const hero = selectedCategory === "All" ? (home?.hero || null) : (newestFirst?.[0] || null);
 
   // Always default to arrays to prevent runtime crashes (blank page)
   const topStories = Array.isArray(home?.topStories) ? home.topStories : [];
