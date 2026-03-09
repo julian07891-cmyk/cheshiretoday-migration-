@@ -1793,6 +1793,66 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+@api_router.post("/admin/regenerate-recent-content")
+async def regenerate_recent_article_content(authorized: bool = Depends(get_admin_auth)):
+    """
+    Regenerate recent articles using Perplexity, regardless of current content length.
+    Focuses only on the last 48 hours and caps the batch size for cost control.
+    """
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+
+        articles = await db.articles.find(
+            {"publishedDate": {"$gte": cutoff}}
+        ).sort("publishedDate", -1).limit(25).to_list(25)
+
+        regenerated = 0
+        cost_estimate = 0.0
+
+        for article in articles:
+            title = article.get('title', '')
+            original_content = article.get('content', '') or article.get('summary', '') or ''
+            source = article.get('source', 'BBC News')
+            source_url = article.get('source_url', '')
+
+            logger.info(f"Regenerating recent content for: {title[:60]}...")
+
+            detailed_content = await perplexity_service.generate_article_content(
+                title=title,
+                summary=original_content,
+                source=source,
+                source_url=source_url
+            )
+            cost_estimate += 0.005
+
+            if detailed_content and len(detailed_content) >= max(len(original_content), 1200):
+                await db.articles.update_one(
+                    {'_id': article['_id']},
+                    {'$set': {
+                        'content': detailed_content,
+                        'original_summary': article.get('summary', '') or original_content,
+                        'content_generated': True,
+                        'content_regenerated_at': datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                regenerated += 1
+                logger.info(f"✅ Regenerated recent article ({len(detailed_content)} chars): {title[:60]}...")
+            else:
+                logger.warning(f"Skipped recent article - no improvement: {title[:60]}...")
+
+        return {
+            "success": True,
+            "recent_articles_found": len(articles),
+            "regenerated": regenerated,
+            "estimated_cost_usd": round(cost_estimate, 4)
+        }
+
+    except Exception as e:
+        logger.error(f"Error regenerating recent content: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/admin/regenerate-content")
 async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
     """
@@ -9848,7 +9908,7 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'publishedDate': article.get('publishedDate') or article.get('published_date') or datetime.utcnow().isoformat(),
+                    'publishedDate': (article.get('publishedDate') if isinstance(article.get('publishedDate'), datetime) else (datetime.fromisoformat(str(article.get('publishedDate')).replace('Z', '+00:00')).replace(tzinfo=None) if article.get('publishedDate') else (datetime.fromisoformat(str(article.get('published_date')).replace('Z', '+00:00')).replace(tzinfo=None) if article.get('published_date') else datetime.utcnow()))),
                     'created_at': datetime.utcnow().isoformat(),
                     'archived': False
                 }
