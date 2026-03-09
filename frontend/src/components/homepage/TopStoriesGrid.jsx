@@ -4,13 +4,6 @@ import { Clock, BookOpen } from "lucide-react";
 
 const safeText = (v) => (typeof v === "string" ? v : "");
 
-const displayCategory = (category) => {
-  const c = safeText(category);
-  if (c === "Local News") return "Local";
-  if (c === "UK News") return "UK";
-  if (c === "Tech") return "AI & Tech";
-  return c;
-};
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
@@ -44,7 +37,6 @@ export default function TopStoriesGrid({ stories = [] }) {
       {stories.slice(0, 8).map((story, idx) => {
         const href = story.url || `/article/${story._id || story.id}`;
         const title = safeText(story.title) || "Untitled";
-        const category = displayCategory(story.category || "");
         const summary =
           safeText(story.summary).trim() ||
           safeText(story.content).trim() ||
@@ -72,11 +64,6 @@ export default function TopStoriesGrid({ stories = [] }) {
             )}
 
             <div className="min-w-0 flex-1">
-              {category ? (
-                <div className="mb-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                  {category}
-                </div>
-              ) : null}
 
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-snug line-clamp-3 group-hover:underline underline-offset-2">
                 {title}

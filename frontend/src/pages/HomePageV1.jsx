@@ -12,7 +12,7 @@ import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
 import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
-import { filterEditorialPool } from "../utils/editorialPolicy";
+import { filterEditorialPool, isLocalPillar, isAiTechPillar, isBusinessPillar, isFinancePillar, isUkPillar, getPrimaryPillar, getDisplayCategoryForPillar } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
 /* ---------- helpers ---------- */
@@ -35,20 +35,11 @@ function articleKey(a) {
 }
 
 function isLocal(a) {
-  const cat = (a?.category || "").toLowerCase();
-  const scope = (a?.scope || "").toLowerCase();
-  return cat.includes("local") || scope.includes("cheshire");
+  return isLocalPillar(a);
 }
 
 function isAiTech(a) {
-  const cat = String(a?.category || "").toLowerCase();
-  const sec = String(a?.section || "").toLowerCase();
-  // backend: category may be AI/Tech, and ai feed uses section ai-*
-  if (sec.startsWith("ai-")) return true;
-  if (cat.includes("ai") || cat.includes("tech")) return true;
-  // fallback keyword match
-  const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-  return /(?:\bai\b|artificial\s+intelligence|chatgpt|openai|gemini|\bllm\b|gpt-?\d*|\bprompt\b|machine\s*learning|deep\s*learning|neural|\bchip\b|\bgpu\b|nvidia|amd|intel|semiconductor|cybersecurity|ransomware|malware|phishing|hack(?:ed|ing)?|data\s*breach|\bbreach\b|cloud\s*comput(?:ing|e)|\bsaas\b|robot|automation)/i.test(t);
+  return isAiTechPillar(a);
 }
 
 function isAiTechFeatured(a) {
@@ -605,21 +596,11 @@ const navigate = useNavigate();
     const financeArticles = [];
 
         const isBusiness = (a) => {
-      const cat = String(a?.category || "").toLowerCase();
-      if (cat.includes("business") || cat.includes("finance") || cat.includes("money")) return true;
-      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-      return /\b(business|economy|economic|market|markets|inflation|gdp|trade|tariff|company|companies|earnings|profits?|shares?|stocks?|ftse|investment|investor|fund|bank|banking|hmrc|tax|vat|interest\s*rate|rate\s*cut|rate\s*hike|mortgage|mortgages|remortgage)\b/.test(t);
+      return isBusinessPillar(a);
     };
 
 const isMoney = (a) => {
-      const sec = String(a?.section || "").toLowerCase();
-      if (["money", "tax", "property", "mortgages"].includes(sec)) return true;
-
-      const cat = String(a?.category || "").toLowerCase();
-      if (cat.includes("money") || cat.includes("finance") || cat.includes("business") || cat.includes("property") || cat.includes("tax")) return true;
-
-      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-      return /\b(mortgage|mortgages|remortgage|fixed\s*rate|tracker|interest\s*rate|isa|savings|bank|credit\s*card|loan|debt|council\s*tax|stamp\s*duty|hmrc|tax|rebate|refund)\b/.test(t);
+      return isFinancePillar(a);
     };
 
     // Pass 1: Prefer Money-ish first (2), then Business (up to 4)
@@ -760,13 +741,15 @@ const isMoney = (a) => {
       if (latestSeen.has(k)) return;
       latestSeen.add(k);
 
+      const resolvedCategory = overrideCategory || getDisplayCategoryForPillar(a);
+
       // IMPORTANT: Latest should not consume the shared homepage dedupe pool.
       // Other sections may have already marked items; Latest still needs to fill.
       latestCards.push(
         toCard(
           a,
           `latest-${latestCards.length}`,
-          selectedCategory === "All" && overrideCategory ? { category: overrideCategory } : {}
+          selectedCategory === "All" && resolvedCategory ? { category: resolvedCategory } : {}
         )
       );
     };
@@ -921,7 +904,7 @@ return (
             {/* Right: Top Stories (compact) */}
             <aside className="lg:col-span-4 lg:-mt-4">
               {topStories.length > 0 && (
-                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:sticky lg:top-24">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>

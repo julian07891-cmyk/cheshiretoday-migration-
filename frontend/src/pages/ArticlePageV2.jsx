@@ -15,7 +15,7 @@ import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
-import { filterEditorialPool } from "../utils/editorialPolicy";
+import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
 
@@ -162,7 +162,7 @@ function autoLinkContent(rawText, pillarLabel) {
     html = html.replaceAll(token, url);
   }
 
-  // 6) Preserve newlines like the current whitespace-pre-wrap behavior
+  // 6) Preserve newlines like the current  behavior
   html = html.replace(/\n/g, "<br/>");
 
   return html;
@@ -385,22 +385,9 @@ export default function ArticlePageV2({ categories }) {
 
   // Pillar label for sidebar (keeps the publication feeling intentional)
   const pillarLabel = useMemo(() => {
-    const sec = String(article?.section || "").toLowerCase();
-    const cat = String(article?.category || "").toLowerCase();
-    const title = String(article?.title || "").toLowerCase();
-    const blob = `${sec} ${cat} ${title}`;
-
-    if (sec.startsWith("ai-") || blob.includes("artificial intelligence") || blob.includes(" tech ") || blob.includes("technology") || blob.includes(" ai ")) {
-      return "AI & Tech";
-    }
-    if (blob.includes("finance") || blob.includes("money") || blob.includes("mortgage") || blob.includes("savings") || blob.includes("rates") || blob.includes("tax")) {
-      return "Finance";
-    }
-    if (blob.includes("business") || blob.includes("economy") || blob.includes("jobs") || blob.includes("companies")) {
-      return "Business";
-    }
-    return "Local";
-  }, [article?.section, article?.category, article?.title]);
+    const pillar = getPrimaryPillar(article);
+    return pillar === "UK" ? "Local" : pillar;
+  }, [article]);
 
 
   const rawBody = useMemo(() => {
@@ -674,7 +661,7 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 <div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-4 md:p-6">
-                <div className="prose prose-lg prose-slate max-w-none whitespace-pre-wrap leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
+                <div className="prose prose-lg prose-slate max-w-none leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
                 {/* auto-linked content (safe) */}
                 <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
               </div>
@@ -774,8 +761,8 @@ export default function ArticlePageV2({ categories }) {
 
             </article>
 
-            <aside className="hidden lg:block lg:col-span-4 space-y-3">
-              <div className="space-y-6 md:space-y-8">
+            <aside className="hidden lg:block lg:col-span-4 space-y-3 [overflow-anchor:none]">
+              <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24 self-start">
                 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold">More in {pillarLabel}</h3>
@@ -824,6 +811,40 @@ export default function ArticlePageV2({ categories }) {
                     </div>
                   </div>
                 )}
+
+                {Array.isArray(moreStories) && moreStories.length > 6 && (
+                  <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-bold text-foreground">More from Cheshire Today</h3>
+                      <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
+                        Editorial
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {moreStories.slice(6, 12).map((a, idx) => (
+                        <CompactArticleCard
+                          key={a?.id || a?._id || `more-sidebar-${idx}`}
+                          horizontal
+                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          article={{
+                            id: a?.id || a?._id || String(idx),
+                            title: a?.title,
+                            content: a?.summary || a?.content || "",
+                            summary: a?.summary || "",
+                            image: a?.image,
+                            category: a?.category,
+                            location: a?.town || a?.location || "Cheshire",
+                            publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
+                            readTime: a?.readTime || 3,
+                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
 
                 {/* Sponsored (Amazon affiliate) */}
                 <AffiliateWidgetSidebar 

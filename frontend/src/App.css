@@ -37,10 +37,6 @@
    PERFORMANCE OPTIMIZATIONS
    ========================================== */
 
-/* Reserve space for images to prevent CLS */
-img {
-    content-visibility: auto;
-}
 
 /* Optimize font rendering */
 body {

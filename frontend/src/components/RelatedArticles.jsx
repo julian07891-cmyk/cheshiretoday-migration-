@@ -44,7 +44,7 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
       return (
         <div className="space-y-3">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">Related Articles</h3>
-          {[1, 2, 3, 4].map((i) => (
+          {Array.from({ length: limit }, (_, i) => i + 1).map((i) => (
             <div key={i} className="flex gap-3 animate-pulse">
               <div className="bg-gray-200 dark:bg-gray-700 h-14 w-20 rounded-lg" />
               <div className="flex-1">
@@ -61,7 +61,7 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
       <div className="mt-8 pt-8 border-t">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Related Articles</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+          {Array.from({ length: limit }, (_, i) => i + 1).map((i) => (
             <div key={i} className="animate-pulse">
               <div className="bg-gray-200 h-24 rounded-lg mb-2"></div>
               <div className="bg-gray-200 h-4 rounded mb-1"></div>

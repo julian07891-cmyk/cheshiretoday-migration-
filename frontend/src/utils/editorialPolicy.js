@@ -108,3 +108,93 @@ export function filterEditorialPool(list) {
   const arr = Array.isArray(list) ? list : [];
   return arr.filter(passesEditorialPolicy);
 }
+
+
+export function getArticleTextBlob(article) {
+  return textBlob(article);
+}
+
+export function isLocalPillar(article) {
+  const category = norm(article?.category);
+  const section = norm(article?.section);
+  const scope = norm(article?.scope);
+  const location = norm(article?.location);
+  const t = textBlob(article);
+
+  if (category.includes("local")) return true;
+  if (scope.includes("cheshire")) return true;
+  if (scope === "local") return true;
+  if (section.includes("local")) return true;
+  if (location.includes("cheshire")) return true;
+
+  return /\b(cheshire|chester|crewe|nantwich|wilmslow|knutsford|macclesfield|northwich|winsford|ellesmere\s+port|congleton|sandbach|middlewich|alderley\s+edge)\b/.test(t);
+}
+
+export function isBusinessPillar(article) {
+  const category = norm(article?.category);
+  const section = norm(article?.section);
+  const t = textBlob(article);
+
+  if (category.includes("business")) return true;
+  if (section.includes("business")) return true;
+
+  return /\b(business|economy|economic|market|markets|trade|tariff|company|companies|earnings|profits?|shares?|stocks?|ftse|investment|investor|fund|bank|banking|industry|manufacturing)\b/.test(t);
+}
+
+export function isFinancePillar(article) {
+  const category = norm(article?.category);
+  const section = norm(article?.section);
+  const t = textBlob(article);
+
+  if (category.includes("finance")) return true;
+  if (category.includes("money")) return true;
+  if (category.includes("property")) return true;
+  if (category.includes("tax")) return true;
+
+  if (["money", "tax", "property", "mortgages", "housing", "planning"].includes(section)) return true;
+
+  return /\b(mortgage|mortgages|remortgage|fixed\s*rate|tracker|interest\s*rate|rate\s*cut|rate\s*hike|isa|savings|credit\s*card|loan|debt|council\s*tax|stamp\s*duty|hmrc|tax|vat|rebate|refund|rent|rental|landlord|tenant|housing|property|planning)\b/.test(t);
+}
+
+export function isAiTechPillar(article) {
+  const category = norm(article?.category);
+  const section = norm(article?.section);
+
+  if (section.startsWith("ai-")) return true;
+  if (category.includes("ai")) return true;
+  if (category.includes("tech")) return true;
+
+  const t = textBlob(article);
+  return /(?:\bai\b|artificial\s+intelligence|chatgpt|openai|gemini|\bllm\b|gpt-?\d*|\bprompt\b|machine\s*learning|deep\s*learning|neural|\bchip\b|\bgpu\b|nvidia|amd|intel|semiconductor|cybersecurity|ransomware|malware|phishing|hack(?:ed|ing)?|data\s*breach|\bbreach\b|cloud\s*comput(?:ing|e)|\bsaas\b|robot|automation)/i.test(t);
+}
+
+export function isUkPillar(article) {
+  const category = norm(article?.category);
+  const section = norm(article?.section);
+  const scope = norm(article?.scope);
+
+  if (category.includes("uk")) return true;
+  if (section.includes("uk")) return true;
+  if (scope === "uk") return true;
+
+  return false;
+}
+
+export function getPrimaryPillar(article) {
+  if (isLocalPillar(article)) return "Local";
+  if (isBusinessPillar(article)) return "Business";
+  if (isAiTechPillar(article)) return "AI & Tech";
+  if (isFinancePillar(article)) return "Finance";
+  if (isUkPillar(article)) return "UK";
+  return "Local";
+}
+
+export function getDisplayCategoryForPillar(article) {
+  const pillar = getPrimaryPillar(article);
+  if (pillar === "Local") return "Local News";
+  if (pillar === "Business") return "Business";
+  if (pillar === "AI & Tech") return "AI & Tech";
+  if (pillar === "Finance") return "Finance";
+  if (pillar === "UK") return "UK News";
+  return article?.category || "Local News";
+}
