@@ -11,6 +11,8 @@ import { toast } from "../hooks/use-toast.js";
 
 import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
+import SubscribeSection from "../components/SubscribeSection";
+import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import { filterEditorialPool } from "../utils/editorialPolicy";
@@ -711,6 +713,10 @@ export default function ArticlePageV2({ categories }) {
               </div>
 
               <div className="mt-6">
+                <SubscribeInlineBanner />
+              </div>
+
+              <div className="mt-6">
                 <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} />
                 
               <GuidePromoBlock guides={guides} category={article?.category} pillarLabel={pillarLabel} />
@@ -830,29 +836,7 @@ export default function ArticlePageV2({ categories }) {
                 />
 
 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Get the Cheshire Today briefing</h3>
-                  <p className="text-sm text-muted-foreground mb-3">A short email with the top local stories — no spam.</p>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      toast({ title: "Coming soon", description: "Newsletter signup will be enabled shortly." });
-                    }}
-                    className="flex gap-2"
-                  >
-                    <input
-                      type="email"
-                      required
-                      placeholder="you@example.com"
-                      className="flex-1 rounded-md border border-input bg-background text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200 placeholder:text-muted-foreground"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800"
-                    >
-                      Sign up
-                    </button>
-                  </form>
-                  <p className="mt-2 text-xs text-muted-foreground">You can unsubscribe anytime.</p>
+                  <SubscribeSection compact />
                 </div>
                 </div>
             </aside>

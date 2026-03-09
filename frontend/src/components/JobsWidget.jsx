@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Briefcase, ArrowRight, MapPin, Mail } from 'lucide-react';
 import { Button } from './ui/button';
+import { newsletterService } from '../services/api';
 
 // Compact widget for article sidebar/inline
 export const JobsWidget = () => {
@@ -72,39 +73,86 @@ export const JobsInlineBanner = () => {
 
 // Inline banner for within article content - Subscribe
 export const SubscribeInlineBanner = () => {
-  const handleClick = (e) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const subscribeSection = document.getElementById('subscribe');
-    if (subscribeSection) {
-      subscribeSection.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      // Scroll to bottom area where subscribe usually is
-      window.scrollTo({ top: document.body.scrollHeight - 1000, behavior: 'smooth' });
+    if (!email || loading) return;
+
+    setLoading(true);
+    setErrorMessage('');
+
+    try {
+      const response = await newsletterService.subscribe(email);
+      if (response.success) {
+        setSubscribed(true);
+        setEmail('');
+        setTimeout(() => setSubscribed(false), 4000);
+      } else {
+        setErrorMessage('Please try again.');
+      }
+    } catch (error) {
+      setErrorMessage('Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <a 
-      href="#subscribe"
-      onClick={handleClick}
-      className="block my-4 group" 
-      data-testid="subscribe-inline-banner"
-    >
-      <div className="flex items-center gap-4 p-4 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 hover:shadow-md transition-all">
-        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Mail className="h-6 w-6 text-white" />
+    <div className="block my-4" data-testid="subscribe-inline-banner">
+      <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/20 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Mail className="h-5 w-5 text-white" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <h4 className="font-semibold text-gray-900 dark:text-white">
+                  The Daily Brief
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Top Cheshire stories at 7:30 AM every morning
+                </p>
+              </div>
+
+              {!subscribed ? (
+                <form onSubmit={handleSubmit} className="flex w-full lg:w-auto gap-2 lg:min-w-[420px]">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    required
+                    disabled={loading}
+                    className="flex-1 rounded-md border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700 disabled:opacity-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {loading ? '...' : 'Subscribe'}
+                  </button>
+                </form>
+              ) : (
+                <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  Subscribed! Check your email.
+                </div>
+              )}
+            </div>
+
+            {errorMessage ? (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errorMessage}</p>
+            ) : null}
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-            The Daily Brief
-          </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Top Cheshire stories at 7:30 AM every morning
-          </p>
-        </div>
-        <ArrowRight className="h-5 w-5 text-blue-600 group-hover:translate-x-1 transition-transform flex-shrink-0" />
       </div>
-    </a>
+    </div>
   );
 };
 

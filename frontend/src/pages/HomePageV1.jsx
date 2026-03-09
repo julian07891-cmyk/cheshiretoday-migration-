@@ -10,6 +10,8 @@ import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
+import SubscribeSection from "../components/SubscribeSection";
+import { SubscribeInlineBanner } from "../components/JobsWidget";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
@@ -910,6 +912,10 @@ return (
                   url={`/article/${articleKey(hero) || "hero"}`}
                 />
               )}
+
+              <div className="mt-4 max-w-[720px]">
+                <SubscribeInlineBanner />
+              </div>
             </div>
 
             {/* Right: Top Stories (compact) */}
@@ -930,6 +936,8 @@ return (
           </div>
         </section>
       )}
+
+
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
