@@ -11176,9 +11176,9 @@ async def startup_event():
             bulk_archive_articles,
             CronTrigger(hour=1, minute=30),
             id='daily_archive_old_articles',
-            name='Archive articles older than 7 days',
+            name='Archive articles older than 14 days',
             replace_existing=True,
-            kwargs={'payload': {'days_old': 7}, 'auth': True}
+            kwargs={'payload': {'days_old': 14}, 'auth': True}
         )
         
         # OLD SCHEDULE DISABLED - Keeping commented for reference
