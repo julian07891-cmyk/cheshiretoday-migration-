@@ -3028,32 +3028,6 @@ async def get_articles(
                 {"articles": unique_articles, "total": total_count, "skip": skip, "limit": limit, "category": category, "include_archived": include_archived},
             )
 
-        # Ensure include_archived requests can always expand from archive
-        if include_archived and len(unique_articles) < limit:
-            seen_ids = {a.get("id") for a in unique_articles}
-            archived_extra = await db.archived_articles.find({}, {"_id":1,"id":1,"title":1,"content":1,"summary":1,"category":1,"author":1,"publishedDate":1,"image":1,"tags":1,"featured":1,"source":1,"source_url":1,"scope":1,"is_local_source":1,"location":1,"priority_location":1}).sort("publishedDate",-1).limit(limit*4).to_list(limit*4)
-            for article in archived_extra:
-                aid=str(article.get("id",article.get("_id")))
-                if aid in seen_ids: continue
-                article["id"]=aid
-                if "_id" in article: del article["_id"]
-                unique_articles.append(article)
-                seen_ids.add(aid)
-                if len(unique_articles)>=limit: break
-
-        # Ensure include_archived requests can always expand from archive
-        if include_archived and len(unique_articles) < limit:
-            seen_ids = {a.get("id") for a in unique_articles}
-            archived_extra = await db.archived_articles.find({}, {"_id":1,"id":1,"title":1,"content":1,"summary":1,"category":1,"author":1,"publishedDate":1,"image":1,"tags":1,"featured":1,"source":1,"source_url":1,"scope":1,"is_local_source":1,"location":1,"priority_location":1}).sort("publishedDate",-1).limit(limit*4).to_list(limit*4)
-            for article in archived_extra:
-                aid=str(article.get("id",article.get("_id")))
-                if aid in seen_ids: continue
-                article["id"]=aid
-                if "_id" in article: del article["_id"]
-                unique_articles.append(article)
-                seen_ids.add(aid)
-                if len(unique_articles)>=limit: break
-
         # Backward compatible: default is LIST; only return envelope when requested
         if with_total:
             return {"articles": unique_articles, "total": total_count, "skip": skip, "limit": limit, "category": category, "include_archived": include_archived}
