@@ -194,7 +194,7 @@ const navigate = useNavigate();
         setLoading(true);
         setErr("");
 
-        const res = await fetch(getApiUrl() + "/api/articles?limit=220&with_total=1&include_archived=true");
+        const res = await fetch(getApiUrl() + "/api/articles?limit=80&with_total=1&include_archived=true");
         if (!res.ok) throw new Error(`API ${res.status}`);
 
         const data = await res.json();
@@ -373,7 +373,7 @@ const navigate = useNavigate();
         const balanced = [];
 
         for (const a of sortedBase) {
-          if (balanced.length >= 65) break;
+          if (balanced.length >= 28) break;
 
           const town = String(a?.priority_location || a?.location || "").toLowerCase().trim();
           if (!town) {
@@ -390,7 +390,7 @@ const navigate = useNavigate();
 
         poolAll = balanced;
       } else {
-        poolAll = sortedBase.slice(0, 65);
+        poolAll = sortedBase.slice(0, 28);
       }
     } else {
       const localPool = basePool.filter((a) => isLocal(a)).sort(byRankThenNewest);
@@ -402,9 +402,9 @@ const navigate = useNavigate();
       const pattern = ["local", "auth", "local", "auth", "uk"];
 
       let iL = 0, iA = 0, iU = 0, iO = 0;
-      const totalTarget = Math.min(basePool.length, 65); // fixed-depth ratio enforcement (prevents UK-heavy tail)
+      const totalTarget = Math.min(basePool.length, 28); // fixed-depth ratio enforcement (prevents UK-heavy tail)
 
-      // Topic caps inside the top-65 mix (prevents single-theme takeover)
+      // Topic caps inside the top-28 mix (prevents single-theme takeover)
       const cap = { astro: 1 };
       const seen = { astro: 0 };
 
