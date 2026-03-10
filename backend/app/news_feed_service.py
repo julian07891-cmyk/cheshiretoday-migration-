@@ -1313,7 +1313,20 @@ class NewsFeedService:
                     override_category = get_category_override(title, description, default_category)
                     if override_category:
                         category = override_category
-                    
+
+                    # Final classification guard:
+                    # - only keep Local News for genuinely Cheshire-related items
+                    # - preserve Sports when sports signals are present
+                    text_l = f"{title} {description}".lower()
+                    sport_terms = (
+                        "fc", "united", "city", "rovers", "wanderers", "athletic", "benfica",
+                        "wales", "scotland", "play-off", "playoff", "goal", "equaliser",
+                        "manager", "coach", "stadium", "match", "fixture", "league", "cup"
+                    )
+                    if category == "UK News" and any(t in text_l for t in sport_terms):
+                        category = "Sports"
+                    if category == "Local News" and not is_local:
+                        category = "UK News"
                     
                     article = {
                         'id': str(uuid4()),
