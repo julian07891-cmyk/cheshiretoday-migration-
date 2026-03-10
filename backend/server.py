@@ -1409,7 +1409,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     imported_articles.append(article)
                     imported_count += 1
                     logger.info(f"✅ Imported {category_name} article: {title[:50]}...")
-                    return imported_count
+            
+                return imported_count
             
             # Import UK News articles
             uk_imported = await import_category_articles(uk_news_articles, "UK News", request.uk_articles, "uk_imported")
