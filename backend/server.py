@@ -2966,6 +2966,61 @@ async def get_articles(
             
             unique_articles.append(article)
         
+        # If include_archived=true and the main/articles pool still under-fills,
+        # expand from archived_articles until we reach the requested limit.
+        if include_archived and len(unique_articles) < limit:
+            seen_ids = {a.get("id") for a in unique_articles if a.get("id")}
+            archived_needed = limit - len(unique_articles)
+            archived_extra = await db.archived_articles.find(
+                {},
+                {
+                    "_id": 1,
+                    "id": 1,
+                    "title": 1,
+                    "content": 1,
+                    "summary": 1,
+                    "category": 1,
+                    "author": 1,
+                    "publishedDate": 1,
+                    "image": 1,
+                    "tags": 1,
+                    "featured": 1,
+                    "source": 1,
+                    "source_url": 1,
+                    "scope": 1,
+                    "is_local_source": 1,
+                    "location": 1,
+                    "priority_location": 1,
+                }
+            ).sort("publishedDate", -1).limit(limit * 4).to_list(limit * 4)
+
+            for article in archived_extra:
+                article_id = str(article.get("id", article.get("_id")))
+                if article_id in seen_ids:
+                    continue
+                article["id"] = article_id
+                if "_id" in article:
+                    del article["_id"]
+                if "created_at" in article:
+                    del article["created_at"]
+                if article.get("is_local_source") is True:
+                    article["scope"] = "cheshire"
+                elif not article.get("scope"):
+                    article["scope"] = "uk"
+                if article.get("is_local_source") is not True and article.get("category") == "Local News":
+                    article["category"] = "UK News"
+                if "content" in article:
+                    article["content"] = clean_word_count(article["content"])
+                title = article.get("title", "")
+                content = article.get("content", "")
+                article["is_priority_cheshire"] = is_priority_cheshire_article(title, content)
+                article["is_secondary_cheshire"] = is_secondary_cheshire_article(title, content)
+                article["priority_location"] = get_article_priority_location(title, content)
+                unique_articles.append(article)
+                seen_ids.add(article_id)
+                if len(unique_articles) >= limit:
+                    break
+
         # Cache the result for homepage requests
         if not search and skip == 0 and limit == 20 and not category:
             api_cache.set(
