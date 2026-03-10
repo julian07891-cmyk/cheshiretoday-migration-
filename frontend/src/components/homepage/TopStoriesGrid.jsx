@@ -48,7 +48,7 @@ export default function TopStoriesGrid({ stories = [] }) {
           <Link
             key={story.id || story.url || story.title || idx}
             to={href}
-            className="group flex w-full gap-3 overflow-hidden rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5 min-h-[128px] hover:border-emerald-300 transition-colors"
+            className="group flex w-full gap-3 overflow-hidden rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5 min-h-[148px] hover:border-emerald-300 transition-colors"
           >
             {story.image ? (
               <div className="h-20 w-28 flex-none overflow-hidden rounded-md bg-slate-100 dark:bg-gray-800">

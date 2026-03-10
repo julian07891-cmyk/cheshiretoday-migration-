@@ -137,7 +137,7 @@ class EmailService:
 
     def send_welcome_email(self, to_email: str) -> bool:
         """Send welcome/confirmation email to new subscriber"""
-        subject = "Welcome to Cheshire Today! 📰 Your Local News Awaits"
+        subject = "Welcome to Cheshire Today — Your Daily Local & Business Brief"
         tracking_id = self._generate_tracking_id("welcome")
         
         html_content = f"""
@@ -154,7 +154,7 @@ class EmailService:
                     <a href="{self.base_url}" style="display: inline-block; margin-bottom: 15px;">
                         <img src="{self.base_url}/logo.png" alt="Cheshire Today" style="height: 80px; width: auto;" />
                     </a>
-                    <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #ffffff;">Welcome to the Family!</h1>
+                    <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #ffffff;">Welcome to Cheshire Today</h1>
                     <p style="margin: 0; font-size: 14px; color: #E0E7FF; font-weight: 500;">Your trusted source for Cheshire news</p>
                 </div>
                 
@@ -338,193 +338,6 @@ class EmailService:
         
         return self._send_email(to_email, subject, html_content, text_content)
     
-    def send_news_digest(self, to_emails: List[str], articles: List[dict], digest_time: str = "Daily", sponsor: dict = None) -> int:
-        """
-        DEPRECATED: This method is kept for backwards compatibility only.
-        Use send_daily_brief() for the new tiered email system.
-        
-        Send news digest to multiple subscribers (OLD FORMAT - 3x daily)
-        
-        Args:
-            to_emails: List of subscriber email addresses
-            articles: List of article dictionaries
-            digest_time: Time label for the digest (Morning, Midday, Evening, Daily, Test)
-            sponsor: Optional sponsor info dict with keys: name, tagline, url, logo_url
-        """
-        logger.warning("DEPRECATED: send_news_digest() called - use send_daily_brief() instead")
-        if not articles:
-            logger.warning("No articles to send in digest")
-            return 0
-        
-        # Format time labels
-        time_labels = {
-            "Morning": "☀️ Good Morning",
-            "Midday": "🌤️ Midday Update", 
-            "Evening": "🌙 Evening Roundup",
-            "Daily": "📰 Cheshire Today Newsletter",
-            "Test": "📰 Cheshire Today Newsletter"  # Test emails show same as Daily to subscribers
-        }
-        greeting = time_labels.get(digest_time, "📰 Cheshire Today Newsletter")
-        
-        subject = f"{greeting} - {len(articles)} Cheshire Stories | Cheshire Today"
-        
-        # Build sponsor section HTML if sponsor is provided
-        sponsor_html = ""
-        if sponsor and sponsor.get('name'):
-            sponsor_html = f"""
-            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #86efac; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-                <p style="color: #166534; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px 0;">Today's News Brought To You By</p>
-                {f'<img src="{sponsor.get("logo_url")}" alt="{sponsor.get("name")}" style="max-height: 50px; margin-bottom: 10px;" />' if sponsor.get('logo_url') else ''}
-                <h3 style="color: #047857; margin: 0 0 5px 0; font-size: 18px;">{sponsor.get('name')}</h3>
-                <p style="color: #666; font-size: 14px; margin: 0 0 15px 0;">{sponsor.get('tagline', '')}</p>
-                {f'<a href="{sponsor.get("url")}" style="display: inline-block; background: #047857; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Learn More</a>' if sponsor.get('url') else ''}
-            </div>
-            """
-        
-        # Build featured article (first article with larger display)
-        featured_article = articles[0] if articles else None
-        featured_html = ""
-        if featured_article:
-            article_id = featured_article.get('id', featured_article.get('_id', ''))
-            article_url = self._article_url(featured_article)
-            # DEBUG: Log article URL generation
-            logger.info(f"DIGEST DEBUG - Featured article: id={article_id}, url={article_url}, title={featured_article.get('title', '')[:40]}")
-            image_url = featured_article.get('image', '')
-            summary = featured_article.get('content', '')[:250]
-            
-            featured_html = f"""
-            <div style="margin-bottom: 30px;">
-                <p style="color: #1E3A8A; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">⭐ Top Story</p>
-                {f'<a href="{article_url}"><img src="{image_url}" alt="" style="width: 100%; height: 200px; object-fit: cover; border-radius: 12px; margin-bottom: 15px;" /></a>' if image_url else ''}
-                <h2 style="color: #1E3A8A; margin: 0 0 10px 0; font-size: 22px; line-height: 1.3;">
-                    <a href="{article_url}" style="color: #1E3A8A; text-decoration: none;">
-                        {featured_article.get('title', 'Untitled')}
-                    </a>
-                </h2>
-                <p style="color: #666; font-size: 13px; margin-bottom: 10px;">
-                    {featured_article.get('category', 'News')} • {featured_article.get('author', 'Cheshire Today')}
-                </p>
-                <p style="color: #444; line-height: 1.6; font-size: 15px;">
-                    {summary}...
-                </p>
-                <a href="{article_url}" style="display: inline-block; background: #1E3A8A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
-                    Read Full Story →
-                </a>
-            </div>
-            <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 25px 0;" />
-            """
-        
-        # Build remaining articles HTML (2-column grid style)
-        articles_html = ""
-        remaining_articles = articles[1:10] if len(articles) > 1 else []
-        
-        for i, article in enumerate(remaining_articles):
-            article_id_val = article.get('id', article.get('_id', ''))
-            article_url = self._article_url(article)
-            # DEBUG: Log each article URL
-            logger.info(f"DIGEST DEBUG - Article {i+2}: id={article_id_val}, url={article_url}, title={article.get('title', '')[:30]}")
-            image_url = article.get('image', '')
-            summary = article.get('content', '')[:120]
-            
-            articles_html += f"""
-            <div style="margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #e5e7eb;">
-                <table cellpadding="0" cellspacing="0" width="100%">
-                    <tr>
-                        {f'<td width="100" style="vertical-align: top; padding-right: 15px;"><a href="{article_url}"><img src="{image_url}" alt="" style="width: 100px; height: 75px; object-fit: cover; border-radius: 8px;" /></a></td>' if image_url else ''}
-                        <td style="vertical-align: top;">
-                            <p style="color: #1E3A8A; font-size: 11px; margin: 0 0 5px 0; text-transform: uppercase;">
-                                {article.get('category', 'News')}
-                            </p>
-                            <h3 style="color: #333; margin: 0 0 8px 0; font-size: 16px; line-height: 1.3;">
-                                <a href="{article_url}" style="color: #333; text-decoration: none;">
-                                    {article.get('title', 'Untitled')}
-                                </a>
-                            </h3>
-                            <p style="color: #666; font-size: 13px; margin: 0; line-height: 1.4;">
-                                {summary}...
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-            """
-        
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f3f4f6;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <!-- Header -->
-                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 35px 25px; text-align: center; border-radius: 16px 16px 0 0;">
-                    <a href="{self.base_url}" style="display: inline-block; margin-bottom: 20px; text-decoration: none;">
-                        <img src="{self.base_url}/logo.png" alt="Cheshire Today" style="height: 80px; width: auto;" />
-                    </a>
-                    <a href="{self.base_url}" style="text-decoration: none; display: block;">
-                        <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: 600; color: #ffffff;">Your Daily Cheshire News Awaits!</h2>
-                        <p style="margin: 0; font-size: 14px; color: #E0E7FF; font-weight: 500;">{len(articles)} handpicked stories just for you</p>
-                    </a>
-                </div>
-                
-                <!-- Content -->
-                <div style="background: #ffffff; padding: 30px 25px;">
-                    {sponsor_html}
-                    
-                    {featured_html}
-                    
-                    <h3 style="color: #1E3A8A; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">
-                        📋 More Stories
-                    </h3>
-                    
-                    {articles_html}
-                    
-                    <!-- CTA Button -->
-                    <div style="text-align: center; margin-top: 30px; padding-top: 20px;">
-                        <a href="{self.base_url}" style="display: inline-block; background: #1E3A8A; color: white; padding: 14px 35px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
-                            View All Stories →
-                        </a>
-                    </div>
-                </div>
-                
-                <!-- Footer -->
-                <div style="background: #1f2937; text-align: center; padding: 25px; color: #9ca3af; font-size: 12px; border-radius: 0 0 16px 16px;">
-                    <p style="margin: 0 0 10px 0;">
-                        <a href="{self.base_url}" style="color: #60a5fa; text-decoration: none;">Cheshire Today</a> • 
-                        Your Local News Source
-                    </p>
-                    <p style="margin: 0; color: #6b7280;">
-                        © 2026 Cheshire Today. All rights reserved.<br/>
-                        <a href="{self.base_url}/privacy" style="color: #9ca3af;">Privacy Policy</a> • 
-                        <a href="{self.base_url}/terms" style="color: #9ca3af;">Terms of Service</a>
-                    </p>
-                    <p style="margin: 15px 0 0 0; font-size: 11px; color: #6b7280;">
-                        To unsubscribe, reply with "Unsubscribe" in the subject line.
-                    </p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Send to each subscriber
-        success_count = 0
-        for email in to_emails:
-            # Personalize prefs/unsub links per-recipient (one-click)
-            from urllib.parse import quote
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
-        
-        logger.info(f"News digest sent to {success_count}/{len(to_emails)} subscribers")
-        return success_count
-
     def send_job_approved_email(self, to_email: str, contact_name: str, job_title: str, company: str) -> bool:
         """Send notification when a job listing is approved"""
         subject = f"✅ Your Job Listing is Now Live - {job_title}"

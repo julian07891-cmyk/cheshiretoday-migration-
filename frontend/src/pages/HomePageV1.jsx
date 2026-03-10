@@ -881,9 +881,9 @@ return (
 
       {!loading && !err && (
         <section className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
             {/* Left: Hero (dominant) */}
-            <div className="lg:col-span-8">
+            <div className="lg:col-span-8 flex flex-col">
               {hero && (
                   <HeroStoryCard
                   image={hero.image}
@@ -902,9 +902,9 @@ return (
             </div>
 
             {/* Right: Top Stories (compact) */}
-            <aside className="lg:col-span-4 lg:-mt-4">
+            <aside className="lg:col-span-4 h-full">
               {topStories.length > 0 && (
-                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:sticky lg:top-24">
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 h-full">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
@@ -924,7 +924,7 @@ return (
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
-        <div className="-mt-4 lg:-mt-4 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left: Latest feed */}
           
           <main className="lg:col-span-8 lg:-mt-4">
