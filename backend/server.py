@@ -2843,6 +2843,31 @@ async def get_articles(
                     crime_count_top += 1
                     articles.append(a)
 
+            # Final fallback: if curation/filtering leaves the homepage short,
+            # top up from the normal visible pool so /api/articles can still
+            # return the requested number of items.
+            if len(articles) < limit:
+                seen_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
+                fallback_q = archived_clause or {}
+                fallback_items = await db.articles.find(
+                    fallback_q,
+                    {
+                        '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                        'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                        'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1,
+                        'is_local_source': 1, 'location': 1, 'priority_location': 1
+                    }
+                ).sort('publishedDate', -1).limit(limit * 10).to_list(limit * 10)
+
+                for a in fallback_items:
+                    aid = str(a.get('_id'))
+                    if not aid or aid in seen_ids:
+                        continue
+                    articles.append(a)
+                    seen_ids.add(aid)
+                    if len(articles) >= limit:
+                        break
+
             
             # Soft authority boost: gently reorder only the top of the feed
             # to surface Business/Tech/economic relevance without breaking the
