@@ -285,7 +285,7 @@ const navigate = useNavigate();
     // ---- 40/40/20 RATIO ENFORCEMENT (Local / Authority / UK) ----
     // This ONLY reorders the pool used for homepage slot selection.
     // It does not change rendering/layout and preserves recency within each pillar.
-    const basePool = editorialPool.length >= 65 ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []);
+    const basePool = editorialPool.length ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []);
 
     const lowerText = (a) =>
       (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
