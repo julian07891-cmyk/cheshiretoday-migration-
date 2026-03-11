@@ -348,10 +348,27 @@ const navigate = useNavigate();
       return score;
     };
 
+    const objectIdMs = (v) => {
+      const id = String(v || "");
+      if (!/^[0-9a-fA-F]{24}$/.test(id)) return 0;
+      try {
+        return parseInt(id.slice(0, 8), 16) * 1000;
+      } catch {
+        return 0;
+      }
+    };
+
+    const freshnessMs = (a) => {
+      return Math.max(
+        safeDateMs(a?.publishedDate),
+        objectIdMs(a?.id)
+      );
+    };
+
     const byRankThenNewest = (a, b) => {
       const diff = rankScore(b) - rankScore(a);
       if (diff !== 0) return diff;
-      return safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate);
+      return freshnessMs(b) - freshnessMs(a);
     };
 
     let poolAll = [];
@@ -1029,7 +1046,6 @@ return (
           <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 space-y-6">
 
             {/* Business & Money */}
-            
             {Array.isArray(financeFeed) && financeFeed.length > 0 && (
               <LeadSection
                 title="Business"
@@ -1038,6 +1054,7 @@ return (
                 onNavigate={(url) => navigate(url)}
               />
             )}
+
             {/* AI & Tech */}
             {Array.isArray(aiFeed) && aiFeed.length > 0 && (
               <LeadSection
@@ -1049,7 +1066,7 @@ return (
               />
             )}
             {/* Mortgages & Savings */}
-            
+
             {Array.isArray(moneyFeed) && moneyFeed.length > 0 && (
               <LeadSection
                 title="Finance"

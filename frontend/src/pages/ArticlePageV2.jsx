@@ -652,7 +652,6 @@ export default function ArticlePageV2({ categories }) {
             <article className="lg:col-span-8">
               <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                 {String(article?.category || "Article")}
-                {article?.location ? ` · ${String(article.location).toUpperCase()}` : ""}
               </div>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">{safeTitle}</h1>
 

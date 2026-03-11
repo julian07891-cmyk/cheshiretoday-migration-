@@ -98,11 +98,6 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
             </div>
 
             <div className="min-w-0">
-              <div className="mb-1">
-                <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded">
-                  {article.category}
-                </span>
-              </div>
 
               <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                 {article.title}
@@ -135,11 +130,6 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
                 alt={article.title}
                 className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute top-2 left-2">
-                <span className="bg-emerald-600 text-white text-xs px-2 py-0.5 rounded">
-                  {article.category}
-                </span>
-              </div>
             </div>
             <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               {article.title}
