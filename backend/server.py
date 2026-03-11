@@ -10613,7 +10613,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         # Final ordered list
         unique_articles = (local_bucket + business_bucket + tech_bucket + national_bucket)[:10]
 
-        logger.info(f"Sending Daily Brief with {len(unique_articles)} unique articles ({len(local_news)} Local, {len(other_news)} Other, max 2 Sports) to {len(subscriber_emails)} subscribers")
+        logger.info(f"Sending Daily Brief with {len(unique_articles)} unique articles (local={len(local_bucket)}, business={len(business_bucket)}, tech={len(tech_bucket)}, national={len(national_bucket)}) to {len(subscriber_emails)} subscribers")
         
         # Update status to "sending" with article count
         await db.digest_log.update_one(
