@@ -1628,8 +1628,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
         # === RATIO_REBALANCE_45 ===
         if os.getenv("ENABLE_RATIO_REBALANCE", "0").strip().lower() in ("1", "true", "yes", "on"):
-            try:
-                MAX_VISIBLE = 45
+            MAX_VISIBLE = 45
             active_filter = {"$or": [{"archived": {"$exists": False}}, {"archived": False}]}
             active = await db.articles.find(
                 active_filter,
@@ -1695,8 +1694,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 f"[RATIO_REBALANCE] keep={{local:{min(len(local),Q_LOCAL)}, business:{min(len(business),Q_BUSINESS)}, ai:{min(len(ai),Q_AI)}, uk_other:{min(len(uk_other),Q_UK)}}} archived={result.modified_count}"
             )
 
-            except Exception as cap_err:
-                logger.error(f"[RATIO_REBALANCE_ERROR] {cap_err}")
+
         else:
             logger.info("[RATIO_REBALANCE] disabled by ENABLE_RATIO_REBALANCE")
 
