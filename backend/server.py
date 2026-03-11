@@ -10219,23 +10219,47 @@ async def daily_article_generation(count: int = 12):
         now = datetime.now(timezone.utc)
         lock_key = f"article_gen_{now.strftime('%Y%m%d%H')}"
         
-        # Try to acquire the lock - first server wins
+        # Try to acquire the lock; allow takeover if an old lock is stale
         try:
-            await db.scheduler_locks.insert_one({
-                "job": lock_key,
-                "locked": True,
-                "locked_at": now,
-                "instance_id": os.environ.get('HOSTNAME', 'unknown'),
-                "expires_at": now + timedelta(hours=2)
-            })
-            logger.info(f"✅ Acquired article generation lock: {lock_key}")
-        except Exception as lock_error:
-            error_str = str(lock_error).lower()
-            if "duplicate key" in error_str or "e11000" in error_str:
+            await db.scheduler_locks.update_one(
+                {"job": lock_key},
+                {"$setOnInsert": {
+                    "job": lock_key,
+                    "locked": False,
+                    "locked_at": None,
+                    "instance_id": None,
+                    "expires_at": None
+                }},
+                upsert=True
+            )
+
+            stale_before = now - timedelta(hours=2)
+
+            lock_result = await db.scheduler_locks.find_one_and_update(
+                {
+                    "job": lock_key,
+                    "$or": [
+                        {"locked_at": None},
+                        {"locked_at": {"$lt": stale_before}},
+                        {"expires_at": {"$lt": now}}
+                    ]
+                },
+                {"$set": {
+                    "locked": True,
+                    "locked_at": now,
+                    "instance_id": os.environ.get('HOSTNAME', 'unknown'),
+                    "expires_at": now + timedelta(hours=2)
+                }},
+                return_document=True
+            )
+
+            if lock_result is None:
                 logger.info(f"⏭️ Another server is handling article generation, skipping...")
                 return
-            else:
-                logger.warning(f"Lock warning (continuing): {lock_error}")
+
+            logger.info(f"✅ Acquired article generation lock: {lock_key}")
+        except Exception as lock_error:
+            logger.warning(f"Lock warning (continuing): {lock_error}")
         
         logger.info(f"Starting daily article generation (target: {count})...")
         
