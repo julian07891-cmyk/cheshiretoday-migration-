@@ -164,11 +164,21 @@ function autoLinkContent(rawText, pillarLabel) {
 
   // 6) Convert plain text into real paragraphs for improved article typography.
   // Split on blank lines first; within each paragraph, preserve single line breaks.
-  const paragraphs = html
-    .split(/\n\s*\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`);
+  const sentences = html.split(/(?<=[.!?])\s+/);
+  const paragraphs = [];
+  let buf = [];
+
+  for (const s of sentences) {
+    buf.push(s);
+    if (buf.length >= 3) {
+      paragraphs.push(`<p>${buf.join(" ")}</p>`);
+      buf = [];
+    }
+  }
+
+  if (buf.length) {
+    paragraphs.push(`<p>${buf.join(" ")}</p>`);
+  }
 
   return paragraphs.join("");
 }
@@ -665,8 +675,8 @@ export default function ArticlePageV2({ categories }) {
                   className="w-full rounded-xl mt-6 mb-6 object-cover"
                 />
               )}
-<div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-4 md:p-6">
-                <div className="prose prose-lg prose-slate max-w-none leading-8 text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-5 prose-li:my-2 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200">
+<div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
+                <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
                 <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
               </div>
