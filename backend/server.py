@@ -2984,13 +2984,31 @@ async def get_articles(
             if 'content' in article:
                 article['content'] = clean_word_count(article['content'])
             
-            # Add Cheshire priority flags and location
+            # Add Cheshire priority flags and normalize live category/location metadata
             title = article.get('title', '')
             content = article.get('content', '')
+            summary = article.get('summary', '')
+
             article['is_priority_cheshire'] = is_priority_cheshire_article(title, content)
             article['is_secondary_cheshire'] = is_secondary_cheshire_article(title, content)
-            article['priority_location'] = get_article_priority_location(title, content)
-            
+
+            # Use title + summary for location detection to avoid false Cheshire tags
+            # from AI-expanded body copy.
+            detected_location = get_article_priority_location(title, summary)
+            article['priority_location'] = detected_location
+            if detected_location:
+                article['location'] = detected_location
+            else:
+                article.pop('location', None)
+
+            # Keep obvious podcast items out of generic UK News
+            text_meta = f"{title} {summary}".lower()
+            if article.get('category') == 'UK News' and 'podcast' in text_meta:
+                if any(k in text_meta for k in ['energy','bill','economy','economic','market','finance','money','tax','mortgage','housing','oil','gas']):
+                    article['category'] = 'Business'
+                elif any(k in text_meta for k in ['ai','tech','technology','digital']):
+                    article['category'] = 'Tech'
+
             unique_articles.append(article)
         
         # Cache the result for homepage requests
