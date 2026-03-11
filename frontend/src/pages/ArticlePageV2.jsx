@@ -162,10 +162,15 @@ function autoLinkContent(rawText, pillarLabel) {
     html = html.replaceAll(token, url);
   }
 
-  // 6) Preserve newlines like the current  behavior
-  html = html.replace(/\n/g, "<br/>");
+  // 6) Convert plain text into real paragraphs for improved article typography.
+  // Split on blank lines first; within each paragraph, preserve single line breaks.
+  const paragraphs = html
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`);
 
-  return html;
+  return paragraphs.join("");
 }
 
 
