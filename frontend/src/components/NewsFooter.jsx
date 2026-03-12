@@ -122,7 +122,7 @@ const NewsFooter = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12 mb-8">
           {/* Logo & Description */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <h3 className="text-neutral-900 text-xl font-extrabold mb-3">Cheshire Today</h3>
+            <h3 className="text-neutral-900 dark:text-white text-xl font-extrabold mb-3">Cheshire Today</h3>
             <p className="text-sm text-neutral-600 dark:text-slate-400 dark:text-slate-400 mb-4">
               Cheshire’s local economic intelligence platform covering local news, business, finance and AI & tech.
             </p>
@@ -145,7 +145,7 @@ const NewsFooter = () => {
           {/* Footer Links */}
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
-              <h4 className="text-neutral-900 font-bold mb-3">{title}</h4>
+              <h4 className="text-neutral-900 dark:text-white font-bold mb-3">{title}</h4>
               <ul className="space-y-2.5">
                 {links.map((link) => {
                   // Map specific links to their routes

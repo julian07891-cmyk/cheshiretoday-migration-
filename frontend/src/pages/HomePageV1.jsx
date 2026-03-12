@@ -366,9 +366,9 @@ const navigate = useNavigate();
     };
 
     const byRankThenNewest = (a, b) => {
-      const diff = rankScore(b) - rankScore(a);
-      if (diff !== 0) return diff;
-      return freshnessMs(b) - freshnessMs(a);
+      const freshDiff = freshnessMs(b) - freshnessMs(a);
+      if (freshDiff !== 0) return freshDiff;
+      return rankScore(b) - rankScore(a);
     };
 
     let poolAll = [];

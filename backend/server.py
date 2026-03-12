@@ -8809,8 +8809,24 @@ async def serve_article_html(article_id: str, request=None):
     # Cache modestly to reduce scraper flapping
     return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
 @app.get("/article/{article_id}/{slug}")
-async def serve_article_for_production_slug(article_id: str, slug: str):
-    """Public slug URL should load the React SPA article page."""
+async def serve_article_for_production_slug(article_id: str, slug: str, request: Request):
+    """Public slug URL serves crawler HTML for bots/social previews and SPA for browsers."""
+    user_agent = request.headers.get("user-agent", "").lower()
+    is_crawler = any(bot in user_agent for bot in [
+        "facebookexternalhit",
+        "twitterbot",
+        "linkedinbot",
+        "whatsapp",
+        "telegrambot",
+        "slackbot",
+        "discordbot",
+        "googlebot",
+        "bingbot",
+        "crawler",
+        "bot",
+    ])
+    if is_crawler:
+        return await serve_article_html(article_id, request=request)
     return _spa_index_or_500()
 
 @api_router.get("/article/{article_id}/{slug}")
