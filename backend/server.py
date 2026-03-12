@@ -11224,7 +11224,7 @@ async def startup_event():
             except Exception as e:
                 logger.error(f"Background content check failed: {e}")
         
-        asyncio.create_task(check_and_generate())
+        # Startup generation disabled to prevent deploy-triggered content mutation\n        # asyncio.create_task(check_and_generate())
         
         # 3. Start Scheduler
         scheduler.add_job(
