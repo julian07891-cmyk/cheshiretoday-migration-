@@ -1259,7 +1259,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         perplexity_cost_estimate = 0
         used_image_urls = set()  # Track ALL image URLs to prevent duplicates
 
-        rewrite_delay_seconds = max(0, int(getattr(request, "rewrite_delay_seconds", 900) or 0))
+        rewrite_delay_seconds = max(0, int(getattr(request, "rewrite_delay_seconds", 0) or 0))
         if request.use_perplexity and rewrite_delay_seconds > 0:
             logger.info(f"Delaying AI rewrite stage for {rewrite_delay_seconds}s to allow source coverage/indexing...")
             await asyncio.sleep(rewrite_delay_seconds)
