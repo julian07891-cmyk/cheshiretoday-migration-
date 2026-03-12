@@ -220,6 +220,7 @@ class Article(BaseModel):
 class GenerateArticlesRequest(BaseModel):
     count: int = 10
     include_uk_news: bool = True
+    rewrite_delay_seconds: int = 900
 
 class GenerateArticlesResponse(BaseModel):
     success: bool
@@ -1098,7 +1099,7 @@ async def generate_articles(request: GenerateArticlesRequest):
             cheshire_articles=int(request.count * 0.6),  # 60% Cheshire
             uk_articles=int(request.count * 0.4) if request.include_uk_news else 0,
             use_perplexity=True,
-            rewrite_delay_seconds=900
+            rewrite_delay_seconds=max(0, int(getattr(request, "rewrite_delay_seconds", 900) or 900))
         )
         
         result = await import_hybrid_news(hybrid_request)
@@ -1217,7 +1218,23 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
             # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
             article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
-            await db.articles.insert_one(article)
+
+            from datetime import datetime
+
+            article_doc = {
+                **article,
+                "publishedDate": (
+                    article.get("publishedDate")
+                    if isinstance(article.get("publishedDate"), datetime)
+                    else datetime.fromisoformat(str(article.get("publishedDate")).replace("Z","+00:00"))
+                    if article.get("publishedDate")
+                    else datetime.utcnow()
+                ),
+                "created_at": datetime.utcnow().isoformat(),
+                "archived": False
+            }
+
+            await db.articles.insert_one(article_doc)
             existing_titles.add(title.lower())
             imported += 1
         
