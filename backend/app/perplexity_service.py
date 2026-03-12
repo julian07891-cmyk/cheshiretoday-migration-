@@ -268,12 +268,12 @@ class PerplexityService:
                             "role": "system",
                             "content": """You are a news article writer for Cheshire Today, a UK local news website.
 
-Your task is to EXPAND the given headline and summary into a full news article.
+Your task is to RESEARCH this news story using the provided source URL and other reliable sources online, then write a fully original news article for Cheshire Today.
 
 CRITICAL RULES:
 1. Write the article based on the headline and summary PROVIDED - do not question or refuse
 2. If specific numbers are mentioned (like arrests), write about the general situation without confirming exact figures
-3. Focus on the overall story and context, not verifying specific claims
+3. Verify key facts using the source URL and other reputable sources when available
 4. Write a substantial, publication-quality article of roughly 700-900 words
 5. Target at least 2000 characters of clean body text; absolute minimum acceptable is 1500 characters
 6. Use British English, short paragraphs for mobile reading
