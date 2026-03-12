@@ -8,6 +8,7 @@ import CompactArticleCard from "../components/CompactArticleCard";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
+import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
 import SubscribeSection from "../components/SubscribeSection";
@@ -107,6 +108,27 @@ function toCard(a, fallbackId, overrides = {}) {
 
 function escapeRegExp(s) {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasUsableImage(a) {
+  return Boolean(String(a?.image || "").trim());
+}
+
+function splitFeedForCardsAndHeadlines(feed = [], cardsPerRow = 3, rows = 2) {
+  const cardLimit = cardsPerRow * rows;
+  const withImages = [];
+  const withoutImages = [];
+
+  for (const item of Array.isArray(feed) ? feed : []) {
+    if (hasUsableImage(item)) withImages.push(item);
+    else withoutImages.push(item);
+  }
+
+  return {
+    firstCards: withImages.slice(0, cardLimit),
+    headlineStrip: withoutImages,
+    remainingCards: withImages.slice(cardLimit),
+  };
 }
 
 /* ---------- page ---------- */
@@ -887,6 +909,10 @@ return {
 
   const aiBizFeed = Array.isArray(home?.aiBizFeed) ? home.aiBizFeed : [];
 
+  const latestSplit = splitFeedForCardsAndHeadlines(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, isMobileView ? 4 : 12), isMobileView ? 2 : 3, 2);
+  const aiBizSplit = splitFeedForCardsAndHeadlines(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, isMobileView ? 4 : 12), isMobileView ? 2 : 3, 2);
+  const moreStoriesSplit = splitFeedForCardsAndHeadlines(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, isMobileView ? 4 : 12), isMobileView ? 2 : 3, 2);
+
   // AI & Business feed (filtered) — keep cards relevant and avoid dumping all articles here
 return (
     <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
@@ -955,7 +981,25 @@ return (
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, isMobileView ? 4 : 12)).map((a, idx) => (
+                  {latestSplit.firstCards.map((a, idx) => (
+                    <div key={a?.id || a?._id || idx}>
+                      <CompactArticleCard
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        article={a}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {latestSplit.headlineStrip.length > 0 && (
+                  <TextHeadlineStrip
+                    articles={latestSplit.headlineStrip}
+                    onClick={(a) => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                  />
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                  {latestSplit.remainingCards.map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -987,7 +1031,24 @@ return (
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, isMobileView ? 4 : 12)).map((a, i) => (
+                  {aiBizSplit.firstCards.map((a, i) => (
+                    <div key={a?.id || a?._id || i}>
+                      <CompactArticleCard
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        article={a}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {aiBizSplit.headlineStrip.length > 0 && (
+                  <TextHeadlineStrip
+                    articles={aiBizSplit.headlineStrip}
+                  />
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                  {aiBizSplit.remainingCards.map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
@@ -1016,7 +1077,24 @@ return (
                   </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, isMobileView ? 4 : 12)).map((a, i) => (
+                  {moreStoriesSplit.firstCards.map((a, i) => (
+                    <div key={a?.id || a?._id || i}>
+                      <CompactArticleCard
+                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        article={a}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {moreStoriesSplit.headlineStrip.length > 0 && (
+                  <TextHeadlineStrip
+                    articles={moreStoriesSplit.headlineStrip}
+                  />
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                  {moreStoriesSplit.remainingCards.map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
                         onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}

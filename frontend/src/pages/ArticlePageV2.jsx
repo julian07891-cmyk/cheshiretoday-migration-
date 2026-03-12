@@ -14,6 +14,7 @@ import { getApiUrl } from "../utils/api";
 import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
+import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
 
@@ -338,6 +339,9 @@ const GuidesInlinePromo = ({ guides, pillarLabel }) => {
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
   const navigate = useNavigate();
+  const [isMobileView, setIsMobileView] = useState(
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
   // --- More stories (below article) ---
   const [moreStories, setMoreStories] = useState([]);
   const [moreStoriesOpen, setMoreStoriesOpen] = useState(false);
@@ -347,6 +351,12 @@ export default function ArticlePageV2({ categories }) {
     if (Number.isNaN(d.getTime())) return "";
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
+
+  useEffect(() => {
+    const onResize = () => setIsMobileView(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -380,6 +390,26 @@ export default function ArticlePageV2({ categories }) {
     };
   }, [articleId]);
 
+  const cardsPerRow = isMobileView ? 2 : 3;
+  const collapsedCount = isMobileView ? 4 : 6;
+  const allMoreStoriesWithImages = moreStories.filter((a) => String(a?.image || "").trim());
+  const allMoreStoriesWithoutImages = moreStories.filter((a) => !String(a?.image || "").trim());
+  const visibleMoreStories = moreStoriesOpen
+    ? [...allMoreStoriesWithImages, ...allMoreStoriesWithoutImages].slice(0, 12)
+    : [...allMoreStoriesWithImages, ...allMoreStoriesWithoutImages].slice(0, collapsedCount);
+
+  const moreStoriesWithImages = visibleMoreStories.filter((a) => String(a?.image || "").trim());
+  const moreStoriesWithoutImages = visibleMoreStories.filter((a) => !String(a?.image || "").trim());
+  const firstCardLimit = cardsPerRow * 2;
+  const moreStoriesFirstCards = moreStoriesWithImages.slice(0, firstCardLimit);
+  let moreStoriesRemainingCards = moreStoriesWithImages.slice(firstCardLimit);
+
+  // Prevent orphan card rows (single card row)
+  if (moreStoriesRemainingCards.length % cardsPerRow == 1) {
+    const orphan = moreStoriesRemainingCards.pop();
+    if (orphan) moreStoriesWithoutImages.unshift(orphan);
+  }
+
   const [article, setArticle] = useState(null);
   const [guides, setGuides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -390,6 +420,16 @@ export default function ArticlePageV2({ categories }) {
 
   const description = useMemo(() => buildDescription(article), [article]);
   const safeTitle = useMemo(() => safeText(article?.title), [article]);
+  const displayTitle = useMemo(() => {
+    const title = safeText(article?.title).trim();
+    const summary = safeText(article?.summary || article?.content).replace(/\s+/g," ").trim();
+    if (!title) return "";
+    if (title.length >= 60) return title;
+    if (!summary) return title;
+    const tail = summary.slice(0,80).replace(/[.!?].*$/,"");
+    return tail ? title + " — " + tail : title;
+  }, [article]);
+
 
   const readingTime = useMemo(() => {
     const text = String(article?.content || "");
@@ -653,7 +693,7 @@ export default function ArticlePageV2({ categories }) {
               <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                 {String(article?.category || "Article")}
               </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">{safeTitle}</h1>
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">{displayTitle || safeTitle}</h1>
 
               <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
                 <span>{published}</span>
@@ -736,8 +776,40 @@ export default function ArticlePageV2({ categories }) {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {(moreStoriesOpen ? moreStories.slice(0, 12) : moreStories.slice(0, 4)).map((a, idx) => (
+                    {moreStoriesFirstCards.map((a, idx) => (
                       <div key={a?.id || a?._id || idx}>
+                        <CompactArticleCard
+                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          article={{
+                            title: a?.title,
+                            content: a?.summary || a?.content || "",
+                            summary: a?.summary || "",
+                            image: a?.image,
+                            category: a?.category,
+                            location: a?.town || a?.location || "Cheshire",
+                            publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
+                            readTime: a?.readTime || 3,
+                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {moreStoriesWithoutImages.length > 0 && (
+                    <TextHeadlineStrip
+                      title="More headlines"
+                      articles={moreStoriesWithoutImages.map((a) => ({
+                        ...a,
+                        publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
+                        url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                      }))}
+                    />
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                    {moreStoriesRemainingCards.map((a, idx) => (
+                      <div key={a?.id || a?._id || `remaining-${idx}`}>
                         <CompactArticleCard
                           onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
                           article={{

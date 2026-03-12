@@ -43,7 +43,7 @@ const formatDate = (dateString) => {
 
   // Optimized image URL with size parameters
   const getOptimizedImageUrl = (url, width = 400) => {
-    if (!url) return fallbackImage;
+    if (!url) return '';
     // For Unsplash images, add optimization parameters
     if (url.includes('unsplash.com')) {
       const baseUrl = url.split('?')[0];
@@ -59,23 +59,25 @@ const formatDate = (dateString) => {
         onClick={() => onClick(article)}
         data-testid={`article-card-${article.id}`}
       >
-        <div className="relative w-28 h-20 md:w-32 md:h-24 flex-shrink-0 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 animate-pulse" />
-          )}
-          <img 
-            src={imageError ? fallbackImage : getOptimizedImageUrl(article.image, 256)} 
-            alt={article.title}
-            onError={handleImageError}
-            onLoad={() => setImageLoaded(true)}
-            loading={priority ? "eager" : "lazy"}
-            fetchpriority={priority ? "high" : "auto"}
-            width="128"
-            height="96"
-            decoding="async"
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-          />
-        </div>
+        {article.image ? (
+          <div className="relative w-28 h-20 md:w-32 md:h-24 flex-shrink-0 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
+            {!imageLoaded && (
+              <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            )}
+            <img 
+              src={imageError ? fallbackImage : getOptimizedImageUrl(article.image, 256)} 
+              alt={article.title}
+              onError={handleImageError}
+              onLoad={() => setImageLoaded(true)}
+              loading={priority ? "eager" : "lazy"}
+              fetchpriority={priority ? "high" : "auto"}
+              width="128"
+              height="96"
+              decoding="async"
+              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
+        ) : null}
         <div className="flex-1 min-w-0">
           <h3 className="font-headline text-base md:text-lg font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 group-hover:underline underline-offset-2 transition-colors mb-1">
             {article.title}
@@ -90,6 +92,37 @@ const formatDate = (dateString) => {
               {readTime} min read
             </span>
             </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!article.image) {
+    return (
+      <div 
+        className="cursor-pointer group relative bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 touch-target"
+        onClick={() => onClick(article)}
+        data-testid={`article-card-${article.id}`}
+      >
+        <div className="p-4 md:p-5">
+          <h3 className="font-headline text-lg md:text-xl font-semibold text-gray-900 dark:text-white line-clamp-3 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-400 group-hover:underline underline-offset-2 transition-colors mb-2">
+            {article.title}
+          </h3>
+          <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 line-clamp-3 mb-3">
+            {article.content ? article.content.substring(0, 160) + '...' : ''}
+          </p>
+          <div className="flex items-center justify-between text-xs md:text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {formatDate(article.publishedDate)}
+              </span>
+              <span className="flex items-center gap-1">
+                <BookOpen className="h-4 w-4" />
+                {readTime} min
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -127,7 +160,6 @@ const formatDate = (dateString) => {
           {article.content ? article.content.substring(0, 120) + '...' : ''}
         </p>
         
-        {/* Source and Date */}
         <div className="flex items-center justify-between text-xs md:text-sm text-gray-500 dark:text-gray-400">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
@@ -139,7 +171,7 @@ const formatDate = (dateString) => {
               {readTime} min
             </span>
           </div>
-          </div>
+        </div>
       </div>
     </div>
   );

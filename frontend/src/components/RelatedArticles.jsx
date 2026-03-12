@@ -89,13 +89,15 @@ const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 
               if (e.key === "Enter") onArticleClick(article);
             }}
           >
-            <div className="relative overflow-hidden rounded-lg flex-shrink-0">
-              <img
-                src={article.image}
-                alt={article.title}
-                className="h-14 w-20 object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
+            {article.image ? (
+              <div className="relative overflow-hidden rounded-lg flex-shrink-0">
+                <img
+                  src={article.image}
+                  alt={article.title}
+                  className="h-14 w-20 object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+            ) : null}
 
             <div className="min-w-0">
 
