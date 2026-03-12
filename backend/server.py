@@ -1376,15 +1376,22 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     original_content = article.get('content', '')
                     
                     if request.use_perplexity:
-                        # Generate detailed content using Perplexity
+                        # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                         logger.info(f"Generating content for {category_name} article: {title[:40]}...")
-                        detailed_content = await perplexity_service.generate_article_content(
-                            title=title,
-                            summary=original_content,
-                            source=article.get('source', 'BBC News'),
-                            source_url=article.get('source_url', '')
-                        )
-                        perplexity_cost_estimate += 0.005
+                        try:
+                            detailed_content = await asyncio.wait_for(
+                                perplexity_service.generate_article_content(
+                                    title=title,
+                                    summary=original_content,
+                                    source=article.get('source', 'BBC News'),
+                                    source_url=article.get('source_url', '')
+                                ),
+                                timeout=45
+                            )
+                            perplexity_cost_estimate += 0.005
+                        except Exception as px_err:
+                            logger.warning(f"Perplexity rewrite failed/timed out for {category_name}: {title[:60]}... | {px_err}")
+                            detailed_content = original_content
                     else:
                         # Use RSS content directly (faster, no AI)
                         detailed_content = original_content
@@ -1424,7 +1431,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
             # Import Entertainment articles (FREE from RSS)
             # Import Sports articles (limited to max_sports)
-            sports_imported = await import_category_articles(sports_articles, "Sports", max_sports, "sports_imported")
+            # Sports import removed per editorial policy
+            sports_imported = 0
         
         # ==========================================
         # STEP 2: Check LOCAL Cheshire newspaper feeds (FREE + Full Content via Perplexity)
@@ -1483,15 +1491,22 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             original_content = article.get('content', '')
             
             if request.use_perplexity:
-                # Generate detailed content using Perplexity (expands RSS summary to full article)
+                # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                 logger.info(f"Generating full content for local article: {title[:40]}...")
-                detailed_content = await perplexity_service.generate_article_content(
-                    title=title,
-                    summary=original_content,
-                    source=article.get('source', 'Cheshire Live'),
-                    source_url=article.get('source_url', '')
-                )
-                perplexity_cost_estimate += 0.005
+                try:
+                    detailed_content = await asyncio.wait_for(
+                        perplexity_service.generate_article_content(
+                            title=title,
+                            summary=original_content,
+                            source=article.get('source', 'Cheshire Live'),
+                            source_url=article.get('source_url', '')
+                        ),
+                        timeout=45
+                    )
+                    perplexity_cost_estimate += 0.005
+                except Exception as px_err:
+                    logger.warning(f"Perplexity rewrite failed/timed out for local article: {title[:60]}... | {px_err}")
+                    detailed_content = original_content
             else:
                 # Use RSS content directly (faster, no AI)
                 detailed_content = original_content
@@ -1708,7 +1723,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             "uk_articles": uk_imported,
             "business_articles": business_imported,
 "tech_articles": tech_imported,
-"sports_articles": sports_imported,
+# "sports_articles": sports_imported,
             "rss_images_used": rss_images_used,
             "smart_images_used": smart_images_used,
             "estimated_cost_usd": round(perplexity_cost_estimate, 4),
