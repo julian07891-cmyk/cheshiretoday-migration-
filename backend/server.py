@@ -1543,11 +1543,18 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         if request.use_perplexity and remaining_cheshire > 0 and cheshire_from_rss < 3:
             logger.info(f"Fetching {remaining_cheshire} more Cheshire articles via Perplexity...")
             
-            cheshire_articles = await perplexity_service.search_cheshire_news(
-                category="Local News", 
-                limit=remaining_cheshire + 2  # Get extra in case some fail
-            )
-            perplexity_cost_estimate += 0.005
+            try:
+                cheshire_articles = await asyncio.wait_for(
+                    perplexity_service.search_cheshire_news(
+                        category="Local News",
+                        limit=remaining_cheshire + 2  # Get extra in case some fail
+                    ),
+                    timeout=45
+                )
+                perplexity_cost_estimate += 0.005
+            except Exception as e:
+                logger.warning(f"Perplexity search failed or timed out: {e}")
+                cheshire_articles = []
             
             for article in cheshire_articles:
                 if cheshire_from_perplexity >= remaining_cheshire:
