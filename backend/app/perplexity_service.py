@@ -331,7 +331,7 @@ Write engaging plain text paragraphs about this story. Use the source URL as the
                 content = re.sub(r'\s*\(Word count:?\s*\d+\)', '', content, flags=re.IGNORECASE)  # Remove word count
                 content = re.sub(r'\s*\(Character count:?\s*\d+\)', '', content, flags=re.IGNORECASE)  # Remove character count
                 content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', content, flags=re.IGNORECASE)  # Remove trailing word count
-                content = re.sub(r'\s+', ' ', content).strip()  # Clean up extra spaces
+                content = re.sub(r'[ \t]+', ' ', content).strip()  # Clean up extra spaces
                 
                 # CRITICAL: Detect and reject refusal messages from Perplexity
                 refusal_indicators = [
@@ -404,7 +404,7 @@ Write engaging plain text paragraphs about this story. Use the source URL as the
                     retry_content = re.sub(r'\s*\(Word count:?\s*\d+\)', '', retry_content, flags=re.IGNORECASE)
                     retry_content = re.sub(r'\s*\(Character count:?\s*\d+\)', '', retry_content, flags=re.IGNORECASE)
                     retry_content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', retry_content, flags=re.IGNORECASE)
-                    retry_content = re.sub(r'\s+', ' ', retry_content).strip()
+                    retry_content = re.sub(r'[ \t]+', ' ', retry_content).strip()
 
                     retry_lower = retry_content.lower()
                     retry_refusal = any(indicator.lower() in retry_lower for indicator in refusal_indicators)
