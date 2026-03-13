@@ -1370,7 +1370,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     title = article.get('title', '').strip()
                     rss_image = article.get('image', '').strip()
 
-                    
+                    # Strict quality gate: skip RSS items without a real image
+                    if not rss_image:
+                        logger.info(f"Skipping no-image RSS article: {title[:40]}...")
+                        continue
+
                     # Exclude Manchester sources entirely
                     if is_manchester_source(article):
                         continue
@@ -1413,6 +1417,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         # Use RSS content directly (faster, no AI)
                         detailed_content = original_content
                     
+                    # Strict quality gate: skip short content
+                    if len((detailed_content or "").strip()) < 600:
+                        logger.info(f"Skipping short-content RSS article: {title[:40]}...")
+                        continue
+
                     # Use RSS image (guaranteed perfect match)
                     article['image'] = rss_image
                     article['image_source'] = 'rss_feed'
