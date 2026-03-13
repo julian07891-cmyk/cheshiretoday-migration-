@@ -177,7 +177,13 @@ async def get_admin_auth(authorization: Optional[str] = Header(None)) -> bool:
     # Extract token from "Bearer <token>" format
     if authorization.startswith("Bearer "):
         token = authorization[7:]
-        # Use async DB check for distributed token verification
+
+        # Permanent admin token from environment (for operational access)
+        permanent_token = os.environ.get("ADMIN_PERMANENT_TOKEN")
+        if permanent_token and token == permanent_token:
+            return True
+
+        # Existing DB-based token verification
         if await verify_admin_token_db(token):
             return True
     
