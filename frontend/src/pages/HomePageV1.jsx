@@ -293,7 +293,7 @@ const navigate = useNavigate();
 
   const newestFirst = useMemo(() => {
     return [...filteredArticles].sort(
-      (a, b) => safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate),
+      (a, b) => safeDateMs(b?.created_at || b?.publishedDate) - safeDateMs(a?.created_at || a?.publishedDate),
     );
   }, [filteredArticles]);
 
@@ -1121,7 +1121,8 @@ return (
 
 
           {/* Right: Sidebar widgets */}
-          <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 space-y-6">
+          <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 self-start">
+            <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24 self-start h-fit">
 
             {/* Business & Money */}
             {Array.isArray(financeFeed) && financeFeed.length > 0 && (
@@ -1166,6 +1167,7 @@ return (
               />
             )}
             <AffiliateWidgetSidebar category="default" />
+            </div>
           </aside>
         </div>
       )}

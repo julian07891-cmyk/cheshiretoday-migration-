@@ -2410,7 +2410,7 @@ async def get_cheshire_general_articles(
             query,
             {
                 '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
-                'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
                 'featured': 1, 'source': 1, 'source_url': 1,
                     'priority_location': 1,
                     'location': 1, 'scope': 1, 'is_local_source': 1,
@@ -2468,7 +2468,7 @@ async def get_articles_by_location(
             query,
             {
                 '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
-                'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
                 'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                 'location': 1
             }
@@ -2552,7 +2552,7 @@ async def get_articles(
                 query,
                 {
                     '_id': 1, 'id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
-                    'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                    'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
@@ -2608,20 +2608,20 @@ async def get_articles(
             local_articles = await db.articles.find(local_q,
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
-                    'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                    'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
-            ).sort('publishedDate', -1).limit(limit*10).to_list(limit*10)
+            ).sort('created_at', -1).limit(limit*10).to_list(limit*10)
             
             uk_articles = await db.articles.find(uk_q,
                 {
                     '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
-                    'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                    'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
-            ).sort('publishedDate', -1).limit(limit*4).to_list(limit*4)
+            ).sort('created_at', -1).limit(limit*4).to_list(limit*4)
 
             # UK homepage noise filter (removes sport/video/tabloid-politics filler from 'all' feed)
             # Toggle: UK_FILTER_NOISE=0 to disable.
@@ -2909,11 +2909,11 @@ async def get_articles(
                     fallback_q,
                     {
                         '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
-                        'author': 1, 'publishedDate': 1, 'image': 1, 'tags': 1,
+                        'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
                         'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1,
                         'is_local_source': 1, 'location': 1, 'priority_location': 1
                     }
-                ).sort('publishedDate', -1).limit(limit * 10).to_list(limit * 10)
+                ).sort('created_at', -1).limit(limit * 10).to_list(limit * 10)
 
                 for a in fallback_items:
                     aid = str(a.get('_id'))
@@ -3032,8 +3032,6 @@ async def get_articles(
                 continue
             seen_ids.add(article['id'])
             
-            if 'created_at' in article:
-                del article['created_at']
             # Clean word count from content
             if 'content' in article:
                 article['content'] = clean_word_count(article['content'])
