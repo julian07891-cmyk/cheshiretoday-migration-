@@ -10186,6 +10186,22 @@ def is_sports(article):
     sports = ["football","rugby","fa cup","premier league","six nations","match","goal","championship"]
     return any(k in title for k in sports)
 
+def is_digest_excluded(article):
+    title = (article.get("title") or "").lower()
+    category = (article.get("category") or "").lower()
+    text = f"{title} {(article.get('summary') or '').lower()} {(article.get('content') or '').lower()[:400]}"
+
+    if any(k in category for k in ["sports", "sport", "entertainment", "celebrity", "showbiz"]):
+        return True
+
+    crime_terms = [
+        "found dead", "found hanged", "hanged", "murder", "killed", "fatal",
+        "stabbed", "stabbing", "shot", "shooting", "rape", "sexual abuse",
+        "sex attacker", "predator", "jailed", "sentenced", "charged",
+        "arrested", "police hunt", "police appeal", "inquest", "court"
+    ]
+    return any(k in text for k in crime_terms)
+
 
 # =====================================================================================
 # RSS CONTENT HYGIENE
@@ -10836,6 +10852,8 @@ async def send_weekly_roundup_email():
         icymi_articles = []
         async for article in icymi_cursor:
             if str(article.get('_id')) != str(big_read.get('_id')):
+                if is_digest_excluded(article):
+                    continue
                 if article.get('_id'):
                     article['id'] = str(article['_id'])
                 icymi_articles.append(article)
