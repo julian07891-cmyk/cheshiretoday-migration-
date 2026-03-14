@@ -257,21 +257,15 @@ const navigate = useNavigate();
       const text = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
 
       if (selectedCategory === "Local") {
-        return isLocal(a);
+        return isLocalPillar(a);
       }
 
       if (selectedCategory === "UK") {
-        return cat.includes("uk") || scope === "uk";
+        return isUkPillar(a);
       }
 
       if (selectedCategory === "Business") {
-        return (
-          cat.includes("business") ||
-          cat.includes("finance") ||
-          cat.includes("money") ||
-          cat.includes("tax") ||
-          /\b(business|economy|economic|market|markets|inflation|trade|tariff|company|companies|earnings|profit|profits|shares|stocks|ftse|investment|investor|fund|bank|banking|hmrc|tax|vat|interest\s*rate|mortgage|mortgages|remortgage|savings|isa|credit\s*card)\b/.test(text)
-        );
+        return isBusinessPillar(a) && !isUkPillar(a);
       }
 
       if (selectedCategory === "AI & Tech") {
@@ -761,29 +755,20 @@ const isMoney = (a) => {
 
 
 
-// 5) Latest feed (12) — balanced mix for Cheshire Today strategy (dedupe-safe)
-    // Target: 4 Local, 4 Business/Finance, 3 AI/Tech, 1 UK (newest-first within each bucket)
+// 5) Latest feed (12) — strict newest-to-oldest
     const latestCards = [];
     const latestSeen = new Set();
 
-    const isUkishLatest = (a) => {
-      const cat = String(a?.category || "").toLowerCase();
-      const scope = String(a?.scope || "").toLowerCase();
-      return cat.includes("uk") || scope === "uk";
-    };
-
-    const pushLatest = (a, overrideCategory = null) => {
-      if (latestCards.length >= 12) return;
+    for (const a of newestFirst) {
+      if (latestCards.length >= 12) break;
 
       const k = articleKey(a);
-      if (!k) return;
-      if (latestSeen.has(k)) return;
+      if (!k || latestSeen.has(k)) continue;
+      if (!mark(a)) continue;
       latestSeen.add(k);
 
-      const resolvedCategory = overrideCategory || getDisplayCategoryForPillar(a);
+      const resolvedCategory = getDisplayCategoryForPillar(a);
 
-      // IMPORTANT: Latest should not consume the shared homepage dedupe pool.
-      // Other sections may have already marked items; Latest still needs to fill.
       latestCards.push(
         toCard(
           a,
@@ -791,43 +776,6 @@ const isMoney = (a) => {
           selectedCategory === "All" && resolvedCategory ? { category: resolvedCategory } : {}
         )
       );
-    };
-
-    // Pass 1: Local (4) — keep it grounded in Cheshire
-    for (const a of poolAll) {
-      if (latestCards.length >= 4) break;
-      if (!isLocal(a)) continue;
-      if (isAiTech(a)) continue; // reserve AI/Tech quota for later
-      pushLatest(a, "Local News");
-    }
-
-    // Pass 2: Business/Finance (4)
-    for (const a of poolAll) {
-      if (latestCards.length >= 8) break;
-      if (isAiTech(a)) continue;
-      if (!isBusiness(a) && !isMoney(a)) continue;
-      pushLatest(a, "Business");
-    }
-
-    // Pass 3: AI/Tech (3)
-    for (const a of poolAll) {
-      if (latestCards.length >= 11) break;
-      if (!isAiTech(a)) continue;
-      pushLatest(a, "AI & Tech");
-    }
-
-    // Pass 4: UK (1) — only if we still have room
-    for (const a of poolAll) {
-      if (latestCards.length >= 12) break;
-      if (!isUkishLatest(a)) continue;
-      if (isLocal(a)) continue;
-      pushLatest(a, "UK News");
-    }
-
-    // Safety fill: anything (rare) to reach 12
-    for (const a of poolAll) {
-      if (latestCards.length >= 12) break;
-      pushLatest(a);
     }
 
 
