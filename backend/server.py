@@ -1360,10 +1360,13 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Separate articles by category
             sports_articles = [a for a in uk_with_images if a.get('category') == 'Sports']
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
-            tech_articles = [a for a in uk_with_images if a.get('category') == 'Tech']
-            uk_news_articles = [a for a in uk_with_images if a.get('category') in ['UK News', 'Local News'] or a.get('category') not in ['Sports', 'Business', 'Health', 'Tech', 'Entertainment']]
+            tech_articles = [a for a in uk_with_images if a.get('category') in ['Tech', 'AI', 'Science']]
+            uk_news_articles = [
+                a for a in uk_with_images
+                if a.get('category') in ['UK News', 'Money', 'Tax', 'Property', 'Property & Tax']
+            ]
             
-            logger.info(f"Found: {len(uk_news_articles)} UK News, {len(business_articles)} Business, {len(tech_articles)} Tech, {len(sports_articles)} Sports")
+            logger.info(f"Found: {len(uk_news_articles)} UK/Money, {len(business_articles)} Business, {len(tech_articles)} Tech/AI, {len(sports_articles)} Sports")
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
@@ -2575,7 +2578,7 @@ async def get_articles(
             # Special handling for UK News - only show national sources
             elif category == 'UK News':
                 query['is_local_source'] = False
-                query['category'] = {'$in': ['UK News', 'Business', 'Tech', 'Health', 'Entertainment', 'Education']}
+                query['category'] = {'$in': ['UK News', 'Money', 'Tax', 'Property', 'Property & Tax', 'Tech', 'AI', 'Science']}
             else:
                 query['category'] = category
         
@@ -10460,12 +10463,16 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         
         logger.info(f"📧 Proceeding with {digest_time} news digest email send...")
         
-        # Get subscribers with daily_brief preference (or all if no preference set - for backwards compatibility)
+        # Get active subscribers for Daily Brief.
+        # Permanent fix: align scheduled recipient base with manual send,
+        # while still excluding explicit Daily Brief opt-outs.
         subscribers = await db.subscribers.find(
-            {"$or": [
-                {"daily_brief": True},
-                {"daily_brief": {"$exists": False}}  # Backwards compatibility
-            ]},
+            {
+                "$and": [
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]}
+                ]
+            },
             {"_id": 0, "email": 1}
         ).to_list(1000)
         if not subscribers:
