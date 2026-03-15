@@ -661,6 +661,7 @@ export default function ArticlePageV2({ categories }) {
           <meta name="description" content={description} />
 
           <link rel="canonical" href={canonicalUrl} />
+          {absoluteImageUrl && <link rel="preload" as="image" href={absoluteImageUrl} />}
 
           {/* Structured data for Google */}
           <script type="application/ld+json">
