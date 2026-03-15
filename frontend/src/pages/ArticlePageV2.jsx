@@ -618,8 +618,14 @@ export default function ArticlePageV2({ categories }) {
   const canonicalUrl = `${publicUrl}/article/${articleId}/${articleSlug}`;
 
   const absoluteImageUrl = (() => {
-    const img = String(article?.image || "").trim();
+    let img = String(article?.image || "").trim();
     if (!img) return "";
+
+    // Prefer larger social-share variant for Reach/Cheshire Live images
+    if (img.includes("/ALTERNATES/s615/")) {
+      img = img.replace("/ALTERNATES/s615/", "/ALTERNATES/s1200/");
+    }
+
     if (/^https?:\/\//i.test(img)) return img;
     // Support relative paths (e.g. /images/x.jpg)
     return `${publicUrl}${img.startsWith("/") ? "" : "/"}${img}`;
