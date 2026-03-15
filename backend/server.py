@@ -11315,12 +11315,12 @@ async def startup_event():
         # Breaking News Alerts are manual only
         # ============================================
         
-        # The Daily Brief - Every day at 07:30 AM
+        # The Daily Brief - Monday to Saturday at 07:30 AM
         scheduler.add_job(
             send_scheduled_news_digest,
-            CronTrigger(hour=7, minute=30),
+            CronTrigger(day_of_week='mon-sat', hour=7, minute=30),
             id='daily_brief',
-            name='Send The Daily Brief (07:30 AM)',
+            name='Send The Daily Brief (Mon-Sat 07:30 AM)',
             replace_existing=True,
             kwargs={'digest_time': 'DailyBrief'}
         )
