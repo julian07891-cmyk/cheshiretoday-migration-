@@ -265,7 +265,7 @@ const navigate = useNavigate();
       }
 
       if (selectedCategory === "Business") {
-        return isBusinessPillar(a) && !isUkPillar(a);
+        return isBusinessPillar(a);
       }
 
       if (selectedCategory === "AI & Tech") {
