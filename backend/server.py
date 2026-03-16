@@ -9775,7 +9775,7 @@ async def sync_rss_now():
         )
         hard_crime_kw = re.compile(r"(murder|kill(?:ed|s)?|killed|homicide|manslaughter|found dead|body found|death|died|dies|stab|shoot|rape|jailed|sentenc|charged|trial|convict)", re.I)
         crime_kw = re.compile(r"(police|arrest|court|jailed|sentenc|charged|trial|inquest|knife crime|stabb|shoot|assault|drink[- ]driver|drink[- ]driving|drunk[- ]driver|dui|dwi)", re.I)
-        obituary_kw = re.compile(r"(death notice|funeral notice|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)", re.I)
+        obituary_kw = re.compile(r"(death notices?|funeral notices?|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)", re.I)
         seen_new_titles = set()
 
         for article in rss_articles:
