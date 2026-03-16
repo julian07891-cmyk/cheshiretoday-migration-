@@ -135,10 +135,10 @@ export function isBusinessPillar(article) {
   const section = norm(article?.section);
   const t = textBlob(article);
 
-  if (category.includes("business")) return true;
-  if (section.includes("business")) return true;
+  if (category === "business") return true;
+  if (section === "business") return true;
 
-  return /\b(business|economy|economic|market|markets|trade|tariff|company|companies|earnings|profits?|shares?|stocks?|ftse|investment|investor|fund|bank|banking|industry|manufacturing)\b/.test(t);
+  return /\b(company|companies|earnings|profit|profits|profit\s+warning|revenue|sales|trading\s+update|merger|acquisition|takeover|ceo|startup|funding\s+round|venture\s+capital|manufacturer|manufacturing|retailer|retail\s+sector|supply\s+chain|factory|industry)\b/.test(t);
 }
 
 export function isFinancePillar(article) {
@@ -174,6 +174,7 @@ export function isUkPillar(article) {
   const scope = norm(article?.scope);
 
   if (category.includes("uk")) return true;
+  if (["money", "tax", "property", "property & tax"].includes(category)) return true;
   if (section.includes("uk")) return true;
   if (scope === "uk") return true;
 
@@ -182,10 +183,10 @@ export function isUkPillar(article) {
 
 export function getPrimaryPillar(article) {
   if (isLocalPillar(article)) return "Local";
+  if (isUkPillar(article)) return "UK";
   if (isBusinessPillar(article)) return "Business";
   if (isAiTechPillar(article)) return "AI & Tech";
   if (isFinancePillar(article)) return "Finance";
-  if (isUkPillar(article)) return "UK";
   return "Local";
 }
 

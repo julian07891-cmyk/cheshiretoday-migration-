@@ -398,3 +398,34 @@ If continuing in a new chat, resume from:
 - next task = category / badge / pillar normalization across homepage logic
 
 
+
+
+## 2026-03-13 – Hub / Topic Page Decision
+
+Proposed feature: automatic topic + town hub pages for SEO authority.
+
+Decision: **POSTPONED**
+
+Reason:
+During testing we discovered the current Cheshire classifier can produce
+false positives because AI-expanded article body text may mention the word
+"Cheshire" even when the story is not actually local.
+
+Example observed:
+"Five ways the Iran war could affect you" incorrectly classified as Cheshire.
+
+Root cause:
+Location classification currently uses full article content.
+
+Future approach (recommended architecture):
+1. Primary signal: RSS source metadata (`is_local_source`)
+2. Secondary signal: feed identity / source domain
+3. Text analysis: title + summary
+4. Full content only as a last-resort fallback
+
+Hub pages should only be implemented **after locality classification is fully reliable**
+to avoid polluting topic/town clusters.
+
+Current system status:
+Homepage ordering, RSS ingestion, dedupe, and article freshness are functioning correctly.
+

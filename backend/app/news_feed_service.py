@@ -123,6 +123,18 @@ RSS_FEEDS = {
         'category': 'Tax',
         'priority': 3
     },
+    'hm_treasury_atom': {
+        'url': 'https://www.gov.uk/government/organisations/hm-treasury.atom',
+        'source': 'GOV.UK',
+        'category': 'Money',
+        'priority': 3
+    },
+    'ons_atom_official': {
+        'url': 'https://www.gov.uk/government/organisations/office-for-national-statistics.atom',
+        'source': 'GOV.UK',
+        'category': 'Money',
+        'priority': 3
+    },
 
 
     # BBC News Feeds
@@ -400,6 +412,14 @@ RSS_FEEDS = {
         'is_local': True,
         'location': 'warrington'
     },
+    'chester_standard': {
+        'url': 'https://www.chesterstandard.co.uk/news/rss/',
+        'source': 'Chester Standard',
+        'category': 'Local News',
+        'priority': 0,
+        'is_local': True,
+        'location': 'chester'
+    },
     # --- Business/Finance/Tech (extra via RSS sources expansion) ---
     'companies_house_atom': {
         'url': 'https://www.gov.uk/government/organisations/companies-house.atom',
@@ -591,21 +611,33 @@ def get_article_priority_location(title: str, content: str = '') -> Optional[str
     return None
 
 def is_priority_cheshire_article(title: str, content: str = '') -> bool:
-    """Check if article is from priority Cheshire areas (Macclesfield, Wilmslow, Knutsford etc)"""
+    """Check if article is from priority Cheshire areas using word boundaries + Cheshire context."""
+    import re
     text = f"{title} {content}".lower()
-    return any(keyword in text for keyword in CHESHIRE_PRIORITY_KEYWORDS)
+    cheshire_context = "cheshire" in text
+    for keyword in CHESHIRE_PRIORITY_KEYWORDS:
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, text) and cheshire_context:
+            return True
+    return False
 
 def is_secondary_cheshire_article(title: str, content: str = '') -> bool:
-    """Check if article is from secondary Cheshire areas (Warrington, Chester, Northwich etc)"""
+    """Check if article is from secondary Cheshire areas using word boundaries + Cheshire context."""
+    import re
     text = f"{title} {content}".lower()
-    return any(keyword in text for keyword in CHESHIRE_SECONDARY_KEYWORDS)
+    cheshire_context = "cheshire" in text
+    for keyword in CHESHIRE_SECONDARY_KEYWORDS:
+        pattern = r'\b' + re.escape(keyword) + r'\b'
+        if re.search(pattern, text) and cheshire_context:
+            return True
+    return False
 
 # Keyword-based category override rules
 # If an article title/content contains these keywords, override its category
 # More specific keywords should be used to avoid false positives
 
 # Limit RSS categories to reduce noise + DB growth (monetisation-first)
-ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Science"}
+ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Science", "Money", "Tax", "Property", "Property & Tax"}
 
 def _rss_category_guard(cat: str) -> str:
     c = (cat or "").strip()
@@ -663,15 +695,28 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'cybersecurity breach', 'hacker attack', 'data breach', 'tech startup',
         'blockchain technology', 'cryptocurrency market', 'bitcoin price'
     ],
+    'Money': [
+        'inflation rate', 'interest rate decision', 'bank of england', 'budget announcement',
+        'energy bills', 'energy price cap', 'ofgem', 'insurance', 'savings',
+        'cost of living', 'interest rates', 'personal finance', 'household bills',
+        'consumer spending', 'consumer confidence', 'mortgage rates', 'remortgage'
+    ],
+    'Tax': [
+        'tax increase', 'tax bill', 'hmrc', 'self assessment', 'vat', 'national insurance',
+        'tax return', 'fiscal drag', 'tax threshold', 'stamp duty', 'council tax'
+    ],
+    'Property': [
+        'mortgage', 'mortgages', 'housing market', 'house prices', 'property market',
+        'rent rises', 'rental market', 'landlord', 'tenant', 'housebuilding',
+        'planning approval', 'affordable homes'
+    ],
     'Business': [
         'stock market', 'ftse 100', 'shares tumble', 'investment fund', 'profit warning',
         'revenue growth', 'ceo resigns', 'company merger', 'acquisition deal',
-        'bankruptcy filing', 'inflation rate', 'interest rate decision', 'bank of england',
-        'budget announcement', 'tax increase', 'employment figures', 'unemployment rate',
+        'bankruptcy filing', 'employment figures', 'unemployment rate',
         'job losses', 'redundancy plan', 'strike action', 'union dispute',
-        'energy bills', 'energy price cap', 'ofgem', 'mortgage', 'mortgages',
-        'housing market', 'house prices', 'insurance', 'savings', 'tax bill',
-        'cost of living', 'interest rates', 'property market'
+        'earnings', 'results', 'trading update', 'manufacturer', 'retailer',
+        'supply chain', 'factory', 'startup funding', 'venture capital'
     ],
     'Weather': [
         'weather warning', 'storm warning', 'met office', 'snow forecast', 'flood warning',
@@ -1461,7 +1506,9 @@ class NewsFeedService:
         local_feed_keys = [
             'cheshire_live',
             'cheshire_live_chester', 
-            'warrington_guardian',        ]
+            'warrington_guardian',
+            'chester_standard',
+        ]
         
         for feed_key in local_feed_keys:
             if feed_key in self.feeds:
@@ -1522,7 +1569,7 @@ class NewsFeedService:
                 cheshire_live_articles.extend(articles)
         
         # Fetch other local feeds
-        for feed_key in ['warrington_guardian', ]:
+        for feed_key in ['warrington_guardian', 'chester_standard']:
             if feed_key in self.feeds:
                 articles = await self.fetch_feed(feed_key)
                 for article in articles:
