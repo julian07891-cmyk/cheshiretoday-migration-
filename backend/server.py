@@ -2922,6 +2922,22 @@ async def get_articles(
                     aid = str(a.get('_id'))
                     if not aid or aid in seen_ids:
                         continue
+
+                    # Re-apply homepage noise and sensitive-story filters to fallback items
+                    if a.get("is_local_source") is not True and UK_FILTER_NOISE and is_noise_uk(a):
+                        continue
+
+                    kind = classify_sensitive(a)
+                    title_l = (a.get("title") or "").lower()
+                    if "death notice" in title_l or "death notices" in title_l:
+                        continue
+                    if kind == "hard_crime":
+                        continue
+                    if kind == "incident":
+                        continue
+                    if kind == "crime":
+                        continue
+
                     articles.append(a)
                     seen_ids.add(aid)
                     if len(articles) >= limit:
