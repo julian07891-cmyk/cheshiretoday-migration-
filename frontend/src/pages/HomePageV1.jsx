@@ -415,7 +415,7 @@ const navigate = useNavigate();
           }
 
           const count = perTown.get(town) || 0;
-          if (count >= 2) continue;
+          if (count >= 4) continue;
 
           perTown.set(town, count + 1);
           balanced.push(a);
@@ -492,7 +492,7 @@ const navigate = useNavigate();
     // 2) Top Stories (8) — fixed mix: 2 Local, 2 Business, 1 Tech, 1 Property, 1 Flexible (dedupe-safe)
     const topStoriesCards = [];
 
-    // Top Stories (8) — fixed mix:
+    // Top Stories (5) — fixed editorial mix (2 Local, 2 Business, 1 AI/Tech, 1 Property, 1 UK) — fixed mix:
     // 2 Local + 2 Business + 1 AI/Tech + 1 Property + 1 UK (dedupe-safe)
     const isBusinessishTop = (a) => {
       const cat = String(a?.category || "").toLowerCase();
