@@ -2646,6 +2646,8 @@ async def get_articles(
                     src = (a.get("source") or "").lower()
                     url = (a.get("source_url") or "").lower()
                     title = (a.get("title") or "").lower()
+                    summary = (a.get("summary") or "").lower()
+                    text_meta = f"{title} {summary}"
 
                     # Sports + highlight/video clips
                     if "sport" in cat or "sport" in src or "/sport/" in url or "skysports" in url:
@@ -2654,12 +2656,12 @@ async def get_articles(
                         return True
 
                     # Tabloid/paper-roundups + low-signal drama
-                    if noise_kw.search(title):
+                    if noise_kw.search(text_meta):
                         return True
 
                     # Politics drama in UK News unless it has clear economic impact
                     if ("uk news" in cat) and re.search(r"\b(mp|labour|conservative|tory|starmer|reeves|parliament|byelection|election)\b", title, re.I):
-                        if not econ_hint.search(title):
+                        if not econ_hint.search(text_meta):
                             return True
                     # De-emphasize generic human-interest in UK News unless it has clear impact.
                     # Keeps the UK pillar aligned to economy/business/policy utility.
@@ -2671,7 +2673,7 @@ async def get_articles(
                             r"trade|tariff|regulation|regulator|ofgem|ofwat|boe|bank of england)\b",
                             re.I,
                         )
-                        if not econ_hint.search(title) and not impact_kw.search(title):
+                        if not econ_hint.search(text_meta) and not impact_kw.search(text_meta):
                             return True
 
 
