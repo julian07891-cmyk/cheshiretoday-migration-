@@ -2725,7 +2725,7 @@ async def get_articles(
         
                     r"(murder(?:s)?|kill(?:ed|s)?|homicide|manslaughter|"
 
-                    r"found dead|body found|woman found dead|man found dead|"
+                    r"found dead|body found|woman found dead|man found dead|found hanged|hanged|strangl(?:ed|ing)?|"
 
                     r"stab(?:bing|bed|s)?|shoot(?:ing|s)?|rape(?:d)?|"
 
@@ -2765,7 +2765,7 @@ async def get_articles(
 
                     r"\b(crash|collision|road closed|lane closed|car fire|vehicle fire|queues? building|"
 
-                    r"traffic is slow|delays?|death|dead|died|dies|body found|found dead|police presence|"
+                    r"traffic is slow|delays?|death notices?|death|dead|died|dies|body found|found dead|found hanged|hanged|police presence|"
 
                     r"police cordon|cordon|scene|investigation|emergency services|ambulance|paramedics|"
 
