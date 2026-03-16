@@ -2,6 +2,7 @@ const MONETISATION_ENABLED = false;
 import React, { useEffect, useMemo, useState } from "react";
 import { getApiUrl } from "../utils/api";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
@@ -863,6 +864,16 @@ return {
 
   // AI & Business feed (filtered) — keep cards relevant and avoid dumping all articles here
 return (
+    <>
+      <Helmet>
+        <title>{selectedCategory === "All" ? "Latest News | Cheshire Today" : `${selectedCategory} News | Cheshire Today`}</title>
+        <meta
+          name="description"
+          content={selectedCategory === "All"
+            ? "Latest local, business, finance, AI and UK news from Cheshire Today."
+            : `Latest ${selectedCategory} news and updates from Cheshire Today.`}
+        />
+      </Helmet>
     <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
     <ErrorBoundary><HomepageLayout>
       <HomepageHeader breakingStories={[]} categories={headerCategories} activeCategory={activeHeaderCategory} onCategoryChange={handleHeaderCategoryChange} />
@@ -924,7 +935,7 @@ return (
             {Array.isArray(latestFeed) && latestFeed.length > 0 && (
               <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">Latest</h2>
+                  <h2 className="text-base font-extrabold tracking-tight">{selectedCategory === "All" ? "Latest" : selectedCategory}</h2>
                   <span className="text-xs text-slate-500 dark:text-gray-400">({latestFeed.length})</span>
                   </div>
 
@@ -974,7 +985,7 @@ return (
             {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">AI & Business</h2>
+                  <h2 className="text-base font-extrabold tracking-tight">Business & Finance</h2>
                   <span className="text-xs text-slate-500 dark:text-gray-400">({aiBizFeed.length})</span>
                 </div>
 
@@ -1123,6 +1134,7 @@ return (
       <NewsFooter />
 </HomepageLayout></ErrorBoundary>
     </div>
+    </>
 
   );
 }
