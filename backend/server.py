@@ -10264,15 +10264,11 @@ async def cleanup_old_articles():
         else:
             logger.info("✅ No old articles to clean up (all within 14 days)")
         
-        # Also ensure we don't have too many articles (safety cap at 100)
+        # Safety cap hard-delete disabled.
+        # Recent articles were disappearing because anything older than the 100th newest
+        # was being permanently deleted, even if still fresh.
         total_count = await db.articles.count_documents({})
-        if total_count > 100:
-            # Get the 100th newest article's date
-            articles = await db.articles.find({}, {'publishedDate': 1}).sort('publishedDate', -1).skip(100).limit(1).to_list(1)
-            if articles:
-                cutoff = articles[0]['publishedDate']
-                result = await db.articles.delete_many({'publishedDate': {'$lt': cutoff}})
-                logger.info(f"🗑️ Safety cap: removed {result.deleted_count} articles beyond 100 limit")
+        logger.info(f"ℹ️ Safety cap hard-delete disabled; total active articles = {total_count}")
                 
     except Exception as e:
         logger.error(f"Error cleaning up old articles: {str(e)}")
@@ -11240,8 +11236,9 @@ async def startup_event():
         # Start scheduler FIRST so server can accept requests immediately
         # All heavy operations run in background tasks
         
-        # 1. Queue duplicate cleanup as background task (non-blocking)
-        asyncio.create_task(auto_clean_duplicate_articles())
+        # 1. Startup duplicate hard-delete cleanup DISABLED.
+        # It was removing legitimate recent articles using only the first 5 words of title.
+        # asyncio.create_task(auto_clean_duplicate_articles())
         
         # 2. Queue content freshness check as background task (non-blocking)
         async def check_and_generate():
