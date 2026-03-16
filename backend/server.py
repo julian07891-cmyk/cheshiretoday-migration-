@@ -4309,6 +4309,56 @@ async def unsubscribe_newsletter(request: UnsubscribeRequest):
         logger.error(f"Error unsubscribing: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process unsubscribe request")
 
+
+@api_router.post("/admin/normalize-published-dates")
+async def normalize_published_dates(authorized: bool = Depends(get_admin_auth)):
+    """
+    One-time admin endpoint to normalize publishedDate to datetime objects
+    across both articles and archived_articles collections.
+    """
+    try:
+        results = {
+            "articles_updated": 0,
+            "articles_skipped": 0,
+            "archived_updated": 0,
+            "archived_skipped": 0,
+        }
+
+        def normalize_value(v):
+            if isinstance(v, datetime):
+                return v.replace(tzinfo=None) if v.tzinfo else v
+            if not v:
+                return None
+            try:
+                return datetime.fromisoformat(str(v).replace("Z", "+00:00")).replace(tzinfo=None)
+            except Exception:
+                return None
+
+        articles = await db.articles.find({}, {"_id": 1, "publishedDate": 1, "published_date": 1}).to_list(10000)
+        for article in articles:
+            normalized = normalize_value(article.get("publishedDate")) or normalize_value(article.get("published_date"))
+            if normalized is None:
+                results["articles_skipped"] += 1
+                continue
+            await db.articles.update_one({"_id": article["_id"]}, {"$set": {"publishedDate": normalized}})
+            results["articles_updated"] += 1
+
+        archived_articles = await db.archived_articles.find({}, {"_id": 1, "publishedDate": 1, "published_date": 1}).to_list(10000)
+        for article in archived_articles:
+            normalized = normalize_value(article.get("publishedDate")) or normalize_value(article.get("published_date"))
+            if normalized is None:
+                results["archived_skipped"] += 1
+                continue
+            await db.archived_articles.update_one({"_id": article["_id"]}, {"$set": {"publishedDate": normalized}})
+            results["archived_updated"] += 1
+
+        logger.info(f"Published date normalization completed: {results}")
+        return {"success": True, **results}
+    except Exception as e:
+        logger.error(f"Error normalizing published dates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/admin/backfill-locations")
 async def backfill_article_locations(authorized: bool = Depends(get_admin_auth)):
     """

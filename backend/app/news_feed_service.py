@@ -970,10 +970,10 @@ class NewsFeedService:
         
         return None
     
-    def _parse_date(self, date_str: str) -> str:
+    def _parse_date(self, date_str: str) -> datetime:
         """Parse RSS date to ISO format"""
         if not date_str:
-            return datetime.now(timezone.utc).isoformat()
+            return datetime.now(timezone.utc)
         
         # Common RSS date formats
         formats = [
@@ -987,12 +987,12 @@ class NewsFeedService:
         for fmt in formats:
             try:
                 dt = datetime.strptime(date_str.strip(), fmt)
-                return dt.isoformat()
+                return dt
             except ValueError:
                 continue
         
         # Fallback to current time
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(timezone.utc)
     
     def _is_cheshire_related(self, title: str, description: str) -> bool:
         """Strict local check for genuine Cheshire civic/community relevance."""
