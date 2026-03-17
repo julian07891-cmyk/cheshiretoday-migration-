@@ -486,7 +486,17 @@ const navigate = useNavigate();
     };
 
     // 1) Hero
-    const heroArticle = poolAll.find(isLocal) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) || poolAll.find(isAiTech) || poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) || poolAll[0] || null;
+    const isHeroReady = (a) => String(a?.content || "").trim().length >= 1200;
+    const heroArticle =
+      poolAll.find(a => isLocal(a) && isHeroReady(a)) ||
+      poolAll.find(a => String(a?.category || "").toLowerCase().includes("business") && isHeroReady(a)) ||
+      poolAll.find(a => isAiTech(a) && isHeroReady(a)) ||
+      poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk") && isHeroReady(a)) ||
+      poolAll.find(isLocal) ||
+      poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) ||
+      poolAll.find(isAiTech) ||
+      poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) ||
+      poolAll[0] || null;
     if (heroArticle) mark(heroArticle);
 
     // 2) Top Stories (8) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible
