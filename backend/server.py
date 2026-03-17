@@ -1426,9 +1426,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         # Use RSS content directly (faster, no AI)
                         detailed_content = original_content
                     
-                    # Strict quality gate: skip short content
-                    if len((detailed_content or "").strip()) < 600:
-                        logger.info(f"Skipping short-content RSS article: {title[:40]}...")
+                    # Strict quality gate: publish only full-length rewritten content
+                    if len((detailed_content or "").strip()) < 1000:
+                        logger.info(f"Skipping short-content article after rewrite attempt: {title[:60]}...")
                         continue
 
                     # Use RSS image (guaranteed perfect match)
@@ -1545,6 +1545,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             else:
                 # Use RSS content directly (faster, no AI)
                 detailed_content = original_content
+
+            # Strict quality gate: publish only full-length rewritten content
+            if len((detailed_content or "").strip()) < 1000:
+                logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
+                continue
             
             article['image'] = rss_image
             article['image_source'] = 'rss_feed'
@@ -9915,6 +9920,11 @@ async def sync_rss_now():
                     source_url=source_url
                 )
                 
+                # Strict quality gate: publish only full-length rewritten content
+                if len((detailed_content or "").strip()) < 1000:
+                    logger.info(f"Skipping short-content picked article after rewrite attempt: {title[:60]}...")
+                    continue
+
                 # Create article document
                 article_doc = {
                     'id': str(uuid4()),
