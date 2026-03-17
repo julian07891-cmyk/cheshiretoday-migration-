@@ -2665,7 +2665,7 @@ async def get_articles(
                             return True
                     # De-emphasize generic human-interest in UK News unless it has clear impact.
                     # Keeps the UK pillar aligned to economy/business/policy utility.
-                    if cat in ("uk news", "local news"):
+                    if cat == "uk news":
                         impact_kw = re.compile(
                             r"\b(nhs|hospital|gp|doctor|school|education|council|planning|housing|rent|mortgage|"
                             r"tax|budget|inflation|interest\s*rate|rates|jobs|wages|economy|economic|business|"
