@@ -1105,7 +1105,7 @@ async def generate_articles(request: GenerateArticlesRequest):
             cheshire_articles=int(request.count * 0.6),  # 60% Cheshire
             uk_articles=int(request.count * 0.4) if request.include_uk_news else 0,
             use_perplexity=True,
-            rewrite_delay_seconds=max(0, int(getattr(request, "rewrite_delay_seconds", 900) or 900))
+            rewrite_delay_seconds=max(0, int(900 if getattr(request, "rewrite_delay_seconds", None) is None else getattr(request, "rewrite_delay_seconds")))
         )
         
         result = await import_hybrid_news(hybrid_request)
