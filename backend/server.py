@@ -1234,9 +1234,9 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
                     if isinstance(article.get("publishedDate"), datetime)
                     else datetime.fromisoformat(str(article.get("publishedDate")).replace("Z","+00:00"))
                     if article.get("publishedDate")
-                    else datetime.utcnow()
+                    else datetime.now(timezone.utc)
                 ),
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
                 "archived": False
             }
 
@@ -4344,11 +4344,12 @@ async def normalize_published_dates(authorized: bool = Depends(get_admin_auth)):
 
         def normalize_value(v):
             if isinstance(v, datetime):
-                return v.replace(tzinfo=None) if v.tzinfo else v
+                return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
             if not v:
                 return None
             try:
-                return datetime.fromisoformat(str(v).replace("Z", "+00:00")).replace(tzinfo=None)
+                dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
             except Exception:
                 return None
 
@@ -9928,8 +9929,8 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'publishedDate': (article.get('publishedDate') if isinstance(article.get('publishedDate'), datetime) else (datetime.fromisoformat(str(article.get('publishedDate')).replace('Z', '+00:00')).replace(tzinfo=None) if article.get('publishedDate') else (datetime.fromisoformat(str(article.get('published_date')).replace('Z', '+00:00')).replace(tzinfo=None) if article.get('published_date') else datetime.utcnow()))),
-                    'created_at': datetime.utcnow().isoformat(),
+                    'publishedDate': (article.get('publishedDate') if isinstance(article.get('publishedDate'), datetime) else (datetime.fromisoformat(str(article.get('publishedDate')).replace('Z', '+00:00')) if article.get('publishedDate') else (datetime.fromisoformat(str(article.get('published_date')).replace('Z', '+00:00')) if article.get('published_date') else datetime.now(timezone.utc)))),
+                    'created_at': datetime.now(timezone.utc).isoformat(),
                     'archived': False
                 }
                 
