@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { 
-  BarChart3, Users, FileText, Mail, RefreshCw, Trash2, 
+  BarChart3, Users, FileText, Mail, RefreshCw, Trash2,
+  Zap, 
   Send, Clock, AlertCircle, CheckCircle, Loader2, ArrowLeft,
   Newspaper, TrendingUp, Lock, LogOut, Facebook, Calendar as CalendarIcon,
   X, Check, Share2, Twitter, PlusCircle, Edit, Image as ImageIcon,
@@ -1943,7 +1944,32 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const handleDeleteArticle = async (articleId) => {
+  const handleForceLiveArticle = async (articleId) => {
+    setActionLoading(`force-${articleId}`);
+    try {
+      const response = await fetch(`${getApiUrl()}/api/admin/articles/${articleId}/force-live`, {
+        method: 'POST',
+        headers: authHeaders
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: data.force_live ? "🚀 Forced Live" : "↩️ Removed Force Live",
+          description: data.message
+        });
+        fetchArticles(); // refresh list
+      } else {
+        toast({ title: "❌ Error", description: data.detail || "Failed", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "❌ Error", description: "Request failed", variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+const handleDeleteArticle = async (articleId) => {
     if (!window.confirm('Are you sure you want to delete this article?')) return;
     
     setActionLoading(`delete-article-${articleId}`);
@@ -2685,6 +2711,20 @@ const AdminDashboard = ({ onBack }) => {
                           title="Edit article"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleForceLiveArticle(article.id)}
+                          disabled={actionLoading === `force-${article.id}`}
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                          title="Force show on homepage"
+                        >
+                          {actionLoading === `force-${article.id}` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Zap className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           variant="outline"

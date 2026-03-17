@@ -334,6 +334,7 @@ class ManualArticleCreate(BaseModel):
     tags: Optional[List[str]] = []
     featured: Optional[bool] = False
     scope: Optional[str] = "cheshire"
+    force_live: Optional[bool] = False
 
 # Store for email verification codes (in production, use Redis with TTL)
 email_verification_codes = {}
@@ -2615,9 +2616,20 @@ async def get_articles(
 
             local_q = {'is_local_source': True}
             uk_q = {'is_local_source': {'$ne': True}}
+            force_q = {'force_live': True}
             if archived_clause:
                 local_q = {'$and': [local_q, archived_clause]}
                 uk_q = {'$and': [uk_q, archived_clause]}
+                force_q = {'$and': [force_q, archived_clause]}
+
+            force_articles = await db.articles.find(force_q,
+                {
+                    '_id': 1, 'title': 1, 'content': 1, 'summary': 1, 'category': 1,
+                    'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
+                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                    'location': 1, 'priority_location': 1, 'force_live': 1
+                }
+            ).sort('publishedDate', -1).limit(limit*5).to_list(limit*5)
 
             local_articles = await db.articles.find(local_q,
                 {
@@ -2957,6 +2969,19 @@ async def get_articles(
                         break
 
             
+            # Prepend force_live articles so admin-picked stories bypass normal homepage filtering.
+            if force_articles:
+                existing_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
+                forced_front = []
+                for a in force_articles:
+                    aid = str(a.get('_id'))
+                    if not aid or aid in existing_ids:
+                        continue
+                    forced_front.append(a)
+                    existing_ids.add(aid)
+                if forced_front:
+                    articles = forced_front + articles
+
             # Soft authority boost: gently reorder only the top of the feed
             # to surface Business/Tech/economic relevance without breaking the
             # Local/UK interleave structure or overall recency.
@@ -4546,6 +4571,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             "image": article.image or default_image,
             "tags": tags,
             "featured": article.featured or False,
+            "force_live": article.force_live or False,
             "source": "Manual Entry",
             "scope": article.scope or "cheshire",
             "created_at": datetime.now(timezone.utc).isoformat()
@@ -4601,6 +4627,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
             "image": article.image or existing.get("image"),
             "tags": article.tags or existing.get("tags", []),
             "featured": article.featured if article.featured is not None else existing.get("featured", False),
+            "force_live": article.force_live if article.force_live is not None else existing.get("force_live", False),
             "scope": article.scope or existing.get("scope", "cheshire"),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
@@ -4635,6 +4662,34 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         raise
     except Exception as e:
         logger.error(f"Error updating article: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/admin/articles/{article_id}/force-live")
+async def toggle_force_live_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
+    """Toggle force_live for an article so it can bypass homepage/public feed filters."""
+    try:
+        existing = await db.articles.find_one({"id": article_id})
+        if not existing:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        new_value = not bool(existing.get("force_live", False))
+
+        await db.articles.update_one(
+            {"id": article_id},
+            {"$set": {"force_live": new_value, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+
+        return {
+            "success": True,
+            "article_id": article_id,
+            "force_live": new_value,
+            "message": "Article forced live" if new_value else "Force live removed"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling force_live: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/check-smtp-config")
