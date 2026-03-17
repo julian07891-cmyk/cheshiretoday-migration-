@@ -7503,12 +7503,7 @@ async def send_digest_now():
                     if sent_at.tzinfo is None:
                         sent_at = sent_at.replace(tzinfo=timezone.utc)
                     time_since = (now - sent_at).total_seconds() / 60
-                    return {
-                        "success": False,
-                        "message": f"Daily Brief was already sent {int(time_since)} minutes ago. Wait at least 1 hour before sending again.",
-                        "last_sent": sent_at.isoformat(),
-                        "subscribers_reached": recent_send.get('success_count', recent_send.get('subscribers_count', 0))
-                    }
+                    logger.warning(f"Daily Brief recently sent ({int(time_since)} minutes ago) — continuing anyway (manual override).")
         
         # Log SMTP config at start for debugging
         import os
