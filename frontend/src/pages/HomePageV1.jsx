@@ -436,7 +436,7 @@ const navigate = useNavigate();
       const pattern = ["local", "auth", "local", "auth", "uk"];
 
       let iL = 0, iA = 0, iU = 0, iO = 0;
-      const totalTarget = Math.min(basePool.length, 28); // fixed-depth ratio enforcement (prevents UK-heavy tail)
+      const totalTarget = Math.min(basePool.length, 120); // deeper homepage pool so recent active stories from the last few days can surface
 
       // Topic caps inside the top-28 mix (prevents single-theme takeover)
       const cap = { astro: 1 };
