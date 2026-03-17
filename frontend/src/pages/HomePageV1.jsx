@@ -217,7 +217,7 @@ const navigate = useNavigate();
         setLoading(true);
         setErr("");
 
-        const res = await fetch(getApiUrl() + "/api/articles?limit=80&with_total=1&include_archived=true");
+        const res = await fetch(getApiUrl() + "/api/articles?limit=200&with_total=1&include_archived=true");
         if (!res.ok) throw new Error(`API ${res.status}`);
 
         const data = await res.json();
