@@ -2062,19 +2062,25 @@ async def _remove_duplicates_internal():
                     duplicates_removed += 1
                     logger.info(f"Archived duplicate: {title[:40]}...")
         
-        # Remove truly empty/broken articles only (do NOT delete valid short RSS/Atom summaries)
+        # Archive low-quality short fallback articles so only full rewritten content stays live.
         remaining = await db.articles.find({}).to_list(1000)
+        boilerplate_markers = [
+            "this story has been reported by",
+            "more details are expected to emerge soon",
+            "for the latest news from across the region, keep following",
+        ]
+
         for article in remaining:
             content = (article.get('content') or '').strip()
             summary = (article.get('summary') or '').strip()
+            text_blob = ((content + " " + summary).strip())
+            blob_len = len(text_blob)
+            text_l = text_blob.lower()
 
-            # Many RSS/Atom feeds have short summaries while building (PERPLEXITY disabled).
-            # Only remove items that are basically empty.
-            blob_len = len(((content + " " + summary).strip()))
-            link = (article.get("source_url") or article.get("url") or article.get("link") or "").strip()
+            is_low_quality_short = blob_len < 1000
+            is_boilerplate_fallback = any(m in text_l for m in boilerplate_markers)
 
-            # Only delete if it is essentially empty AND has no outbound link (broken ingest)
-            if blob_len < 10 and not link:
+            if is_low_quality_short or is_boilerplate_fallback:
                 article['archived_at'] = datetime.now(timezone.utc).isoformat()
                 article['archive_reason'] = 'short_content'
                 original_id = article.pop('_id', None)
@@ -2085,7 +2091,7 @@ async def _remove_duplicates_internal():
 
                 await db.articles.delete_one({'_id': original_id})
                 short_removed += 1
-                logger.info(f"Archived empty/broken article ({blob_len} chars): {article.get('title', '')[:40]}...")
+                logger.info(f"Archived low-quality article ({blob_len} chars): {article.get('title', '')[:60]}...")
         
         final_count = await db.articles.count_documents({})
         
