@@ -10280,7 +10280,7 @@ async def head_api_article(article_id: str):
 
 @app.head("/article/{article_id}")
 async def head_article(article_id: str):
-    return await serve_article_html(article_id)
+    return await serve_article_for_production(article_id)
 
 app.include_router(api_router)
 app.include_router(rss_routes.router)
