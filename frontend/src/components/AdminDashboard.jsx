@@ -22,6 +22,7 @@ import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Calendar } from './ui/calendar';
+import { buildArticleUrl } from '../utils/articleUrl';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -3932,7 +3933,7 @@ const handleDeleteArticle = async (articleId) => {
                       <div 
                         key={article._id || article.id} 
                         className="flex items-center gap-3 p-3 bg-muted dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-                        onClick={() => window.open(`/article/${article._id || article.id}`, '_blank')}
+                        onClick={() => window.open(buildArticleUrl(article), '_blank')}
                         title="Click to view article"
                       >
                         {article.image && (

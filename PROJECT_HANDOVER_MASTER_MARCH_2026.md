@@ -429,3 +429,150 @@ to avoid polluting topic/town clusters.
 Current system status:
 Homepage ordering, RSS ingestion, dedupe, and article freshness are functioning correctly.
 
+
+--------------------------------------------------
+SESSION UPDATE — MARCH 17, 2026 (CRITICAL FIXES)
+--------------------------------------------------
+
+## 🚨 Issue Identified
+Hybrid article generation was failing in production with:
+
+500: can't compare offset-naive and offset-aware datetimes
+
+This blocked:
+- /api/generate-articles
+- hybrid RSS + AI pipeline
+- manual generation testing
+
+## 🔍 Root Cause
+Multiple datetime sources in the pipeline were inconsistent:
+
+1. RSS parser (_parse_date)
+   → returned naive datetime for some formats
+
+2. Import pipeline
+   → mixed datetime.utcnow() (naive) with ISO parsed (aware)
+
+3. Normalisation function
+   → explicitly stripped timezone (tzinfo=None)
+
+Result:
+→ Mixed naive + aware datetimes → crash during sorting/comparison
+
+## ✅ Fixes Implemented
+
+### 1. Global UTC standardisation
+- Replaced all:
+  datetime.utcnow()
+  with:
+  datetime.now(timezone.utc)
+
+### 2. Normalisation fix
+- Changed:
+  .replace(tzinfo=None)
+- To:
+  enforce UTC-aware datetimes instead of stripping timezone
+
+### 3. RSS parser fix (FINAL ROOT CAUSE)
+File: backend/app/news_feed_service.py
+
+Changed:
+    return dt
+
+To:
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+→ Ensures ALL parsed RSS dates are UTC-aware
+
+### 4. Manual generation delay fix
+Fixed logic:
+
+Before:
+    rewrite_delay_seconds=max(0, int(getattr(request, ..., 900) or 900))
+
+→ always forced 900s delay
+
+After:
+    respects explicit 0 delay
+
+→ allows instant manual testing
+
+## ✅ Result
+
+System now:
+- successfully generates articles
+- no datetime crashes
+- no forced delay when manually triggered
+- hybrid RSS + AI pipeline working end-to-end
+
+Confirmed response:
+
+{
+  "success": true,
+  "generated": 9,
+  "cheshire_articles": 3,
+  "uk_articles": 2
+}
+
+## 📊 Current System State
+
+Backend:
+- Stable
+- RSS ingestion working
+- Hybrid generation working
+- No datetime inconsistencies
+
+Frontend:
+- Rendering correctly
+- Category logic improved
+- SEO/meta improved
+
+Infrastructure:
+- Render deployment correct (commit ad00352)
+- Cron jobs running (imports + Facebook scheduler)
+- API health OK
+
+## ⚠️ Known Observations (NOT BUGS)
+
+- Some RSS feeds return 0 articles (normal)
+- Cheshire Live coverage varies by town
+- Arxiv feed very large (filtered later in pipeline)
+
+## 🚀 Next Phase (HIGH PRIORITY)
+
+1. Newsletter system
+   - activate SMTP
+   - test sending
+   - optimise subject lines (per strategy)
+
+2. Affiliate monetisation
+   - implement affiliate blocks
+   - prepare for Skimlinks / AWIN / CJ approval
+
+3. Perplexity optimisation
+   - test article quality
+   - refine prompts for authority tone
+
+4. SEO / authority build
+   - structured data (JSON-LD)
+   - internal linking system
+   - evergreen guides
+
+5. Operational stability
+   - keep import schedule: 06:00 / 12:00 / 18:00
+   - maintain active pool ~55–70 articles
+   - avoid major logic changes
+
+## 🧠 Key Rule Reinforced
+
+ALL datetimes in system MUST be:
+→ timezone-aware (UTC)
+
+NEVER use:
+→ datetime.utcnow()
+→ tzinfo=None
+
+--------------------------------------------------
+END OF SESSION UPDATE
+--------------------------------------------------
+

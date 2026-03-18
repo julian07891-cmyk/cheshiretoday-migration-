@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Clock, BookOpen } from "lucide-react";
+import { buildArticleUrl } from "../../utils/articleUrl";
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
@@ -41,7 +42,7 @@ export default function TextHeadlineStrip({ title = "More headlines", articles =
 
       <div className="grid grid-cols-1 gap-3">
         {articles.map((a, i) => {
-          const href = a?.url || `/article/${a?.id || a?._id || ""}`;
+          const href = a?.url || buildArticleUrl(a);
           const readTime = calculateReadTime(a?.content || a?.summary || "");
           const published = formatDate(a?.publishedDate);
 

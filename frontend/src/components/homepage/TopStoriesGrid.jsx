@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Clock, BookOpen } from "lucide-react";
+import { buildArticleUrl } from "../../utils/articleUrl";
 
 const safeText = (v) => (typeof v === "string" ? v : "");
 
@@ -35,7 +36,7 @@ export default function TopStoriesGrid({ stories = [] }) {
   return (
     <div className="grid grid-cols-1 gap-3">
       {stories.slice(0, 8).map((story, idx) => {
-        const href = story.url || `/article/${story._id || story.id}`;
+        const href = story.url || buildArticleUrl(story);
         const title = safeText(story.title) || "Untitled";
         const summary =
           safeText(story.summary).trim() ||

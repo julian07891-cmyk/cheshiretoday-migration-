@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getApiUrl } from "../utils/api";
 import { useParams, useNavigate } from 'react-router-dom';
+import { buildArticleUrl } from '../utils/articleUrl';
 import { Helmet } from 'react-helmet-async';
 import { MapPin, Loader2, Clock, User, ArrowLeft } from 'lucide-react';
 import NewsHeader from './NewsHeader';
@@ -99,7 +100,7 @@ const LocationPage = () => {
   const handleArticleClick = (article) => {
     const articleId = article.id || article._id;
     if (articleId) {
-      navigate(`/article/${articleId}`);
+      navigate(buildArticleUrl(article));
     }
   };
 
