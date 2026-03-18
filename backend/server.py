@@ -8949,6 +8949,8 @@ async def serve_article_html(article_id: str, request=None):
             img = img.replace("/ALTERNATES/s615/", "/ALTERNATES/s1200/")
         if "i.guim.co.uk" in img and "width=140" in img:
             img = img.replace("width=140", "width=1200")
+        if "ichef.bbci.co.uk" in img and "/240/" in img:
+            img = img.replace("/240/", "/1024/")
 
     # Canonical/OG should point at the real domain (not Render)
     slug = re.sub(r"[^a-z0-9]+","-", title.lower()).strip("-")
