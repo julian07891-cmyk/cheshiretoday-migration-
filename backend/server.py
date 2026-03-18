@@ -9003,8 +9003,10 @@ async def serve_article_for_production_slug(article_id: str, slug: str, request:
         "crawler",
         "bot",
     ])
+
     if is_crawler:
-        return await serve_article_html(article_id, request=request)
+        return await serve_article_html(article_id, request)
+
     return _spa_index_or_500()
 
 @api_router.get("/article/{article_id}/{slug}")
