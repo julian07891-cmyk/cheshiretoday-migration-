@@ -8941,16 +8941,37 @@ async def serve_article_html(article_id: str, request=None):
 
     title = str(article.get("title") or "Cheshire Today")
     desc = str(article.get("summary") or "")
-    raw_img = article.get("image")
-    img = str(raw_img) if raw_img else "https://cheshiretoday.co.uk/social-share.jpg"
 
-    if isinstance(img, str):
+    def normalize_social_image(raw_img) -> str:
+        img = str(raw_img).strip() if raw_img else ""
+        if not img:
+            return "https://cheshiretoday.co.uk/social-share.jpg"
+
+        # Reach / Cheshire Live
         if "/ALTERNATES/s615/" in img:
             img = img.replace("/ALTERNATES/s615/", "/ALTERNATES/s1200/")
+        if "/ALTERNATES/s615b/" in img:
+            img = img.replace("/ALTERNATES/s615b/", "/ALTERNATES/s1200/")
+        if "/ALTERNATES/s810/" in img:
+            img = img.replace("/ALTERNATES/s810/", "/ALTERNATES/s1200/")
+
+        # Guardian
         if "i.guim.co.uk" in img and "width=140" in img:
             img = img.replace("width=140", "width=1200")
+        if "i.guim.co.uk" in img and "width=240" in img:
+            img = img.replace("width=240", "width=1200")
+
+        # BBC
         if "ichef.bbci.co.uk" in img and "/240/" in img:
             img = img.replace("/240/", "/1024/")
+        if "ichef.bbci.co.uk" in img and "/320/" in img:
+            img = img.replace("/320/", "/1024/")
+        if "ichef.bbci.co.uk" in img and "/480/" in img:
+            img = img.replace("/480/", "/1024/")
+
+        return img
+
+    img = normalize_social_image(article.get("image"))
 
     # Canonical/OG should point at the real domain (not Render)
     slug = re.sub(r"[^a-z0-9]+","-", title.lower()).strip("-")
