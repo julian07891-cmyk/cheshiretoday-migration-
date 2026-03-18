@@ -4668,20 +4668,33 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
 async def toggle_force_live_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
     """Toggle force_live for an article so it can bypass homepage/public feed filters."""
     try:
+        from bson import ObjectId
+
         existing = await db.articles.find_one({"id": article_id})
+        match_query = {"id": article_id}
+
+        if not existing and len(article_id) == 24:
+            try:
+                mongo_id = ObjectId(article_id)
+                existing = await db.articles.find_one({"_id": mongo_id})
+                if existing:
+                    match_query = {"_id": mongo_id}
+            except Exception:
+                pass
+
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
 
         new_value = not bool(existing.get("force_live", False))
 
         await db.articles.update_one(
-            {"id": article_id},
+            match_query,
             {"$set": {"force_live": new_value, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
 
         return {
             "success": True,
-            "article_id": article_id,
+            "article_id": str(existing.get("id") or article_id),
             "force_live": new_value,
             "message": "Article forced live" if new_value else "Force live removed"
         }
