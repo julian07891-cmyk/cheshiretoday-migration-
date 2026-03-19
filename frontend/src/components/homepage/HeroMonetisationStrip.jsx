@@ -1,5 +1,3 @@
-import {
-  if (!FEATURES.GUIDE_MONETISATION_ENABLED) return null; FEATURES } from "../../config/features";
 import React, { useMemo } from "react";
 import { FEATURES } from "../../config/features";
 import { monetisationTools } from "../../config/monetisationTools";
