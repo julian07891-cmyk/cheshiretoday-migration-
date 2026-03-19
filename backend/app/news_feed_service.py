@@ -887,9 +887,12 @@ def get_category_override(title: str, content: str, original_category: str = Non
     for category, keywords in CATEGORY_KEYWORD_OVERRIDES.items():
         if category == 'Weather':
             continue  # Already handled
+        match_count = 0
         for keyword in keywords:
             if keyword.lower() in text:
-                return category
+                match_count += 1
+        if match_count >= 2:
+            return category
     
     return None
 
