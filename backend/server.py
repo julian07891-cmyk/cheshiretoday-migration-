@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 import os
 import re
 import logging
@@ -1446,7 +1447,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
                     
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
-                    await db.articles.insert_one(article)
+                    try:
+                        await db.articles.insert_one(article)
+                    except DuplicateKeyError:
+                        logger.info(f"⏭️ Duplicate skipped (DB unique index): {title[:60]}...")
+                        continue
                     existing_titles.add(title.lower())
                     used_image_urls.add(rss_image)
                     imported_articles.append(article)
@@ -11405,6 +11410,16 @@ async def startup_event():
                 partialFilterExpression={"title": {"$exists": True, "$ne": ""}}
             )
             logger.info("✅ Created unique index on articles.title")
+
+            # Create unique index on source_url for proper deduplication
+            try:
+                await db.articles.create_index("source_url", unique=True)
+                logger.info("✅ Created unique index on articles.source_url")
+            except Exception as e:
+                if "already exists" in str(e).lower():
+                    logger.info("✅ Unique index on articles.source_url already exists")
+                else:
+                    logger.warning(f"Could not create source_url index: {e}")
         except Exception as idx_error:
             if "already exists" in str(idx_error).lower() or "index" in str(idx_error).lower():
                 logger.info("✅ Unique index on articles.title already exists")

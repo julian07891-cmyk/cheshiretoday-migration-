@@ -15,6 +15,7 @@ import NewsFooter from "../components/NewsFooter";
 import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
 import { filterEditorialPool, isLocalPillar, isAiTechPillar, isBusinessPillar, isFinancePillar, isUkPillar, getPrimaryPillar, getDisplayCategoryForPillar } from "../utils/editorialPolicy";
+import { buildArticleUrl } from "../utils/articleUrl";
 
 import { FEATURES } from "../config/features";
 /* ---------- helpers ---------- */
@@ -101,7 +102,7 @@ function toCard(a, fallbackId, overrides = {}) {
     category: a?.category || "Local News",
     town: a?.location || "Cheshire",
     publishedDate: a?.publishedDate || "",
-    url: `/article/${articleKey(a)}`,
+    url: buildArticleUrl(a),
     readTime: 3,
     ...overrides,
   };
@@ -400,7 +401,7 @@ const navigate = useNavigate();
         });
       }
 
-      const sortedBase = [...localFiltered].sort((a, b) => safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate));
+      const sortedBase = [...localFiltered].sort((a, b) => safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at));
 
       if (selectedCategory === "Local") {
         const perTown = new Map();
@@ -616,7 +617,7 @@ const navigate = useNavigate();
       const av = Number(a?.view_count || a?.views || 0);
       const bv = Number(b?.view_count || b?.views || 0);
       if (bv !== av) return bv - av;
-      return safeDateMs(b?.publishedDate) - safeDateMs(a?.publishedDate);
+      return safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at);
     });
 
     for (const a of byViewsThenNewest) {
@@ -775,7 +776,6 @@ const isMoney = (a) => {
 
       const k = articleKey(a);
       if (!k || latestSeen.has(k)) continue;
-      if (!mark(a)) continue;
       latestSeen.add(k);
 
       const resolvedCategory = getDisplayCategoryForPillar(a);

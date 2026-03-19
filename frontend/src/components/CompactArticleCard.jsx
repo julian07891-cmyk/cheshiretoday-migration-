@@ -26,13 +26,7 @@ const formatDate = (dateString) => {
     const diffMs = now - date;
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     
-    if (diffHours < 1) {
-      return 'Just now';
-    }
-    if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    }
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + " " + date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
   };
 
   const handleImageError = () => {
