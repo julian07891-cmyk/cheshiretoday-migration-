@@ -31,6 +31,7 @@ import AdvertisePage from "./pages/AdvertisePage";
 import ContactPage from "./components/ContactPage";
 
 import HomePageV1 from "./pages/HomePageV1";
+import AuthorityPage from "./pages/AuthorityPage";
 
 
 import SponsoredSidebarBlock from "./components/SponsoredSidebarBlock";
@@ -214,6 +215,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePageV1 />} />
+            <Route path="/guides/:slug" element={<AuthorityPage />} />
             <Route path="/article/:articleId" element={<ArticlePageV2 categories={categories} />} />
             <Route path="/article/:articleId/:slug" element={<ArticlePageV2 categories={categories} />} />
             <Route path="/admin" element={<AdminPage />} />
