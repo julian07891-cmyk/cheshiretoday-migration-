@@ -3,8 +3,27 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getApiUrl } from "../utils/api";
 import HomepageLayout from "../components/homepage/HomepageLayout";
-import HomepageHeader from "../components/homepage/HomepageHeader";
 import NewsFooter from "../components/NewsFooter";
+
+function safeText(v) {
+  if (v == null) return "";
+  const t = typeof v;
+  if (t === "string") return v;
+  if (t === "number" || t === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map(safeText).filter(Boolean).join(" ");
+  if (t === "object") {
+    if (typeof v.text === "string") return v.text;
+    if (typeof v.content === "string") return v.content;
+    if (typeof v.title === "string") return v.title;
+    if (typeof v.name === "string") return v.name;
+    return "";
+  }
+  try {
+    return String(v);
+  } catch {
+    return "";
+  }
+}
 
 
 function BestPickCta({ tools = [], monetisation = "affiliate" }) {
@@ -47,7 +66,7 @@ function BestPickCta({ tools = [], monetisation = "affiliate" }) {
               rel="noreferrer"
               className="inline-flex items-center justify-center rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-semibold"
             >
-              Compare now →
+              Check eligibility →
             </a>
           ) : (
             <span className="inline-flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-4 py-2 text-sm font-semibold">
@@ -165,7 +184,9 @@ export default function AuthorityPage() {
   const sections = Array.isArray(page?.sections) ? page.sections : [];
 
   const intro = sections.find((s) => s?.type === "intro")?.content || "";
-  const tools = sections.filter((s) => s?.type === "tool");
+  const tools = sections.filter((s) => s?.type === "tool" && String(s?.affiliate_link || "").trim());
+  const contentSections = sections.filter((s) => s?.type === "content");
+
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
@@ -205,7 +226,6 @@ export default function AuthorityPage() {
             }}
           />
         </Helmet>
-        <HomepageHeader breakingStories={[]} />
 
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <div className="mb-4">
@@ -242,8 +262,28 @@ export default function AuthorityPage() {
                 {intro}
               </p>
             )}
-            <BestPickCta tools={tools} monetisation={monetisation} />
-            <QuickComparison tools={tools} />
+            <BestPickCta tools={tools.slice(0,1)} monetisation={monetisation} />
+            <QuickComparison tools={tools.slice(1)} />
+
+            {contentSections.length > 0 && (
+              <div className="mt-8 space-y-8">
+                {contentSections.map((s, idx) => (
+                  <section key={(s?.title || "section") + idx} className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-6">
+                    {s?.title && (
+                      <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-3">
+                        {s.title}
+                      </h2>
+                    )}
+                    {s?.content && (
+                      <p className="text-base text-slate-700 dark:text-gray-300 leading-relaxed">
+                        {s.content}
+                      </p>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
+
 
 
 

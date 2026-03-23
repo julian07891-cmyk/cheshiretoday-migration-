@@ -184,9 +184,9 @@ export function isUkPillar(article) {
 export function getPrimaryPillar(article) {
   if (isLocalPillar(article)) return "Local";
   if (isUkPillar(article)) return "UK";
+  if (isFinancePillar(article)) return "Finance";
   if (isBusinessPillar(article)) return "Business";
   if (isAiTechPillar(article)) return "AI & Tech";
-  if (isFinancePillar(article)) return "Finance";
   return "Local";
 }
 

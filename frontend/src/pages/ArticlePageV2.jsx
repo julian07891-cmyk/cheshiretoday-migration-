@@ -119,12 +119,25 @@ function autoLinkContent(rawText, pillarLabel) {
   const add = (pattern, href) => links.push({ pattern, href });
 
   // Local tax
-// Finance staples
+  add(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
 
-  // Business (draft pages exist; link anyway — they render)
-// Investing / ISA (draft exists)
-// AI (published)
-// 4) Apply with limits (avoid spam)
+  // Finance staples
+  add(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
+  add(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
+  add(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
+
+  // Business
+  add(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
+  add(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
+  add(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
+
+  // Investing / ISA
+  add(/\b(isa|stocks?\s+and\s+shares\s+isa|cash\s+isa|lifetime\s+isa)\b/i, "/guides/best-isa-platforms-uk");
+
+  // AI
+  add(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
+
+  // 4) Apply with limits (avoid spam)
   const maxLinks = pillar.includes("ai") ? 3 : 4;
   let used = 0;
   const usedHref = new Set();
@@ -137,7 +150,6 @@ function autoLinkContent(rawText, pillarLabel) {
     if (!m) return;
 
     const matchText = m[0];
-    // Replace only the first match, wrap it
     html = html.replace(re, `<a href="${href}" class="underline underline-offset-2 font-semibold">${matchText}</a>`);
     used += 1;
     usedHref.add(href);
@@ -145,10 +157,18 @@ function autoLinkContent(rawText, pillarLabel) {
 
   // Prioritise by pillar
   if (pillar.includes("ai")) {
-} else if (pillar.includes("business")) {
-} else if (pillar.includes("finance")) {
+    replaceOnce(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
+  } else if (pillar.includes("business")) {
+    replaceOnce(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
+    replaceOnce(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
+    replaceOnce(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
+  } else if (pillar.includes("finance")) {
+    replaceOnce(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
+    replaceOnce(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
+    replaceOnce(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
   } else if (pillar.includes("local")) {
-}
+    replaceOnce(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
+  }
 
   // Fill remaining in general priority order
   for (const { pattern, href } of links) {
@@ -164,7 +184,6 @@ function autoLinkContent(rawText, pillarLabel) {
   }
 
   // 6) Convert plain text into real paragraphs for improved article typography.
-  // Split on blank lines first; within each paragraph, preserve single line breaks.
   const sentences = html.split(/(?<=[.!?])\s+/);
   const paragraphs = [];
   let buf = [];
@@ -183,7 +202,6 @@ function autoLinkContent(rawText, pillarLabel) {
 
   return paragraphs.join("");
 }
-
 
 function formatDateTime(dateString) {
   if (!dateString) return "";
@@ -226,8 +244,7 @@ function splitAttribution(rawContent) {
 
 
 /* ===== Guide selection (pillar-aware) ===== */
-function pickGuidesForPillar(guides, pillarLabel) {
-  // Non-Amazon monetisation OFF => hide AI Guides / In-depth Guide module
+function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return [];
 
   const list = Array.isArray(guides) ? guides : [];
@@ -243,16 +260,38 @@ function pickGuidesForPillar(guides, pillarLabel) {
     want.push(slug);
   };
 
-  if (pillar.includes("ai")) {
+  if (context === "tax") {
+    push("council-tax-bands-cheshire");
+    push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+  } else if (context === "mortgages") {
+    push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+    push("best-credit-cards-uk");
+  } else if (context === "savings") {
+    push("best-savings-accounts-uk");
+    push("best-credit-cards-uk");
+    push("best-mortgage-rates-uk");
+  } else if (context === "credit") {
+    push("best-credit-cards-uk");
+    push("best-savings-accounts-uk");
+    push("best-mortgage-rates-uk");
+  } else if (context === "ai") {
+    push("best-ai-tools-uk");
+    push("best-ai-writing-tools-uk");
+    push("best-ai-productivity-tools-uk");
+  } else if (pillar.includes("ai")) {
     push("best-ai-tools-uk");
     push("best-ai-writing-tools-uk");
     push("best-ai-productivity-tools-uk");
   } else if (pillar.includes("business")) {
-    push("best-business-bank-accounts-uk");
-    push("best-accounting-software-uk");
-    push("best-business-credit-cards-uk");
+    push("best-credit-cards-uk");
+    push("best-savings-accounts-uk");
+    push("best-mortgage-rates-uk");
   } else if (pillar.includes("finance")) {
-    push("best-isa-platforms-uk");
+    push("best-credit-cards-uk");
+    push("best-savings-accounts-uk");
+    push("best-mortgage-rates-uk");
   } else if (pillar.includes("local")) {
     push("council-tax-bands-cheshire");
   } else {
@@ -268,9 +307,10 @@ function pickGuidesForPillar(guides, pillarLabel) {
 
   if (out.length < 3) {
     for (const g of list) {
-      const slug = String(g?.slug || "");
-      if (!slug) continue;
-      if (out.some((x) => String(x?.slug || "") === slug)) continue;
+      if (!g?.category) continue;
+      const cat = String(g.category).toLowerCase();
+      if (!(cat.includes(pillar) || (pillar.includes("business") && cat.includes("finance")) || (pillar.includes("finance") && cat.includes("business")))) continue;
+      if (out.some(x => String(x?.slug) === String(g?.slug))) continue;
       out.push(g);
       if (out.length >= 3) break;
     }
@@ -280,12 +320,12 @@ function pickGuidesForPillar(guides, pillarLabel) {
 }
 
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
-const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
+const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }) => {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
   if (!Array.isArray(guides) || guides.length === 0) return null;
 
   const cat = String(category || "").toLowerCase();
-  const ordered = pickGuidesForPillar(guides, pillarLabel || category);
+  const ordered = pickGuidesForPillar(guides, pillarLabel || category, contextToolType);
 
   return (
     <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
@@ -297,13 +337,13 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
             className="rounded-lg border border-slate-200 dark:border-slate-800 bg-[#FBFAF7] dark:bg-transparent p-2.5"
           >
             <a
-              href={"#"}
+              href={`/guides/${encodeURIComponent(g.slug)}`}
               className="block font-semibold text-sky-900 dark:text-slate-200 hover:underline underline-offset-2"
             >
               {safeText(g.title) || g.slug}
             </a>
             <div className="text-[11px] mt-1 text-slate-700 dark:text-gray-400">
-              Updated: {String(g.updated_at || g.created_at || "").slice(0, 10)}
+              Updated: {String(g.updatedAt || g.createdAt || "").slice(0, 10)}
             </div>
           </div>
         ))}
@@ -312,16 +352,16 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel }) => {
   );
 };
 
-const GuidesInlinePromo = ({ guides, pillarLabel }) => {
+const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType }) => {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
-  const picked = pickGuidesForPillar(list, pillarLabel);
+  const picked = pickGuidesForPillar(list, pillarLabel, contextToolType);
   const g = picked[0];
   if (!g) return null;
 
   const title = safeText(g?.title) || "In-depth Guide";
   const slug = String(g?.slug || "").trim();
-  const href = null;
+  const href = slug ? `/guides/${encodeURIComponent(slug)}` : null;
 
   return (
     <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
@@ -421,13 +461,7 @@ export default function ArticlePageV2({ categories }) {
   const description = useMemo(() => buildDescription(article), [article]);
   const safeTitle = useMemo(() => safeText(article?.title), [article]);
   const displayTitle = useMemo(() => {
-    const title = safeText(article?.title).trim();
-    const summary = safeText(article?.summary || article?.content).replace(/\s+/g," ").trim();
-    if (!title) return "";
-    if (title.length >= 60) return title;
-    if (!summary) return title;
-    const tail = summary.slice(0,80).replace(/[.!?].*$/,"");
-    return tail ? title + " — " + tail : title;
+    return safeText(article?.title).trim();
   }, [article]);
 
 
@@ -441,7 +475,7 @@ export default function ArticlePageV2({ categories }) {
   // Pillar label for sidebar (keeps the publication feeling intentional)
   const pillarLabel = useMemo(() => {
     const pillar = getPrimaryPillar(article);
-    return pillar === "UK" ? "Local" : pillar;
+    return pillar === "UK" ? "Finance" : pillar;
   }, [article]);
 
 
@@ -765,9 +799,9 @@ export default function ArticlePageV2({ categories }) {
               </div>
 
               <div className="mt-6">
-                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} />
+                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} />
                 
-              <GuidePromoBlock guides={guides} category={article?.category} pillarLabel={pillarLabel} />
+              <GuidePromoBlock guides={guides} category={article?.category} pillarLabel={pillarLabel} contextToolType={contextToolType} />
               </div>
               {/* More stories — match homepage layout */}
               
