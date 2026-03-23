@@ -352,6 +352,7 @@ const navigate = useNavigate();
 
     const rankScore = (a) => {
       let score = 0;
+      if (a?.force_live) score += 5000;
       if (a?.is_priority_cheshire) score += 1000;
       if (a?.featured) score += 300;
       if (a?.is_secondary_cheshire) score += 120;

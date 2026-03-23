@@ -1948,6 +1948,7 @@ const AdminDashboard = ({ onBack }) => {
   const handleForceLiveArticle = async (articleId) => {
     setActionLoading(`force-${articleId}`);
     try {
+      const authHeaders = getAuthHeaders();
       const response = await fetch(`${getApiUrl()}/api/admin/articles/${articleId}/force-live`, {
         method: 'POST',
         headers: authHeaders
@@ -1959,7 +1960,7 @@ const AdminDashboard = ({ onBack }) => {
           title: data.force_live ? "🚀 Forced Live" : "↩️ Removed Force Live",
           description: data.message
         });
-        fetchArticles(); // refresh list
+        fetchAllData(); // refresh admin data
       } else {
         toast({ title: "❌ Error", description: data.detail || "Failed", variant: "destructive" });
       }
