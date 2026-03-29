@@ -109,11 +109,6 @@ const AdminDashboard = ({ onBack }) => {
 
   // Facebook scheduling state
   const [schedulableArticles, setSchedulableArticles] = useState([]);
-  const [scheduledPosts, setScheduledPosts] = useState({ pending: [], history: [] });
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [selectedArticle, setSelectedArticle] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [selectedTime, setSelectedTime] = useState('12:00');
   
   // Facebook analytics state
   const [fbAnalytics, setFbAnalytics] = useState(null);
@@ -581,22 +576,11 @@ const AdminDashboard = ({ onBack }) => {
     const authHeaders = { 'Authorization': `Bearer ${authToken}` };
     
     try {
-      const [articlesRes, scheduledRes] = await Promise.all([
-        fetch(`${getApiUrl()}/api/facebook/schedulable-articles?limit=20`, { headers: authHeaders }),
-        fetch(`${getApiUrl()}/api/facebook/scheduled-posts`, { headers: authHeaders })
-      ]);
+      const articlesRes = await fetch(`${getApiUrl()}/api/facebook/schedulable-articles?limit=20`, { headers: authHeaders });
 
       if (articlesRes.ok) {
         const articlesData = await articlesRes.json();
         setSchedulableArticles(articlesData.articles || []);
-      }
-
-      if (scheduledRes.ok) {
-        const scheduledData = await scheduledRes.json();
-        setScheduledPosts({
-          pending: scheduledData.pending || [],
-          history: scheduledData.history || []
-        });
       }
     } catch (error) {
       console.error('Error fetching Facebook data:', error);
@@ -1856,94 +1840,6 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const openScheduleDialog = (article) => {
-    setSelectedArticle(article);
-    setSelectedDate(new Date());
-    setSelectedTime('12:00');
-    setScheduleDialogOpen(true);
-  };
-
-  const handleSchedulePost = async () => {
-    if (!selectedArticle || !selectedDate) return;
-
-    setActionLoading('schedule');
-    try {
-      // Combine date and time into ISO string
-      const [hours, minutes] = selectedTime.split(':').map(Number);
-      const scheduledDateTime = new Date(selectedDate);
-      scheduledDateTime.setHours(hours, minutes, 0, 0);
-      
-      const response = await fetch(`${getApiUrl()}/api/facebook/schedule-post`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...getAuthHeaders() 
-        },
-        body: JSON.stringify({
-          article_id: selectedArticle._id || selectedArticle.id,
-          scheduled_time: scheduledDateTime.toISOString()
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        toast({
-          title: "📅 Post Scheduled",
-          description: data.message
-        });
-        setScheduleDialogOpen(false);
-        fetchFacebookData(); // Refresh scheduled posts
-      } else {
-        toast({
-          title: "Scheduling Failed",
-          description: data.error || "Could not schedule post",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to schedule post",
-        variant: "destructive"
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleCancelScheduledPost = async (postId) => {
-    setActionLoading(`cancel-${postId}`);
-    try {
-      const response = await fetch(`${getApiUrl()}/api/facebook/scheduled-posts/${postId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        toast({
-          title: "Cancelled",
-          description: "Scheduled post has been cancelled"
-        });
-        fetchFacebookData();
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Could not cancel post",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to cancel scheduled post",
-        variant: "destructive"
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   const handleForceLiveArticle = async (articleId) => {
     setActionLoading(`force-${articleId}`);
@@ -2856,98 +2752,6 @@ const handleDeleteArticle = async (articleId) => {
 
         {activeTab === 'facebook' && (
           <div className="space-y-6">
-            {/* Scheduled Posts */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-blue-600" />
-                  Scheduled Posts
-                </CardTitle>
-                <CardDescription>
-                  {scheduledPosts.pending.length} pending posts
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {scheduledPosts.pending.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <CalendarIcon className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                    <p>No scheduled posts</p>
-                    <p className="text-sm">Select an article below to schedule</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {scheduledPosts.pending.map((post) => (
-                      <div 
-                        key={post._id} 
-                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100"
-                        data-testid={`scheduled-post-${post._id}`}
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {post.article_image && (
-                            <img 
-                              src={post.article_image} 
-                              alt=""
-                              className="w-12 h-12 object-cover rounded"
-                            />
-                          )}
-                          <div className="min-w-0">
-                            <p className="font-medium text-foreground truncate">{post.article_title}</p>
-                            <div className="flex items-center gap-2 text-sm text-blue-700">
-                              <Clock className="h-3 w-3" />
-                              <span>{formatDate(post.scheduled_time)}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCancelScheduledPost(post._id)}
-                          disabled={actionLoading === `cancel-${post._id}`}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 ml-2"
-                          data-testid={`cancel-scheduled-${post._id}`}
-                        >
-                          {actionLoading === `cancel-${post._id}` ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <X className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* History */}
-                {scheduledPosts.history.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Recent History</h4>
-                    <div className="space-y-2">
-                      {scheduledPosts.history.slice(0, 5).map((post) => (
-                        <div 
-                          key={post._id} 
-                          className={`flex items-center gap-3 p-2 rounded-lg ${
-                            post.status === 'posted' ? 'bg-green-50' : 
-                            post.status === 'failed' ? 'bg-red-50' : 'bg-muted'
-                          }`}
-                        >
-                          {post.status === 'posted' ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : post.status === 'failed' ? (
-                            <AlertCircle className="h-4 w-4 text-red-600" />
-                          ) : (
-                            <X className="h-4 w-4 text-gray-400" />
-                          )}
-                          <span className="text-sm truncate flex-1">{post.article_title}</span>
-                          <Badge variant={post.status === 'posted' ? 'success' : post.status === 'failed' ? 'destructive' : 'secondary'} className="text-xs">
-                            {post.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
             {/* Smart Recommendations */}
             <Card>
@@ -3039,7 +2843,7 @@ const handleDeleteArticle = async (articleId) => {
                   Post to Facebook
                 </CardTitle>
                 <CardDescription>
-                  Select an article to post now or schedule for later
+                  Select an article to post now
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -3067,15 +2871,6 @@ const handleDeleteArticle = async (articleId) => {
                         </div>
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
-                        <Button
-                          variant="outline"
-                          size="default"
-                          onClick={() => openScheduleDialog(article)}
-                          className="text-blue-600 border-blue-600 hover:bg-blue-50 min-w-[44px] min-h-[44px] touch-manipulation"
-                          data-testid={`schedule-article-${article._id}`}
-                        >
-                          <CalendarIcon className="h-5 w-5" />
-                        </Button>
                         <Button
                           variant="default"
                           size="default"
@@ -4921,83 +4716,6 @@ const handleDeleteArticle = async (articleId) => {
               data-testid="save-job-button"
             >
               {editingJob ? 'Update Job' : 'Create Job'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Schedule Dialog */}
-      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-blue-600" />
-              Schedule Facebook Post
-            </DialogTitle>
-            <DialogDescription>
-              {selectedArticle?.title?.substring(0, 60)}...
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Calendar */}
-            <div className="flex justify-center">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                className="rounded-md border"
-              />
-            </div>
-
-            {/* Time Picker */}
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">
-                Time (24-hour format)
-              </label>
-              <Input
-                type="time"
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full"
-                data-testid="schedule-time-input"
-              />
-            </div>
-
-            {/* Preview */}
-            {selectedDate && (
-              <div className="bg-blue-50 p-3 rounded-lg text-sm">
-                <p className="text-blue-700">
-                  <strong>Scheduled for:</strong>{' '}
-                  {new Date(`${selectedDate.toDateString()} ${selectedTime}`).toLocaleString('en-GB', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setScheduleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSchedulePost}
-              disabled={!selectedDate || actionLoading === 'schedule'}
-              className="bg-blue-600 hover:bg-blue-700"
-              data-testid="confirm-schedule-button"
-            >
-              {actionLoading === 'schedule' ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4 mr-2" />
-              )}
-              Schedule Post
             </Button>
           </DialogFooter>
         </DialogContent>

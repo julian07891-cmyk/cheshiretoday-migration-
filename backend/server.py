@@ -11919,15 +11919,7 @@ async def startup_event():
             except Exception as e:
                 logger.error(f"Error in process_user_scheduled_posts: {str(e)}")
         
-        # Check every 5 minutes for due scheduled posts
-        scheduler.add_job(
-            process_user_scheduled_posts,
-            'interval',
-            minutes=5,
-            id='process_scheduled_facebook_posts',
-            name='Process user-scheduled Facebook posts',
-            replace_existing=True
-        )
+        # Scheduled Facebook queue processor disabled to remove unused background polling.
         
         auto_enabled = os.getenv("AUTO_GENERATION_ENABLED", "false").strip().lower() in ("1","true","yes","on")
         if auto_enabled:
