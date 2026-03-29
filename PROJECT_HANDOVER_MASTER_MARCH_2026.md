@@ -576,3 +576,45 @@ NEVER use:
 END OF SESSION UPDATE
 --------------------------------------------------
 
+
+
+--------------------------------------------------
+LATEST HANDOVER UPDATE – 29 MARCH 2026
+--------------------------------------------------
+
+Current confirmed state:
+- homepage logic stabilisation completed
+- freshness-first ordering implemented and validated
+- dedupe across homepage sections / sidebars completed
+- More Stories cleaned, filtered, and ordered newest-first
+- Business / Finance / Property sidebar duplication fixed in final local validated state
+- production live API now contains fresh March 28–29 articles after manual generation
+- production domain is served by the BACKEND service from `backend/frontend_build`
+- do not assume the separate frontend migration service controls the live domain
+
+Most important completed outcomes from latest chat:
+- admin force-live action fixed
+- homepage blank-page/runtime errors resolved
+- homepage section ordering and dedupe stabilised
+- live production diagnosis completed
+- confirmed issue was partly missing fresh live data, not just homepage logic
+- live site now visually reflects fresh content again
+
+Immediate next task in new chat:
+1. inspect Render logs around automatic scheduler runs
+2. confirm scheduled import/article generation is functioning correctly
+3. inspect Facebook auto-scheduler/background jobs appearing in logs
+4. disable/remove Facebook auto-scheduler if not actively used
+5. keep Render focused only on currently required production jobs
+
+Restart instruction for next chat:
+"Continue the Cheshire Today project.
+
+Read:
+PROJECT_CURRENT_STATE_MASTER_MARCH_2026.md
+PROJECT_HANDOVER_MASTER_MARCH_2026.md
+
+Do not revisit homepage logic unless a new live issue proves it is necessary.
+Start with Render scheduler/log inspection.
+Prioritise finding and removing unused Facebook auto-scheduler activity if it is still running."
+

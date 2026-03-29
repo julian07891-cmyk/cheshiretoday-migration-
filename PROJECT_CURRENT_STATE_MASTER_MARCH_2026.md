@@ -719,3 +719,131 @@ Before any future pool/archive modification:
 3. Never reintroduce hard-delete behaviour for recent editorial content
 4. Prefer archive-preserving behaviour only
 5. Inspect current live API state before changing cleanup logic
+
+
+--------------------------------------------------
+UPDATE: 29 MARCH 2026 – HOMEPAGE LOGIC, LIVE DATA, AND PRODUCTION DIAGNOSIS
+--------------------------------------------------
+
+### Summary of work completed in this chat
+This chat completed a major homepage logic stabilisation and production diagnosis cycle.
+
+Completed:
+- fixed admin "Force show on homepage" action so it actually sends authenticated requests and refreshes admin data correctly
+- restored homepage freshness ordering after an earlier force_live boost caused older stories to outrank newer ones
+- made `force_live` work without breaking hero / Top Stories freshness
+- rebuilt and tested homepage locally multiple times using:
+  - `npm run build`
+  - `npx serve -s build`
+- fixed repeated runtime crashes / blank-page issues caused by:
+  - variables being used before declaration
+  - duplicate `const k = articleKey(a)` declarations
+  - corrupted code structure inside `isPropertyish`
+  - misplaced dedupe and sorting logic
+- implemented homepage dedupe across:
+  - Latest
+  - AI & Tech sidebar
+  - Business sidebar
+  - Finance sidebar
+  - Property & Tax sidebar
+  - AI & Business feed
+  - More Stories
+- fixed cross-sidebar duplication, especially Finance vs Property / Tax
+- made More Stories:
+  - fully populated
+  - freshness-first
+  - filtered against entertainment / celebrity / filler
+  - stronger on local / business / finance / public-impact utility
+- tightened Business & Finance / AI & Business quality rules to reduce soft culture / entertainment leakage
+- tuned Top Stories away from entertainment and toward local/economic/public-impact stories
+- verified local production-style output visually at multiple points during the chat
+
+### Key commits / deployment state
+A later homepage stabilisation commit was created and pushed:
+- `6d40c63` — Fix homepage dedupe: sidebar isolation + property block repair + stability fixes
+
+Additional homepage code in this chat also included:
+- freshness-first ordering
+- feed dedupe
+- More Stories quality gating
+- section ordering clean-up
+- sidebar isolation
+
+### Important homepage architecture conclusions from this chat
+Homepage logic is now intentionally structured as:
+1. fetch public article pool
+2. apply editorial filters
+3. build shared ranked pools
+4. construct section-specific feeds
+5. dedupe across sections where required
+6. sort final feeds for stable rendering
+7. render freshness-first homepage
+
+Important final behavior:
+- Latest = newest-first
+- More Stories = newest-first with quality filter
+- Top Stories = editorially filtered / weighted
+- Business / Finance / Property sidebars = deduped and stabilised
+- no blank-page crashes in the final validated local state
+
+### Live production diagnosis completed
+A production issue was investigated where the homepage appeared stuck at 27 March articles.
+
+Findings:
+- this was NOT caused by homepage code alone
+- live public API initially had no 28–29 March articles
+- manual live article generation was triggered successfully:
+  - `/api/generate-articles`
+  - returned success with fresh article generation
+- after manual generation, live public API showed 28–29 March content, including:
+  - 2026-03-29 local stories
+  - 2026-03-28 business stories
+
+Conclusion:
+- homepage freshness logic was working
+- the real production issue at that stage was missing fresh public data, likely due to scheduler/import inactivity or zero-result scheduled runs before manual generation
+
+### Important live deployment / serving conclusion
+Production domain behaviour was investigated in detail.
+
+Confirmed:
+- `cheshiretoday.co.uk` is served by the BACKEND web service, not the separate frontend migration static service
+- backend serves SPA assets from:
+  - `backend/frontend_build`
+- relevant live backend code:
+  - `_FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"`
+  - root `/` and SPA routes serve files from that folder
+
+Important implication for future chats:
+- production deploy for the visible site must be treated primarily as a BACKEND deploy if the backend-embedded React build is the live artifact
+- do not assume the separate `cheshiretoday-frontend-migration` service controls the production domain
+- verify what bundle/domain is actually serving before diagnosing frontend deployment mismatches
+
+### Verified production status by end of chat
+By the end of this chat:
+- live API showed fresh March 28–29 articles
+- live homepage screenshots matched the corrected homepage behaviour
+- latest articles were surfacing again
+- homepage no longer appeared stuck at March 27
+- local final state was visually validated as stable and clean
+
+### Remaining issues / next-phase tasks
+Do next:
+1. inspect Render logs when the automatic scheduler runs
+2. confirm whether scheduled imports/article generation are running correctly after March 29
+3. identify any obsolete Facebook auto-scheduler tasks/processes still logging or executing
+4. disable/delete unused Facebook scheduler functionality if it is not part of active production operations
+5. keep Render focused only on actively used automation and production tasks
+
+### Explicit note about Facebook scheduler cleanup
+User reported Render logs showing Facebook auto-scheduler activity even though Facebook automation is not being actively used.
+This should be investigated in the next chat and removed/disabled if inactive, to reduce noise and avoid unnecessary work on Render.
+
+### Working restart instruction for next chat
+In the next chat:
+- read `PROJECT_CURRENT_STATE_MASTER_MARCH_2026.md`
+- read `PROJECT_HANDOVER_MASTER_MARCH_2026.md`
+- assume homepage logic / dedupe / freshness work from this chat is complete
+- start with Render scheduler/log inspection
+- specifically investigate unused Facebook auto-scheduler jobs and remove/disable them if confirmed unnecessary
+
