@@ -112,7 +112,7 @@ RSS_FEEDS = {
     'moneysavingexpert': {
         'url': 'https://www.moneysavingexpert.com/news/feeds/news.rss',
         'source': 'MoneySavingExpert',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 3
     },
 
@@ -126,13 +126,13 @@ RSS_FEEDS = {
     'hm_treasury_atom': {
         'url': 'https://www.gov.uk/government/organisations/hm-treasury.atom',
         'source': 'GOV.UK',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 3
     },
     'ons_atom_official': {
         'url': 'https://www.gov.uk/government/organisations/office-for-national-statistics.atom',
         'source': 'GOV.UK',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 3
     },
 
@@ -161,13 +161,13 @@ RSS_FEEDS = {
     'guardian_money': {
         'url': 'https://www.theguardian.com/uk/money/rss',
         'source': 'The Guardian',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 2
     },
     'ft_personal_finance': {
         'url': 'https://www.ft.com/personal-finance?format=rss',
         'source': 'Financial Times',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 2
     },
 
@@ -442,7 +442,7 @@ RSS_FEEDS = {
     'gn_uk_fintech_banking': {
         'url': 'https://news.google.com/rss/search?q=(UK%20fintech%20OR%20banking%20OR%20challenger%20bank%20OR%20payments)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
         'source': 'Google News',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 3
     },
     'gn_uk_housing_property': {
@@ -454,7 +454,7 @@ RSS_FEEDS = {
     'gn_uk_energy_bills': {
         'url': 'https://news.google.com/rss/search?q=(UK%20energy%20bills%20OR%20tariffs%20OR%20Ofgem%20OR%20price%20cap)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
         'source': 'Google News',
-        'category': 'Money',
+        'category': 'Finance',
         'priority': 3
     },
     'gn_uk_cybersecurity': {
@@ -637,7 +637,7 @@ def is_secondary_cheshire_article(title: str, content: str = '') -> bool:
 # More specific keywords should be used to avoid false positives
 
 # Limit RSS categories to reduce noise + DB growth (monetisation-first)
-ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Science", "Money", "Tax", "Property", "Property & Tax"}
+ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Science", "Finance", "Tax", "Property"}
 
 def _rss_category_guard(cat: str) -> str:
     c = (cat or "").strip()
@@ -695,7 +695,7 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'cybersecurity breach', 'hacker attack', 'data breach', 'tech startup',
         'blockchain technology', 'cryptocurrency market', 'bitcoin price'
     ],
-    'Money': [
+    'Finance': [
         'inflation rate', 'interest rate decision', 'bank of england', 'budget announcement',
         'energy bills', 'energy price cap', 'ofgem', 'insurance', 'savings',
         'cost of living', 'interest rates', 'personal finance', 'household bills',

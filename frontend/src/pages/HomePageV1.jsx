@@ -290,7 +290,7 @@ const navigate = useNavigate();
 
     const newestFirst = useMemo(() => {
     return [...filteredArticles].sort(
-      (a, b) => safeDateMs(b?.created_at || b?.publishedDate) - safeDateMs(a?.created_at || a?.publishedDate),
+      (a, b) => safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at),
     );
   }, [filteredArticles]);
 
@@ -938,7 +938,7 @@ const isMoney = (a) => {
       );
     }
 
-// 6) More stories (avoid overlap with Latest, AI & Business, and sidebars first)
+// 6) More stories (freshness-first; avoid overlap with Latest only)
       const moreStoriesCards = [];
       const moreStoriesSeen = new Set();
 
@@ -971,7 +971,6 @@ const isMoney = (a) => {
 
         return true;
       };
-      const aiBizKeys = new Set(aiBizFeedCards.map((a) => a?.id).filter(Boolean));
 
       const moreStoriesScore = (a) => {
         let score = 0;
@@ -993,15 +992,11 @@ const isMoney = (a) => {
       };
 
       // Pass 1: strict dedupe
-      for (const a of [...poolRanked].sort((a, b) => {
-        const dateDiff = safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at);
-        if (dateDiff !== 0) return dateDiff;
-        return moreStoriesScore(b) - moreStoriesScore(a);
-      })) {
+      for (const a of newestFirst) {
         if (moreStoriesCards.length >= 36) break;
         if (!isMoreStoriesAllowed(a)) continue;
         const k = articleKey(a);
-        if (!k || moreStoriesSeen.has(k) || latestKeys.has(k) || aiBizKeys.has(k) || sidebarKeys.has(k)) continue;
+        if (!k || moreStoriesSeen.has(k) || latestKeys.has(k)) continue;
         if (!isMoreStoriesAllowed(a)) continue;
         moreStoriesSeen.add(k);
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
@@ -1009,11 +1004,7 @@ const isMoney = (a) => {
 
       // Pass 2: only if still short, allow sidebar overlap
       if (moreStoriesCards.length < 12) {
-        for (const a of [...poolRanked].sort((a, b) => {
-          const scoreDiff = moreStoriesScore(b) - moreStoriesScore(a);
-          if (scoreDiff !== 0) return scoreDiff;
-          return safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at);
-        })) {
+        for (const a of newestFirst) {
           if (moreStoriesCards.length >= 36) break;
           if (!isMoreStoriesAllowed(a)) continue;
           const k = articleKey(a);
@@ -1322,7 +1313,7 @@ return (
             
             {Array.isArray(propertyFeed) && propertyFeed.length > 0 && (
               <LeadSection
-                title="Property & Tax"
+                title="Property"
                 badgeText="Property"
                 badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
                 items={propertyFeed.slice(0, 6)}

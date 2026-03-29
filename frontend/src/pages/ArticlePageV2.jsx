@@ -418,7 +418,7 @@ export default function ArticlePageV2({ categories }) {
           .filter((a) => a && (a.id || a._id) && String(a.id || a._id) !== String(articleId))
           .filter((a) => String(a.title || "").trim().length > 0);
 
-        if (mounted) setMoreStories(filterEditorialPool(cleaned));
+        if (mounted) setMoreStories(filterEditorialPool(cleaned).sort((a, b) => Date.parse(b?.publishedDate || b?.created_at || 0) - Date.parse(a?.publishedDate || a?.created_at || 0)));
       } catch (_) {
         // ignore
       }
@@ -435,8 +435,8 @@ export default function ArticlePageV2({ categories }) {
   const allMoreStoriesWithImages = moreStories.filter((a) => String(a?.image || "").trim());
   const allMoreStoriesWithoutImages = moreStories.filter((a) => !String(a?.image || "").trim());
   const visibleMoreStories = moreStoriesOpen
-    ? [...allMoreStoriesWithImages, ...allMoreStoriesWithoutImages].slice(0, 12)
-    : [...allMoreStoriesWithImages, ...allMoreStoriesWithoutImages].slice(0, collapsedCount);
+    ? moreStories.slice(0, 12)
+    : moreStories.slice(0, collapsedCount);
 
   const moreStoriesWithImages = visibleMoreStories.filter((a) => String(a?.image || "").trim());
   const moreStoriesWithoutImages = visibleMoreStories.filter((a) => !String(a?.image || "").trim());

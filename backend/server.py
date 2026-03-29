@@ -1363,12 +1363,14 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             sports_articles = [a for a in uk_with_images if a.get('category') == 'Sports']
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
             tech_articles = [a for a in uk_with_images if a.get('category') in ['Tech', 'AI', 'Science']]
+            finance_articles = [a for a in uk_with_images if a.get('category') in ['Finance', 'Tax']]
+            property_articles = [a for a in uk_with_images if a.get('category') == 'Property']
             uk_news_articles = [
                 a for a in uk_with_images
-                if a.get('category') in ['UK News', 'Money', 'Tax', 'Property', 'Property & Tax']
+                if a.get('category') == 'UK News'
             ]
             
-            logger.info(f"Found: {len(uk_news_articles)} UK/Money, {len(business_articles)} Business, {len(tech_articles)} Tech/AI, {len(sports_articles)} Sports")
+            logger.info(f"Found: {len(uk_news_articles)} UK, {len(finance_articles)} Finance/Tax, {len(property_articles)} Property, {len(business_articles)} Business, {len(tech_articles)} Tech/AI, {len(sports_articles)} Sports")
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
@@ -1460,18 +1462,36 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
                 return imported_count
             
-            # Import UK News articles
-            uk_imported = await import_category_articles(uk_news_articles, "UK News", request.uk_articles, "uk_imported")
+            finance_target = min(3, request.uk_articles)
+            property_target = min(2, max(0, request.uk_articles - finance_target))
+            uk_target = max(0, request.uk_articles - finance_target - property_target)
+
+            finance_imported = await import_category_articles(finance_articles, "Finance", finance_target, "finance_imported")
+            property_imported = await import_category_articles(property_articles, "Property", property_target, "property_imported")
+            uk_imported = await import_category_articles(uk_news_articles, "UK News", uk_target, "uk_imported")
+
+            if finance_imported < finance_target:
+                uk_imported += await import_category_articles(
+                    uk_news_articles,
+                    "UK News",
+                    finance_target - finance_imported,
+                    "uk_imported"
+                )
+
+            if property_imported < property_target:
+                uk_imported += await import_category_articles(
+                    uk_news_articles,
+                    "UK News",
+                    property_target - property_imported,
+                    "uk_imported"
+                )
             
             # Import Business articles (FREE from RSS)
             business_imported = await import_category_articles(business_articles, "Business", request.business_articles, "business_imported")
             
-            # Import Health articles (FREE from RSS)
             # Import Tech articles (FREE from RSS)
             tech_imported = await import_category_articles(tech_articles, "Tech", request.tech_articles, "tech_imported")
             
-            # Import Entertainment articles (FREE from RSS)
-            # Import Sports articles (limited to max_sports)
             # Sports import removed per editorial policy
             sports_imported = 0
         
@@ -1712,7 +1732,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 # Treat Local News as local even if scope is wrong
                 if scope == "cheshire" or cat == "Local News":
                     local.append(a)
-                elif cat in ["Business", "Finance", "Tax", "Money", "Property", "Property & Tax"]:
+                elif cat in ["Business", "Finance", "Tax", "Property"]:
                     business.append(a)
                 elif cat in ["Tech", "AI & Tech", "AI", "Technology"]:
                     ai.append(a)
@@ -2595,7 +2615,7 @@ async def get_articles(
             # Special handling for UK News - only show national sources
             elif category == 'UK News':
                 query['is_local_source'] = False
-                query['category'] = {'$in': ['UK News', 'Money', 'Tax', 'Property', 'Property & Tax', 'Tech', 'AI', 'Science']}
+                query['category'] = {'$in': ['UK News', 'Finance', 'Tax', 'Property', 'Tech', 'AI', 'Science']}
             else:
                 query['category'] = category
         
