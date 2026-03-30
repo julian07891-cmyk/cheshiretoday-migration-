@@ -10491,9 +10491,22 @@ async def cap_visible_articles(keep: int = 200):
         ).to_list(10000)
         priority_ids = [d.get("_id") for d in priority_ids_docs if d.get("_id")]
 
-        # Newest N ids
-        newest = await db.articles.find({}, {"_id": 1}).sort("publishedDate", -1).limit(keep).to_list(keep)
-        newest_ids = [d.get("_id") for d in newest if d.get("_id")]
+        # Newest N ids by hybrid freshness: keep stories fresh for the site
+        # without losing original source publication dates elsewhere.
+        candidates = await db.articles.find({}, {"_id": 1, "publishedDate": 1, "created_at": 1}).to_list(10000)
+
+        def _dt(v):
+            if isinstance(v, datetime):
+                return v if v.tzinfo else v.replace(tzinfo=timezone.utc)
+            if not v:
+                return datetime.fromtimestamp(0, tz=timezone.utc)
+            try:
+                return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+            except Exception:
+                return datetime.fromtimestamp(0, tz=timezone.utc)
+
+        candidates.sort(key=lambda d: max(_dt(d.get("publishedDate")), _dt(d.get("created_at"))), reverse=True)
+        newest_ids = [d.get("_id") for d in candidates[:keep] if d.get("_id")]
 
         keep_ids = list({*priority_ids, *newest_ids})
 
