@@ -3012,6 +3012,8 @@ async def get_articles(
                     # Re-apply homepage noise and sensitive-story filters to fallback items
                     if a.get("is_local_source") is not True and UK_FILTER_NOISE and is_noise_uk(a):
                         continue
+                    if UK_FILTER_NOISE and is_editorial_noise(a):
+                        continue
 
                     kind = classify_sensitive(a)
                     title_l = (a.get("title") or "").lower()
