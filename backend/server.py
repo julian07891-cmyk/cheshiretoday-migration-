@@ -2677,7 +2677,7 @@ async def get_articles(
             # UK homepage noise filter (removes sport/video/tabloid-politics filler from 'all' feed)
             # Toggle: UK_FILTER_NOISE=0 to disable.
             UK_FILTER_NOISE = os.getenv("UK_FILTER_NOISE", "1") not in ("0", "false", "False")
-            if UK_FILTER_NOISE and uk_articles:
+            if UK_FILTER_NOISE and (uk_articles or local_articles):
                 import re
                 econ_hint = re.compile(
                     r"\b(tax|budget|inflation|interest\s*rate|rates|mortgage|rent|wages|jobs|growth|economy|economic|"
@@ -2728,6 +2728,42 @@ async def get_articles(
                     return False
 
                 uk_articles = [a for a in uk_articles if not is_noise_uk(a)]
+
+                def is_editorial_noise(a: dict) -> bool:
+                    cat = (a.get("category") or "").lower()
+                    src = (a.get("source") or "").lower()
+                    url = (a.get("source_url") or "").lower()
+                    title = (a.get("title") or "").lower()
+                    summary = (a.get("summary") or "").lower()
+                    text_meta = f"{title} {summary}"
+
+                    # Audio / podcasts / videos
+                    if "/audio/" in url or "podcast" in title or "podcast" in summary:
+                        return True
+                    if "/video" in url or "/watch/" in url or "watch video" in title:
+                        return True
+
+                    # Letters / cartoons / opinion-style filler
+                    if re.search(r"\b(letter|letters|cartoon|opinion|editorial)\b", title, re.I):
+                        return True
+
+                    # Entertainment / celebrity / culture leakage that does not fit live news mix
+                    if re.search(
+                        r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|concert|album|music\s*video|bts|kris jenner|kardashian)\b",
+                        text_meta,
+                        re.I,
+                    ):
+                        return True
+
+                    # Off-brand science / tech / business filler
+                    if cat in {"science", "tech", "business", "uk news"}:
+                        if re.search(r"\b(letter|letters|cartoon|podcast)\b", text_meta, re.I):
+                            return True
+
+                    return False
+
+                local_articles = [a for a in local_articles if not is_editorial_noise(a)]
+                uk_articles = [a for a in uk_articles if not is_editorial_noise(a)]
 
             # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
             # Keeps crime-like stories to a very low cap in the TOP feed (default 1).
