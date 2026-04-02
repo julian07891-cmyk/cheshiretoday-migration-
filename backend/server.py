@@ -11545,7 +11545,7 @@ async def startup_event():
         # 3. Start Scheduler
         scheduler.add_job(
             daily_article_generation,
-            CronTrigger(hour=6, minute=0),  # Morning: 6:00 AM
+            CronTrigger(hour=6, minute=0, timezone=ZoneInfo("Europe/London")),  # Morning: 6:00 AM
             id='morning_article_generation',
             name='Generate morning news articles',
             replace_existing=True,
@@ -11554,7 +11554,7 @@ async def startup_event():
         
         scheduler.add_job(
             daily_article_generation,
-            CronTrigger(hour=12, minute=0),  # Midday: 12:00 PM
+            CronTrigger(hour=12, minute=0, timezone=ZoneInfo("Europe/London")),  # Midday: 12:00 PM
             id='midday_article_generation',
             name='Generate midday news articles',
             replace_existing=True,
@@ -11563,7 +11563,7 @@ async def startup_event():
         
         scheduler.add_job(
             daily_article_generation,
-            CronTrigger(hour=18, minute=0),  # Evening: 6:00 PM
+            CronTrigger(hour=18, minute=0, timezone=ZoneInfo("Europe/London")),  # Evening: 6:00 PM
             id='evening_article_generation',
             name='Generate evening news articles',
             replace_existing=True,
@@ -11579,7 +11579,7 @@ async def startup_event():
         # The Daily Brief - Monday to Saturday at 07:30 AM
         scheduler.add_job(
             send_scheduled_news_digest,
-            CronTrigger(day_of_week='mon-sat', hour=7, minute=30),
+            CronTrigger(day_of_week='mon-sat', hour=7, minute=30, timezone=ZoneInfo("Europe/London")),
             id='daily_brief',
             name='Send The Daily Brief (Mon-Sat 07:30 AM)',
             replace_existing=True,
@@ -11589,19 +11589,10 @@ async def startup_event():
         # The Weekly Roundup - Every Sunday at 09:00 AM
         scheduler.add_job(
             send_weekly_roundup_email,
-            CronTrigger(day_of_week='sun', hour=9, minute=0),
+            CronTrigger(day_of_week='sun', hour=9, minute=0, timezone=ZoneInfo("Europe/London")),
             id='weekly_roundup',
             name='Send The Weekly Roundup (Sunday 09:00 AM)',
             replace_existing=True
-        )
-
-        scheduler.add_job(
-            bulk_archive_articles,
-            CronTrigger(hour=1, minute=30),
-            id='daily_archive_old_articles',
-            name='Archive articles older than 14 days',
-            replace_existing=True,
-            kwargs={'payload': {'days_old': 14}, 'auth': True}
         )
         
         # OLD SCHEDULE DISABLED - Keeping commented for reference
