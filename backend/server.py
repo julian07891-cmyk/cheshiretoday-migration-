@@ -10639,12 +10639,9 @@ async def daily_article_generation(count: int = 12):
             pass
         
         # Clean up old articles (independent of generation)
-        try:
-            await cleanup_old_articles()
-        except Exception as cleanup_error:
-            logger.error(f"Error during cleanup: {str(cleanup_error)}")
-            # Continue even if cleanup fails
-            pass
+        # Automatic hard-delete cleanup disabled.
+        # Old source publication dates can cause newly imported stories to be deleted.
+        # Keep manual/admin cleanup only until a safer archive-based policy replaces this.
         
         logger.info("Daily article generation process completed")
         
