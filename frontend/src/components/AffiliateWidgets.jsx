@@ -253,7 +253,49 @@ const useAffiliateProducts = (category, count, offset = 0) => {
 export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
   const { products, loaded } = useAffiliateProducts(category, 2);
   
-  if (!loaded || products.length === 0) {
+  if (!loaded) {
+    return (
+      <div
+        className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-gray-800 dark:to-gray-900 rounded-xl border-2 border-amber-200 dark:border-amber-900/50 p-5 shadow-lg min-h-[540px]"
+        data-testid="affiliate-sidebar"
+      >
+        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-amber-200 dark:border-gray-700">
+          <div className="bg-amber-500 p-2 rounded-lg">
+            <ShoppingBag className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 dark:text-white text-lg">Top Picks</h3>
+            <p className="text-xs text-amber-700 dark:text-amber-300">Handpicked for you</p>
+          </div>
+          <Badge className="ml-auto bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">Ad</Badge>
+        </div>
+
+        <div className="space-y-4">
+          {[0, 1].map((idx) => (
+            <div
+              key={idx}
+              className="block bg-white dark:bg-gray-700 rounded-xl overflow-hidden shadow-md"
+            >
+              <div className="aspect-[4/3] bg-gray-200 dark:bg-gray-600 animate-pulse" />
+              <div className="p-4">
+                <div className="h-4 rounded bg-gray-200 dark:bg-gray-600 animate-pulse mb-2" />
+                <div className="h-4 rounded bg-gray-200 dark:bg-gray-600 animate-pulse mb-3 w-5/6" />
+                <div className="h-3 rounded bg-gray-200 dark:bg-gray-600 animate-pulse mb-3 w-1/2" />
+                <div className="flex items-center justify-between">
+                  <div className="h-6 rounded bg-gray-200 dark:bg-gray-600 animate-pulse w-20" />
+                  <div className="h-7 rounded-full bg-gray-200 dark:bg-gray-600 animate-pulse w-24" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="h-3 rounded bg-gray-200 dark:bg-gray-600 animate-pulse mt-4 w-2/3 mx-auto" />
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
     return null;
   }
   

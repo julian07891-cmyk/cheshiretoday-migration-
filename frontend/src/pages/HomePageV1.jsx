@@ -219,7 +219,7 @@ const navigate = useNavigate();
         setLoading(true);
         setErr("");
 
-        const res = await fetch(getApiUrl() + "/api/articles?limit=200&with_total=1&include_archived=true");
+        const res = await fetch(getApiUrl() + "/api/articles?limit=80");
         if (!res.ok) throw new Error(`API ${res.status}`);
 
         const data = await res.json();
@@ -1071,7 +1071,77 @@ return (
     <ErrorBoundary><HomepageLayout>
       <HomepageHeader breakingStories={[]} categories={headerCategories} activeCategory={activeHeaderCategory} onCategoryChange={handleHeaderCategoryChange} />
 
-      {loading && <div className="py-6">Loading…</div>}
+      {loading && (
+        <div className="mt-4 animate-pulse">
+          <section>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+              <div className="lg:col-span-8 flex flex-col">
+                <div className="w-full aspect-[16/9] md:aspect-[4/3] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
+                <div className="mt-4 h-20 max-w-[720px] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
+              </div>
+              <aside className="lg:col-span-4 h-full">
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 h-full">
+                  <div className="h-5 w-28 rounded bg-slate-200/70 dark:bg-gray-800 mb-4" />
+                  <div className="space-y-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex gap-3 rounded-xl border border-slate-200/50 dark:border-gray-800 p-4 min-h-[148px]">
+                        <div className="h-20 w-28 flex-none rounded-md bg-slate-200/70 dark:bg-gray-800" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-full rounded bg-slate-200/70 dark:bg-gray-800" />
+                          <div className="h-4 w-5/6 rounded bg-slate-200/70 dark:bg-gray-800" />
+                          <div className="h-3 w-2/3 rounded bg-slate-200/70 dark:bg-gray-800" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-6">
+            <main className="lg:col-span-8 lg:-mt-4">
+              <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                <div className="h-5 w-24 rounded bg-slate-200/70 dark:bg-gray-800 mb-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+                      <div className="h-44 md:h-48 bg-slate-200/70 dark:bg-gray-800" />
+                      <div className="p-4 space-y-3">
+                        <div className="h-5 w-full rounded bg-slate-200/70 dark:bg-gray-800" />
+                        <div className="h-5 w-3/4 rounded bg-slate-200/70 dark:bg-gray-800" />
+                        <div className="h-4 w-1/2 rounded bg-slate-200/70 dark:bg-gray-800" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </main>
+
+            <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 self-start">
+              <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24 self-start h-fit">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                    <div className="h-5 w-24 rounded bg-slate-200/70 dark:bg-gray-800 mb-4" />
+                    <div className="space-y-3">
+                      {Array.from({ length: 2 }).map((__, j) => (
+                        <div key={j} className="rounded-lg overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
+                          <div className="h-40 bg-slate-200/70 dark:bg-gray-800" />
+                          <div className="p-4 space-y-3">
+                            <div className="h-4 w-full rounded bg-slate-200/70 dark:bg-gray-800" />
+                            <div className="h-4 w-5/6 rounded bg-slate-200/70 dark:bg-gray-800" />
+                            <div className="h-3 w-1/2 rounded bg-slate-200/70 dark:bg-gray-800" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </div>
+        </div>
+      )}
       {!loading && err && <div className="py-6 text-red-600">{err}</div>}
 
       {!loading && !err && (
