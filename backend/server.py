@@ -22,6 +22,7 @@ from openai import OpenAI
 import random
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from zoneinfo import ZoneInfo
 import asyncio
 from pathlib import Path
 import sys
@@ -10479,7 +10480,7 @@ def sanitize_rss_text(text: str, source_url: str = "") -> str:
 
 
 # Initialize scheduler
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone=ZoneInfo("Europe/London"))
 
 async def cleanup_old_articles():
     """
