@@ -11551,7 +11551,7 @@ async def startup_event():
             id='morning_article_generation',
             name='Generate morning news articles',
             replace_existing=True,
-            args=[4]
+            args=[8]
         )
         
         scheduler.add_job(
@@ -11560,7 +11560,7 @@ async def startup_event():
             id='midday_article_generation',
             name='Generate midday news articles',
             replace_existing=True,
-            args=[4]
+            args=[8]
         )
         
         scheduler.add_job(
@@ -11569,7 +11569,7 @@ async def startup_event():
             id='evening_article_generation',
             name='Generate evening news articles',
             replace_existing=True,
-            args=[4]
+            args=[8]
         )
         
         # ============================================
