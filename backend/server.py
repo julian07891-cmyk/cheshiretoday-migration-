@@ -3127,28 +3127,6 @@ async def get_articles(
             content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', content, flags=re.IGNORECASE)
             return content.strip()
 
-        def normalize_feed_image(raw_img):
-            img = str(raw_img).strip() if raw_img else ''
-            if not img:
-                return img
-            if '/ALTERNATES/s615/' in img:
-                img = img.replace('/ALTERNATES/s615/', '/ALTERNATES/s1200/')
-            if '/ALTERNATES/s615b/' in img:
-                img = img.replace('/ALTERNATES/s615b/', '/ALTERNATES/s1200/')
-            if '/ALTERNATES/s810/' in img:
-                img = img.replace('/ALTERNATES/s810/', '/ALTERNATES/s1200/')
-            if 'i.guim.co.uk' in img and 'width=140' in img:
-                img = img.replace('width=140', 'width=1200')
-            if 'i.guim.co.uk' in img and 'width=240' in img:
-                img = img.replace('width=240', 'width=1200')
-            if 'ichef.bbci.co.uk' in img and '/240/' in img:
-                img = img.replace('/240/', '/1024/')
-            if 'ichef.bbci.co.uk' in img and '/320/' in img:
-                img = img.replace('/320/', '/1024/')
-            if 'ichef.bbci.co.uk' in img and '/480/' in img:
-                img = img.replace('/480/', '/1024/')
-            return img
-        
         # Import Cheshire priority functions
         from app.news_feed_service import is_priority_cheshire_article, is_secondary_cheshire_article, get_article_priority_location
         
@@ -3179,8 +3157,6 @@ async def get_articles(
             if 'content' in article:
                 article['content'] = clean_word_count(article['content'])
 
-            if article.get('image'):
-                article['image'] = normalize_feed_image(article.get('image'))
             
             # Add Cheshire priority flags and normalize live category/location metadata
             title = article.get('title', '')
