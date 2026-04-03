@@ -3126,6 +3126,28 @@ async def get_articles(
             content = re.sub(r'\s*\(Character count:?\s*\d+\)', '', content, flags=re.IGNORECASE)
             content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', content, flags=re.IGNORECASE)
             return content.strip()
+
+        def normalize_feed_image(raw_img):
+            img = str(raw_img).strip() if raw_img else ''
+            if not img:
+                return img
+            if '/ALTERNATES/s615/' in img:
+                img = img.replace('/ALTERNATES/s615/', '/ALTERNATES/s1200/')
+            if '/ALTERNATES/s615b/' in img:
+                img = img.replace('/ALTERNATES/s615b/', '/ALTERNATES/s1200/')
+            if '/ALTERNATES/s810/' in img:
+                img = img.replace('/ALTERNATES/s810/', '/ALTERNATES/s1200/')
+            if 'i.guim.co.uk' in img and 'width=140' in img:
+                img = img.replace('width=140', 'width=1200')
+            if 'i.guim.co.uk' in img and 'width=240' in img:
+                img = img.replace('width=240', 'width=1200')
+            if 'ichef.bbci.co.uk' in img and '/240/' in img:
+                img = img.replace('/240/', '/1024/')
+            if 'ichef.bbci.co.uk' in img and '/320/' in img:
+                img = img.replace('/320/', '/1024/')
+            if 'ichef.bbci.co.uk' in img and '/480/' in img:
+                img = img.replace('/480/', '/1024/')
+            return img
         
         # Import Cheshire priority functions
         from app.news_feed_service import is_priority_cheshire_article, is_secondary_cheshire_article, get_article_priority_location
@@ -3156,6 +3178,9 @@ async def get_articles(
             # Clean word count from content
             if 'content' in article:
                 article['content'] = clean_word_count(article['content'])
+
+            if article.get('image'):
+                article['image'] = normalize_feed_image(article.get('image'))
             
             # Add Cheshire priority flags and normalize live category/location metadata
             title = article.get('title', '')
@@ -10362,9 +10387,26 @@ from fastapi.responses import FileResponse, Response
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"
 _INDEX_HTML = _FRONTEND_DIR / "index.html"
 
+def _spa_file_response(path: Path):
+    rel = path.relative_to(_FRONTEND_DIR).as_posix()
+    headers = {}
+
+    if rel == "index.html":
+        headers["Cache-Control"] = "public, max-age=0, must-revalidate"
+    elif rel.startswith("static/"):
+        name = path.name
+        parts = name.split(".")
+        hash_part = parts[-2].lower() if len(parts) >= 3 else ""
+        is_hashed = len(hash_part) >= 8 and all(ch in "0123456789abcdef" for ch in hash_part)
+        headers["Cache-Control"] = "public, max-age=31536000, immutable" if is_hashed else "public, max-age=3600"
+    else:
+        headers["Cache-Control"] = "public, max-age=3600"
+
+    return FileResponse(str(path), headers=headers)
+
 def _spa_index_or_500():
     if _INDEX_HTML.is_file():
-        return FileResponse(str(_INDEX_HTML))
+        return _spa_file_response(_INDEX_HTML)
     raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
 
 @app.get("/")
@@ -10373,7 +10415,7 @@ async def serve_spa_root():
 
 @app.head("/")
 async def head_spa_root():
-    return Response(status_code=200)
+    return _spa_index_or_500()
 
 @app.get("/{full_path:path}")
 async def serve_react_spa(full_path: str):
@@ -10381,14 +10423,17 @@ async def serve_react_spa(full_path: str):
         raise HTTPException(status_code=404, detail="Not Found")
     candidate = (_FRONTEND_DIR / full_path)
     if candidate.is_file():
-        return FileResponse(str(candidate))
+        return _spa_file_response(candidate)
     return _spa_index_or_500()
 
 @app.head("/{full_path:path}")
 async def head_react_spa(full_path: str):
     if full_path.startswith("api/") or full_path == "api":
         raise HTTPException(status_code=404, detail="Not Found")
-    return Response(status_code=200)
+    candidate = (_FRONTEND_DIR / full_path)
+    if candidate.is_file():
+        return _spa_file_response(candidate)
+    return _spa_index_or_500()
 
 
 # Add GZip compression middleware for faster response delivery

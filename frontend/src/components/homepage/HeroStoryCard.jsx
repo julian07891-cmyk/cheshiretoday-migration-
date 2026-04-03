@@ -22,6 +22,10 @@ export default function HeroStoryCard({
               alt={headline}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="eager"
+              fetchPriority="high"
+              decoding="sync"
+              width="1200"
+              height="675"
               onError={() => setShowImage(false)}
             />
           </div>
