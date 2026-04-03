@@ -37,7 +37,8 @@ export const articleService = {
       // Fetch all articles and filter client-side for now
       // In production, you'd want a dedicated search endpoint
       const response = await apiClient.get('/articles', { params: { limit: 100 } });
-      const articles = response.data;
+      const data = response.data;
+      const articles = Array.isArray(data) ? data : (data?.articles || []);
       const searchLower = query.toLowerCase();
       
       return articles.filter(article => 

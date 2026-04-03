@@ -5,6 +5,7 @@ import FestiveBanner from './FestiveBanner';
 import WeatherWidget from './WeatherWidget';
 import DarkModeToggle from './DarkModeToggle';
 import { articleService } from '../services/api';
+import { buildArticleUrl } from '../utils/articleUrl';
 
 const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange, onArticleClick }) => {
   // Top-nav should be minimal (homepage focus). Keep other categories available elsewhere.
@@ -71,6 +72,8 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
   const handleSearchResultClick = (article) => {
     if (onArticleClick) {
       onArticleClick(article);
+    } else {
+      window.location.href = buildArticleUrl(article);
     }
     setSearchOpen(false);
     setSearchQuery('');
