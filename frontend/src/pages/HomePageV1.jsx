@@ -103,6 +103,7 @@ function toCard(a, fallbackId, overrides = {}) {
     category: a?.category || "Local News",
     town: a?.location || "Cheshire",
     publishedDate: a?.publishedDate || "",
+    created_at: a?.created_at || "",
     url: buildArticleUrl(a),
     readTime: 3,
     ...overrides,
@@ -690,7 +691,7 @@ const navigate = useNavigate();
     const latestPreviewKeys = (() => {
       const keys = new Set();
       for (const a of newestFirst) {
-        if (keys.size >= 12) break;
+        if (keys.size >= 4) break;
         const k = articleKey(a);
         if (!k || keys.has(k)) continue;
         keys.add(k);
@@ -730,7 +731,7 @@ const isMoney = (a) => {
     };
 
     const sectionFreshPool = [...poolRanked].sort((a, b) => {
-      const dateDiff = safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at);
+      const dateDiff = safeDateMs(b?.created_at || b?.publishedDate) - safeDateMs(a?.created_at || a?.publishedDate);
       if (dateDiff !== 0) return dateDiff;
       return rankScore(b) - rankScore(a);
     });
@@ -779,7 +780,7 @@ const isMoney = (a) => {
     }
 
 
-    financeArticles.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
+    financeArticles.sort((a,b)=> new Date(b.created_at||b.publishedDate||b.date||0)-new Date(a.created_at||a.publishedDate||a.date||0));
 
 // 4a) Business (3) — business-first, exclude AI and exclude used
     const businessFeed = [];
@@ -857,7 +858,7 @@ const isMoney = (a) => {
     }
 
 
-    businessFeed.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
+    businessFeed.sort((a,b)=> new Date(b.created_at||b.publishedDate||b.date||0)-new Date(a.created_at||a.publishedDate||a.date||0));
     moneyFeed.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
     propertyFeed.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
 
@@ -923,7 +924,7 @@ const isMoney = (a) => {
       return /\b(tax|hmrc|vat|budget|inflation|interest\s*rate|rates|mortgage|remortgage|savings|isa|credit\s*card|bank|housing|property|planning|jobs?|wages?|salary|benefits?|energy|transport|ofcom|payment|payments)\b/.test(t);
     };
 
-    for (const a of poolRanked) {
+    for (const a of sectionFreshPool) {
       if (aiBizFeedCards.length >= 36) break;
       if (!isAiBiz(a)) continue;
       const k = articleKey(a);
