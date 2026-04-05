@@ -1348,6 +1348,15 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 r"(murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|rape(?:d)?|sexual assault|\bassault(?:ed|s)?\b|\battack(?:ed|s)?\b|robber(?:y|ies)|burglar(?:y|ies)|arson|charged|prosecut(?:ed|ion)|trial|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)", re.I, )
             return bool(crime_kw.search(text))
 
+        def is_obituary_like(article: dict) -> bool:
+            title = (article.get("title") or "").lower()
+            obituary_kw = re.compile(
+                r"(death notices?|funeral notices?|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)",
+                re.I,
+            )
+            return bool(obituary_kw.search(title))
+
+
 
         if request.uk_articles > 0:
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
@@ -1391,6 +1400,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
                     # Exclude Manchester sources entirely
                     if is_manchester_source(article):
+                        continue
+
+                    # Hard block obituary / memorial notice-style content
+                    if is_obituary_like(article):
                         continue
 
                     # Keep crime-like content to a very low cap
