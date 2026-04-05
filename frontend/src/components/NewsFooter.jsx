@@ -1,5 +1,5 @@
 import React from 'react';
-import { Facebook, Twitter, Instagram, Youtube, Mail, Settings, MapPin } from 'lucide-react';
+import { Mail, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { newsletterService } from '../services/api';
 
@@ -126,20 +126,7 @@ const NewsFooter = () => {
             <p className="text-sm text-neutral-600 dark:text-slate-400 dark:text-slate-400 mb-4">
               Cheshire’s local economic intelligence platform covering local news, business, finance and AI & tech.
             </p>
-            <div className="flex space-x-4 pt-1">
-              <a href="#" className="hover:text-emerald-400 transition-colors">
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-emerald-400 transition-colors">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-emerald-400 transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" className="hover:text-emerald-400 transition-colors">
-                <Youtube className="h-5 w-5" />
-              </a>
-            </div>
+            {/* Social links intentionally hidden until real public profile URLs are confirmed */}
           </div>
 
           {/* Footer Links */}
@@ -175,9 +162,9 @@ const NewsFooter = () => {
                   
                   return (
                     <li key={link}>
-                      <a href="#" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">
+                      <span className="text-sm text-neutral-500 dark:text-slate-400">
                         {link}
-                      </a>
+                      </span>
                     </li>
                   );
                 })}
