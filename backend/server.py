@@ -10863,8 +10863,8 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         if invalid_emails:
             logger.warning(f"Skipping {len(invalid_emails)} invalid emails: {invalid_emails[:5]}...")
         
-        subscriber_emails = unique_emails
-        logger.info(f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief")
+        subscriber_emails = unique_emails[:250]
+        logger.info(f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief first batch (from {len(unique_emails)} unique)")
         
         # Get latest articles (published in last 24 hours for variety)
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -11166,8 +11166,8 @@ async def send_weekly_roundup_email():
             await db.scheduler_locks.delete_one({"job": lock_key})
             return
         
-        subscriber_emails = [s.get('email') for s in subscribers if s.get('email')]
-        logger.info(f"Found {len(subscriber_emails)} subscribers for Weekly Roundup")
+        subscriber_emails = [s.get('email') for s in subscribers if s.get('email')][:250]
+        logger.info(f"Found {len(subscriber_emails)} subscribers for Weekly Roundup first batch")
         
         # Get top performing articles from the past week (by view_count)
         one_week_ago = now - timedelta(days=7)
