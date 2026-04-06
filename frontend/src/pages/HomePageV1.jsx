@@ -302,10 +302,41 @@ const navigate = useNavigate();
     // Editorial policy pool (filters out pure crime/sensational unless public-interest)
     const pool = (Array.isArray(newestFirst) ? newestFirst : []).filter(isAllowedByPolicy);
     const editorialPool = filterEditorialPool(Array.isArray(newestFirst) ? newestFirst : []);
+
+    const isStrategicHomepageStory = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+
+      // Hard-block obvious entertainment / celebrity / lifestyle filler
+      if (/\b(celebrity|showbiz|love\s+island|netflix|movie|film|tv\b|album|concert|music\s+video|book\s+launch|novel|bts)\b/.test(t)) return false;
+      if (cat.includes("entertainment")) return false;
+
+      // Hard-block shopping/review/listicle filler that belongs in guides, not the live homepage news feed
+      if (/\b(best\b|buying\s+guide|tried\s+and\s+tested|tasted\s+and\s+rated|reviewed\s+and\s+rated|top\s+picks|bean-to-cup|pressure\s+washer|hot\s+chocolate|easter\s+eggs?|supermarket\s+easter)\b/.test(t)) return false;
+      if (/\b(collectible|coffee\s+machines?)\b/.test(t)) return false;
+
+      // Hard-block soft lifestyle / local leisure fluff
+      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|pub|cafe|bar|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale)\b/.test(t)) return false;
+
+      // Hard-block abstract astronomy/science unless it has clear AI/tech/business relevance
+      if (/\b(artemis|nasa|moon|space|planet|earth|boötes|bootes|herdsman|constellation|astronomy|scientists?|researchers?|study\s+finds?)\b/.test(t)) {
+        if (!isAiTech(a) && !/\b(chip|gpu|ai|tech|cyber|robot|automation|business|market|investment|valuation|funding|company|shares?)\b/.test(t)) {
+          return false;
+        }
+      }
+
+      // Hard-block tragedy / emotional human-interest filler unless there is direct public-impact utility
+      if (/\b(devastated\s+mum|heartbreaking|touching\s+tribute|emotional\s+message)\b/.test(t)) {
+        if (!/\b(cost|bills?|benefits?|housing|jobs?|tax|nhs|school|planning|transport|energy)\b/.test(t)) return false;
+      }
+
+      return true;
+    };
     // ---- 40/40/20 RATIO ENFORCEMENT (Local / Authority / UK) ----
     // This ONLY reorders the pool used for homepage slot selection.
     // It does not change rendering/layout and preserves recency within each pillar.
-    const basePool = editorialPool.length ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []);
+    const strategicPool = editorialPool.filter(isStrategicHomepageStory);
+    const basePool = strategicPool.length ? strategicPool : (editorialPool.length ? editorialPool : (Array.isArray(newestFirst) ? newestFirst : []));
 
     const lowerText = (a) =>
       (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
@@ -869,29 +900,70 @@ const isMoney = (a) => {
 
 
 
-// 5) Latest feed (12) — strict newest-to-oldest
+// 5) Latest feed (12) — balanced mix for Cheshire Today strategy (dedupe-safe)
+    // Target: 4 Local, 4 Business/Finance, 3 AI/Tech, 1 UK (newest-first within each bucket)
     const latestCards = [];
     const latestSeen = new Set();
 
-    for (const a of newestFirst) {
-      if (latestCards.length >= 12) break;
+    const isUkishLatest = (a) => {
+      const cat = String(a?.category || "").toLowerCase();
+      const scope = String(a?.scope || "").toLowerCase();
+      return cat.includes("uk") || scope === "uk";
+    };
+
+    const pushLatest = (a, overrideCategory = null) => {
+      if (latestCards.length >= 12) return;
 
       const k = articleKey(a);
-      if (!k || latestSeen.has(k)) continue;
+      if (!k) return;
+      if (latestSeen.has(k)) return;
       latestSeen.add(k);
 
-      const resolvedCategory = getDisplayCategoryForPillar(a);
-
+      // Latest should not consume the shared homepage dedupe pool.
       latestCards.push(
-        toCard(
-          a,
-          `latest-${latestCards.length}`,
-          selectedCategory === "All" && resolvedCategory ? { category: resolvedCategory } : {}
-        )
+        toCard(a, `latest-${latestCards.length}`, overrideCategory ? { category: overrideCategory } : {})
       );
+    };
+
+    // Pass 1: Local (4)
+    for (const a of poolAll) {
+      if (latestCards.length >= 4) break;
+      if (!isLocal(a)) continue;
+      if (isAiTech(a)) continue;
+      pushLatest(a, "Local News");
+    }
+
+    // Pass 2: Business/Finance (4)
+    for (const a of poolAll) {
+      if (latestCards.length >= 8) break;
+      if (isAiTech(a)) continue;
+      if (!isBusiness(a) && !isMoney(a)) continue;
+      pushLatest(a, "Business");
+    }
+
+    // Pass 3: AI/Tech (3)
+    for (const a of poolAll) {
+      if (latestCards.length >= 11) break;
+      if (!isAiTech(a)) continue;
+      pushLatest(a, "AI & Tech");
+    }
+
+    // Pass 4: UK (1)
+    for (const a of poolAll) {
+      if (latestCards.length >= 12) break;
+      if (!isUkishLatest(a)) continue;
+      if (isLocal(a)) continue;
+      pushLatest(a, "UK News");
+    }
+
+    // Safety fill
+    for (const a of poolAll) {
+      if (latestCards.length >= 12) break;
+      pushLatest(a);
     }
 
     const latestKeys = new Set(latestCards.map((a) => a?.id).filter(Boolean));
+
     const sidebarKeys = new Set([
       ...aiArticles.map((a) => a?.id).filter(Boolean),
       ...businessFeed.map((a) => a?.id).filter(Boolean),
