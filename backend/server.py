@@ -7680,8 +7680,8 @@ async def send_digest_now():
                 seen_emails.add(email)
                 unique_emails.append(s.get('email'))  # Keep original case
         
-        subscriber_emails = unique_emails
-        logger.info(f"DIGEST: Found {len(subscriber_emails)} unique subscriber emails (from {len(subscribers)} total)")
+        subscriber_emails = unique_emails[:250]
+        logger.info(f"DIGEST: Using first-batch cap of {len(subscriber_emails)} subscriber emails (from {len(unique_emails)} unique / {len(subscribers)} total)")
         
         # Get latest articles with deduplication by title
         pipeline = [
