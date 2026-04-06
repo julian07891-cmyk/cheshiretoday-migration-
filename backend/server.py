@@ -7754,14 +7754,78 @@ async def send_digest_now():
                 seen_keywords.append(title_keywords)
                 unique_articles.append(article)
         
-        local_news = [a for a in unique_articles if is_local(a)]
-        sports_news = [a for a in unique_articles if is_sports(a)]
-        other_news = [a for a in unique_articles if not is_local(a) and not is_sports(a)]
-        
-        sorted_articles = local_news + other_news + sports_news[:2]
-        sorted_articles = sorted_articles[:10]
-        
-        logger.info(f"Digest: {len(local_news)} local, {len(other_news)} other, {len(sports_news)} sports (max 2 used), sending {len(sorted_articles)} total")
+        towns = [
+            'cheshire','chester','crewe','warrington','wilmslow','knutsford','macclesfield',
+            'northwich','winsford','nantwich','ellesmere port','sandbach','middlewich','congleton'
+        ]
+
+        def _is_local(article):
+            category = (article.get('category','') or '').lower()
+            title = (article.get('title','') or '').lower()
+            content = (article.get('content','') or '').lower()[:500]
+            return any(k in category for k in ['local','cheshire']) or any(t in title or t in content for t in towns)
+
+        def _is_business(article):
+            category = (article.get('category','') or '').lower()
+            title = (article.get('title','') or '').lower()
+            return (
+                any(k in category for k in ['business','finance','economy','property'])
+                or any(k in title for k in ['finance','mortgage','rates','tax','budget','inflation','jobs','housing','market'])
+            )
+
+        def _is_tech(article):
+            category = (article.get('category','') or '').lower()
+            title = (article.get('title','') or '').lower()
+
+            banned_keywords = [
+                'game','gaming','xbox','playstation','nintendo',
+                'resident evil','horror','celebrity','showbiz'
+            ]
+            if any(b in title for b in banned_keywords):
+                return False
+
+            keywords = [
+                'ai','artificial intelligence','chatgpt','openai','gemini','deepmind',
+                'machine learning','ml','automation','robot','cyber','security',
+                'data','digital','software','startup','nvidia','microsoft',
+                'google','apple','tesla','chip','semiconductor','cloud',
+                'enterprise','infrastructure','data centre'
+            ]
+
+            return (
+                any(k in category for k in ['tech','technology','ai'])
+                or any(k in title for k in keywords)
+            )
+
+        def _is_banned(article):
+            category = (article.get('category','') or '').lower()
+            return category in ['sports','sport','entertainment','celebrity','showbiz']
+
+        local_bucket = []
+        business_bucket = []
+        tech_bucket = []
+        national_bucket = []
+
+        for a in unique_articles:
+            if _is_banned(a):
+                continue
+            if _is_local(a):
+                local_bucket.append(a)
+            elif _is_business(a):
+                business_bucket.append(a)
+            elif _is_tech(a):
+                tech_bucket.append(a)
+            else:
+                national_bucket.append(a)
+
+        local_bucket = local_bucket[:3]
+        business_bucket = business_bucket[:2]
+        tech_bucket = tech_bucket[:1]
+        national_bucket = national_bucket[:2]
+
+        sorted_articles = (local_bucket + business_bucket + tech_bucket + national_bucket)[:10]
+
+        logger.info(f"Manual digest: {len(sorted_articles)} articles (local={len(local_bucket)}, business={len(business_bucket)}, tech={len(tech_bucket)}, national={len(national_bucket)})")
         
         # Send Daily Brief (new format) instead of old digest
         result = email_service.send_daily_brief(
