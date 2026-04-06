@@ -308,15 +308,15 @@ const navigate = useNavigate();
       const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
 
       // Hard-block obvious entertainment / celebrity / lifestyle filler
-      if (/\b(celebrity|showbiz|love\s+island|netflix|movie|film|tv\b|album|concert|music\s+video|book\s+launch|novel|bts)\b/.test(t)) return false;
+      if (/\b(celebrity|showbiz|love\s+island|netflix|movie|film|tv\b|album|concert|music\s+video|book\s+launch|novel|bts|kanye|rapper|festival\s+sponsor|music\s+festival)\b/.test(t)) return false;
       if (cat.includes("entertainment")) return false;
 
       // Hard-block shopping/review/listicle filler that belongs in guides, not the live homepage news feed
-      if (/\b(best\b|buying\s+guide|tried\s+and\s+tested|tasted\s+and\s+rated|reviewed\s+and\s+rated|top\s+picks|bean-to-cup|pressure\s+washer|hot\s+chocolate|easter\s+eggs?|supermarket\s+easter)\b/.test(t)) return false;
+      if (/\b(best\b|buying\s+guide|tried\s+and\s+tested|tasted\s+and\s+rated|reviewed\s+and\s+rated|top\s+picks|bean-to-cup|pressure\s+washer|power-washing|pool-cleaning|mowing|hot\s+chocolate|easter\s+eggs?|supermarket\s+easter|choc\s+horror|flavour\s+bars?)\b/.test(t)) return false;
       if (/\b(collectible|coffee\s+machines?)\b/.test(t)) return false;
 
       // Hard-block soft lifestyle / local leisure fluff
-      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|pub|cafe|bar|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale)\b/.test(t)) return false;
+      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|pub|cafe|bar|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|food\s+tour|food\s+tours|walking\s+food\s+tours?|food\s+and\s+drink\s+festival|arts\s+festival|festival\s+returns?)\b/.test(t)) return false;
 
       // Hard-block abstract astronomy/science unless it has clear AI/tech/business relevance
       if (/\b(artemis|nasa|moon|space|planet|earth|boötes|bootes|herdsman|constellation|astronomy|scientists?|researchers?|study\s+finds?)\b/.test(t)) {
@@ -328,6 +328,11 @@ const navigate = useNavigate();
       // Hard-block tragedy / emotional human-interest filler unless there is direct public-impact utility
       if (/\b(devastated\s+mum|heartbreaking|touching\s+tribute|emotional\s+message)\b/.test(t)) {
         if (!/\b(cost|bills?|benefits?|housing|jobs?|tax|nhs|school|planning|transport|energy)\b/.test(t)) return false;
+      }
+
+      // Hard-block generic health/wellness explainer filler unless it has strong public-service relevance
+      if (/\b(peptides?|supplements?|vitamins?|collagen|wellness)\b/.test(t)) {
+        if (!/\b(nhs|public\s+health|warning|recall|hospital|care|medicine|drug|regulator)\b/.test(t)) return false;
       }
 
       return true;
@@ -973,35 +978,21 @@ const isMoney = (a) => {
     ]);
 
 
-// 5b) AI & Business feed (avoid overlap with Latest, keep section-local dedupe)
+// 5b) AI & Business feed (dedupe-safe, 36 max)
     const aiBizFeedCards = [];
-    const aiBizSeen = new Set();
     const isAiBiz = (a) => {
-      const cat = String(a?.category || "").toLowerCase();
-      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-
-      // Hard blocks: entertainment / celebrity / books / showbiz filler
-      if (/\b(celebrity|bts|netflix|movie|film|tv\b|showbiz|love island|novel|book launch|concert|album|music video|horror novel)\b/.test(t)) return false;
-      if (cat.includes("entertainment")) return false;
-
-      // Strong allows only
       if (isAiTech(a)) return true;
       if (isBusiness(a) || isMoney(a)) return true;
       if (typeof isPropertyish === "function" && isPropertyish(a)) return true;
 
-      // Local public-impact or practical-economy fallback only
-      if (/\b(cheshire|chester|crewe|warrington|wilmslow|knutsford|nantwich|macclesfield|northwich|ellesmere\s+port|winsford)\b/.test(t) &&
-          /\b(business|jobs?|employer|company|investment|funding|wages?|salary|tax|council\s+tax|benefits?|energy|petrol|diesel|transport|rail|trains?|buses?|road|closure|delays?|bank|banks|payment|payments|housing|property|planning|rent|mortgage|nhs|school|schools|factory|strike|strikes)\b/.test(t)) return true;
-
-      return /\b(tax|hmrc|vat|budget|inflation|interest\s*rate|rates|mortgage|remortgage|savings|isa|credit\s*card|bank|housing|property|planning|jobs?|wages?|salary|benefits?|energy|transport|ofcom|payment|payments)\b/.test(t);
+      const t = (String(a?.title || "") + " " + String(a?.summary || "")).toLowerCase();
+      return /\b(tax|hmrc|vat|budget|inflation|interest\s*rate|rates|mortgage|remortgage|savings|isa|credit\s*card|bank|housing|property|planning)\b/.test(t);
     };
 
-    for (const a of sectionFreshPool) {
+    for (const a of poolAll) {
       if (aiBizFeedCards.length >= 36) break;
       if (!isAiBiz(a)) continue;
-      const k = articleKey(a);
-      if (!k || aiBizSeen.has(k) || latestKeys.has(k) || sidebarKeys.has(k)) continue;
-      aiBizSeen.add(k);
+      if (!mark(a)) continue;
       aiBizFeedCards.push(
         toCard(
           a,
@@ -1011,86 +1002,13 @@ const isMoney = (a) => {
       );
     }
 
-// 6) More stories (freshness-first; avoid overlap with Latest only)
+// 6) More stories (dedupe-safe leftovers, 36 max)
       const moreStoriesCards = [];
-      const moreStoriesSeen = new Set();
-
-      const isMoreStoriesAllowed = (a) => {
-        const cat = String(a?.category || "").toLowerCase();
-        const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-
-        // Hard blocks: entertainment / celebrity / books / showbiz filler
-        if (/\b(celebrity|bts|netflix|movie|film|tv\b|showbiz|love island|novel|book launch|concert|album|music video)\b/.test(t)) return false;
-        if (cat.includes("entertainment")) return false;
-
-        // Strong allows: local, business, finance, property, AI/tech, or useful UK public-impact stories
-        if (isLocal(a) || isBusiness(a) || isMoney(a) || isAiTech(a)) return true;
-        if (typeof isPropertyish === "function" && isPropertyish(a)) return true;
-
-        if (/\b(cheshire|chester|crewe|warrington|wilmslow|knutsford|nantwich|macclesfield|northwich|ellesmere\s+port|winsford)\b/.test(t)) return true;
-        if (/\b(bills?|cost\s+of\s+living|prices?|inflation|mortgage|rent|housing|planning|jobs?|wages?|salary|tax|council\s+tax|benefits?|energy|petrol|diesel|transport|rail|trains?|buses?|road|closure|delays?|ofcom|bank|banks|payment|payments|nhs|school|schools|factory|strike|strikes)\b/.test(t)) return true;
-
-        // Block explainers / opinion / generic discussion
-        if (/\b(explained|what is|what are|how does|discussion|future of|view on|opinion|editorial)\b/.test(t)) {
-          return false;
-        }
-
-        // Block generic UK filler unless it has strong practical/economic relevance
-        if (!isLocal(a) && !isBusiness(a) && !isMoney(a) && !isAiTech(a)) {
-          if (!/\b(bills?|cost\s+of\s+living|inflation|mortgage|rent|tax|jobs?|wages?|salary|benefits?|energy|transport|rail|trains?|buses?|bank|banks|payments?|housing|planning|ofcom|nhs|school|schools|factory|strike|strikes)\b/.test(t)) {
-            return false;
-          }
-        }
-
-        return true;
-      };
-
-      const moreStoriesScore = (a) => {
-        let score = 0;
-        const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
-
-        if (isLocal(a)) score += 220;
-        if (isBusiness(a)) score += 180;
-        if (isMoney(a)) score += 180;
-        if (typeof isPropertyish === "function" && isPropertyish(a)) score += 160;
-        if (isAiTech(a)) score += 120;
-
-        if (/\b(cheshire|chester|crewe|warrington|wilmslow|knutsford|nantwich|macclesfield|northwich|ellesmere\s+port|winsford)\b/.test(t)) score += 120;
-        if (/\b(bills?|cost\s+of\s+living|prices?|inflation|mortgage|rent|housing|planning|jobs?|wages?|salary|tax|council\s+tax|benefits?|energy|petrol|diesel|transport|rail|trains?|buses?|road|closure|delays?|ofcom|bank|banks|payment|payments|nhs|school|schools|factory|strike|strikes)\b/.test(t)) score += 100;
-
-        const ageHours = Math.max(0, (Date.now() - safeDateMs(a?.publishedDate || a?.created_at)) / 36e5);
-        score += Math.max(0, 36 - ageHours);
-
-        return score;
-      };
-
-      // Pass 1: strict dedupe
-      for (const a of newestFirst) {
+      for (const a of poolAll) {
         if (moreStoriesCards.length >= 36) break;
-        if (!isMoreStoriesAllowed(a)) continue;
-        const k = articleKey(a);
-        if (!k || moreStoriesSeen.has(k) || latestKeys.has(k)) continue;
-        if (!isMoreStoriesAllowed(a)) continue;
-        moreStoriesSeen.add(k);
+        if (!mark(a)) continue;
         moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
       }
-
-      // Pass 2: only if still short, allow sidebar overlap
-      if (moreStoriesCards.length < 12) {
-        for (const a of newestFirst) {
-          if (moreStoriesCards.length >= 36) break;
-          if (!isMoreStoriesAllowed(a)) continue;
-          const k = articleKey(a);
-
-          // allow reuse, but avoid heavy duplication with sidebar dominance
-          if (!k || moreStoriesSeen.has(k) || latestKeys.has(k)) continue;
-          if (!isMoreStoriesAllowed(a)) continue;
-
-          moreStoriesSeen.add(k);
-          moreStoriesCards.push(toCard(a, `more-${moreStoriesCards.length}`));
-        }
-      }
-
 
 
 return {
