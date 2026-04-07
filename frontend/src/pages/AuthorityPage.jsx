@@ -144,6 +144,7 @@ function QuickComparison({ tools = [] }) {
 
 export default function AuthorityPage() {
   const { slug } = useParams();
+  const guideUrl = slug ? `https://cheshiretoday.co.uk/guides/${slug}` : "https://cheshiretoday.co.uk/guides";
 
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -185,7 +186,7 @@ export default function AuthorityPage() {
 
   const intro = sections.find((s) => s?.type === "intro")?.content || "";
   const tools = sections.filter((s) => s?.type === "tool" && String(s?.affiliate_link || "").trim());
-  const contentSections = sections.filter((s) => s?.type === "content");
+  const contentSections = sections.filter((s) => s?.type === "content" || s?.type === "section");
 
 
   return (
@@ -194,10 +195,10 @@ export default function AuthorityPage() {
         <Helmet>
           <title>{title} | Cheshire Today</title>
           <meta name="description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
-          <link rel="canonical" href={"https://cheshiretoday.co.uk/"} />
+          <link rel="canonical" href={guideUrl} />
           <meta property="og:title" content={`${title} | Cheshire Today`} />
           <meta property="og:description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
-          <meta property="og:url" content={"https://cheshiretoday.co.uk/"} />
+          <meta property="og:url" content={guideUrl} />
           <meta property="og:type" content="article" />
           <script
             type="application/ld+json"
@@ -220,7 +221,7 @@ export default function AuthorityPage() {
                 "image": "https://cheshiretoday.co.uk/social-share.jpg",
                 "mainEntityOfPage": {
                   "@type": "WebPage",
-                  "@id": "https://cheshiretoday.co.uk/"
+                  "@id": guideUrl
                 }
               })
             }}
