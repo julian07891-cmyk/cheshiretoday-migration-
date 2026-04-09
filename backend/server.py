@@ -1196,11 +1196,15 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
         
         articles = articles[:limit]
         
-        # Get existing article titles to avoid duplicates
+        # Get existing article titles/source URLs to avoid duplicates
         existing_titles = set()
-        existing_articles = await db.articles.find({}, {'title': 1}).to_list(1000)
+        existing_source_urls = set()
+        existing_articles = await db.articles.find({}, {'title': 1, 'source_url': 1}).to_list(1000)
         for a in existing_articles:
             existing_titles.add(a.get('title', '').lower().strip())
+            source_url = (a.get('source_url') or '').strip().lower()
+            if source_url:
+                existing_source_urls.add(source_url)
         
         # Import new articles
         imported = 0
@@ -1208,7 +1212,8 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
         
         for article in articles:
             title = article.get('title', '').strip()
-            if not title or title.lower() in existing_titles:
+            source_url = (article.get('source_url') or '').strip().lower()
+            if not title or title.lower() in existing_titles or (source_url and source_url in existing_source_urls):
                 skipped += 1
                 continue
             
@@ -1243,8 +1248,14 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
                 "archived": False
             }
 
-            await db.articles.insert_one(article_doc)
+            try:
+                await db.articles.insert_one(article_doc)
+            except DuplicateKeyError:
+                skipped += 1
+                continue
             existing_titles.add(title.lower())
+            if source_url:
+                existing_source_urls.add(source_url)
             imported += 1
         
         logger.info(f"Imported {imported} real news articles, skipped {skipped} duplicates")
@@ -1290,11 +1301,15 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             logger.info(f"Delaying AI rewrite stage for {rewrite_delay_seconds}s to allow source coverage/indexing...")
             await asyncio.sleep(rewrite_delay_seconds)
         
-        # Get existing article titles to avoid duplicates
+        # Get existing article titles/source URLs to avoid duplicates
         existing_titles = set()
-        existing_articles = await db.articles.find({}, {'title': 1, 'image': 1}).to_list(1000)
+        existing_source_urls = set()
+        existing_articles = await db.articles.find({}, {'title': 1, 'image': 1, 'source_url': 1}).to_list(1000)
         for a in existing_articles:
             existing_titles.add(a.get('title', '').lower().strip())
+            source_url = (a.get('source_url') or '').strip().lower()
+            if source_url:
+                existing_source_urls.add(source_url)
             if a.get('image'):
                 used_image_urls.add(a.get('image'))
         
@@ -1413,8 +1428,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                             continue
                         crime_count += 1
                     
-                    # Skip if duplicate title or image
+                    # Skip if duplicate title, source URL, or image
+                    source_url = (article.get('source_url') or '').strip().lower()
                     if not title or title.lower() in existing_titles:
+                        continue
+                    if source_url and source_url in existing_source_urls:
+                        logger.info(f"Skipping duplicate RSS source URL: {title[:40]}...")
                         continue
                     if rss_image in used_image_urls:
                         logger.info(f"Skipping duplicate RSS image: {title[:40]}...")
@@ -1469,6 +1488,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         logger.info(f"⏭️ Duplicate skipped (DB unique index): {title[:60]}...")
                         continue
                     existing_titles.add(title.lower())
+                    if source_url:
+                        existing_source_urls.add(source_url)
                     used_image_urls.add(rss_image)
                     imported_articles.append(article)
                     imported_count += 1
@@ -1544,8 +1565,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 
             title = article.get('title', '').strip()
             rss_image = article.get('image', '').strip()
+            source_url = (article.get('source_url') or '').strip().lower()
             
             if not title or title.lower() in existing_titles:
+                continue
+            if source_url and source_url in existing_source_urls:
                 continue
 
             
@@ -1606,8 +1630,14 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
             
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
-            await db.articles.insert_one(article)
+            try:
+                await db.articles.insert_one(article)
+            except DuplicateKeyError:
+                logger.info(f"⏭️ Duplicate skipped (local RSS insert): {title[:60]}...")
+                continue
             existing_titles.add(title.lower())
+            if source_url:
+                existing_source_urls.add(source_url)
             used_image_urls.add(rss_image)
             imported_articles.append(article)
             cheshire_from_rss += 1
@@ -1643,8 +1673,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 title = article.get('title', '').strip()
                 content = article.get('content', '')
                 category = article.get('category', 'Local News')
+                source_url = (article.get('source_url') or '').strip().lower()
                 
                 if not title or title.lower() in existing_titles:
+                    continue
+                if source_url and source_url in existing_source_urls:
                     continue
                 
                 # 1️⃣ Try to use image provided by Perplexity result first
@@ -1712,8 +1745,14 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
 
                 article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
-                await db.articles.insert_one(article)
+                try:
+                    await db.articles.insert_one(article)
+                except DuplicateKeyError:
+                    logger.info(f"⏭️ Duplicate skipped (Perplexity Cheshire insert): {title[:60]}...")
+                    continue
                 existing_titles.add(title.lower())
+                if source_url:
+                    existing_source_urls.add(source_url)
                 used_image_urls.add(article['image'])
                 imported_articles.append(article)
                 cheshire_from_perplexity += 1
