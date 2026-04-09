@@ -10039,11 +10039,30 @@ async def sync_rss_now():
         from app.perplexity_service import perplexity_service
         from uuid import uuid4
         
+        def canonicalize_url(url: str) -> str:
+            try:
+                from urllib.parse import urlparse, parse_qsl, urlencode, urlunparse
+                u = url.strip()
+                if not u:
+                    return ""
+                parts = urlparse(u)
+                keep = [(k, v) for (k, v) in parse_qsl(parts.query, keep_blank_values=True)
+                        if not (k.lower().startswith("utm_") or k.lower() in ("at_medium", "at_campaign", "fbclid", "gclid", "mc_cid", "mc_eid"))]
+                new_query = urlencode(keep, doseq=True)
+                return urlunparse((parts.scheme, parts.netloc, parts.path, parts.params, new_query, parts.fragment))
+            except Exception:
+                return (url or "").strip()
+
         logger.info("Starting manual RSS sync...")
         
-        # Get existing article titles to avoid duplicates
-        existing_articles = await db.articles.find({}, {'title': 1}).to_list(2000)
+        # Get existing article titles/source URLs to avoid duplicates
+        existing_articles = await db.articles.find({}, {'title': 1, 'source_url': 1}).to_list(2000)
         existing_titles = {a['title'].lower().strip() for a in existing_articles if a.get('title')}
+        existing_urls = set()
+        for a in existing_articles:
+            u = (a.get('source_url') or '').strip()
+            if u:
+                existing_urls.add(canonicalize_url(u))
         
         # Fetch all RSS feeds
         rss_articles = await news_feed_service.fetch_all_feeds()
@@ -10065,6 +10084,7 @@ async def sync_rss_now():
         crime_kw = re.compile(r"(police|arrest|court|jailed|sentenc|charged|trial|inquest|knife crime|stabb|shoot|assault|drink[- ]driver|drink[- ]driving|drunk[- ]driver|dui|dwi)", re.I)
         obituary_kw = re.compile(r"(death notices?|funeral notices?|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)", re.I)
         seen_new_titles = set()
+        seen_urls = set()
 
         for article in rss_articles:
             title = article.get('title', '').strip()
@@ -10072,10 +10092,18 @@ async def sync_rss_now():
                 continue
 
             norm = title.lower().strip()
+            url = (article.get('source_url') or '').strip()
             if norm in existing_titles:
                 continue
-            if norm in seen_new_titles:
-                continue
+            if url:
+                c_url = canonicalize_url(url)
+                if c_url in existing_urls:
+                    continue
+                if c_url in seen_urls:
+                    continue
+            else:
+                if norm in seen_new_titles:
+                    continue
 
             # Block sports + hard crime at ingestion
             src = (article.get('source') or '').lower()
@@ -10114,7 +10142,10 @@ async def sync_rss_now():
             if not article.get('image'):
                 continue
 
-            seen_new_titles.add(norm)
+            if url:
+                seen_urls.add(c_url)
+            else:
+                seen_new_titles.add(norm)
             new_articles.append(article)
         
         logger.info(f"Found {len(new_articles)} new articles to import")
@@ -10228,6 +10259,8 @@ async def sync_rss_now():
                 imported_count += 1
                 imported_titles.append(title[:60] + "...")
                 existing_titles.add(title.lower())
+                if source_url:
+                    existing_urls.add(canonicalize_url(source_url))
                 logger.info(f"✅ Imported: {title[:50]}...")
                 
             except Exception as e:
