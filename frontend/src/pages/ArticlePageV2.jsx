@@ -249,6 +249,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
 
   const list = Array.isArray(guides) ? guides : [];
   const pillar = String(pillarLabel || "").toLowerCase();
+  const context = String(contextToolType || "").toLowerCase();
 
   const bySlug = new Map(list.map((g) => [String(g?.slug || ""), g]));
   const want = [];
@@ -284,10 +285,30 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-ai-tools-uk");
     push("best-ai-writing-tools-uk");
     push("best-ai-productivity-tools-uk");
+  } else if (context === "accounting") {
+    push("best-accounting-software-uk");
+    push("best-business-bank-accounts-uk");
+    push("best-business-credit-cards-uk");
+  } else if (context === "business-banking") {
+    push("best-business-bank-accounts-uk");
+    push("best-business-credit-cards-uk");
+    push("best-accounting-software-uk");
+  } else if (context === "web-presence") {
+    push("best-web-hosting-small-business-uk");
+    push("best-website-builders-small-business-uk");
+    push("best-business-bank-accounts-uk");
+  } else if (context === "shipping") {
+    push("best-parcel-courier-services-small-business-uk");
+    push("how-to-choose-shipping-solution-online-business-uk");
+    push("best-website-builders-small-business-uk");
+  } else if (context === "iso") {
+    push("best-iso-training-certification-courses-uk-businesses");
+    push("what-iso-certification-means-small-business-uk");
+    push("best-accounting-software-uk");
   } else if (pillar.includes("business")) {
-    push("best-credit-cards-uk");
-    push("best-savings-accounts-uk");
-    push("best-mortgage-rates-uk");
+    push("best-business-bank-accounts-uk");
+    push("best-accounting-software-uk");
+    push("best-web-hosting-small-business-uk");
   } else if (pillar.includes("finance")) {
     push("best-credit-cards-uk");
     push("best-savings-accounts-uk");
@@ -523,6 +544,12 @@ export default function ArticlePageV2({ categories }) {
 
     // Tax first (so “council tax” and “stamp duty” don't fall into generic property)
     if (/\b(hmrc|tax|vat|self assessment|national insurance|ni contributions|council tax|stamp duty)\b/.test(text)) return "tax";
+
+    if (/\b(business bank|business account|merchant account|payment gateway|worldpay)\b/.test(text)) return "business-banking";
+    if (/\b(accounting software|bookkeeping|xero|quickbooks|freeagent)\b/.test(text)) return "accounting";
+    if (/\b(web hosting|hosting provider|domain name|domain registration|website builder|website builders)\b/.test(text)) return "web-presence";
+    if (/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/.test(text)) return "shipping";
+    if (/\b(iso 9001|iso 14001|iso 27001|iso certification|iso training|audit readiness)\b/.test(text) || (/\biso\b/.test(text) && /\b(certification|training|audit|compliance)\b/.test(text))) return "iso";
 
     if (/\b(remortgage|mortgage|fixed rate|tracker)\b/.test(text)) return "mortgages";
     if (/\b(isa|savings|easy-access|interest rate)\b/.test(text)) return "savings";
