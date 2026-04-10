@@ -2113,21 +2113,24 @@ async def _remove_duplicates_internal():
     Archives removed articles to archived_articles collection for link preservation.
     """
     try:
-        articles = await db.articles.find({}).to_list(1000)
+        articles = await db.articles.find({}).to_list(None)
         
-        # Group by title
-        title_groups = {}
+        # Group by normalized source URL first, fall back to exact title
+        duplicate_groups = {}
         for article in articles:
             title = article.get('title', '').strip()
-            if title not in title_groups:
-                title_groups[title] = []
-            title_groups[title].append(article)
+            source_url = (article.get('source_url') or '').strip().lower()
+            group_key = f"url::{source_url}" if source_url else f"title::{title.lower()}"
+            if group_key not in duplicate_groups:
+                duplicate_groups[group_key] = []
+            duplicate_groups[group_key].append(article)
         
         duplicates_removed = 0
         short_removed = 0
         
-        for title, group in title_groups.items():
+        for group_key, group in duplicate_groups.items():
             if len(group) > 1:
+                display_title = (group[0].get('title') or '').strip()
                 # Sort by content length (longest first)
                 group.sort(key=lambda x: len(x.get('content', '')), reverse=True)
                 
@@ -2144,10 +2147,10 @@ async def _remove_duplicates_internal():
                     
                     await db.articles.delete_one({'_id': original_id})
                     duplicates_removed += 1
-                    logger.info(f"Archived duplicate: {title[:40]}...")
+                    logger.info(f"Archived duplicate: {display_title[:40]}...")
         
         # Archive low-quality short fallback articles so only full rewritten content stays live.
-        remaining = await db.articles.find({}).to_list(1000)
+        remaining = await db.articles.find({}).to_list(None)
         boilerplate_markers = [
             "this story has been reported by",
             "more details are expected to emerge soon",
