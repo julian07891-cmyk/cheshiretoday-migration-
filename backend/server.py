@@ -10287,7 +10287,7 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
-                    'publishedDate': (article.get('publishedDate') if isinstance(article.get('publishedDate'), datetime) else (datetime.fromisoformat(str(article.get('publishedDate')).replace('Z', '+00:00')) if article.get('publishedDate') else (datetime.fromisoformat(str(article.get('published_date')).replace('Z', '+00:00')) if article.get('published_date') else datetime.now(timezone.utc)))),
+                    'publishedDate': ((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')) if isinstance((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')), datetime) and (article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')).tzinfo else (((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')).replace(tzinfo=timezone.utc)) if isinstance((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')), datetime) else ((lambda dt: dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc))(datetime.fromisoformat(str((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date'))).replace('Z', '+00:00'))) if (article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')) else datetime.now(timezone.utc)))),
                     'created_at': datetime.now(timezone.utc).isoformat(),
                     'archived': False
                 }
@@ -10747,7 +10747,8 @@ async def cap_visible_articles(keep: int = 200):
             if not v:
                 return datetime.fromtimestamp(0, tz=timezone.utc)
             try:
-                return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+                dt = datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
             except Exception:
                 return datetime.fromtimestamp(0, tz=timezone.utc)
 
