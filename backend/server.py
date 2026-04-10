@@ -1371,7 +1371,33 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             )
             return bool(obituary_kw.search(title))
 
+        def is_low_utility_article(article: dict) -> bool:
+            cat = (article.get("category") or "").lower()
+            title = (article.get("title") or "").lower()
+            summary = (article.get("summary") or "").lower()
+            content = (article.get("content") or "").lower()
+            text = " ".join([cat, title, summary, content])
 
+            low_utility_kw = re.compile(
+                r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|movie|film|album|concert|music\s*video|book\s*launch|novel|brit awards|baftas|royal fashion|gift guide|black friday|cyber monday|shopping deal|must-have buys?|restaurant review|afternoon tea|food\s+festival|arts\s+festival|music\s+festival|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|stunning\s+home|property\s+of\s+the\s+week|inside\s+this\s+home|listed\s+for\s+sale)\b",
+                re.I,
+            )
+            return bool(low_utility_kw.search(text))
+
+        def is_useful_property_article(article: dict) -> bool:
+            title = (article.get("title") or "").lower()
+            summary = (article.get("summary") or "").lower()
+            content = (article.get("content") or "").lower()
+            text = " ".join([title, summary, content])
+
+            if is_low_utility_article(article):
+                return False
+
+            useful_property_kw = re.compile(
+                r"\b(planning|application|approved|refused|development|homes?|housing|rent|rental|landlord|tenant|leasehold|freehold|mortgage|remortgage|stamp\s+duty|council\s+tax|affordable\s+homes?|brownfield|green\s+belt|house\s+prices?|build\s+to\s+rent|eviction|property\s+tax)\b",
+                re.I,
+            )
+            return bool(useful_property_kw.search(text))
 
         if request.uk_articles > 0:
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
@@ -1389,7 +1415,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
             tech_articles = [a for a in uk_with_images if a.get('category') in ['Tech', 'AI', 'Science']]
             finance_articles = [a for a in uk_with_images if a.get('category') in ['Finance', 'Tax']]
-            property_articles = [a for a in uk_with_images if a.get('category') == 'Property']
+            property_articles = [a for a in uk_with_images if a.get('category') == 'Property' and is_useful_property_article(a)]
             uk_news_articles = [
                 a for a in uk_with_images
                 if a.get('category') == 'UK News'
@@ -1419,6 +1445,14 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
                     # Hard block obituary / memorial notice-style content
                     if is_obituary_like(article):
+                        continue
+
+                    # Hard block obvious low-utility lifestyle / promo / entertainment filler
+                    if is_low_utility_article(article):
+                        continue
+
+                    # Keep Property tightly aligned to housing/planning/public-impact utility
+                    if category_name == "Property" and not is_useful_property_article(article):
                         continue
 
                     # Keep crime-like content to a very low cap
