@@ -2903,3 +2903,377 @@ Next recommended operational step:
 
 #### H. Source-of-truth note
 From this point, `PROJECT_CURRENT_STATE_MASTER_MARCH_2026_UPDATED_20260410_v2.md` should be treated as the active continuation file rather than the older root-only March master filename when documenting new progress.
+
+### 29. April 10, 2026 live cleanup + datetime visibility fix follow-up
+
+This follow-up session addressed two separate but related production issues:
+
+#### A. Render log diagnosis clarified the real failure mode
+Render logs initially looked as though imported articles were not going live. Detailed inspection showed the import pipeline itself was succeeding:
+- feeds fetched successfully
+- Perplexity rewrites completed successfully
+- article inserts completed successfully
+
+However, the post-import visibility step then failed with:
+- `cap_visible_articles error: can't compare offset-naive and offset-aware datetimes`
+
+This established that the main issue was not feed fetch failure, but a post-import visibility/capping error.
+
+#### B. Root cause identified in mixed datetime handling
+Inspection of `backend/server.py` confirmed:
+- older datetime-normalisation work had already been done previously (`c2ba38a`, `922f0a3`)
+- but current HEAD still had a remaining gap:
+  - `sync_rss_now()` could still write a naive `publishedDate` when parsing feed date strings without timezone information
+  - `cap_visible_articles()` still parsed string datetimes without forcing UTC awareness
+
+This matched the live Render error exactly.
+
+#### C. Backend fix applied and pushed
+A targeted follow-on fix was committed and pushed:
+
+- `0f37d20` — `Fix sync RSS publishedDate timezone normalization and cap visibility datetime handling`
+
+What this changed:
+1. `sync_rss_now()` now normalises parsed `publishedDate` values so naive datetimes are converted to UTC-aware datetimes
+2. `cap_visible_articles()` now normalises parsed string datetimes so naive values are converted to UTC-aware before comparison
+
+This completed the earlier March datetime-fix work rather than duplicating it.
+
+#### D. Live production verification after push
+Post-fix public API checks showed that production was not generally stuck:
+- latest public sample contained fresh `2026-04-09` and `2026-04-10` content
+- several titles from the Render import batch were confirmed live in the public feed, including:
+  - `How many ships are crossing the Strait of Hormuz?`
+  - `Have you lost a UK mortgage deal or seen your mortage rate increase? We would like to speak to you`
+  - `Artemis 2 splashdown...` (before later cleanup)
+  - M56 live updates under a rewritten title
+
+Conclusion:
+- the system was publishing fresh content again
+- the remaining issue was specific story fit / visibility quality, not total publication failure
+
+#### E. Live manual cleanup completed in multiple focused batches
+A large off-strategy cleanup pass was then completed through live admin archive actions.
+
+Archived in the first batch:
+- `69c22c27f753a991b9c31854` — `What are zettajoules – and what do they tell us about Earth’s energy imbalance?`
+- `69d930eae0c12795850127de` — `Artemis 2 splashdown UK time and how to watch live as astronauts return home`
+- `69d887f6e8022cd618fcb3ae` — `Schoolboy becomes Cheshire golf club's youngest ever player to get hole-in-one`
+- `69d93033e0c12795850127d4` — `‘Fresher than anything in a shop’: the best recipe boxes and meal kits for time-poor foodies, tested`
+- `69d8dc35e0c12795850127cc` — `Feed the birds... just not in summer`
+- `69d93055e0c12795850127d6` — `Canalside homes for sale in England and Scotland – in pictures`
+- `69d887d2e8022cd618fcb3ac` — `UK band linked to Artemis II's toilet trouble`
+- `69d4e7bb6236dbfa130c35b1` — `Inside Coleen Rooney's 40th birthday party at Cheshire mansion`
+- `69d4935a6236dbfa130c35a5` — `The Warrington man who spent 6 months creating Hobbit costume for Comic Con`
+- `69d78aa8401689c5fa90332b` — `Space: the ultimate wardrobe challenge – in pictures`
+- `69d7363e401689c5fa903318` — `Artemis II is 'inspiring' a whole generation`
+- `69d39626bdd9cd71c811836c` — `Pink Floyd Space Dome show returning to Jodrell Bank after sell-out 2025`
+- `69d3420dac21f51975c4fa92` — `Chicken and chips and a top class beer in Paysan is a perfect afternoon...`
+- `69d68d93401689c5fa903304` — `What does the dark side of the moon sound like? Nasa’s sonifications are helping us imagine`
+
+Archived in the second batch:
+- `69d63945401689c5fa9032fb` — `US and Iran agree two-week ceasefire as Donald Trump declares 'total victory'`
+- `69d82efce8022cd618fcb3a4` — `Hot in the city: Energy crisis tests Singapore's air-con addiction`
+- `69d4e7c86236dbfa130c35b2` — `Chester's Piccolino restaurant temporarily closes for major revamp`
+- `69d4e7d86236dbfa130c35b3` — `Tributes paid after death of councillor pivotal in creation of Chester Storyhouse`
+- `69d78a96401689c5fa90332a` — `Surrey scientists lead new space weather mission`
+- `69d4934c6236dbfa130c35a4` — `Cheshire schoolgirl needed urgent heart surgery after falling ill on family holiday`
+- `69d3eaa90ae39e16562a65f7` — `13 things which you could do in Warrington in the 90s which you can't do now`
+- `69d3eac70ae39e16562a65f9` — `Vets in Glazebrook warn dog hay fever signs may go unnoticed`
+- `69d68d2d401689c5fa9032fe` — `Starmer warns ‘lot of work to do’ to make ceasefire permanent at start of talks in Gulf - UK politics live`
+- `69d39643bdd9cd71c811836e` — `Great Sankey business hosts veterans breakfast in north west`
+- `69d39650bdd9cd71c811836f` — `Millions of Brits set to receive 'game changing' support to help them with finances`
+- `69d341dfac21f51975c4fa8f` — `Devastated mum's important message after traumatic loss of son, 5`
+
+Archived in the third batch:
+- `69ca1519ce11a2e917daadff` — `Why Chinese tech companies are racing to set up in Hong Kong`
+- `69d82ef0e8022cd618fcb3a3` — `Woman has leg amputated after Cheshire Tesco car park incident`
+- `69d88796e8022cd618fcb3a9` — `Buy bread in the evening, hit the sales on a Tuesday: retail workers’ top tips to cut your shopping bill`
+- `69d82f19e8022cd618fcb3a6` — `Zack Polanski calls for UK to withdraw trade agreement with Israel after strikes on Lebanon`
+- `69d3eab70ae39e16562a65f8` — `Daresbury-based Redrow earns five-star customer rating again`
+- `69d2991e3e111f15c2ab941c` — `Warrington housebuilder named five-star for tenth year running`
+
+#### F. Duplicate-ID / live-copy discovery during cleanup
+During a later cleanup pass it became clear that some public API IDs did not match the currently live UUID article records shown by the admin endpoint.
+
+This explained why some archive actions initially appeared not to “stick”.
+The actual live UUID records were then identified and archived successfully:
+
+- `b635cf02-dab7-4034-934e-bcaaa93ad71c` — `Recap: M6 van flips as two left in hospital`
+- `249f7399-81ea-4c8b-bb90-ec585a2043a2` — `Unit available in Stockton Heath after shock closure of business`
+- `aa8e50f9-e93d-492c-914c-61069c59591b` — `Recap: Fire crews at 'large' fallen tree on shut Cheshire road`
+- `97c381a9-c872-4910-824e-f1a3e1f3489e` — `When you will be able to see the new Spitfire at Hooton Park`
+
+Operational lesson:
+- in some cases the public feed may expose records under IDs that are not the current live UUID admin records for the same title
+- for production cleanup, admin endpoint verification is safer than relying only on the public ID values
+
+#### G. Live state after cleanup
+After the datetime fix and the archive passes, the public pool became materially closer to the Cheshire Today strategy.
+
+The feed is now much stronger on:
+- Local public-impact stories
+- Business / cost-of-living
+- Finance / inflation / rates / fuel
+- AI / Tech where relevant
+- planning / housing / transport / council / service stories
+
+Remaining borderline but not urgent titles at end of session included things like:
+- `This coat cost $248 in illegal tariffs. Will he ever get the money back?`
+- `Emergency services scrambled to Cheshire narrowboat fire`
+- `Warrington North MP warns of cost pressures amid Middle East conflict`
+- `'Significant impact' as burglars take life-saving kit from Cheshire fire station`
+
+#### H. Updated continuation conclusion
+At the end of this follow-up:
+1. the datetime/capping bug causing post-import visibility failure was fixed and pushed
+2. fresh April 9–10 content was confirmed live in the public feed
+3. several large off-strategy batches were manually removed from the live public pool
+4. the live feed is now materially cleaner and closer to the intended Local + Business + Finance + AI/Tech strategy
+
+Recommended next priority after this:
+- strengthen importer-side and classification-side filtering further so less off-strategy content reaches the active public pool in the first place,
+- then continue controlled monetisation work and merchant-to-guide mapping as new Awin / CJ approvals arrive.
+
+
+---
+
+### 30. April 11, 2026 — Resend newsletter cutover + per-recipient tracking foundation
+
+This session completed the core newsletter infrastructure repair and the first engagement-batching foundation.
+
+#### A. Root cause of uptime failures identified
+The repeated uptime drops around scheduled newsletter sends were traced to the previous Office 365 SMTP implementation.
+
+Confirmed behavior before fix:
+- scheduled Daily Brief and Weekly Roundup were capped to `250` recipients each
+- newsletter sends ran synchronously on the live app process
+- each recipient was sent individually
+- each recipient send opened a fresh SMTP connection, logged in, sent one email, then closed
+
+This meant a scheduled batch of 250 triggered 250 blocking SMTP login/send cycles on the live backend process.
+
+Conclusion:
+- the uptime failures were not caused by article generation or frontend behavior
+- they were caused by the old per-recipient Office 365 SMTP send model
+
+#### B. Resend account and sending domain set up
+A Resend account was created and configured for production newsletter sending.
+
+Domain chosen:
+- `updates.cheshiretoday.co.uk`
+
+DNS setup completed in GoDaddy:
+- DKIM TXT record added
+- sending MX record added
+- SPF TXT record added
+
+Result:
+- all 3 required Resend DNS records verified successfully
+- receiving was intentionally left disabled
+- production sender configured as:
+  - `news@updates.cheshiretoday.co.uk`
+
+#### C. Resend production API integration added
+Environment wiring added locally and in Render backend environment:
+- `RESEND_ENABLED=true`
+- `RESEND_API_KEY=...`
+- `RESEND_FROM_EMAIL=news@updates.cheshiretoday.co.uk`
+- `RESEND_FROM_NAME=Editor at Cheshire Today`
+
+Local backup created before env changes:
+- `backend/.env.bak_resend_20260411_1`
+
+Important deployment note:
+- first Resend API key used in Render was invalid
+- Render logs showed:
+  - `401 Unauthorized`
+  - `API key is invalid`
+- a brand new Resend API key was then created and replaced in Render
+- after replacing the key, live test sending succeeded
+
+#### D. Newsletter send path moved from Office 365 SMTP loop to Resend batch API
+`backend/app/email_service.py` was changed so Daily Brief and Weekly Roundup now use Resend batch sending when `RESEND_ENABLED=true`.
+
+Implementation details:
+- `httpx` used for Resend API calls
+- Resend env/config added to `EmailService`
+- helper added:
+  - `_resend_from_header()`
+  - `_send_resend_batch(batch_messages)`
+- messages are chunked in batches of `100`
+- Daily Brief and Weekly Roundup now build personalized message payloads and send via Resend batch API
+- old SMTP path remains as fallback if Resend is disabled
+
+Backups created:
+- `backend/app/email_service.py.bak_resend_batch_cutover_20260411_1`
+
+Commit:
+- `f76248a` — `Move Daily Brief and Weekly Roundup to Resend batch sending`
+
+Outcome:
+- live test Daily Brief send succeeded through Resend
+- test response showed:
+  - `"success": true`
+  - `"emails_sent": 1`
+
+This materially reduces the previous uptime risk because the scheduled newsletter path is no longer doing per-recipient Office 365 login/send cycles.
+
+#### E. Current newsletter send caps remain in place
+Code inspection confirmed current caps are still:
+
+- manual send path: `250`
+- scheduled Daily Brief: `250`
+- scheduled Weekly Roundup: `250`
+
+So although total subscribers are ~14,000+, current scheduled sends are still intentionally limited to the first `250`.
+
+This is acceptable for the current phased cleanup / engagement workflow.
+
+#### F. Per-recipient tracking implemented
+Previous newsletter analytics only tracked a single `tracking_id` per send, which allowed campaign-level analytics only.
+
+That was not sufficient for the planned “batch 001 → review → deactivate cold subscribers → next 250” workflow.
+
+Fix added in `backend/app/email_service.py`:
+- new helper:
+  - `_recipient_tracking_id(base_tracking_id, recipient_email)`
+- Daily Brief and Weekly Roundup now:
+  - derive a unique recipient tracking ID using a recipient email hash suffix
+  - replace the base tracking ID inside each recipient’s HTML
+  - generate per-recipient tracked preference/unsubscribe links
+  - generate per-recipient tracked open/click IDs
+
+Result:
+- opens/clicks are now attributable to each recipient instead of only to the whole campaign
+
+Backup created:
+- `backend/app/email_service.py.bak_per_recipient_tracking_20260411_1`
+
+Commit:
+- `11d56f2` — `Add per-recipient tracking IDs for newsletter analytics`
+
+#### G. Per-recipient tracking verified live
+A live Daily Brief test send was sent successfully after the per-recipient tracking patch.
+
+The resulting Mongo query confirmed a real per-recipient analytics record was created:
+
+Example matched record shape:
+- tracking ID prefix:
+  - `daily_brief_2026-04-11T12:57:23.263069_ff93aeb7`
+- stored tracking ID example:
+  - `daily_brief_2026-04-11T12:57:23.263069_ff93aeb7_512929bd`
+
+Observed verified behavior:
+- open events stored
+- click events stored
+- clicked article URLs stored
+- recipient hash suffix present
+
+This confirmed that per-recipient tracking is now working in production.
+
+#### H. Admin email analytics patched to aggregate per-recipient rows
+Once per-recipient tracking was introduced, the admin analytics endpoint under-counted `recent_sends` because it still assumed one analytics row per send.
+
+`backend/server.py` was patched so the admin analytics read path now aggregates all `email_analytics` rows whose `tracking_id` begins with the send’s base tracking ID.
+
+Backup created:
+- `backend/server.py.bak_email_analytics_prefix_fix_20260411_1`
+
+Commit:
+- `77af404` — `Aggregate per-recipient tracking in admin email analytics`
+
+After deployment, live admin analytics returned valid recent send data again.
+
+#### I. Live analytics state after fixes
+Live `/api/admin/email-analytics?days=7` confirmed:
+
+- `DailyBrief.sent = 1253`
+- `DailyBrief.success = 1252`
+- `WeeklyRoundup.sent = 1`
+- `WeeklyRoundup.success = 1`
+
+Recent sends showed Daily Brief runs of `250` subscribers with real opens/clicks now visible in `recent_sends`.
+
+#### J. Batch 001 subscriber cohort snapshotted
+The first Daily Brief cohort of `250` subscribers was snapshotted and saved so later review/deactivation decisions are based on a fixed cohort rather than a drifting live query.
+
+Files created:
+- `daily_brief_batch_001.json`
+- `daily_brief_batch_001_engagement.json`
+
+Validation:
+- saved first 10 emails matched the current live first 10 emails
+- this confirmed batch 001 is stable
+
+#### K. Protected emails established
+A protected email list was created so internal/test addresses are not accidentally deactivated later.
+
+Protected list stored in:
+- `/tmp/newsletter_protected_emails.txt`
+
+Included:
+- `julian07891@yahoo.co.uk`
+- `julian07891@icloud.com`
+- `iulian.dumitrascu@henburyhouse.com`
+- `news@cheshiretoday.co.uk`
+
+#### L. Important deactivation safeguard
+An initial deactivate-candidate list was generated and then explicitly invalidated.
+
+Reason:
+- Daily Brief sends from `9 April`, `10 April`, and `11 April 07:30` happened before per-recipient tracking was deployed
+- those earlier sends cannot be used to judge individual subscriber engagement reliably
+- therefore any generated “0 opens / 0 clicks” list based on pre-patch data is invalid for pruning
+
+Invalid file quarantined as:
+- `/tmp/daily_brief_batch_001_deactivate_candidates_INVALID_PREPATCH.txt`
+
+Operational rule:
+- do **not** deactivate or delete any batch 001 subscribers based on pre-patch analytics
+
+#### M. Correct next pruning window
+The first valid post-patch tracked Daily Brief sends for batch 001 are expected to be:
+
+- Monday `13 April 2026`
+- Tuesday `14 April 2026`
+- Wednesday `15 April 2026`
+
+Only after those 3 properly tracked sends should batch 001 be reviewed for cold subscribers.
+
+Pruning rule agreed:
+- do **not** hard-delete first
+- first action should be **deactivate**
+- only consider subscribers with:
+  - `0 opens`
+  - `0 clicks`
+  - across the valid review window
+- protected emails must always be excluded
+
+#### N. Reminder created
+A reminder was created for:
+- `15 April 2026 at 09:00 Europe/London`
+
+Purpose:
+- review batch 001 engagement after 3 valid tracked Daily Brief sends
+- exclude protected emails
+- deactivate only subscribers with 0 opens and 0 clicks
+
+#### O. Net outcome of this session
+At the end of this session:
+
+1. the unstable Office 365 newsletter batch path was replaced for Daily Brief / Weekly Roundup with Resend batch sending
+2. production Resend sending was verified live
+3. per-recipient newsletter tracking was implemented and verified
+4. admin analytics was updated to aggregate per-recipient tracking correctly
+5. batch 001 was snapshotted for controlled subscriber-quality review
+6. protected internal/test emails were defined
+7. pre-patch deactivate candidates were explicitly invalidated
+8. the system is now ready for the first valid batch-001 engagement review after the next 3 tracked Daily Brief sends
+
+Recommended next newsletter priority after this:
+- allow the next 3 properly tracked Daily Brief sends to hit batch 001
+- then build the first valid deactivate list for batch 001 only
+- deactivate cold subscribers (excluding protected emails)
+- then move to the next 250 cohort in a controlled wave
+
