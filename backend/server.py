@@ -10299,6 +10299,8 @@ async def sync_rss_now():
                     'author': source,
                     'scope': 'cheshire' if article.get('is_cheshire_related') else 'uk',
                     'is_local_source': article.get('is_local_source', False),
+                    'location': article.get('location'),
+                    'priority_location': article.get('priority_location') or article.get('location'),
                     'publishedDate': ((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')) if isinstance((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')), datetime) and (article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')).tzinfo else (((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')).replace(tzinfo=timezone.utc)) if isinstance((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')), datetime) else ((lambda dt: dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc))(datetime.fromisoformat(str((article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date'))).replace('Z', '+00:00'))) if (article.get('publishedDate') if article.get('publishedDate') is not None else article.get('published_date')) else datetime.now(timezone.utc)))),
                     'created_at': datetime.now(timezone.utc).isoformat(),
                     'archived': False
