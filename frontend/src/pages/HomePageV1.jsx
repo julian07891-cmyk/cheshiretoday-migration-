@@ -100,7 +100,7 @@ function toCard(a, fallbackId, overrides = {}) {
     id,
     title: a?.title || "Untitled",
     image: a?.image || "",
-    category: a?.category || "Local News",
+    category: getDisplayCategoryForPillar(a) || "Local News",
     town: a?.location || "Cheshire",
     publishedDate: a?.publishedDate || "",
     created_at: a?.created_at || "",
@@ -577,7 +577,7 @@ const navigate = useNavigate();
       return cat.includes("uk") || scope === "uk";
     };
 
-    const counts = { local: 0, business: 0, tech: 0, property: 0, uk: 0 };
+    const counts = { local: 0, business: 0, tech: 0, finance: 0, uk: 0 };
     const isTopStoryAllowed = (a) => {
       const cat = String(a?.category || "").toLowerCase();
       const t = (String(a?.title || "") + " " + String(a?.summary || "")).toLowerCase();
@@ -678,11 +678,11 @@ const navigate = useNavigate();
     // Pass 4: Property (1) — ensure it is actually property-ish
     for (const a of poolRanked) {
       if (!isTopStoryAllowed(a)) continue;
-      if (counts.property >= 1) break;
+      if (counts.finance >= 1) break;
       if (isAiTech(a)) continue;
       if (!isPropertyishTop(a)) continue;
-      pushTop(a, "Property");
-      counts.property += 1;
+      pushTop(a, "Finance");
+      counts.finance += 1;
     }
 
     // Pass 5: UK News (1) — explicitly UK, exclude Local/Business/Property/Tech
@@ -868,9 +868,7 @@ const isMoney = (a) => {
       }
     }
 
-// 4c) Property & Housing (6) — planning, homes, rent, property; exclude used
-    const propertyFeed = [];
-
+// 4c) Finance housing/planning enrichment — capped so Finance is not overtaken by Property
     const isPropertyish = (a) => {
       const sec = String(a?.section || "").toLowerCase();
       if (["property", "housing", "planning"].includes(sec)) return true;
@@ -879,24 +877,18 @@ const isMoney = (a) => {
       return /\b(property|housing|planning|application|approved|refused|development|homes|apartments|estate|rent|rental|landlord|tenant|lease|build|green\s*belt)\b/.test(t);
     };
 
+    let propertyIntoFinanceCount = 0;
     for (const a of sectionFreshPool) {
-      if (propertyFeed.length >= 6) break;
-      const sec = String(a?.section || "").toLowerCase();
+      if (moneyFeed.length >= 6) break;
+      if (propertyIntoFinanceCount >= 2) break;
       if (isAiTech(a)) continue;
-      // section is null in backend; no section-based exclude
-
       if (!isPropertyish(a)) continue;
-      const k = articleKey(a);
-      if (!k || sidebarUsed.has(k)) continue;
-      if (!mark(a)) continue;
-      sidebarUsed.add(k);
-      propertyFeed.push(toCard(a, `prop-${propertyFeed.length}`, { category: "Property" }));
+      if (pushMoney(a)) propertyIntoFinanceCount += 1;
     }
 
 
     businessFeed.sort((a,b)=> new Date(b.created_at||b.publishedDate||b.date||0)-new Date(a.created_at||a.publishedDate||a.date||0));
     moneyFeed.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
-    propertyFeed.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
 
 
     
@@ -974,7 +966,6 @@ const isMoney = (a) => {
       ...businessFeed.map((a) => a?.id).filter(Boolean),
       ...financeArticles.map((a) => a?.id).filter(Boolean),
       ...moneyFeed.map((a) => a?.id).filter(Boolean),
-      ...propertyFeed.map((a) => a?.id).filter(Boolean),
     ]);
 
 
@@ -997,7 +988,7 @@ const isMoney = (a) => {
         toCard(
           a,
           `aibiz-${aiBizFeedCards.length}`,
-          selectedCategory === "All" ? { category: a?.category || "AI & Business" } : {}
+          selectedCategory === "All" ? { category: getDisplayCategoryForPillar(a) } : {}
         )
       );
     }
@@ -1022,7 +1013,6 @@ return {
       moneyFeed: moneyFeed,
       latestFeed: latestCards,
         moreStoriesFeed: moreStoriesCards,
-            propertyFeed: propertyFeed,
 };
   }, [newestFirst]);
 
@@ -1035,7 +1025,6 @@ return {
 
   const businessFeed = Array.isArray(home?.businessFeed) ? home.businessFeed : [];
   const moneyFeed = Array.isArray(home?.moneyFeed) ? home.moneyFeed : [];
-  const propertyFeed = Array.isArray(home?.propertyFeed) ? home.propertyFeed : [];
 
   const latestFeed = Array.isArray(home?.latestFeed) ? home.latestFeed : [];
   const moreStoriesFeed = Array.isArray(home?.moreStoriesFeed) ? home.moreStoriesFeed : [];
@@ -1143,7 +1132,7 @@ return (
               {hero && (
                   <HeroStoryCard
                   image={hero.image}
-                  category={hero.category || "Local News"}
+                  category={getDisplayCategoryForPillar(hero) || "Local News"}
                   town={hero.location || "Cheshire"}
                   headline={hero.title || "Untitled"}
                   publishedTime={hero.publishedDate || ""}
@@ -1370,17 +1359,6 @@ return (
               />
             )}
 
-            {/* Property & Housing */}
-            
-            {Array.isArray(propertyFeed) && propertyFeed.length > 0 && (
-              <LeadSection
-                title="Property"
-                badgeText="Property"
-                badgeClassName="text-[10px] uppercase tracking-wide font-semibold px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-900/30 dark:text-amber-200"
-                items={propertyFeed.slice(0, 6)}
-                onNavigate={(url) => navigate(url)}
-              />
-            )}
             <AffiliateWidgetSidebar category="default" />
             </div>
           </aside>

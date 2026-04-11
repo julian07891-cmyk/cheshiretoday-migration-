@@ -191,11 +191,17 @@ export function getPrimaryPillar(article) {
 }
 
 export function getDisplayCategoryForPillar(article) {
+  const category = norm(article?.category);
+  const section = norm(article?.section);
+
+  if (category.includes("tax") || section === "tax") return "Tax";
+
   const pillar = getPrimaryPillar(article);
   if (pillar === "Local") return "Local News";
   if (pillar === "Business") return "Business";
   if (pillar === "AI & Tech") return "AI & Tech";
   if (pillar === "Finance") return "Finance";
   if (pillar === "UK") return "UK News";
+
   return article?.category || "Local News";
 }

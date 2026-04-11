@@ -766,7 +766,7 @@ async def fetch_trending_headlines(scope: str, count: int = 5) -> List[tuple]:
         logger.info(f"Fetching trending headlines for {scope}...")
         
         # Define valid categories - simplified to 8 main categories
-        valid_categories = ["Local News", "UK News", "Business", "Health", "Sports", "Tech", "Weather", "Food"]
+        valid_categories = ["Local News", "UK News", "Business", "Finance", "Tax", "AI & Tech"]
         valid_categories_str = ", ".join(valid_categories)
         
         if scope == "cheshire":
@@ -1415,13 +1415,13 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             business_articles = [a for a in uk_with_images if a.get('category') == 'Business']
             tech_articles = [a for a in uk_with_images if a.get('category') in ['Tech', 'AI', 'Science']]
             finance_articles = [a for a in uk_with_images if a.get('category') in ['Finance', 'Tax']]
-            property_articles = [a for a in uk_with_images if a.get('category') == 'Property' and is_useful_property_article(a)]
+            property_enrichment_articles = [a for a in uk_with_images if a.get('category') == 'Property' and is_useful_property_article(a)]
             uk_news_articles = [
                 a for a in uk_with_images
                 if a.get('category') == 'UK News'
             ]
             
-            logger.info(f"Found: {len(uk_news_articles)} UK, {len(finance_articles)} Finance/Tax, {len(property_articles)} Property, {len(business_articles)} Business, {len(tech_articles)} Tech/AI, {len(sports_articles)} Sports")
+            logger.info(f"Found: {len(uk_news_articles)} UK, {len(finance_articles)} Finance/Tax, {len(property_enrichment_articles)} Property->Finance, {len(business_articles)} Business, {len(tech_articles)} Tech/AI, {len(sports_articles)} Sports")
             
             # Helper function to import articles from a category with Perplexity content generation
             async def import_category_articles(articles_list, category_name, max_count, counter_name):
@@ -1451,8 +1451,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     if is_low_utility_article(article):
                         continue
 
-                    # Keep Property tightly aligned to housing/planning/public-impact utility
-                    if category_name == "Property" and not is_useful_property_article(article):
+                    # Keep original Property articles tightly aligned to housing/planning/public-impact utility,
+                    # even when they are being folded into Finance.
+                    if article.get('category') == "Property" and not is_useful_property_article(article):
                         continue
 
                     # Keep crime-like content to a very low cap
@@ -1532,11 +1533,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 return imported_count
             
             finance_target = min(3, request.uk_articles)
-            property_target = min(2, max(0, request.uk_articles - finance_target))
-            uk_target = max(0, request.uk_articles - finance_target - property_target)
+            property_enrichment_target = min(2, max(0, request.uk_articles - finance_target))
+            uk_target = max(0, request.uk_articles - finance_target - property_enrichment_target)
 
             finance_imported = await import_category_articles(finance_articles, "Finance", finance_target, "finance_imported")
-            property_imported = await import_category_articles(property_articles, "Property", property_target, "property_imported")
+            property_enrichment_imported = await import_category_articles(property_enrichment_articles, "Finance", property_enrichment_target, "finance_imported")
             uk_imported = await import_category_articles(uk_news_articles, "UK News", uk_target, "uk_imported")
 
             if finance_imported < finance_target:
@@ -1547,11 +1548,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     "uk_imported"
                 )
 
-            if property_imported < property_target:
+            if property_enrichment_imported < property_enrichment_target:
                 uk_imported += await import_category_articles(
                     uk_news_articles,
                     "UK News",
-                    property_target - property_imported,
+                    property_enrichment_target - property_enrichment_imported,
                     "uk_imported"
                 )
             
@@ -2699,11 +2700,11 @@ async def get_articles(
         
         # Category filtering
         if category and category != 'all':
-            # Special handling for Local News - only show local sources
-            if category == 'Local News':
+            # Special handling for Local - support both new display label and legacy stored label
+            if category in ['Local', 'Local News']:
                 query['is_local_source'] = True
-            # Special handling for UK News - only show national sources
-            elif category == 'UK News':
+            # Special handling for UK - support both new display label and legacy stored label
+            elif category in ['UK', 'UK News']:
                 query['is_local_source'] = False
                 query['category'] = {'$in': ['UK News', 'Finance', 'Tax', 'Property', 'Tech', 'AI', 'Science']}
             else:
@@ -3895,8 +3896,10 @@ async def subscribe_newsletter(request: SubscribeRequest):
 # Allowed newsletter categories (used for validating user preference updates)
 NEWSLETTER_ALLOWED_CATEGORIES = [
     "Local News",
+    "UK News",
     "Business",
     "Finance",
+    "Tax",
     "AI & Tech",
 ]
 
@@ -4051,8 +4054,10 @@ async def get_available_categories():
         # Legacy categories for backwards compatibility
         "categories": [
             {"id": "Local News", "name": "Local News", "description": "Cheshire & surrounding areas"},
+            {"id": "UK News", "name": "UK News", "description": "National public-interest and policy coverage"},
             {"id": "Business", "name": "Business", "description": "Business & economic intelligence"},
-            {"id": "Finance", "name": "Finance", "description": "Personal finance, tax & money"},
+            {"id": "Finance", "name": "Finance", "description": "Personal finance, housing and money"},
+            {"id": "Tax", "name": "Tax", "description": "Tax, HMRC and council-tax coverage"},
             {"id": "AI & Tech", "name": "AI & Tech", "description": "Artificial intelligence & technology"}
         ]
     }
@@ -5515,8 +5520,7 @@ async def get_affiliate_categories(auth: bool = Depends(get_admin_auth)):
         
         # Default categories if none exist
         default_categories = [
-            "Local News", "Sports", "Tech", "Health", "Entertainment",
-            "UK News", "Business",  "Education", "default"
+            "Local News", "UK News", "Business", "Finance", "Tax", "AI & Tech", "default"
         ]
         
         category_map = {cat["_id"]: cat["count"] for cat in categories}
@@ -8777,7 +8781,7 @@ async def generate_sitemap():
             xml_content += '  </url>\n'
         
         # Add category pages
-        categories_list = ['Local News', 'UK News', 'Community', 'Tech', 'Business', 'Finance', 'Health', 'Weather', 'Food', 'Festive', 'Sports', 'Events']
+        categories_list = ['Local News', 'UK News', 'Business', 'Finance']
         for category in categories_list:
             xml_content += '  <url>\n'
             xml_content += f'    <loc>{base_url}/category/{category.lower().replace(" ", "-")}</loc>\n'

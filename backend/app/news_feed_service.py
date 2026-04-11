@@ -183,13 +183,13 @@ RSS_FEEDS = {
 'guardian_housing': {
         'url': 'https://www.theguardian.com/housing-network/rss',
         'source': 'The Guardian',
-        'category': 'Property',
+        'category': 'Finance',
         'priority': 2
     },
     'ft_property': {
         'url': 'https://www.ft.com/property-sector?format=rss',
         'source': 'Financial Times',
-        'category': 'Property',
+        'category': 'Finance',
         'priority': 2
     },
 
@@ -202,7 +202,7 @@ RSS_FEEDS = {
     'bbc_health': {
         'url': 'https://feeds.bbci.co.uk/news/health/rss.xml',
         'source': 'BBC News',
-        'category': 'Health',
+        'category': 'UK News',
         'priority': 2
     },
     'bbc_politics': {
@@ -236,13 +236,13 @@ RSS_FEEDS = {
     'bbc_science': {
         'url': 'https://feeds.bbci.co.uk/news/science_and_environment/rss.xml',
         'source': 'BBC News',
-        'category': 'Science',
+        'category': 'Tech',
         'priority': 2
     },
     'guardian_science': {
         'url': 'https://www.theguardian.com/science/rss',
         'source': 'The Guardian',
-        'category': 'Science',
+        'category': 'Tech',
         'priority': 2
     },
     
@@ -250,13 +250,13 @@ RSS_FEEDS = {
     'bbc_entertainment': {
         'url': 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
         'source': 'BBC News',
-        'category': 'Entertainment',
+        'category': 'UK News',
         'priority': 2
     },
     'sky_entertainment': {
         'url': 'https://feeds.skynews.com/feeds/rss/entertainment.xml',
         'source': 'Sky News',
-        'category': 'Entertainment',
+        'category': 'UK News',
         'priority': 2
     },
     
@@ -266,20 +266,6 @@ RSS_FEEDS = {
         'source': 'The Guardian',
         'category': 'UK News',
         'priority': 1
-    },
-    
-    # Sports
-    'bbc_sport': {
-        'url': 'https://feeds.bbci.co.uk/sport/rss.xml',
-        'source': 'BBC Sport',
-        'category': 'Sports',
-        'priority': 2
-    },
-    'sky_sports': {
-        'url': 'https://www.skysports.com/rss/12040',
-        'source': 'Sky Sports',
-        'category': 'Sports',
-        'priority': 2
     },
     
     # ====================================
@@ -448,7 +434,7 @@ RSS_FEEDS = {
     'gn_uk_housing_property': {
         'url': 'https://news.google.com/rss/search?q=(UK%20housing%20OR%20property%20market%20OR%20house%20prices%20OR%20rent%20rents)%20when%3A14d&hl=en-GB&gl=GB&ceid=GB%3Aen',
         'source': 'Google News',
-        'category': 'Property',
+        'category': 'Finance',
         'priority': 3
     },
     'gn_uk_energy_bills': {
@@ -637,16 +623,16 @@ def is_secondary_cheshire_article(title: str, content: str = '') -> bool:
 # More specific keywords should be used to avoid false positives
 
 # Limit RSS categories to reduce noise + DB growth (monetisation-first)
-ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Science", "Finance", "Tax", "Property"}
+ALLOWED_RSS_CATEGORIES = {"UK News", "Local News", "Business", "AI", "Tech", "Finance", "Tax"}
 
 def _rss_category_guard(cat: str) -> str:
     c = (cat or "").strip()
     return c if c in ALLOWED_RSS_CATEGORIES else "UK News"
 
 CATEGORY_KEYWORD_OVERRIDES = {
-    'Sports': [
+    '_REMOVED_SPORTS': [
         'football', 'rugby', 'cricket', 'tennis', 'golf', 'boxing', 'darts',
-        'snooker', 'f1', 'formula 1', 'premier league', 'championship', 
+        'snooker', 'f1', 'formula 1', 'premier league', 'championship',
         'champions league', 'uefa', 'fifa', 'world cup', 'olympics',
         'athletics', 'swimming', 'cycling', 'marathon', 'scored goal',
         'player signed', 'team manager', 'transfer window', 'injury update',
@@ -654,7 +640,7 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'manchester united', 'manchester city', 'liverpool fc', 'everton fc',
         'chester fc', 'macclesfield fc', 'warrington wolves', 'sale sharks'
     ],
-    'Entertainment': [
+    '_REMOVED_ENTERTAINMENT': [
         'celebrity news', 'actor reveals', 'actress says', 'film premiere', 'movie review',
         'cinema release', 'tv show', 'television series', 'netflix series', 'bbc iplayer',
         'strictly come dancing', 'x factor', 'britain\'s got talent', 'i\'m a celebrity',
@@ -662,23 +648,27 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'concert tour', 'album release', 'grammy awards', 'brit awards', 'oscar nomination',
         'bafta winner', 'red carpet', 'film premiere', 'itv show', 'channel 4 documentary'
     ],
-    'Science': [
+    'Tech': [
         'scientific research', 'study finds', 'scientists discover', 'new discovery',
         'space mission', 'nasa announces', 'asteroid', 'planet discovered',
         'climate research', 'environmental study', 'species discovered',
         'dna research', 'genome study', 'medical breakthrough', 'physics research',
         'chemistry breakthrough', 'biology study', 'laboratory experiment',
-        'archaeological dig', 'fossil discovery'
+        'archaeological dig', 'fossil discovery',
+        'apple announces', 'apple releases', 'google launches', 'microsoft releases', 'amazon tech',
+        'meta platform', 'facebook policy', 'twitter change', 'ai technology',
+        'artificial intelligence', 'chatgpt update', 'robot technology', 'smartphone launch',
+        'iphone release', 'iphone', 'android update', 'app store', 'software update',
+        'cybersecurity breach', 'hacker attack', 'data breach', 'tech startup',
+        'blockchain technology', 'cryptocurrency market', 'bitcoin price'
     ],
-    'Education': [
+    'UK News': [
         'school results', 'university admission', 'college funding', 'student protest',
         'teacher strike', 'ofsted report', 'gcse results', 'a-level results',
         'exam board', 'curriculum change', 'education minister', 'classroom shortage',
         'headteacher resigns', 'academy trust', 'sixth form college', 'nursery funding',
         'primary school ofsted', 'secondary school rating', 'grammar school debate',
-        'scholarship programme', 'graduation ceremony'
-    ],
-    'Health': [
+        'scholarship programme', 'graduation ceremony',
         'nhs crisis', 'nhs funding', 'hospital waiting', 'doctor shortage', 'nurse strike',
         'patient care', 'surgery cancelled', 'cancer treatment', 'diabetes care',
         'heart disease', 'mental health crisis', 'anxiety treatment', 'depression help',
@@ -687,28 +677,18 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'infection control', 'a&e waiting', 'gp appointment', 'pharmacy closure',
         'prescription charge', 'waiting list crisis'
     ],
-    'Tech': [
-        'apple announces', 'apple releases', 'google launches', 'microsoft releases', 'amazon tech',
-        'meta platform', 'facebook policy', 'twitter change', 'ai technology',
-        'artificial intelligence', 'chatgpt update', 'robot technology', 'smartphone launch',
-        'iphone release', 'iphone', 'android update', 'app store', 'software update',
-        'cybersecurity breach', 'hacker attack', 'data breach', 'tech startup',
-        'blockchain technology', 'cryptocurrency market', 'bitcoin price'
-    ],
     'Finance': [
         'inflation rate', 'interest rate decision', 'bank of england', 'budget announcement',
         'energy bills', 'energy price cap', 'ofgem', 'insurance', 'savings',
         'cost of living', 'interest rates', 'personal finance', 'household bills',
-        'consumer spending', 'consumer confidence', 'mortgage rates', 'remortgage'
+        'consumer spending', 'consumer confidence', 'mortgage rates', 'remortgage',
+        'mortgage', 'mortgages', 'housing market', 'house prices', 'property market',
+        'rent rises', 'rental market', 'landlord', 'tenant', 'housebuilding',
+        'planning approval', 'affordable homes'
     ],
     'Tax': [
         'tax increase', 'tax bill', 'hmrc', 'self assessment', 'vat', 'national insurance',
         'tax return', 'fiscal drag', 'tax threshold', 'stamp duty', 'council tax'
-    ],
-    'Property': [
-        'mortgage', 'mortgages', 'housing market', 'house prices', 'property market',
-        'rent rises', 'rental market', 'landlord', 'tenant', 'housebuilding',
-        'planning approval', 'affordable homes'
     ],
     'Business': [
         'stock market', 'ftse 100', 'shares tumble', 'investment fund', 'profit warning',
@@ -718,7 +698,7 @@ CATEGORY_KEYWORD_OVERRIDES = {
         'earnings', 'results', 'trading update', 'manufacturer', 'retailer',
         'supply chain', 'factory', 'startup funding', 'venture capital'
     ],
-    'Weather': [
+    '_GUARD_WEATHER': [
         'weather warning', 'storm warning', 'met office', 'snow forecast', 'flood warning',
         'heavy rain', 'strong winds', 'ice warning', 'thunderstorm', 'heatwave',
         'cold snap', 'weather alert', 'travel disruption due to weather'
@@ -726,7 +706,7 @@ CATEGORY_KEYWORD_OVERRIDES = {
 }
 
 # Categories that should NOT be overridden (preserve original RSS category)
-PROTECTED_CATEGORIES = ['Weather', 'Local News']
+PROTECTED_CATEGORIES = ['Local News']
 
 # ============================================
 # SPAM/PRODUCT/ADVERTISING FILTER
@@ -877,7 +857,7 @@ def get_category_override(title: str, content: str, original_category: str = Non
     text = f"{title} {content}".lower()
     
     # Check Weather first (highest priority) - storm/weather articles should stay as UK News/Local News
-    weather_keywords = CATEGORY_KEYWORD_OVERRIDES.get('Weather', [])
+    weather_keywords = CATEGORY_KEYWORD_OVERRIDES.get('_GUARD_WEATHER', [])
     for keyword in weather_keywords:
         if keyword.lower() in text:
             # Weather articles should NOT be categorized as Education just because they mention schools
@@ -885,8 +865,8 @@ def get_category_override(title: str, content: str, original_category: str = Non
     
     # Check each category's keywords
     for category, keywords in CATEGORY_KEYWORD_OVERRIDES.items():
-        if category == 'Weather':
-            continue  # Already handled
+        if category.startswith('_'):
+            continue  # Already handled / intentionally disabled
         match_count = 0
         for keyword in keywords:
             if keyword.lower() in text:
@@ -1372,7 +1352,7 @@ class NewsFeedService:
                         "manager", "coach", "stadium", "match", "fixture", "league", "cup"
                     )
                     if category == "UK News" and any(t in text_l for t in sport_terms):
-                        category = "Sports"
+                        category = "UK News"
                     if category == "Local News" and not is_local:
                         category = "UK News"
                     
