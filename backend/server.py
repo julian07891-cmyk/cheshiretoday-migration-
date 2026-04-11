@@ -10156,6 +10156,10 @@ async def sync_rss_now():
             r"\b(the hill i will die on|if you spend it right|comment is free)\b",
             re.I,
         )
+        sync_local_lifestyle_kw = re.compile(
+            r"\b(coffee machine|air fryer|vacuum cleaner|mornings?, myself|transformed my mornings|saved me a load of cash|must-have buy|my favourite product|beauty buy|skincare|make-up|fashion find)\b",
+            re.I,
+        )
         seen_new_titles = set()
         seen_urls = set()
 
@@ -10236,6 +10240,9 @@ async def sync_rss_now():
                 continue
 
             if article.get('is_local_source') is True and sync_local_advice_kw.search(text_all):
+                continue
+
+            if article.get('is_local_source') is True and sync_local_lifestyle_kw.search(text_all):
                 continue
 
             if article.get('is_local_source') is True and not (article.get('location') or article.get('priority_location')):
