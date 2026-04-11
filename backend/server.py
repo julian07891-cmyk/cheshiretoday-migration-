@@ -8252,17 +8252,22 @@ async def get_email_analytics(days: int = 30, auth: bool = Depends(get_admin_aut
         recent_sends = []
         for log in digest_logs[:10]:
             tracking_id = log.get("tracking_id")
-            analytics = None
+            opens = 0
+            clicks = 0
             if tracking_id:
-                analytics = await db.email_analytics.find_one({"tracking_id": tracking_id})
+                matching_analytics = await db.email_analytics.find(
+                    {"tracking_id": {"$regex": f"^{re.escape(tracking_id)}"}}
+                ).to_list(10000)
+                opens = sum(a.get("opens", 0) for a in matching_analytics)
+                clicks = sum(a.get("clicks", 0) for a in matching_analytics)
             
             recent_sends.append({
                 "sent_at": log.get("sent_at").isoformat() if log.get("sent_at") else None,
                 "type": log.get("type", log.get("digest_time", "Unknown")),
                 "subscribers": log.get("subscribers_count", 0),
                 "delivered": log.get("success_count", 0),
-                "opens": analytics.get("opens", 0) if analytics else 0,
-                "clicks": analytics.get("clicks", 0) if analytics else 0,
+                "opens": opens,
+                "clicks": clicks,
                 "headline": log.get("headline", "")[:60] if log.get("headline") else None
             })
         
