@@ -14,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Tuple
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,13 @@ class EmailService:
         self.smtp_user = os.environ.get('SMTP_USER')
         self.smtp_password = os.environ.get('SMTP_PASSWORD')
         self.smtp_enabled = (os.environ.get('SMTP_ENABLED', 'false').strip().lower() in ('1','true','yes','on'))
+        self.resend_enabled = (os.environ.get('RESEND_ENABLED', 'false').strip().lower() in ('1','true','yes','on'))
+        self.resend_api_key = os.environ.get('RESEND_API_KEY')
         self.from_email = os.environ.get('SMTP_FROM_EMAIL')
+        self.resend_from_email = os.environ.get('RESEND_FROM_EMAIL')
         # Updated: From name is now "Editor at Cheshire Today"
         self.from_name = os.environ.get('SMTP_FROM_NAME', 'Editor at Cheshire Today')
+        self.resend_from_name = os.environ.get('RESEND_FROM_NAME', self.from_name)
         # Reply-to address
         self.reply_to = 'news@cheshiretoday.co.uk'
         # ALWAYS use production URL for email links - hardcoded to prevent env var issues
@@ -62,6 +67,68 @@ class EmailService:
         return f"{self.base_url}/article/{article_id}/{slug}"
         
     
+    def _resend_from_header(self) -> str:
+        from_email = self.resend_from_email or self.from_email
+        from_name = self.resend_from_name or self.from_name
+        return f"{from_name} <{from_email}>" if from_name else from_email
+
+    def _send_resend_batch(self, batch_messages: List[dict]) -> int:
+        """Send personalized emails via Resend batch API in chunks."""
+        if not batch_messages:
+            return 0
+        if not getattr(self, "resend_enabled", False):
+            logger.info("Resend disabled (RESEND_ENABLED not true) — skipping Resend batch send")
+            return 0
+        if not self.resend_api_key:
+            logger.error("Resend not configured (RESEND_API_KEY missing)")
+            return 0
+        from_email = self.resend_from_email or self.from_email
+        if not from_email:
+            logger.error("Resend not configured (RESEND_FROM_EMAIL / SMTP_FROM_EMAIL missing)")
+            return 0
+
+        success_count = 0
+        headers = {
+            "Authorization": f"Bearer {self.resend_api_key}",
+            "Content-Type": "application/json",
+        }
+
+        for i in range(0, len(batch_messages), 100):
+            chunk = batch_messages[i:i+100]
+            payload = []
+            for item in chunk:
+                email_payload = {
+                    "from": self._resend_from_header(),
+                    "to": [item["to"]],
+                    "subject": item["subject"],
+                    "html": item["html"],
+                }
+                if item.get("text") is not None:
+                    email_payload["text"] = item["text"]
+                if self.reply_to:
+                    email_payload["reply_to"] = self.reply_to
+                payload.append(email_payload)
+
+            try:
+                response = httpx.post(
+                    "https://api.resend.com/emails/batch",
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0,
+                )
+                response.raise_for_status()
+                success_count += len(chunk)
+            except Exception as e:
+                detail = ""
+                try:
+                    detail = response.text[:500]
+                except Exception:
+                    pass
+                logger.error(f"Resend batch send failed for chunk {i // 100 + 1}: {str(e)} {detail}")
+
+        return success_count
+
+
     def _send_email(self, to_email, subject, html_content, text_content=None):
         """Send an email via SMTP (supports Gmail, GoDaddy, etc.)"""
         import smtplib
@@ -980,17 +1047,28 @@ Cheshire Today Jobs Team
         '''
         
         # Send to all subscribers with daily_brief preference
-        success_count = 0
+        batch_messages = []
         for email in to_emails:
-            # Personalize prefs/unsub links per-recipient (one-click)
             from urllib.parse import quote
             prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
             unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
             tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
             tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
             html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
+            batch_messages.append({
+                "to": email,
+                "subject": subject,
+                "html": html_personal,
+                "text": None,
+            })
+
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
+                    success_count += 1
         
         logger.info(f"Daily Brief sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
         return success_count, tracking_id
@@ -1267,7 +1345,7 @@ Cheshire Today Jobs Team
         </html>
         '''
         
-        success_count = 0
+        batch_messages = []
         for email in to_emails:
             # Personalize prefs/unsub links per-recipient (one-click)
             from urllib.parse import quote
@@ -1276,8 +1354,20 @@ Cheshire Today Jobs Team
             tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
             tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
             html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
+            batch_messages.append({
+                "to": email,
+                "subject": subject,
+                "html": html_personal,
+                "text": None,
+            })
+
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
+                    success_count += 1
         
         logger.info(f"Weekly Roundup sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
         return success_count, tracking_id
