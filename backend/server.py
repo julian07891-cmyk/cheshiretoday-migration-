@@ -1273,11 +1273,11 @@ async def import_real_news(limit: int = 20, category: Optional[str] = None):
 
 
 class HybridNewsRequest(BaseModel):
-    cheshire_articles: int = 8   # 8 Cheshire/local articles
-    uk_articles: int = 12        # 12 UK articles
+    cheshire_articles: int = 5   # 5 Cheshire/local articles
+    uk_articles: int = 7         # 7 UK articles
     max_sports: int = 3          # Limit sports articles
-    business_articles: int = 2   # 2 Business articles (FREE from RSS)
-    tech_articles: int = 2       # 2 Tech articles (FREE from RSS)
+    business_articles: int = 5   # 5 Business articles (FREE from RSS)
+    tech_articles: int = 5       # 5 Tech/AI articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
     rewrite_delay_seconds: int = 900  # Wait before AI rewrite so sources can propagate/index
 
@@ -1532,8 +1532,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
                 return imported_count
             
-            finance_target = min(3, request.uk_articles)
-            property_enrichment_target = min(2, max(0, request.uk_articles - finance_target))
+            finance_target = min(5, request.uk_articles)
+            property_enrichment_target = min(1, max(0, request.uk_articles - finance_target))
             uk_target = max(0, request.uk_articles - finance_target - property_enrichment_target)
 
             finance_imported = await import_category_articles(finance_articles, "Finance", finance_target, "finance_imported")
@@ -1933,15 +1933,15 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
         
         # Import fresh news using hybrid approach
         # Cheshire Today policy: ALL imported articles must be AI-enriched before going live
-        local_target = int(os.getenv("LOCAL_IMPORT_LIMIT", "8") or "8")
-        uk_target = int(os.getenv("UK_IMPORT_LIMIT", str(max(0, 20 - local_target))) or str(max(0, 20 - local_target)))
+        local_target = int(os.getenv("LOCAL_IMPORT_LIMIT", "5") or "5")
+        uk_target = int(os.getenv("UK_IMPORT_LIMIT", "7") or "7")
 
         request = HybridNewsRequest(
             cheshire_articles=local_target,   # Cheshire/local (env: LOCAL_IMPORT_LIMIT)
             uk_articles=uk_target,            # UK (env: UK_IMPORT_LIMIT; default keeps ~20 total)
             max_sports=3,                     # Limit sports to 3
-            business_articles=2,              # 2 Business articles (FREE)
-            tech_articles=2,                  # 2 Tech articles (FREE)
+            business_articles=5,              # 5 Business articles (FREE)
+            tech_articles=5,                  # 5 Tech/AI articles (FREE)
             use_perplexity=True,              # Force AI rewrite for all refreshed imports
             rewrite_delay_seconds=0            # Manual/admin refresh should not wait 15 minutes
         )
