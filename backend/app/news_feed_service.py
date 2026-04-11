@@ -1105,6 +1105,8 @@ class NewsFeedService:
                                     'is_local': bool(is_local),
                                     'priority_location': article_location,
                                 }
+                                if article_location:
+                                    article['location'] = article_location
                                 articles.append(article)
                             except Exception:
                                 continue
@@ -1192,6 +1194,7 @@ class NewsFeedService:
                                 }
                                 if article_location:
                                     article['priority_location'] = article_location
+                                    article['location'] = article_location
 
                                 articles.append(article)
                             except Exception as e:
