@@ -1376,10 +1376,13 @@ class NewsFeedService:
                         'created_at': datetime.now(timezone.utc).isoformat()
                     }
                     
-                    # Add location tag if article is about a specific Cheshire location
-                    location = get_article_priority_location(title, description)
+                    # Preserve feed-derived location first; only fall back to detected title/summary location.
+                    feed_location = self.feeds.get(feed_key, {}).get('location')
+                    detected_location = get_article_priority_location(title, description)
+                    location = feed_location or detected_location
                     if location:
                         article['location'] = location
+                        article['priority_location'] = location
                         article['tags'].append(location.capitalize())
                     
                     article.setdefault('source', source)
