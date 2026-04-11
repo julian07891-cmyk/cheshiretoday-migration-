@@ -10132,6 +10132,18 @@ async def sync_rss_now():
         hard_crime_kw = re.compile(r"(murder|kill(?:ed|s)?|killed|homicide|manslaughter|found dead|body found|death|died|dies|stab|shoot|rape|jailed|sentenc|charged|trial|convict)", re.I)
         crime_kw = re.compile(r"(police|arrest|court|jailed|sentenc|charged|trial|inquest|knife crime|stabb|shoot|assault|drink[- ]driver|drink[- ]driving|drunk[- ]driver|dui|dwi)", re.I)
         obituary_kw = re.compile(r"(death notices?|funeral notices?|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)", re.I)
+        sync_low_utility_kw = re.compile(
+            r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|movie|film|album|concert|music\s*video|book\s*launch|novel|brit awards|baftas|royal fashion|gift guide|black friday|cyber monday|shopping deal|must-have buys?|restaurant review|afternoon tea|food\s+festival|arts\s+festival|music\s+festival|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|stunning\s+home|property\s+of\s+the\s+week|inside\s+this\s+home|listed\s+for\s+sale|tasted?\s+and\s+rated|best supermarket|holiday mistake|travel experts?|woodland you need to visit|visit this spring|play area|safari park celebrates|zoo hails birth|in pictures)\b",
+            re.I,
+        )
+        local_utility_kw = re.compile(
+            r"\b(council|planning|approved|refused|development|homes?|housing|bridge|road|motorway|m6|m56|station|rail|train|bus|waste|bins?|school|college|hospital|nhs|business|jobs?|firm|factory|company|funding|flood|warning|closure|traffic|crash|re-open|reopen|town centre|charity|police|court|tax|price|cost|energy|water|sewage)\b",
+            re.I,
+        )
+        science_keep_kw = re.compile(
+            r"\b(ai|artificial intelligence|tech|technology|chip|chips|semiconductor|cyber|software|robot|cloud|openai|chatgpt|gemini|nasa|space|artemis)\b",
+            re.I,
+        )
         seen_new_titles = set()
         seen_urls = set()
 
@@ -10191,6 +10203,24 @@ async def sync_rss_now():
             if not article.get('image'):
                 continue
 
+            text_all = " ".join([
+                article.get('title', ''),
+                article.get('summary', ''),
+                article.get('content', ''),
+                article.get('category', ''),
+            ]).lower()
+            cat_lower = (article.get('category') or '').lower()
+
+            if sync_low_utility_kw.search(text_all):
+                continue
+
+            if cat_lower == 'science' and not science_keep_kw.search(text_all):
+                continue
+
+            if article.get('is_local_source') is True and not (article.get('location') or article.get('priority_location')):
+                if not local_utility_kw.search(text_all):
+                    continue
+
             if url:
                 seen_urls.add(c_url)
             else:
@@ -10209,7 +10239,7 @@ async def sync_rss_now():
             cat = (a.get("category") or "").lower()
             if a.get("is_local_source") is True:
                 score += 3
-            if cat in ("business","tech"):
+            if cat in ("business","tech","finance","tax","ai"):
                 score += 2
             if econ_kw.search(title):
                 score += 2
@@ -10228,7 +10258,7 @@ async def sync_rss_now():
         max_import = 10
         
         # Prefer local items when available; then fill with best non-local.
-        local_target = int(os.getenv("LOCAL_SYNC_TARGET", "6") or "6")
+        local_target = int(os.getenv("LOCAL_SYNC_TARGET", "4") or "4")
         local_items = [a for a in new_articles if a.get("is_local_source") is True]
         non_local_items = [a for a in new_articles if a.get("is_local_source") is not True]
 
