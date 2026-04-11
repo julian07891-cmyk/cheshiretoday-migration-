@@ -53,6 +53,12 @@ class EmailService:
         """Generate HTML for invisible tracking pixel"""
         return f'<img src="{self.api_url}/email/track/open/{tracking_id}" width="1" height="1" alt="" style="display:none;border:0;height:1px;width:1px;" />'
     
+    def _recipient_tracking_id(self, base_tracking_id: str, recipient_email: str) -> str:
+        """Derive a per-recipient tracking ID while preserving a campaign prefix."""
+        email_norm = (recipient_email or '').strip().lower()
+        email_hash = hashlib.sha256(email_norm.encode()).hexdigest()[:8] if email_norm else "unknown"
+        return f"{base_tracking_id}_{email_hash}"
+    
     def _get_tracked_url(self, tracking_id: str, original_url: str) -> str:
         """Generate tracked URL that redirects through our tracking endpoint"""
         from urllib.parse import quote
@@ -1050,11 +1056,17 @@ Cheshire Today Jobs Team
         batch_messages = []
         for email in to_emails:
             from urllib.parse import quote
+            recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
             prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
             unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            tracked_prefs = self._get_tracked_url(recipient_tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(recipient_tracking_id, unsub_url)
+            html_personal = (
+                html_content
+                .replace(tracking_id, recipient_tracking_id)
+                .replace("__PREFS_URL__", tracked_prefs)
+                .replace("__UNSUB_URL__", tracked_unsub)
+            )
             batch_messages.append({
                 "to": email,
                 "subject": subject,
@@ -1349,11 +1361,17 @@ Cheshire Today Jobs Team
         for email in to_emails:
             # Personalize prefs/unsub links per-recipient (one-click)
             from urllib.parse import quote
+            recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
             prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
             unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            tracked_prefs = self._get_tracked_url(recipient_tracking_id, prefs_url)
+            tracked_unsub = self._get_tracked_url(recipient_tracking_id, unsub_url)
+            html_personal = (
+                html_content
+                .replace(tracking_id, recipient_tracking_id)
+                .replace("__PREFS_URL__", tracked_prefs)
+                .replace("__UNSUB_URL__", tracked_unsub)
+            )
             batch_messages.append({
                 "to": email,
                 "subject": subject,
