@@ -10144,6 +10144,18 @@ async def sync_rss_now():
             r"\b(ai|artificial intelligence|tech|technology|chip|chips|semiconductor|cyber|software|robot|cloud|openai|chatgpt|gemini|nasa|space|artemis)\b",
             re.I,
         )
+        sync_crime_kw = re.compile(
+            r"\b(crime spree|behind bars|groomed|grooming|roblox|sex offender|paedophile|pedophile|child abuse|sexual abuse|stab(?:bed|bing)?|shoot(?:ing)?|murder|manslaughter|rape|jailed|sentenc(?:ed|ing)|charged|trial|court appearance|arrested)\b",
+            re.I,
+        )
+        sync_local_advice_kw = re.compile(
+            r"\b(martin lewis|money saving expert|check this simple thing|before it'?s too late|warning about this common|common holiday mistake|travel experts? issu(?:e|es) warning|consumer warning)\b",
+            re.I,
+        )
+        sync_opinion_kw = re.compile(
+            r"\b(the hill i will die on|if you spend it right|comment is free)\b",
+            re.I,
+        )
         seen_new_titles = set()
         seen_urls = set()
 
@@ -10215,6 +10227,15 @@ async def sync_rss_now():
                 continue
 
             if cat_lower == 'science' and not science_keep_kw.search(text_all):
+                continue
+
+            if sync_crime_kw.search(text_all):
+                continue
+
+            if sync_opinion_kw.search(text_all):
+                continue
+
+            if article.get('is_local_source') is True and sync_local_advice_kw.search(text_all):
                 continue
 
             if article.get('is_local_source') is True and not (article.get('location') or article.get('priority_location')):
