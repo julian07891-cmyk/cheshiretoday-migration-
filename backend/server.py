@@ -3256,12 +3256,15 @@ async def get_articles(
             article['is_priority_cheshire'] = is_priority_cheshire_article(title, content)
             article['is_secondary_cheshire'] = is_secondary_cheshire_article(title, content)
 
-            # Use title + summary for location detection to avoid false Cheshire tags
-            # from AI-expanded body copy.
+            # Preserve any existing feed-derived location first.
+            # Only fall back to title + summary detection when no location exists.
+            existing_location = article.get('location') or article.get('priority_location')
             detected_location = get_article_priority_location(title, summary)
-            article['priority_location'] = detected_location
-            if detected_location:
-                article['location'] = detected_location
+            final_location = existing_location or detected_location
+
+            article['priority_location'] = final_location
+            if final_location:
+                article['location'] = final_location
             else:
                 article.pop('location', None)
 
