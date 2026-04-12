@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import NewsletterPreferences from "../NewsletterPreferences";
 import { getApiUrl } from "../../utils/api";
 import { trackEvent } from "../../utils/trackEvent";
 
 export default function NewsletterFull() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [showPreferences, setShowPreferences] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -21,8 +23,10 @@ export default function NewsletterFull() {
       });
 
       if (!res.ok) throw new Error("bad_status");
+      const subscribedEmail = email.trim().toLowerCase();
       setStatus("success");
-      setEmail("");
+      setShowPreferences(true);
+      setEmail(subscribedEmail);
     } catch (err) {
       setStatus("error");
     } finally {
@@ -31,6 +35,7 @@ export default function NewsletterFull() {
   };
 
   return (
+    <>
     <section className="bg-gradient-to-r from-emerald-700 to-emerald-600 rounded-2xl p-8 shadow">
       <div className="max-w-3xl mx-auto text-center">
         <h3 className="text-3xl font-extrabold text-white">
@@ -77,5 +82,11 @@ export default function NewsletterFull() {
         </p>
       </div>
     </section>
+    <NewsletterPreferences
+      open={showPreferences}
+      onOpenChange={setShowPreferences}
+      email={email}
+    />
+    </>
   );
 }

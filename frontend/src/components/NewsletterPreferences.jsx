@@ -72,6 +72,17 @@ const NewsletterPreferences = ({ open, onOpenChange, email: initialEmail }) => {
     }
   }, [open, initialEmail]);
 
+  // If an email is already known, jump straight to the preference switches.
+  useEffect(() => {
+    if (open && initialEmail) {
+      const normalizedEmail = initialEmail.trim().toLowerCase();
+      if (!normalizedEmail) return;
+      setEmail(normalizedEmail);
+      setStep('preferences');
+      loadPreferences(normalizedEmail);
+    }
+  }, [open, initialEmail]);
+
   // Load existing preferences when email is entered
   const loadPreferences = async (emailToLoad) => {
     if (!emailToLoad) return;

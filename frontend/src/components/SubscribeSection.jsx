@@ -20,9 +20,11 @@ const SubscribeSection = ({ compact = false }) => {
     try {
       const response = await newsletterService.subscribe(email);
       if (response.success) {
+        const subscribedEmail = email.trim().toLowerCase();
+        setEmail(subscribedEmail);
         setSubscribed(true);
+        setShowPreferences(true);
         setTimeout(() => {
-          setEmail('');
           setSubscribed(false);
         }, 5000);
       }
