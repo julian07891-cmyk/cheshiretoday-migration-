@@ -313,6 +313,10 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-iso-training-certification-courses-uk-businesses");
     push("what-iso-certification-means-small-business-uk");
     push("best-accounting-software-uk");
+  } else if (context === "email-marketing") {
+    push("best-email-marketing-tools-small-business-uk");
+    push("best-website-builders-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
   } else if (pillar.includes("business")) {
     push("best-business-bank-accounts-uk");
     push("best-accounting-software-uk");
@@ -558,6 +562,7 @@ export default function ArticlePageV2({ categories }) {
     if (/\b(web hosting|hosting provider|domain name|domain registration|website builder|website builders)\b/.test(text)) return "web-presence";
     if (/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/.test(text)) return "shipping";
     if (/\b(iso 9001|iso 14001|iso 27001|iso certification|iso training|audit readiness)\b/.test(text) || (/\biso\b/.test(text) && /\b(certification|training|audit|compliance)\b/.test(text))) return "iso";
+    if (/\b(mailchimp|email marketing|newsletter tool|newsletter tools|email automation|marketing automation|audience segmentation|campaign automation|email campaigns?)\b/.test(text)) return "email-marketing";
 
     if (/\b(remortgage|mortgage|fixed rate|tracker)\b/.test(text)) return "mortgages";
     if (/\b(isa|savings|easy-access|interest rate)\b/.test(text)) return "savings";
