@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Briefcase, ArrowRight, MapPin, Mail } from 'lucide-react';
 import { Button } from './ui/button';
 import { newsletterService } from '../services/api';
+import NewsletterPreferences from './NewsletterPreferences';
 
 // Compact widget for article sidebar/inline
 export const JobsWidget = () => {
@@ -77,6 +78,7 @@ export const SubscribeInlineBanner = () => {
   const [loading, setLoading] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showPreferences, setShowPreferences] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,10 +88,12 @@ export const SubscribeInlineBanner = () => {
     setErrorMessage('');
 
     try {
-      const response = await newsletterService.subscribe(email);
+      const cleanedEmail = (email || '').trim().toLowerCase();
+      const response = await newsletterService.subscribe(cleanedEmail);
       if (response.success) {
+        setEmail(cleanedEmail);
         setSubscribed(true);
-        setEmail('');
+        setShowPreferences(true);
         setTimeout(() => setSubscribed(false), 4000);
       } else {
         setErrorMessage('Please try again.');
@@ -102,6 +106,7 @@ export const SubscribeInlineBanner = () => {
   };
 
   return (
+    <>
     <div className="block my-4" data-testid="subscribe-inline-banner">
       <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/20 px-4 py-3">
         <div className="flex items-start gap-3">
@@ -153,6 +158,12 @@ export const SubscribeInlineBanner = () => {
         </div>
       </div>
     </div>
+    <NewsletterPreferences
+      open={showPreferences}
+      onOpenChange={setShowPreferences}
+      email={email}
+    />
+    </>
   );
 };
 
