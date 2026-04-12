@@ -753,6 +753,21 @@ const navigate = useNavigate();
       return isBusinessPillar(a);
     };
 
+    const isStrongBusinessSidebar = (a) => {
+      const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
+      const cat = String(a?.category || "").toLowerCase();
+
+      if (!isBusiness(a)) return false;
+
+      // Keep obvious soft / celebrity-adjacent brand-management stories out of the Business sidebar
+      if (/\b(celebrity|showbiz|fashion house|luxury brand|designer brand|beauty brand|co-founder quits as chairman|quits as chairman)\b/.test(t)) return false;
+
+      // Require stronger business/economic/regulatory/company signals for this dedicated slot
+      if (cat.includes("business")) return /\b(industry|company|companies|earnings|profit|profits|revenue|sales|trading|market|markets|investment|funding|startup|manufacturing|factory|supply|shortage|trade|tariff|airline|aviation|energy|water|utilities|mining|bank|banking|jobs?|employer|regulation|regulated|cma|insolvency|competition|merger|takeover|shares?|stocks?)\b/.test(t);
+
+      return false;
+    };
+
 const isMoney = (a) => {
       return isFinancePillar(a);
     };
@@ -814,7 +829,7 @@ const isMoney = (a) => {
       const k = articleKey(a);
       if (!k || latestPreviewKeys.has(k) || sidebarUsed.has(k)) continue;
       if (isAiTech(a)) continue;
-      if (!isBusiness(a)) continue;
+      if (!isStrongBusinessSidebar(a)) continue;
       if (!mark(a)) continue;
       businessFeed.push(a);
     }
