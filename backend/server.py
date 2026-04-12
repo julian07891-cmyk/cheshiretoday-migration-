@@ -862,6 +862,51 @@ class AuthorityPageDoc(BaseModel):
     sections: List[AuthoritySection] = []
     updatedAt: Optional[str] = None
 
+AUTHORITY_AFFILIATE_LINKS = {
+    "best-business-bank-accounts-uk": {
+        "Starling Business": "",
+        "Tide": "",
+        "Monzo Business": "",
+        "Wise Business": "",
+    },
+    "best-accounting-software-uk": {
+        "Xero": "",
+        "QuickBooks Online": "https://quickbooks.intuit.com/uk/?cid=aff_uk_CJ_always_on___123099-123099",
+        "FreeAgent": "",
+        "Sage Accounting": "",
+    },
+    "best-isa-platforms-uk": {},
+    "cheap-energy-tariffs-uk": {},
+    "best-broadband-deals-uk": {},
+    "council-tax-bands-cheshire": {},
+}
+
+def _ap_apply_affiliate_links(out: dict) -> dict:
+    slug = str(out.get("slug") or "").strip()
+    link_map = AUTHORITY_AFFILIATE_LINKS.get(slug) or {}
+    sections = out.get("sections")
+
+    if not isinstance(sections, list) or not link_map:
+        return out
+
+    enriched_sections = []
+    for section in sections:
+        if not isinstance(section, dict):
+            enriched_sections.append(section)
+            continue
+
+        item = dict(section)
+        if item.get("type") == "tool" and not str(item.get("affiliate_link") or "").strip():
+            tool_name = str(item.get("name") or "").strip()
+            mapped = str(link_map.get(tool_name) or "").strip()
+            if mapped:
+                item["affiliate_link"] = mapped
+
+        enriched_sections.append(item)
+
+    out["sections"] = enriched_sections
+    return out
+
 def _ap_serialize(doc: dict) -> dict:
     if not isinstance(doc, dict):
         return {}
@@ -869,7 +914,7 @@ def _ap_serialize(doc: dict) -> dict:
     if "_id" in out:
         out["id"] = str(out["_id"])
         del out["_id"]
-    return out
+    return _ap_apply_affiliate_links(out)
 
 @api_router.get("/authority-pages")
 async def list_authority_pages(limit: int = 50, skip: int = 0, status: Optional[str] = None):
