@@ -772,16 +772,10 @@ const isMoney = (a) => {
       return rankScore(b) - rankScore(a);
     });
 
-    // Pass 1: Prefer Money-ish first (2), then Business (up to 4)
+    // Pass 1: Prefer Money-ish first (2)
     for (const a of sectionFreshPool) {
       if (financeArticles.length >= 2) break;
       if (!isMoney(a)) continue;
-      pushFinance(a);
-    }
-
-    for (const a of sectionFreshPool) {
-      if (financeArticles.length >= 4) break;
-      if (!isBusiness(a)) continue;
       pushFinance(a);
     }
 
@@ -797,12 +791,6 @@ const isMoney = (a) => {
       pushFinance(a);
     }
 
-    // Pass 3: 1 more latest business
-    for (const a of sectionFreshPool) {
-      if (financeArticles.length >= 6) break;
-      if (!isBusiness(a)) continue;
-      pushFinance(a);
-    }
 
 
     
