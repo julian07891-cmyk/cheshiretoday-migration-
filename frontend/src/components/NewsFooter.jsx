@@ -2,6 +2,7 @@ import React from 'react';
 import { Mail, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { newsletterService } from '../services/api';
+import NewsletterPreferences from './NewsletterPreferences';
 
 const NewsFooter = () => {
   const currentYear = new Date().getFullYear();
@@ -9,6 +10,7 @@ const NewsFooter = () => {
   const [subscribed, setSubscribed] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
+  const [showPreferences, setShowPreferences] = React.useState(false);
 
   const footerLinks = {
     'Coverage': ['Local', 'Business', 'UK'],
@@ -46,9 +48,11 @@ const NewsFooter = () => {
       const response = await newsletterService.subscribe(cleanedEmail);
 
       if (response.success) {
+        const subscribedEmail = cleanedEmail.toLowerCase();
+        setEmail(subscribedEmail);
         setSubscribed(true);
+        setShowPreferences(true);
         setTimeout(() => {
-          setEmail('');
           setSubscribed(false);
         }, 5000);
       }
@@ -61,6 +65,7 @@ const NewsFooter = () => {
   };
 
   return (
+    <>
     <footer className="mt-12 border-t border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900 text-neutral-700 dark:text-gray-200">
       {/* Newsletter Section */}
       <div className="border-t border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-slate-900 py-8">
@@ -206,6 +211,12 @@ const NewsFooter = () => {
         </div>
       </div>
     </footer>
+    <NewsletterPreferences
+      open={showPreferences}
+      onOpenChange={setShowPreferences}
+      email={email}
+    />
+    </>
   );
 };
 

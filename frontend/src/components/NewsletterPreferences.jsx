@@ -303,11 +303,13 @@ const NewsletterPreferences = ({ open, onOpenChange, email: initialEmail }) => {
                               </p>
                             </div>
                           </div>
-                          <Switch
-                            checked={isActive}
-                            onCheckedChange={() => handleToggle(type.id)}
-                            className="data-[state=checked]:bg-emerald-600"
-                          />
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={isActive}
+                              onCheckedChange={() => handleToggle(type.id)}
+                              className="data-[state=checked]:bg-emerald-600"
+                            />
+                          </div>
                         </div>
                       </div>
                     );
