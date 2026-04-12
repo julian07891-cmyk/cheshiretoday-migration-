@@ -762,6 +762,9 @@ const navigate = useNavigate();
       // Keep obvious soft / celebrity-adjacent brand-management stories out of the Business sidebar
       if (/\b(celebrity|showbiz|fashion house|luxury brand|designer brand|beauty brand|co-founder quits as chairman|quits as chairman)\b/.test(t)) return false;
 
+      // Keep soft feature-style environmental/human-interest framing out of the Business sidebar
+      if (/\b(every drop of water counts|fear for the future)\b/.test(t)) return false;
+
       // Require stronger business/economic/regulatory/company signals for this dedicated slot
       if (cat.includes("business")) return /\b(industry|company|companies|earnings|profit|profits|revenue|sales|trading|market|markets|investment|funding|startup|manufacturing|factory|supply|shortage|trade|tariff|airline|aviation|energy|water|utilities|mining|bank|banking|jobs?|employer|regulation|regulated|cma|insolvency|competition|merger|takeover|shares?|stocks?)\b/.test(t);
 
