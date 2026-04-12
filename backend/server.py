@@ -4927,7 +4927,11 @@ async def archive_article(article_id: str, auth: bool = Depends(get_admin_auth))
         # Update article to archived status
         await db.articles.update_one(
             {"_id": article["_id"]},
-            {"$set": {"archived": True, "archived_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {
+                "archived": True,
+                "archived_at": datetime.now(timezone.utc).isoformat(),
+                "archive_reason": "manual_admin"
+            }}
         )
         
         return {"success": True, "message": "Article archived successfully"}
@@ -10837,7 +10841,14 @@ async def cap_visible_articles(keep: int = 200):
 
         # Ensure kept are visible
         await db.articles.update_many(
-            {"_id": {"$in": keep_ids}},
+            {
+                "_id": {"$in": keep_ids},
+                "$or": [
+                    {"archived": {"$exists": False}},
+                    {"archived": False},
+                    {"archive_reason": "auto_cap"}
+                ]
+            },
             {"$set": {"archived": False}, "$unset": {"archive_reason": "", "archived_at": ""}}
         )
 
