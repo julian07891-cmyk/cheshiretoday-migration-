@@ -302,9 +302,9 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-business-credit-cards-uk");
     push("best-accounting-software-uk");
   } else if (context === "web-presence") {
+    push("best-domain-registrars-small-business-uk");
     push("best-web-hosting-small-business-uk");
     push("best-website-builders-small-business-uk");
-    push("best-business-bank-accounts-uk");
   } else if (context === "shipping") {
     push("best-parcel-courier-services-small-business-uk");
     push("how-to-choose-shipping-solution-online-business-uk");
