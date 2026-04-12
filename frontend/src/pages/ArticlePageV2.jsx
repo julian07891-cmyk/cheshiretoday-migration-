@@ -263,6 +263,10 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
 
   if (context === "tax") {
     push("council-tax-bands-cheshire");
+    push("cost-of-buying-home-cheshire-2026");
+    push("best-savings-accounts-uk");
+  } else if (context === "property") {
+    push("cost-of-buying-home-cheshire-2026");
     push("best-mortgage-rates-uk");
     push("best-savings-accounts-uk");
   } else if (context === "mortgages") {
@@ -277,6 +281,10 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-credit-cards-uk");
     push("best-savings-accounts-uk");
     push("best-mortgage-rates-uk");
+  } else if (context === "energy") {
+    push("cheap-energy-tariffs-uk");
+    push("best-broadband-deals-uk");
+    push("best-savings-accounts-uk");
   } else if (context === "ai") {
     push("best-ai-tools-uk");
     push("best-ai-writing-tools-uk");
@@ -310,9 +318,9 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-accounting-software-uk");
     push("best-web-hosting-small-business-uk");
   } else if (pillar.includes("finance")) {
-    push("best-credit-cards-uk");
     push("best-savings-accounts-uk");
     push("best-mortgage-rates-uk");
+    push("best-credit-cards-uk");
   } else if (pillar.includes("local")) {
     push("council-tax-bands-cheshire");
   } else {
