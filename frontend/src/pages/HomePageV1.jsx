@@ -1173,7 +1173,7 @@ return (
 
 
 
-      <HeroMonetisationStrip />
+      {/* HeroMonetisationStrip intentionally disabled for controlled non-Amazon rollout */}
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
