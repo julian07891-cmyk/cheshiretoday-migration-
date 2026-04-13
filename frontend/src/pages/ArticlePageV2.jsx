@@ -384,7 +384,20 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType }) => {
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
   const picked = pickGuidesForPillar(list, pillarLabel, contextToolType);
-  const g = picked[0];
+
+  const fallbackOrder = [
+    "best-self-storage-services-uk-home-business",
+    "best-virtual-office-services-small-business-uk",
+    "best-accounting-software-uk",
+    "best-email-marketing-tools-small-business-uk",
+    "best-domain-registrars-small-business-uk",
+  ];
+
+  const g =
+    picked.find((item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire") ||
+    fallbackOrder.map((slug) => list.find((item) => String(item?.slug || "").trim() == slug)).find(Boolean) ||
+    null;
+
   if (!g) return null;
 
   const title = safeText(g?.title) || "In-depth Guide";
