@@ -1,36 +1,60 @@
 export const monetisationTools = {
-  mortgages: [
-    { badge: "Affiliate", title: "Compare mortgage rates", desc: "Fixed / tracker / remortgage", href: "/guides/best-mortgage-rates-uk" },
-    { badge: "Affiliate", title: "Home buying costs", desc: "Upfront + monthly Cheshire guide", href: "/guides/cost-of-buying-home-cheshire-2026" },
+  homepage_primary: [
+    { badge: "Affiliate", title: "Best domain registrars", desc: "123 Reg + UK domain setup", href: "/guides/best-domain-registrars-small-business-uk" },
+    { badge: "Affiliate", title: "Best website builders", desc: "Create + WebHosting UK options", href: "/guides/best-website-builders-small-business-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", href: "/guides/best-accounting-software-uk" },
   ],
 
-  savings: [
-    { badge: "Affiliate", title: "Best savings accounts", desc: "Top rates + UK picks", href: "/guides/best-savings-accounts-uk" },
-    { badge: "Affiliate", title: "Best ISA platforms", desc: "Cash, stocks & shares, lifetime", href: "/guides/best-isa-platforms-uk" },
-  ],
-  tax: [
-    { badge: "Affiliate", title: "Home buying costs", desc: "Upfront + monthly Cheshire guide", href: "/guides/cost-of-buying-home-cheshire-2026" },
-    { badge: "Affiliate", title: "Council tax guide", desc: "Bands, bills, and tips", href: "/guides/council-tax-bands-cheshire" },
+  web_presence: [
+    { badge: "Affiliate", title: "Best domain registrars", desc: "123 Reg + UK domain setup", href: "/guides/best-domain-registrars-small-business-uk" },
+    { badge: "Affiliate", title: "Best web hosting", desc: "WebHosting UK + Create hosting paths", href: "/guides/best-web-hosting-small-business-uk" },
+    { badge: "Affiliate", title: "Best website builders", desc: "Create + 123 Reg website options", href: "/guides/best-website-builders-small-business-uk" },
   ],
 
+  email_marketing: [
+    { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + newsletter automation", href: "/guides/best-email-marketing-tools-small-business-uk" },
+    { badge: "Affiliate", title: "Best website builders", desc: "Builder + signup-form setup path", href: "/guides/best-website-builders-small-business-uk" },
+    { badge: "Affiliate", title: "Best domain registrars", desc: "Get the domain layer set up first", href: "/guides/best-domain-registrars-small-business-uk" },
+  ],
 
+  accounting: [
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
+    { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp for customer retention", href: "/guides/best-email-marketing-tools-small-business-uk" },
+    { badge: "Affiliate", title: "Best domain registrars", desc: "123 Reg + online setup basics", href: "/guides/best-domain-registrars-small-business-uk" },
+  ],
+
+  shipping: [
+    { badge: "Affiliate", title: "Best parcel & courier services", desc: "Interparcel + multi-carrier options", href: "/guides/best-parcel-courier-services-small-business-uk" },
+    { badge: "Affiliate", title: "Choose a shipping solution", desc: "Operational setup guide", href: "/guides/how-to-choose-shipping-solution-online-business-uk" },
+    { badge: "Affiliate", title: "Best website builders", desc: "Storefront + order flow setup", href: "/guides/best-website-builders-small-business-uk" },
+  ],
+
+  iso: [
+    { badge: "Affiliate", title: "Best ISO training courses", desc: "ISOQAR training + readiness", href: "/guides/best-iso-training-certification-courses-uk-businesses" },
+    { badge: "Affiliate", title: "What ISO certification means", desc: "Explainer + business fit", href: "/guides/what-iso-certification-means-small-business-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "Ops + process control support", href: "/guides/best-accounting-software-uk" },
+  ],
+
+  local_utility: [
+    { badge: "Guide", title: "Council tax guide", desc: "Bands, bills, and local reference", href: "/guides/council-tax-bands-cheshire" },
+  ],
+
+  // Compatibility keys for older components still expecting these names
   credit: [
-    { badge: "Affiliate", title: "Best credit cards", desc: "0% + rewards", href: "/guides/best-credit-cards-uk" },
-    { badge: "Affiliate", title: "Best business credit cards", desc: "Cashback, fees & eligibility", href: "/guides/best-business-credit-cards-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
   ],
 
   energy: [
-    { badge: "Affiliate", title: "Energy tariffs", desc: "Cheaper deals + tips", href: "/guides/cheap-energy-tariffs-uk" },
-    { badge: "Affiliate", title: "Broadband deals", desc: "Compare UK packages", href: "/guides/best-broadband-deals-uk" },
+    { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + automation", href: "/guides/best-email-marketing-tools-small-business-uk" },
+    { badge: "Affiliate", title: "Best domain registrars", desc: "123 Reg + domain setup", href: "/guides/best-domain-registrars-small-business-uk" },
   ],
 
   property: [
-    { badge: "Affiliate", title: "Stamp duty guide", desc: "Rates + calculators", href: "/guides/stamp-duty-uk" },
-    { badge: "Affiliate", title: "Council tax guide", desc: "Bands, bills, and tips", href: "/guides/council-tax-bands-cheshire" },
+    { badge: "Guide", title: "Council tax guide", desc: "Bands, bills, and local reference", href: "/guides/council-tax-bands-cheshire" },
   ],
 
   ai: [
-    { badge: "Guide", title: "Best AI tools", desc: "UK-focused picks", href: "/guides/best-ai-tools-uk" },
-    { badge: "Guide", title: "AI productivity tools", desc: "Automation + workflows", href: "/guides/best-ai-productivity-tools-uk" },
+    { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + automation", href: "/guides/best-email-marketing-tools-small-business-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
   ],
 };

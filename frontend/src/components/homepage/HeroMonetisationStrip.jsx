@@ -5,13 +5,9 @@ import { monetisationTools } from "../../config/monetisationTools";
 export default function HeroMonetisationStrip() {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
-  // Choose 3 hero items that do NOT overlap with the Money Toolkit (mortgages/savings/council tax)
+  // Curated homepage affiliate-backed guides that are live now
   const items = useMemo(() => {
-    return [
-      monetisationTools.credit[0],  // Credit cards
-      monetisationTools.energy[1],  // Broadband
-      monetisationTools.energy[0],  // Energy
-    ].filter(Boolean);
+    return (monetisationTools.homepage_primary || []).slice(0, 3).filter(Boolean);
   }, []);
 
   return (

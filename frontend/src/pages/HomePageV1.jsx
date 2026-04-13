@@ -10,6 +10,7 @@ import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
+import HeroMonetisationStrip from "../components/homepage/HeroMonetisationStrip";
 import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
 import SubscribeSection from "../components/SubscribeSection";
@@ -1172,7 +1173,7 @@ return (
 
 
 
-      {/* HeroMonetisationStrip intentionally disabled for controlled non-Amazon rollout */}
+      <HeroMonetisationStrip />
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
