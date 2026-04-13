@@ -127,6 +127,8 @@ function autoLinkContent(rawText, pillarLabel) {
   add(/\b(domain\s+name|domain\s+registration|domain\s+registrar|registrar)\b/i, "/guides/best-domain-registrars-small-business-uk");
   add(/\b(web\s+hosting|hosting\s+provider|hosting)\b/i, "/guides/best-web-hosting-small-business-uk");
   add(/\b(website\s+builder|website\s+builders)\b/i, "/guides/best-website-builders-small-business-uk");
+  add(/\b(virtual\s+office|business\s+address|registered\s+office|mail\s+handling|mail\s+forwarding)\b/i, "/guides/best-virtual-office-services-small-business-uk");
+  add(/\b(self-storage|self\s+storage|storage\s+unit|storage\s+units|storage\s+facility|storage\s+facilities|safestore)\b/i, "/guides/best-self-storage-services-uk-home-business");
   add(/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/i, "/guides/best-parcel-courier-services-small-business-uk");
   add(/\b(iso\s+9001|iso\s+14001|iso\s+27001|iso\s+certification|iso\s+training|audit\s+readiness)\b/i, "/guides/best-iso-training-certification-courses-uk-businesses");
 
@@ -155,6 +157,8 @@ function autoLinkContent(rawText, pillarLabel) {
     replaceOnce(/\b(domain\s+name|domain\s+registration|domain\s+registrar|registrar)\b/i, "/guides/best-domain-registrars-small-business-uk");
     replaceOnce(/\b(web\s+hosting|hosting\s+provider|hosting)\b/i, "/guides/best-web-hosting-small-business-uk");
     replaceOnce(/\b(website\s+builder|website\s+builders)\b/i, "/guides/best-website-builders-small-business-uk");
+    replaceOnce(/\b(virtual\s+office|business\s+address|registered\s+office|mail\s+handling|mail\s+forwarding)\b/i, "/guides/best-virtual-office-services-small-business-uk");
+    replaceOnce(/\b(self-storage|self\s+storage|storage\s+unit|storage\s+units|storage\s+facility|storage\s+facilities|safestore)\b/i, "/guides/best-self-storage-services-uk-home-business");
     replaceOnce(/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/i, "/guides/best-parcel-courier-services-small-business-uk");
     replaceOnce(/\b(iso\s+9001|iso\s+14001|iso\s+27001|iso\s+certification|iso\s+training|audit\s+readiness)\b/i, "/guides/best-iso-training-certification-courses-uk-businesses");
   } else if (pillar.includes("local")) {
@@ -252,6 +256,8 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-domain-registrars-small-business-uk",
     "best-web-hosting-small-business-uk",
     "best-website-builders-small-business-uk",
+    "best-virtual-office-services-small-business-uk",
+    "best-self-storage-services-uk-home-business",
     "best-parcel-courier-services-small-business-uk",
     "how-to-choose-shipping-solution-online-business-uk",
     "best-iso-training-certification-courses-uk-businesses",
@@ -277,10 +283,19 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-accounting-software-uk");
     push("best-email-marketing-tools-small-business-uk");
     push("best-domain-registrars-small-business-uk");
+  } else if (context === "virtual-office") {
+    push("best-virtual-office-services-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
+    push("best-website-builders-small-business-uk");
   } else if (context === "web-presence") {
     push("best-domain-registrars-small-business-uk");
     push("best-web-hosting-small-business-uk");
     push("best-website-builders-small-business-uk");
+    push("best-virtual-office-services-small-business-uk");
+  } else if (context === "storage") {
+    push("best-self-storage-services-uk-home-business");
+    push("best-parcel-courier-services-small-business-uk");
+    push("how-to-choose-shipping-solution-online-business-uk");
   } else if (context === "shipping") {
     push("best-parcel-courier-services-small-business-uk");
     push("how-to-choose-shipping-solution-online-business-uk");
@@ -539,7 +554,9 @@ export default function ArticlePageV2({ categories }) {
 
     if (/\b(business bank|business account|merchant account|payment gateway|worldpay)\b/.test(text)) return "business-banking";
     if (/\b(accounting software|bookkeeping|xero|quickbooks|freeagent)\b/.test(text)) return "accounting";
+    if (/\b(virtual office|business address|registered office|mail handling|mail forwarding)\b/.test(text)) return "virtual-office";
     if (/\b(web hosting|hosting provider|domain name|domain registration|website builder|website builders)\b/.test(text)) return "web-presence";
+    if (/\b(self-storage|self storage|storage unit|storage units|storage facility|storage facilities|safestore)\b/.test(text)) return "storage";
     if (/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/.test(text)) return "shipping";
     if (/\b(iso 9001|iso 14001|iso 27001|iso certification|iso training|audit readiness)\b/.test(text) || (/\biso\b/.test(text) && /\b(certification|training|audit|compliance)\b/.test(text))) return "iso";
     if (/\b(mailchimp|email marketing|newsletter tool|newsletter tools|email automation|marketing automation|audience segmentation|campaign automation|email campaigns?)\b/.test(text)) return "email-marketing";

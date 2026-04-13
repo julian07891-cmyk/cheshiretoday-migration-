@@ -7,12 +7,12 @@ export default function HeroMonetisationStrip() {
 
   // Curated homepage affiliate-backed guides that are live now
   const items = useMemo(() => {
-    return (monetisationTools.homepage_primary || []).slice(0, 3).filter(Boolean);
+    return (monetisationTools.homepage_primary || []).slice(0, 5).filter(Boolean);
   }, []);
 
   return (
     <div className="mt-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {items.map((it) => (
           <a
             key={it.href}
