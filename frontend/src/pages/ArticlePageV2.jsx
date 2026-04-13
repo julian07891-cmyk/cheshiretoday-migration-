@@ -97,7 +97,7 @@ function autoLinkContent(rawText, pillarLabel) {
 
   // Non-Amazon monetisation OFF => do NOT auto-inject /guides/ links into article body.
   // Keep newline formatting consistent with existing rendering.
-  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) {
+  if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) {
     html = html.replace(/\n/g, "<br/>");
     return html;
   }
@@ -118,24 +118,17 @@ function autoLinkContent(rawText, pillarLabel) {
 
   const add = (pattern, href) => links.push({ pattern, href });
 
-  // Local tax
+  // Local / utility
   add(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
 
-  // Finance staples
-  add(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
-  add(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
-  add(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
-
-  // Business
-  add(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
+  // Business guides with real destinations / stronger controlled-rollout value
   add(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
-  add(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
-
-  // Investing / ISA
-  add(/\b(isa|stocks?\s+and\s+shares\s+isa|cash\s+isa|lifetime\s+isa)\b/i, "/guides/best-isa-platforms-uk");
-
-  // AI
-  add(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
+  add(/\b(mailchimp|email\s+marketing|newsletter\s+tools?|email\s+automation|marketing\s+automation|audience\s+segmentation|campaign\s+automation)\b/i, "/guides/best-email-marketing-tools-small-business-uk");
+  add(/\b(domain\s+name|domain\s+registration|domain\s+registrar|registrar)\b/i, "/guides/best-domain-registrars-small-business-uk");
+  add(/\b(web\s+hosting|hosting\s+provider|hosting)\b/i, "/guides/best-web-hosting-small-business-uk");
+  add(/\b(website\s+builder|website\s+builders)\b/i, "/guides/best-website-builders-small-business-uk");
+  add(/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/i, "/guides/best-parcel-courier-services-small-business-uk");
+  add(/\b(iso\s+9001|iso\s+14001|iso\s+27001|iso\s+certification|iso\s+training|audit\s+readiness)\b/i, "/guides/best-iso-training-certification-courses-uk-businesses");
 
   // 4) Apply with limits (avoid spam)
   const maxLinks = pillar.includes("ai") ? 3 : 4;
@@ -156,16 +149,14 @@ function autoLinkContent(rawText, pillarLabel) {
   };
 
   // Prioritise by pillar
-  if (pillar.includes("ai")) {
-    replaceOnce(/\b(chatgpt|openai|gemini|ai\s+tools?|artificial\s+intelligence)\b/i, "/guides/best-ai-tools-uk");
-  } else if (pillar.includes("business")) {
-    replaceOnce(/\b(business\s+bank\s+account|business\s+account)\b/i, "/guides/best-business-bank-accounts-uk");
+  if (pillar.includes("business")) {
     replaceOnce(/\b(accounting\s+software|bookkeeping|xero|quickbooks)\b/i, "/guides/best-accounting-software-uk");
-    replaceOnce(/\b(business\s+credit\s+card)\b/i, "/guides/best-business-credit-cards-uk");
-  } else if (pillar.includes("finance")) {
-    replaceOnce(/\b(remortgage|mortgage\s+rates?|mortgage)\b/i, "/guides/best-mortgage-rates-uk");
-    replaceOnce(/\b(savings?\s+account|easy[-\s]?access|fixed[-\s]?rate\s+savings|savings)\b/i, "/guides/best-savings-accounts-uk");
-    replaceOnce(/\b(credit\s+cards?|balance\s+transfer|apr)\b/i, "/guides/best-credit-cards-uk");
+    replaceOnce(/\b(mailchimp|email\s+marketing|newsletter\s+tools?|email\s+automation|marketing\s+automation|audience\s+segmentation|campaign\s+automation)\b/i, "/guides/best-email-marketing-tools-small-business-uk");
+    replaceOnce(/\b(domain\s+name|domain\s+registration|domain\s+registrar|registrar)\b/i, "/guides/best-domain-registrars-small-business-uk");
+    replaceOnce(/\b(web\s+hosting|hosting\s+provider|hosting)\b/i, "/guides/best-web-hosting-small-business-uk");
+    replaceOnce(/\b(website\s+builder|website\s+builders)\b/i, "/guides/best-website-builders-small-business-uk");
+    replaceOnce(/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/i, "/guides/best-parcel-courier-services-small-business-uk");
+    replaceOnce(/\b(iso\s+9001|iso\s+14001|iso\s+27001|iso\s+certification|iso\s+training|audit\s+readiness)\b/i, "/guides/best-iso-training-certification-courses-uk-businesses");
   } else if (pillar.includes("local")) {
     replaceOnce(/\b(council\s+tax)\b/i, "/guides/council-tax-bands-cheshire");
   }
@@ -245,7 +236,7 @@ function splitAttribution(rawContent) {
 
 /* ===== Guide selection (pillar-aware) ===== */
 function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
-  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return [];
+  if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return [];
 
   const list = Array.isArray(guides) ? guides : [];
   const pillar = String(pillarLabel || "").toLowerCase();
@@ -254,53 +245,38 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
   const bySlug = new Map(list.map((g) => [String(g?.slug || ""), g]));
   const want = [];
 
+  const ALLOWED_PROMO_GUIDE_SLUGS = new Set([
+    "council-tax-bands-cheshire",
+    "best-accounting-software-uk",
+    "best-email-marketing-tools-small-business-uk",
+    "best-domain-registrars-small-business-uk",
+    "best-web-hosting-small-business-uk",
+    "best-website-builders-small-business-uk",
+    "best-parcel-courier-services-small-business-uk",
+    "how-to-choose-shipping-solution-online-business-uk",
+    "best-iso-training-certification-courses-uk-businesses",
+    "what-iso-certification-means-small-business-uk",
+  ]);
+
   const push = (slug) => {
-    if (!slug) return;
-    if (!bySlug.has(slug)) return;
-    if (want.includes(slug)) return;
-    want.push(slug);
+    const key = String(slug || "").trim();
+    if (!key) return;
+    if (!ALLOWED_PROMO_GUIDE_SLUGS.has(key)) return;
+    if (!bySlug.has(key)) return;
+    if (want.includes(key)) return;
+    want.push(key);
   };
 
-  if (context === "tax") {
+  if (context === "tax" || context === "property") {
     push("council-tax-bands-cheshire");
-    push("cost-of-buying-home-cheshire-2026");
-    push("best-savings-accounts-uk");
-  } else if (context === "property") {
-    push("cost-of-buying-home-cheshire-2026");
-    push("best-mortgage-rates-uk");
-    push("best-savings-accounts-uk");
-  } else if (context === "mortgages") {
-    push("best-mortgage-rates-uk");
-    push("best-savings-accounts-uk");
-    push("best-credit-cards-uk");
-  } else if (context === "savings") {
-    push("best-savings-accounts-uk");
-    push("best-credit-cards-uk");
-    push("best-mortgage-rates-uk");
-  } else if (context === "credit") {
-    push("best-credit-cards-uk");
-    push("best-savings-accounts-uk");
-    push("best-mortgage-rates-uk");
-  } else if (context === "energy") {
-    push("cheap-energy-tariffs-uk");
-    push("best-broadband-deals-uk");
-    push("best-savings-accounts-uk");
-  } else if (context === "ai") {
-    push("best-ai-tools-uk");
-    push("best-ai-writing-tools-uk");
-    push("best-ai-productivity-tools-uk");
-  } else if (pillar.includes("ai")) {
-    push("best-ai-tools-uk");
-    push("best-ai-writing-tools-uk");
-    push("best-ai-productivity-tools-uk");
   } else if (context === "accounting") {
     push("best-accounting-software-uk");
-    push("best-business-bank-accounts-uk");
-    push("best-business-credit-cards-uk");
+    push("best-email-marketing-tools-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
   } else if (context === "business-banking") {
-    push("best-business-bank-accounts-uk");
-    push("best-business-credit-cards-uk");
     push("best-accounting-software-uk");
+    push("best-email-marketing-tools-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
   } else if (context === "web-presence") {
     push("best-domain-registrars-small-business-uk");
     push("best-web-hosting-small-business-uk");
@@ -318,17 +294,11 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-website-builders-small-business-uk");
     push("best-domain-registrars-small-business-uk");
   } else if (pillar.includes("business")) {
-    push("best-business-bank-accounts-uk");
     push("best-accounting-software-uk");
-    push("best-web-hosting-small-business-uk");
-  } else if (pillar.includes("finance")) {
-    push("best-savings-accounts-uk");
-    push("best-mortgage-rates-uk");
-    push("best-credit-cards-uk");
+    push("best-email-marketing-tools-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
   } else if (pillar.includes("local")) {
     push("council-tax-bands-cheshire");
-  } else {
-    push("best-ai-tools-uk");
   }
 
   const out = [];
@@ -340,10 +310,20 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
 
   if (out.length < 3) {
     for (const g of list) {
+      const slug = String(g?.slug || "").trim();
+      if (!ALLOWED_PROMO_GUIDE_SLUGS.has(slug)) continue;
       if (!g?.category) continue;
+
       const cat = String(g.category).toLowerCase();
-      if (!(cat.includes(pillar) || (pillar.includes("business") && cat.includes("finance")) || (pillar.includes("finance") && cat.includes("business")))) continue;
-      if (out.some(x => String(x?.slug) === String(g?.slug))) continue;
+      const matchesPillar = pillar.includes("business")
+        ? cat.includes("business")
+        : pillar.includes("local")
+          ? slug === "council-tax-bands-cheshire"
+          : cat.includes(pillar);
+
+      if (!matchesPillar) continue;
+      if (out.some((x) => String(x?.slug) === slug)) continue;
+
       out.push(g);
       if (out.length >= 3) break;
     }
@@ -354,7 +334,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
 
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
 const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }) => {
-  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+  if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
   if (!Array.isArray(guides) || guides.length === 0) return null;
 
   const cat = String(category || "").toLowerCase();
@@ -386,7 +366,7 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }
 };
 
 const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType }) => {
-  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
+  if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
   const picked = pickGuidesForPillar(list, pillarLabel, contextToolType);
   const g = picked[0];
@@ -403,7 +383,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType }) => {
         {title}
       </a>
       <div className="text-[11px] mt-1 text-slate-700 dark:text-gray-400">
-        Updated UK guide with recommendations and affiliate disclosures →
+        Updated UK guide with practical comparisons and key checks →
       </div>
     </div>
   );
@@ -841,7 +821,7 @@ export default function ArticlePageV2({ categories }) {
               <div className="mt-6">
                 <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} />
                 
-              <GuidePromoBlock guides={guides} category={article?.category} pillarLabel={pillarLabel} contextToolType={contextToolType} />
+              {/* GuidePromoBlock intentionally disabled for controlled non-Amazon rollout */}
               </div>
               {/* More stories — match homepage layout */}
               
