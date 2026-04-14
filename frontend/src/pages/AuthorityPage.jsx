@@ -182,10 +182,169 @@ function BestPickCta({ tools = [], monetisation = "affiliate" }) {
 }
 
 
+const RELATED_GUIDE_LIBRARY = [
+  {
+    slug: "best-web-hosting-small-business-uk",
+    title: "Best web hosting",
+    desc: "Hosting options for small-business websites",
+    tag: "Web presence"
+  },
+  {
+    slug: "best-website-builders-small-business-uk",
+    title: "Best website builders",
+    desc: "Create a professional site without coding",
+    tag: "Website"
+  },
+  {
+    slug: "best-domain-registrars-small-business-uk",
+    title: "Best domain registrars",
+    desc: "Register and manage your business domain",
+    tag: "Domain"
+  },
+  {
+    slug: "best-email-marketing-tools-small-business-uk",
+    title: "Best email marketing tools",
+    desc: "Grow subscribers and automate campaigns",
+    tag: "Marketing"
+  },
+  {
+    slug: "best-accounting-software-uk",
+    title: "Best accounting software",
+    desc: "VAT, invoices and reporting tools",
+    tag: "Accounting"
+  },
+  {
+    slug: "best-virtual-office-services-small-business-uk",
+    title: "Best virtual office services",
+    desc: "Business address and remote setup",
+    tag: "Remote business"
+  },
+  {
+    slug: "best-self-storage-services-uk-home-business",
+    title: "Best self-storage services",
+    desc: "Storage options for home and business",
+    tag: "Storage"
+  },
+  {
+    slug: "best-online-will-writing-services-uk",
+    title: "Best online will writing services",
+    desc: "Simple UK wills and estate planning checks",
+    tag: "Finance"
+  }
+];
+
+function getRelatedGuides(currentSlug = "", category = "") {
+  const current = String(currentSlug || "").trim();
+  const cat = String(category || "").toLowerCase();
+
+  let preferred = [];
+
+  if (current.includes("domain")) {
+    preferred = [
+      "best-web-hosting-small-business-uk",
+      "best-website-builders-small-business-uk",
+      "best-email-marketing-tools-small-business-uk",
+      "best-virtual-office-services-small-business-uk",
+    ];
+  } else if (current.includes("website-builder") || current.includes("web-hosting")) {
+    preferred = [
+      "best-domain-registrars-small-business-uk",
+      "best-email-marketing-tools-small-business-uk",
+      "best-virtual-office-services-small-business-uk",
+      "best-accounting-software-uk",
+    ];
+  } else if (current.includes("accounting")) {
+    preferred = [
+      "best-email-marketing-tools-small-business-uk",
+      "best-domain-registrars-small-business-uk",
+      "best-virtual-office-services-small-business-uk",
+      "best-online-will-writing-services-uk",
+    ];
+  } else if (current.includes("storage")) {
+    preferred = [
+      "best-parcel-courier-services-small-business-uk",
+      "how-to-choose-shipping-solution-online-business-uk",
+      "best-website-builders-small-business-uk",
+      "best-accounting-software-uk",
+    ];
+  } else if (current.includes("will")) {
+    preferred = [
+      "best-accounting-software-uk",
+      "best-self-storage-services-uk-home-business",
+      "best-domain-registrars-small-business-uk",
+      "best-email-marketing-tools-small-business-uk",
+    ];
+  } else if (cat.includes("business") || cat.includes("finance")) {
+    preferred = [
+      "best-accounting-software-uk",
+      "best-domain-registrars-small-business-uk",
+      "best-website-builders-small-business-uk",
+      "best-email-marketing-tools-small-business-uk",
+    ];
+  }
+
+  const bySlug = new Map(RELATED_GUIDE_LIBRARY.map((g) => [g.slug, g]));
+  const picked = preferred.map((s) => bySlug.get(s)).filter(Boolean);
+  const fallback = RELATED_GUIDE_LIBRARY.filter((g) => g.slug !== current && !picked.some((p) => p.slug === g.slug));
+
+  return [...picked, ...fallback].filter((g) => g.slug !== current).slice(0, 4);
+}
+
+function RelatedGuidesBlock({ currentSlug, category }) {
+  const related = getRelatedGuides(currentSlug, category);
+  if (!related.length) return null;
+
+  return (
+    <section className="mt-6 rounded-3xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 p-5 md:p-6 shadow-sm">
+      <div className="flex items-end justify-between gap-4 mb-5">
+        <div>
+          <div className="text-[11px] uppercase tracking-wide font-black text-slate-500 dark:text-gray-400">
+            Recommended next
+          </div>
+          <h2 className="mt-1 text-xl md:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+            Related business guides
+          </h2>
+        </div>
+        <div className="hidden sm:block text-xs text-slate-500 dark:text-gray-400">
+          Continue comparing
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {related.map((g) => (
+          <Link
+            key={g.slug}
+            to={`/guides/${g.slug}`}
+            className="group rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/50 p-4 hover:border-emerald-300 dark:hover:border-emerald-800 hover:shadow-sm transition"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wide font-black text-emerald-700 dark:text-emerald-300">
+                  {g.tag}
+                </div>
+                <div className="mt-1 text-base font-black text-slate-950 dark:text-white group-hover:underline underline-offset-2">
+                  {g.title}
+                </div>
+                <div className="mt-1 text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
+                  {g.desc}
+                </div>
+              </div>
+              <span className="shrink-0 rounded-xl bg-slate-950 dark:bg-emerald-700 text-white px-3 py-2 text-xs font-black">
+                View →
+              </span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+
 function QuickComparison({ tools = [] }) {
   const list = Array.isArray(tools) ? tools : [];
   const top = list.slice(0, 3);
-  if (!top.length) return null;
+  if (top.length < 2) return null;
 
   return (
     <div className="mt-6 rounded-3xl border border-slate-200/70 dark:border-gray-800 bg-white/80 dark:bg-gray-950/30 p-5 shadow-sm">
@@ -424,51 +583,129 @@ export default function AuthorityPage() {
             )}
 
             {tools.length > 0 && (
-              <div className="mt-10">
-                <h2 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white mb-4">
-                  Recommended tools
-                </h2>
+              <section className="mt-10 rounded-3xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 p-5 md:p-6 shadow-sm">
+                <div className="flex items-end justify-between gap-4 mb-5">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wide font-black text-slate-500 dark:text-gray-400">
+                      Provider list
+                    </div>
+                    <h2 className="mt-1 text-xl md:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+                      Recommended tools
+                    </h2>
+                  </div>
+                  <div className="hidden sm:block text-xs text-slate-500 dark:text-gray-400">
+                    Compare before choosing
+                  </div>
+                </div>
 
-                {tools.map((t, idx) => {
-                  const name = t?.name || `Tool ${idx + 1}`;
-                  const rating = Number(t?.rating || 0);
-                  const link = (t?.affiliate_link || "").trim();
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {tools.map((t, idx) => {
+                    const name = t?.name || `Tool ${idx + 1}`;
+                    const rating = Number(t?.rating || 0);
+                    const link = (t?.affiliate_link || "").trim();
+                    const logoSrc = getToolLogoSrc(name);
+                    const initials = getToolInitials(name);
+                    const summary = String(t?.content || t?.title || "").trim();
 
-                  return (
-                    <div
-                      key={name + idx}
-                      className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5 hover:bg-white transition"
+                    return (
+                      <div
+                        key={name + idx}
+                        className="rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/50 p-4 hover:border-emerald-300 dark:hover:border-emerald-800 hover:shadow-sm transition"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="h-12 w-12 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 flex items-center justify-center shrink-0 overflow-hidden">
+                            {logoSrc ? (
+                              <>
+                                <img
+                                  src={logoSrc}
+                                  alt=""
+                                  className="h-full w-full object-contain p-2"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                    e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                                  }}
+                                />
+                                <span className="hidden text-sm font-black tracking-tight text-sky-950 dark:text-sky-100">
+                                  {initials}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-black tracking-tight text-sky-950 dark:text-sky-100">
+                                {initials}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-base font-black text-slate-950 dark:text-white">
+                                  {name}
+                                </div>
+                                <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mt-1">
+                                  {rating > 0 ? `${rating}/5 rating` : "Listed option"}
+                                </div>
+                              </div>
+                            </div>
+
+                            {summary && (
+                              <div className="mt-2 text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
+                                {summary.length > 130 ? summary.slice(0, 130) + "…" : summary}
+                              </div>
+                            )}
+
+                            <div className="mt-4">
+                              {link ? (
+                                <a
+                                  href={link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-slate-950 hover:bg-emerald-800 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-black transition"
+                                >
+                                  Visit provider →
+                                </a>
+                              ) : (
+                                <span className="inline-flex items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-800 px-4 py-2.5 text-sm font-black">
+                                  Link pending
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {tools.length < 2 && getRelatedGuides(slug, category).slice(0, 3).map((g) => (
+                    <Link
+                      key={`related-tool-${g.slug}`}
+                      to={`/guides/${g.slug}`}
+                      className="rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/50 p-4 hover:border-emerald-300 dark:hover:border-emerald-800 hover:shadow-sm transition"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-base md:text-lg font-semibold text-slate-900 dark:text-white">
-                            {name}
+                          <div className="text-[11px] uppercase tracking-wide font-black text-emerald-700 dark:text-emerald-300">
+                            Related guide
                           </div>
-                          <div className="text-sm text-slate-600 dark:text-gray-300 mt-1">
-                            Rating: {rating > 0 ? `${rating}/5` : "—"}
+                          <div className="mt-1 text-base font-black text-slate-950 dark:text-white">
+                            {g.title}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
+                            {g.desc}
                           </div>
                         </div>
-
-                        {link ? (
-                          <a
-                            href={link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 hover:underline whitespace-nowrap"
-                          >
-                            Visit →
-                          </a>
-                        ) : (
-                          <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 whitespace-nowrap">
-                            Link pending
-                          </span>
-                        )}
+                        <span className="shrink-0 rounded-xl bg-slate-950 dark:bg-emerald-700 text-white px-3 py-2 text-xs font-black">
+                          View →
+                        </span>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
             )}
+
+            {tools.length > 1 && <RelatedGuidesBlock currentSlug={slug} category={category} />}
 
             {tools.length === 0 && (
               <div className="mt-6 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
