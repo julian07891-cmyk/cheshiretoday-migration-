@@ -230,6 +230,30 @@ const RELATED_GUIDE_LIBRARY = [
     title: "Best online will writing services",
     desc: "Simple UK wills and estate planning checks",
     tag: "Finance"
+  },
+  {
+    slug: "best-parcel-courier-services-small-business-uk",
+    title: "Best parcel and courier services",
+    desc: "Delivery and courier options for small firms",
+    tag: "Shipping"
+  },
+  {
+    slug: "how-to-choose-shipping-solution-online-business-uk",
+    title: "Choose a shipping solution",
+    desc: "How online businesses should compare delivery tools",
+    tag: "Operations"
+  },
+  {
+    slug: "best-iso-training-certification-courses-uk-businesses",
+    title: "Best ISO training courses",
+    desc: "Training and certification options for UK businesses",
+    tag: "Compliance"
+  },
+  {
+    slug: "what-iso-certification-means-small-business-uk",
+    title: "What ISO certification means",
+    desc: "A practical guide to ISO for small businesses",
+    tag: "Compliance"
   }
 ];
 
