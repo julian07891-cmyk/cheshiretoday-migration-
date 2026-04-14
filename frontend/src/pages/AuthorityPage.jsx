@@ -26,6 +26,22 @@ function safeText(v) {
 }
 
 
+function getToolLogoSrc(name = "") {
+  const cleaned = String(name || "").toLowerCase();
+
+  if (cleaned.includes("123 reg")) return "/affiliate-logos/123-reg.webp";
+  if (cleaned.includes("quickbooks")) return "/affiliate-logos/quickbooks.webp";
+  if (cleaned.includes("mailchimp")) return "/affiliate-logos/mailchimp.webp";
+  if (cleaned.includes("interparcel")) return "/affiliate-logos/interparcel.webp";
+  if (cleaned.includes("safestore")) return "/affiliate-logos/safestore.webp";
+  if (cleaned.includes("webhosting")) return "/affiliate-logos/webhosting-uk.webp";
+  if (cleaned.includes("create")) return "/affiliate-logos/create.webp";
+  if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.webp";
+  if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.webp";
+
+  return "";
+}
+
 function getToolInitials(name = "") {
   const cleaned = String(name || "").trim();
 
@@ -57,16 +73,35 @@ function BestPickCta({ tools = [], monetisation = "affiliate" }) {
   const link = String(best?.affiliate_link || "").trim();
   const why = String(best?.content || best?.title || "").trim();
   const initials = getToolInitials(name);
+  const logoSrc = getToolLogoSrc(name);
 
   return (
     <div className="mt-7 overflow-hidden rounded-3xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
       <div className="grid grid-cols-1 md:grid-cols-[1fr_280px]">
         <div className="p-5 md:p-7">
           <div className="flex items-start gap-4">
-            <div className="h-16 w-16 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900 flex items-center justify-center shrink-0 shadow-sm">
-              <span className="text-lg font-black tracking-tight text-sky-950 dark:text-sky-100">
-                {initials}
-              </span>
+            <div className="h-16 w-16 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              {logoSrc ? (
+                <>
+                  <img
+                    src={logoSrc}
+                    alt=""
+                    className="h-full w-full object-contain p-2"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                    }}
+                  />
+                  <span className="hidden text-lg font-black tracking-tight text-sky-950 dark:text-sky-100">
+                    {initials}
+                  </span>
+                </>
+              ) : (
+                <span className="text-lg font-black tracking-tight text-sky-950 dark:text-sky-100">
+                  {initials}
+                </span>
+              )}
             </div>
 
             <div className="min-w-0">

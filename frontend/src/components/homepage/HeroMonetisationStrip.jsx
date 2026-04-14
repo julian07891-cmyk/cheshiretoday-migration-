@@ -44,7 +44,21 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
               <div className="flex items-start justify-between gap-3">
                 <div className="h-11 w-11 rounded-2xl bg-white dark:bg-gray-900 border border-[#E6E1D8] dark:border-gray-800 flex items-center justify-center overflow-hidden shrink-0">
                   {it.logoSrc ? (
-                    <img src={it.logoSrc} alt="" className="h-full w-full object-contain p-1.5" loading="lazy" />
+                    <>
+                      <img
+                        src={it.logoSrc}
+                        alt=""
+                        className="h-full w-full object-contain p-1.5"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                      <span className="hidden text-sm font-black tracking-tight text-sky-900 dark:text-sky-100">
+                        {logoLabel}
+                      </span>
+                    </>
                   ) : (
                     <span className="text-sm font-black tracking-tight text-sky-900 dark:text-sky-100">
                       {logoLabel}
