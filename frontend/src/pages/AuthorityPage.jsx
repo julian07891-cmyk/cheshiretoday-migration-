@@ -309,9 +309,32 @@ function getRelatedGuides(currentSlug = "", category = "") {
 
   const bySlug = new Map(RELATED_GUIDE_LIBRARY.map((g) => [g.slug, g]));
   const picked = preferred.map((s) => bySlug.get(s)).filter(Boolean);
-  const fallback = RELATED_GUIDE_LIBRARY.filter((g) => g.slug !== current && !picked.some((p) => p.slug === g.slug));
 
-  return [...picked, ...fallback].filter((g) => g.slug !== current).slice(0, 4);
+  const rotationSlugs = [
+    "best-parcel-courier-services-small-business-uk",
+    "how-to-choose-shipping-solution-online-business-uk",
+    "best-iso-training-certification-courses-uk-businesses",
+    "what-iso-certification-means-small-business-uk",
+    "best-self-storage-services-uk-home-business",
+    "best-online-will-writing-services-uk",
+  ];
+
+  const rotation = rotationSlugs
+    .map((s) => bySlug.get(s))
+    .filter((g) => g && g.slug !== current && !picked.some((p) => p.slug === g.slug));
+
+  const fallback = RELATED_GUIDE_LIBRARY.filter((g) =>
+    g.slug !== current &&
+    !picked.some((p) => p.slug === g.slug) &&
+    !rotation.some((r) => r.slug === g.slug)
+  );
+
+  const rotationPick = rotation.find((g) => !picked.slice(0, 2).some((p) => p.slug === g.slug));
+  const mixed = rotationPick
+    ? [...picked.slice(0, 2), rotationPick, ...picked.slice(2, 3)]
+    : [...picked.slice(0, 3), ...fallback];
+
+  return mixed.filter((g) => g.slug !== current).slice(0, 4);
 }
 
 function RelatedGuidesBlock({ currentSlug, category }) {
