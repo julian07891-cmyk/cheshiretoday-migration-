@@ -356,6 +356,7 @@ CHESHIRE_FALLBACK_IMAGES = []
 BANNED_IMAGES = []
 
 WEAK_GENERIC_IMAGE_PATTERNS = [
+    "warringtonguardian.co.uk/resources/images/",
     "warringtonguardian.co.uk/resources/images/20771109",
 ]
 
