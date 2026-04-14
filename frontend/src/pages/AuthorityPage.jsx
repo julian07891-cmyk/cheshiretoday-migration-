@@ -37,6 +37,7 @@ function getToolLogoSrc(name = "") {
   if (cleaned.includes("webhosting")) return "/affiliate-logos/webhosting-uk.ico";
   if (cleaned.includes("create")) return "/affiliate-logos/create.ico";
   if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.png";
+  if (cleaned.includes("make a will")) return "/affiliate-logos/make-a-will-online.png";
   if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.png";
 
   return "";
