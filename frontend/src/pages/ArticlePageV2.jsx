@@ -380,7 +380,7 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }
   );
 };
 
-const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId }) => {
+const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, slot = 0, compact = false }) => {
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
   const picked = pickGuidesForPillar(list, pillarLabel, contextToolType);
@@ -403,7 +403,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId }) 
 
   const pool = monetisedPool.length > 0 ? monetisedPool : fallbackPool;
 
-  const seed = String(articleId || "").trim();
+  const seed = `${String(articleId || "").trim()}-${slot}`;
   const hash = Array.from(seed).reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 0);
   const g = pool.length > 0 ? pool[hash % pool.length] : null;
 
@@ -414,13 +414,29 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId }) 
   const href = slug ? `/guides/${encodeURIComponent(slug)}` : null;
 
   return (
-    <div className="mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-      <div className="text-xs font-semibold text-sky-800 dark:text-slate-200 mb-1">In-depth Guide</div>
-      <a href={href} className="block font-semibold text-sky-900 dark:text-slate-200 hover:underline underline-offset-2">
-        {title}
-      </a>
-      <div className="text-[11px] mt-1 text-slate-700 dark:text-gray-400">
-        Updated UK guide with practical comparisons and key checks →
+    <div className={compact
+      ? "not-prose my-7 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950/50 p-4 shadow-sm"
+      : "mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20"
+    }>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="text-xs font-extrabold uppercase tracking-wide text-sky-800 dark:text-slate-200 mb-1">
+            {compact ? "Recommended guide" : "In-depth Guide"}
+          </div>
+          <a href={href} className="block text-base font-black text-sky-950 dark:text-slate-100 hover:underline underline-offset-2">
+            {title}
+          </a>
+          <div className="text-[12px] mt-1 text-slate-700 dark:text-gray-400">
+            Practical comparisons and key checks for readers →
+          </div>
+        </div>
+
+        <a
+          href={href}
+          className="shrink-0 hidden sm:inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-sky-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-sky-800 dark:hover:bg-sky-600 transition"
+        >
+          View →
+        </a>
       </div>
     </div>
   );
@@ -539,6 +555,26 @@ export default function ArticlePageV2({ categories }) {
   }, [article]);
 
   const { main: mainContent, attribution } = useMemo(() => splitAttribution(rawBody), [rawBody]);
+
+  const { beforeGuideContent, afterGuideContent } = useMemo(() => {
+    const text = String(mainContent || "").trim();
+    if (!text) return { beforeGuideContent: "", afterGuideContent: "" };
+
+    const paragraphs = text
+      .split(/\n\s*\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    if (paragraphs.length < 4) {
+      return { beforeGuideContent: text, afterGuideContent: "" };
+    }
+
+    const splitIndex = Math.max(2, Math.floor(paragraphs.length / 2));
+    return {
+      beforeGuideContent: paragraphs.slice(0, splitIndex).join("\n\n"),
+      afterGuideContent: paragraphs.slice(splitIndex).join("\n\n"),
+    };
+  }, [mainContent]);
 
 
   // Contextual monetisation mapping: convert article metadata -> tool category
@@ -817,7 +853,22 @@ export default function ArticlePageV2({ categories }) {
 <div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
                 <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
-                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
+                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(beforeGuideContent || mainContent, pillarLabel) }} />
+
+                {afterGuideContent && (
+                  <>
+                    <GuidesInlinePromo
+                      guides={guides}
+                      pillarLabel={pillarLabel}
+                      contextToolType={contextToolType}
+                      articleId={articleId}
+                      slot={1}
+                      compact
+                    />
+
+                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(afterGuideContent, pillarLabel) }} />
+                  </>
+                )}
               </div>
 
 
