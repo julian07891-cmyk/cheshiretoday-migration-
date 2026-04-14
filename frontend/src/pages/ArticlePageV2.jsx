@@ -380,7 +380,7 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }
   );
 };
 
-const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType }) => {
+const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId }) => {
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
   const picked = pickGuidesForPillar(list, pillarLabel, contextToolType);
@@ -393,10 +393,19 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType }) => {
     "best-domain-registrars-small-business-uk",
   ];
 
-  const g =
-    picked.find((item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire") ||
-    fallbackOrder.map((slug) => list.find((item) => String(item?.slug || "").trim() == slug)).find(Boolean) ||
-    null;
+  const monetisedPool = picked.filter(
+    (item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire"
+  );
+
+  const fallbackPool = fallbackOrder
+    .map((slug) => list.find((item) => String(item?.slug || "").trim() === slug))
+    .filter(Boolean);
+
+  const pool = monetisedPool.length > 0 ? monetisedPool : fallbackPool;
+
+  const seed = String(articleId || "").trim();
+  const hash = Array.from(seed).reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 0);
+  const g = pool.length > 0 ? pool[hash % pool.length] : null;
 
   if (!g) return null;
 
@@ -849,7 +858,7 @@ export default function ArticlePageV2({ categories }) {
               </div>
 
               <div className="mt-6">
-                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} />
+                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} />
                 
               {/* GuidePromoBlock intentionally disabled for controlled non-Amazon rollout */}
               </div>

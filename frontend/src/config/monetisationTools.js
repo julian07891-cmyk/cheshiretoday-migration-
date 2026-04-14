@@ -1,10 +1,10 @@
 export const monetisationTools = {
   homepage_primary: [
-    { badge: "Affiliate", title: "Best domain registrars", desc: "123 Reg + UK domain setup", href: "/guides/best-domain-registrars-small-business-uk" },
-    { badge: "Affiliate", title: "Best website builders", desc: "Create + WebHosting UK options", href: "/guides/best-website-builders-small-business-uk" },
-    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", href: "/guides/best-accounting-software-uk" },
-    { badge: "Affiliate", title: "Best virtual office services", desc: "Business address + remote setup", href: "/guides/best-virtual-office-services-small-business-uk" },
-    { badge: "Affiliate", title: "Best self-storage services", desc: "Home + business storage options", href: "/guides/best-self-storage-services-uk-home-business" },
+    { badge: "Affiliate", logoLabel: "DR", title: "Best domain registrars", desc: "123 Reg + UK domain setup", benefit: "Secure your business name", cta: "Compare domains", href: "/guides/best-domain-registrars-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "WB", title: "Best website builders", desc: "Create + WebHosting UK options", benefit: "Launch without coding", cta: "See builders", href: "/guides/best-website-builders-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "AS", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", benefit: "VAT, invoices and reports", cta: "Compare tools", href: "/guides/best-accounting-software-uk" },
+    { badge: "Affiliate", logoLabel: "VO", title: "Best virtual office services", desc: "Business address + remote setup", benefit: "Professional UK address", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "SS", title: "Best self-storage services", desc: "Home + business storage options", benefit: "Flexible space when needed", cta: "View storage", href: "/guides/best-self-storage-services-uk-home-business" },
   ],
 
   web_presence: [
