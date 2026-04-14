@@ -29,15 +29,15 @@ function safeText(v) {
 function getToolLogoSrc(name = "") {
   const cleaned = String(name || "").toLowerCase();
 
-  if (cleaned.includes("123 reg")) return "/affiliate-logos/123-reg.webp";
-  if (cleaned.includes("quickbooks")) return "/affiliate-logos/quickbooks.webp";
-  if (cleaned.includes("mailchimp")) return "/affiliate-logos/mailchimp.webp";
-  if (cleaned.includes("interparcel")) return "/affiliate-logos/interparcel.webp";
-  if (cleaned.includes("safestore")) return "/affiliate-logos/safestore.webp";
-  if (cleaned.includes("webhosting")) return "/affiliate-logos/webhosting-uk.webp";
-  if (cleaned.includes("create")) return "/affiliate-logos/create.webp";
-  if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.webp";
-  if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.webp";
+  if (cleaned.includes("123 reg")) return "/affiliate-logos/123-reg.ico";
+  if (cleaned.includes("quickbooks")) return "/affiliate-logos/quickbooks.ico";
+  if (cleaned.includes("mailchimp")) return "/affiliate-logos/mailchimp.ico";
+  if (cleaned.includes("interparcel")) return "/affiliate-logos/interparcel.ico";
+  if (cleaned.includes("safestore")) return "/affiliate-logos/safestore.ico";
+  if (cleaned.includes("webhosting")) return "/affiliate-logos/webhosting-uk.ico";
+  if (cleaned.includes("create")) return "/affiliate-logos/create.ico";
+  if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.ico";
+  if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.ico";
 
   return "";
 }

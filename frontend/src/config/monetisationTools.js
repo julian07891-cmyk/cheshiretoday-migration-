@@ -1,10 +1,10 @@
 export const monetisationTools = {
   homepage_primary: [
-    { badge: "Affiliate", logoLabel: "DR", logoSrc: "/affiliate-logos/123-reg.webp", title: "Best domain registrars", desc: "123 Reg + UK domain setup", benefit: "Secure your business name", cta: "Compare domains", href: "/guides/best-domain-registrars-small-business-uk" },
-    { badge: "Affiliate", logoLabel: "WB", logoSrc: "/affiliate-logos/create.webp", title: "Best website builders", desc: "Create + WebHosting UK options", benefit: "Launch without coding", cta: "See builders", href: "/guides/best-website-builders-small-business-uk" },
-    { badge: "Affiliate", logoLabel: "AS", logoSrc: "/affiliate-logos/quickbooks.webp", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", benefit: "VAT, invoices and reports", cta: "Compare tools", href: "/guides/best-accounting-software-uk" },
-    { badge: "Affiliate", logoLabel: "VO", logoSrc: "/affiliate-logos/virtual-office.webp", title: "Best virtual office services", desc: "Business address + remote setup", benefit: "Professional UK address", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
-    { badge: "Affiliate", logoLabel: "SS", logoSrc: "/affiliate-logos/safestore.webp", title: "Best self-storage services", desc: "Home + business storage options", benefit: "Flexible space when needed", cta: "View storage", href: "/guides/best-self-storage-services-uk-home-business" },
+    { badge: "Affiliate", logoLabel: "DR", logoSrc: "/affiliate-logos/123-reg.ico", title: "Best domain registrars", desc: "123 Reg + UK domain setup", benefit: "Secure your business name", cta: "Compare domains", href: "/guides/best-domain-registrars-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "WB", logoSrc: "/affiliate-logos/create.ico", title: "Best website builders", desc: "Create + WebHosting UK options", benefit: "Launch without coding", cta: "See builders", href: "/guides/best-website-builders-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "AS", logoSrc: "/affiliate-logos/quickbooks.ico", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", benefit: "VAT, invoices and reports", cta: "Compare tools", href: "/guides/best-accounting-software-uk" },
+    { badge: "Affiliate", logoLabel: "VO", logoSrc: "/affiliate-logos/virtual-office.ico", title: "Best virtual office services", desc: "Business address + remote setup", benefit: "Professional UK address", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "SS", logoSrc: "/affiliate-logos/safestore.ico", title: "Best self-storage services", desc: "Home + business storage options", benefit: "Flexible space when needed", cta: "View storage", href: "/guides/best-self-storage-services-uk-home-business" },
   ],
 
   web_presence: [
