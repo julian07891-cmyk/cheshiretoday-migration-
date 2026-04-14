@@ -26,6 +26,26 @@ function safeText(v) {
 }
 
 
+function getToolInitials(name = "") {
+  const cleaned = String(name || "").trim();
+
+  if (/^123\s*reg/i.test(cleaned)) return "123";
+  if (/quickbooks/i.test(cleaned)) return "QB";
+  if (/mailchimp/i.test(cleaned)) return "MC";
+  if (/interparcel/i.test(cleaned)) return "IP";
+  if (/safestore/i.test(cleaned)) return "SS";
+  if (/webhosting/i.test(cleaned)) return "WH";
+  if (/create/i.test(cleaned)) return "CR";
+
+  const words = cleaned
+    .replace(/^best\s+/i, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  return words.map((word) => word[0]).join("").toUpperCase() || "CT";
+}
+
 function BestPickCta({ tools = [], monetisation = "affiliate" }) {
   const list = Array.isArray(tools) ? tools : [];
   const bestWithLink = list.find((t) => String(t?.affiliate_link || "").trim().length > 0);
@@ -36,46 +56,72 @@ function BestPickCta({ tools = [], monetisation = "affiliate" }) {
   const rating = Number(best?.rating || 0);
   const link = String(best?.affiliate_link || "").trim();
   const why = String(best?.content || best?.title || "").trim();
+  const initials = getToolInitials(name);
 
   return (
-    <div className="mt-6 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/60 dark:bg-emerald-900/10 p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-xs font-semibold text-emerald-900/80 dark:text-emerald-200 mb-1">
-            Best pick
-          </div>
-          <div className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white">
-            {name}
-          </div>
-          <div className="text-sm text-slate-700 dark:text-gray-300 mt-1">
-            Rating: {rating > 0 ? `${rating}/5` : "—"}
-          </div>
-
-          {why && (
-            <div className="text-sm text-slate-700 dark:text-gray-300 mt-2 leading-relaxed max-w-3xl">
-              {why.length > 180 ? why.slice(0, 180) + "…" : why}
+    <div className="mt-7 overflow-hidden rounded-3xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_280px]">
+        <div className="p-5 md:p-7">
+          <div className="flex items-start gap-4">
+            <div className="h-16 w-16 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900 flex items-center justify-center shrink-0 shadow-sm">
+              <span className="text-lg font-black tracking-tight text-sky-950 dark:text-sky-100">
+                {initials}
+              </span>
             </div>
-          )}
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="text-[11px] uppercase tracking-wide px-2.5 py-1 rounded-full bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100 font-extrabold">
+                  Featured pick
+                </span>
+                {rating > 0 && (
+                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200 font-bold">
+                    {rating}/5 rating
+                  </span>
+                )}
+              </div>
+
+              <div className="text-xl md:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
+                {name}
+              </div>
+
+              {why && (
+                <div className="mt-2 text-sm md:text-[15px] text-slate-700 dark:text-gray-300 leading-relaxed max-w-3xl">
+                  {why.length > 230 ? why.slice(0, 230) + "…" : why}
+                </div>
+              )}
+
+              <div className="mt-4 rounded-2xl bg-[#FBFAF7] dark:bg-gray-900 border border-[#E6E1D8] dark:border-gray-800 px-4 py-3">
+                <div className="text-[12px] font-black uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                  Why we picked it
+                </div>
+                <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-gray-200">
+                  Strong fit for readers comparing practical UK options before choosing a provider.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="shrink-0">
+        <div className="border-t md:border-t-0 md:border-l border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/60 p-5 md:p-6 flex flex-col justify-center">
           {link ? (
             <a
               href={link}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 text-sm font-semibold"
+              className="inline-flex w-full items-center justify-center rounded-xl bg-slate-950 hover:bg-sky-900 dark:bg-sky-700 dark:hover:bg-sky-600 text-white px-4 py-3 text-sm font-black transition"
             >
-              Check eligibility →
+              Visit provider →
             </a>
           ) : (
-            <span className="inline-flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-4 py-2 text-sm font-semibold">
+            <span className="inline-flex w-full items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-800 px-4 py-3 text-sm font-black">
               Link pending
             </span>
           )}
+
           {monetisation === "affiliate" && (
-            <div className="mt-2 text-[11px] text-slate-600 dark:text-gray-400">
-              We may earn a commission.
+            <div className="mt-3 text-[11px] text-slate-600 dark:text-gray-400 leading-relaxed text-center">
+              We may earn a commission if you use this link, at no extra cost to you.
             </div>
           )}
         </div>
@@ -90,13 +136,15 @@ function QuickComparison({ tools = [] }) {
   if (!top.length) return null;
 
   return (
-    <div className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
-          Quick comparison
-        </div>
-        <div className="text-[11px] text-slate-500 dark:text-gray-400">
-          Top picks (summary)
+    <div className="mt-6 rounded-3xl border border-slate-200/70 dark:border-gray-800 bg-white/80 dark:bg-gray-950/30 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-sm font-black tracking-tight text-slate-950 dark:text-white">
+            Quick comparison
+          </div>
+          <div className="text-xs text-slate-500 dark:text-gray-400">
+            Other options mentioned in this guide
+          </div>
         </div>
       </div>
 
@@ -105,31 +153,39 @@ function QuickComparison({ tools = [] }) {
           const name = t?.name || `Option ${idx + 1}`;
           const rating = Number(t?.rating || 0);
           const link = String(t?.affiliate_link || "").trim();
+          const initials = getToolInitials(name);
 
           return (
             <div
               key={name + idx}
-              className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4"
+              className="rounded-2xl border border-slate-200/70 dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-950/40 p-4 hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-sm transition"
             >
-              <div className="text-sm font-extrabold text-slate-900 dark:text-white">
-                {name}
-              </div>
-              <div className="text-xs text-slate-600 dark:text-gray-300 mt-1">
-                Rating: {rating > 0 ? `${rating}/5` : "—"}
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-white dark:bg-gray-900 border border-[#E6E1D8] dark:border-gray-800 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black text-sky-950 dark:text-sky-100">{initials}</span>
+                </div>
+                <div>
+                  <div className="text-sm font-black text-slate-950 dark:text-white">
+                    {name}
+                  </div>
+                  <div className="text-xs text-slate-600 dark:text-gray-300 mt-1">
+                    {rating > 0 ? `${rating}/5 rating` : "Listed option"}
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-3">
+              <div className="mt-4">
                 {link ? (
                   <a
                     href={link}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 text-xs font-semibold"
+                    className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-sky-900 dark:bg-sky-700 dark:hover:bg-sky-600 text-white px-3 py-2 text-xs font-black transition"
                   >
                     Visit →
                   </a>
                 ) : (
-                  <span className="inline-flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-3 py-2 text-xs font-semibold">
+                  <span className="inline-flex w-full items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-3 py-2 text-xs font-black">
                     Link pending
                   </span>
                 )}
@@ -141,6 +197,7 @@ function QuickComparison({ tools = [] }) {
     </div>
   );
 }
+
 
 export default function AuthorityPage() {
   const { slug } = useParams();
