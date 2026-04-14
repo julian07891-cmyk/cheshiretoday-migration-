@@ -355,6 +355,17 @@ TOPIC_IMAGE_MAPPINGS = {}
 CHESHIRE_FALLBACK_IMAGES = []
 BANNED_IMAGES = []
 
+WEAK_GENERIC_IMAGE_PATTERNS = [
+    "warringtonguardian.co.uk/resources/images/20771109",
+]
+
+def is_weak_generic_image(url: str) -> bool:
+    """Block known weak/repeated stock-style images that harm article quality."""
+    img = str(url or "").strip().lower()
+    if not img:
+        return True
+    return any(pattern in img for pattern in WEAK_GENERIC_IMAGE_PATTERNS)
+
 def extract_photo_id(url: str) -> str:
     """Return a stable ID for an image URL (strip query params only)."""
     if not url:
@@ -1483,6 +1494,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     if not rss_image:
                         logger.info(f"Skipping no-image RSS article: {title[:40]}...")
                         continue
+                    if is_weak_generic_image(rss_image):
+                        logger.info(f"Skipping weak generic RSS image: {title[:40]}...")
+                        continue
 
                     # Exclude Manchester sources entirely
                     if is_manchester_source(article):
@@ -1650,6 +1664,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             if not title or title.lower() in existing_titles:
                 continue
             if source_url and source_url in existing_source_urls:
+                continue
+            if not rss_image:
+                continue
+            if is_weak_generic_image(rss_image):
+                logger.info(f"Skipping weak generic RSS image: {title[:40]}...")
                 continue
 
             
