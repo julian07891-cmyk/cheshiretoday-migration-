@@ -12,17 +12,24 @@ function getInitials(title = "") {
   return words.map((word) => word[0]).join("").toUpperCase() || "CT";
 }
 
-export default function HeroMonetisationStrip() {
+export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "" }) {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
-  // Curated homepage affiliate-backed guides that are live now
   const items = useMemo(() => {
-    return (monetisationTools.homepage_primary || []).slice(0, 5).filter(Boolean);
-  }, []);
+    return (monetisationTools.homepage_primary || [])
+      .slice(start, start + limit)
+      .filter(Boolean);
+  }, [start, limit]);
+
+  if (!items.length) return null;
+
+  const gridClass = compact
+    ? "grid grid-cols-1 sm:grid-cols-2 gap-3"
+    : "grid grid-cols-1 sm:grid-cols-3 gap-3";
 
   return (
-    <section className="mt-5" aria-label="Recommended business tools">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <section className={`${compact ? "mt-4" : "mt-5"} ${className}`} aria-label="Recommended business tools">
+      <div className={gridClass}>
         {items.map((it) => {
           const title = it.title || "Recommended guide";
           const logoLabel = it.logoLabel || getInitials(title);

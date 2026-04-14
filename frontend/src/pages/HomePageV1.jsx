@@ -1208,6 +1208,8 @@ return (
                   />
                 )}
 
+                <HeroMonetisationStrip start={3} limit={2} compact />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                   {latestSplit.remainingCards.map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
