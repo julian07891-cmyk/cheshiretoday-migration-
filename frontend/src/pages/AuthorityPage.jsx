@@ -29,15 +29,15 @@ function safeText(v) {
 function getToolLogoSrc(name = "") {
   const cleaned = String(name || "").toLowerCase();
 
-  if (cleaned.includes("123 reg")) return "/affiliate-logos/123-reg.ico";
-  if (cleaned.includes("quickbooks")) return "/affiliate-logos/quickbooks.ico";
+  if (cleaned.includes("123 reg")) return "/affiliate-logos/123-reg.png";
+  if (cleaned.includes("quickbooks")) return "/affiliate-logos/quickbooks.png";
   if (cleaned.includes("mailchimp")) return "/affiliate-logos/mailchimp.ico";
   if (cleaned.includes("interparcel")) return "/affiliate-logos/interparcel.ico";
   if (cleaned.includes("safestore")) return "/affiliate-logos/safestore.ico";
   if (cleaned.includes("webhosting")) return "/affiliate-logos/webhosting-uk.ico";
   if (cleaned.includes("create")) return "/affiliate-logos/create.ico";
-  if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.ico";
-  if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.ico";
+  if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.png";
+  if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.png";
 
   return "";
 }
