@@ -77,94 +77,110 @@ function BestPickCta({ tools = [], monetisation = "affiliate" }) {
   const logoSrc = getToolLogoSrc(name);
 
   return (
-    <div className="mt-7 overflow-hidden rounded-3xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm">
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_280px]">
-        <div className="p-5 md:p-7">
-          <div className="flex items-start gap-4">
-            <div className="h-16 w-16 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-              {logoSrc ? (
-                <>
-                  <img
-                    src={logoSrc}
-                    alt=""
-                    className="h-full w-full object-contain p-2"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
-                    }}
-                  />
-                  <span className="hidden text-lg font-black tracking-tight text-sky-950 dark:text-sky-100">
+    <div className="mt-7 rounded-3xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/20 p-4 md:p-5 shadow-md">
+      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-gray-950 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-0">
+          <div className="p-5 md:p-6">
+            <div className="flex items-start gap-4">
+              <div className="h-20 w-20 rounded-2xl border border-emerald-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                {logoSrc ? (
+                  <>
+                    <img
+                      src={logoSrc}
+                      alt=""
+                      className="h-full w-full object-contain p-3"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                      }}
+                    />
+                    <span className="hidden text-xl font-black tracking-tight text-sky-950 dark:text-sky-100">
+                      {initials}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xl font-black tracking-tight text-sky-950 dark:text-sky-100">
                     {initials}
-                  </span>
-                </>
-              ) : (
-                <span className="text-lg font-black tracking-tight text-sky-950 dark:text-sky-100">
-                  {initials}
-                </span>
-              )}
-            </div>
-
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="text-[11px] uppercase tracking-wide px-2.5 py-1 rounded-full bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100 font-extrabold">
-                  Featured pick
-                </span>
-                {rating > 0 && (
-                  <span className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200 font-bold">
-                    {rating}/5 rating
                   </span>
                 )}
               </div>
 
-              <div className="text-xl md:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-                {name}
-              </div>
-
-              {why && (
-                <div className="mt-2 text-sm md:text-[15px] text-slate-700 dark:text-gray-300 leading-relaxed max-w-3xl">
-                  {why.length > 230 ? why.slice(0, 230) + "…" : why}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-[11px] uppercase tracking-wide px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100 font-black">
+                    Our top pick
+                  </span>
+                  {rating > 0 && (
+                    <span className="text-[12px] font-black text-slate-800 dark:text-gray-200">
+                      {rating}/5 rating
+                    </span>
+                  )}
                 </div>
-              )}
 
-              <div className="mt-4 rounded-2xl bg-[#FBFAF7] dark:bg-gray-900 border border-[#E6E1D8] dark:border-gray-800 px-4 py-3">
-                <div className="text-[12px] font-black uppercase tracking-wide text-slate-500 dark:text-gray-400">
-                  Why we picked it
+                <div className="text-2xl md:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
+                  {name}
                 </div>
-                <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-gray-200">
-                  Strong fit for readers comparing practical UK options before choosing a provider.
+
+                {why && (
+                  <div className="mt-2 text-base text-slate-700 dark:text-gray-300 leading-relaxed max-w-2xl">
+                    {why.length > 170 ? why.slice(0, 170) + "…" : why}
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-2 text-[12px] font-bold text-slate-700 dark:text-gray-300">
+                  <span className="rounded-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 px-3 py-1.5">✓ Easy to compare</span>
+                  <span className="rounded-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 px-3 py-1.5">✓ UK-focused</span>
+                  <span className="rounded-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 px-3 py-1.5">✓ Practical checks</span>
                 </div>
               </div>
             </div>
           </div>
+
+          <div className="border-t md:border-t-0 md:border-l border-emerald-100 dark:border-gray-800 bg-emerald-50/80 dark:bg-gray-900/60 p-5 md:p-6 flex flex-col justify-center">
+            {link ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white px-5 py-4 text-base font-black transition shadow-md"
+              >
+                Visit provider →
+              </a>
+            ) : (
+              <span className="inline-flex w-full items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-800 px-4 py-3.5 text-base font-black">
+                Link pending
+              </span>
+            )}
+
+            {monetisation === "affiliate" && (
+              <div className="mt-3 text-[11px] text-slate-600 dark:text-gray-400 leading-relaxed text-center">
+                Affiliate link. We may earn a commission.
+              </div>
+            )}
+          </div>
         </div>
+      </div>
 
-        <div className="border-t md:border-t-0 md:border-l border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-900/60 p-5 md:p-6 flex flex-col justify-center">
-          {link ? (
-            <a
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex w-full items-center justify-center rounded-xl bg-slate-950 hover:bg-sky-900 dark:bg-sky-700 dark:hover:bg-sky-600 text-white px-4 py-3 text-sm font-black transition"
-            >
-              Visit provider →
-            </a>
-          ) : (
-            <span className="inline-flex w-full items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-800 px-4 py-3 text-sm font-black">
-              Link pending
-            </span>
-          )}
-
-          {monetisation === "affiliate" && (
-            <div className="mt-3 text-[11px] text-slate-600 dark:text-gray-400 leading-relaxed text-center">
-              We may earn a commission if you use this link, at no extra cost to you.
+      <div className="mt-3 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-gray-950/70 p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+            <span className="text-emerald-800 dark:text-emerald-100 font-black">✓</span>
+          </div>
+          <div>
+            <div className="text-sm font-black text-slate-950 dark:text-white">
+              Why we picked {name}
             </div>
-          )}
+            <div className="mt-1 text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
+              Strong fit for readers comparing practical UK options before choosing a provider.
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 function QuickComparison({ tools = [] }) {
   const list = Array.isArray(tools) ? tools : [];
@@ -333,29 +349,43 @@ export default function AuthorityPage() {
 
         {!loading && !err && (
           <>
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200 border border-slate-200/60 dark:border-gray-700">
-                {category}
-              </span>
-              <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200 border border-slate-200/60 dark:border-gray-700">
-                {monetisation === "affiliate" ? "Affiliate" : monetisation}
-              </span>
-              {page?.status && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-gray-800 dark:text-gray-200 border border-slate-200/60 dark:border-gray-700">
-                  {String(page.status).toUpperCase()}
-                </span>
-              )}
-            </div>
+            <section className="rounded-3xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm overflow-hidden">
+              <div className="p-5 md:p-8">
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="text-[11px] uppercase tracking-wide px-3 py-1 rounded-full bg-slate-950 text-white dark:bg-sky-700 font-black">
+                    Cheshire Today guide
+                  </span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
+                    {category}
+                  </span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
+                    {monetisation === "affiliate" ? "Affiliate supported" : monetisation}
+                  </span>
+                  {page?.status && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
+                      {String(page.status).toUpperCase()}
+                    </span>
+                  )}
+                </div>
 
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              {title}
-            </h1>
+                <h1 className="text-3xl md:text-5xl font-black tracking-tight text-slate-950 dark:text-white max-w-4xl">
+                  {title}
+                </h1>
 
-            {intro && (
-              <p className="mt-4 text-base md:text-lg text-slate-700 dark:text-gray-300 leading-relaxed max-w-4xl">
-                {intro}
-              </p>
-            )}
+                {intro && (
+                  <div className="mt-5 rounded-2xl bg-[#FBFAF7] dark:bg-gray-900/70 border border-[#E6E1D8] dark:border-gray-800 p-4 md:p-5">
+                    <p className="text-base md:text-lg text-slate-700 dark:text-gray-300 leading-relaxed max-w-4xl">
+                      {intro}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-[12px] text-slate-600 dark:text-gray-400">
+                      <span className="font-semibold">Updated comparison guide</span>
+                      <span>•</span>
+                      <span>Links may earn commission at no extra cost to you</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
             <BestPickCta tools={tools.slice(0,1)} monetisation={monetisation} />
             <QuickComparison tools={tools.slice(1)} />
 
