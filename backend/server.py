@@ -7824,8 +7824,13 @@ async def send_digest_now():
         import os
         logger.info(f"SMTP Config Check - Host: {os.environ.get('SMTP_HOST')}, Port: {os.environ.get('SMTP_PORT')}, User: {os.environ.get('SMTP_USER')}")
         
-        # Get all subscribers
-        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(1000)
+        # Resend Pro cleanup mode: send to active subscribers in larger controlled batches.
+        subscribers = await db.subscribers.find(
+            {
+                "$or": [{"active": True}, {"active": {"$exists": False}}]
+            },
+            {"_id": 0, "email": 1}
+        ).to_list(15000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
         
@@ -7838,8 +7843,9 @@ async def send_digest_now():
                 seen_emails.add(email)
                 unique_emails.append(s.get('email'))  # Keep original case
         
-        subscriber_emails = unique_emails[:250]
-        logger.info(f"DIGEST: Using first-batch cap of {len(subscriber_emails)} subscriber emails (from {len(unique_emails)} unique / {len(subscribers)} total)")
+        daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "2000"))
+        subscriber_emails = unique_emails[:daily_send_cap]
+        logger.info(f"DIGEST: Using Resend Pro Daily Brief cap of {len(subscriber_emails)} subscriber emails from {len(unique_emails)} active subscribers")
         
         # Get latest articles with deduplication by title
         pipeline = [
@@ -11139,8 +11145,9 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         if invalid_emails:
             logger.warning(f"Skipping {len(invalid_emails)} invalid emails: {invalid_emails[:5]}...")
         
-        subscriber_emails = unique_emails[:250]
-        logger.info(f"Found {len(subscriber_emails)} valid unique subscribers for Daily Brief first batch (from {len(unique_emails)} unique)")
+        daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "2000"))
+        subscriber_emails = unique_emails[:daily_send_cap]
+        logger.info(f"Found {len(subscriber_emails)} valid Daily Brief subscribers from {len(unique_emails)} eligible unique subscribers")
         
         # Get latest articles (published in last 24 hours for variety)
         cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
