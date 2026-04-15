@@ -338,6 +338,9 @@ function getRelatedGuides(currentSlug = "", category = "") {
     "what-iso-certification-means-small-business-uk",
     "best-self-storage-services-uk-home-business",
     "best-online-will-writing-services-uk",
+    "best-mattress-deals-uk",
+    "best-electric-toothbrushes-oral-care-uk",
+    "best-removal-van-services-uk",
   ];
 
   const rotation = rotationSlugs
