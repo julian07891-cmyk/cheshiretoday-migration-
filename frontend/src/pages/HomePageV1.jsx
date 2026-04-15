@@ -535,17 +535,21 @@ const navigate = useNavigate();
     };
 
     // 1) Hero
-    const isHeroReady = (a) => String(a?.content || "").trim().length >= 1200;
+    // Never use pure crime/sensational content as the homepage hero.
+    // Public-interest exceptions are still allowed by isAllowedByPolicy().
+    const isHeroSafe = (a) => isAllowedByPolicy(a);
+    const isHeroReady = (a) => isHeroSafe(a) && String(a?.content || "").trim().length >= 1200;
+    const heroPool = poolAll.filter(isHeroSafe);
     const heroArticle =
-      poolAll.find(a => isLocal(a) && isHeroReady(a)) ||
-      poolAll.find(a => String(a?.category || "").toLowerCase().includes("business") && isHeroReady(a)) ||
-      poolAll.find(a => isAiTech(a) && isHeroReady(a)) ||
-      poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk") && isHeroReady(a)) ||
-      poolAll.find(isLocal) ||
-      poolAll.find(a => String(a?.category || "").toLowerCase().includes("business")) ||
-      poolAll.find(isAiTech) ||
-      poolAll.find(a => String(a?.category || "").toLowerCase().includes("uk")) ||
-      poolAll[0] || null;
+      heroPool.find(a => isLocal(a) && isHeroReady(a)) ||
+      heroPool.find(a => String(a?.category || "").toLowerCase().includes("business") && isHeroReady(a)) ||
+      heroPool.find(a => isAiTech(a) && isHeroReady(a)) ||
+      heroPool.find(a => String(a?.category || "").toLowerCase().includes("uk") && isHeroReady(a)) ||
+      heroPool.find(isLocal) ||
+      heroPool.find(a => String(a?.category || "").toLowerCase().includes("business")) ||
+      heroPool.find(isAiTech) ||
+      heroPool.find(a => String(a?.category || "").toLowerCase().includes("uk")) ||
+      heroPool[0] || null;
     if (heroArticle) mark(heroArticle);
 
     // 2) Top Stories (8) — fixed mix: 2 Local, 2 Business, 1 AI, 1 Property, 1 Flexible

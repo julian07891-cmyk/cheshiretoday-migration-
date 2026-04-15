@@ -1516,12 +1516,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     if article.get('category') == "Property" and not is_useful_property_article(article):
                         continue
 
-                    # Keep crime-like content to a very low cap
-                    nonlocal crime_count
+                    # Hard block crime / police / court / mugshot-style content from going live.
+                    # This keeps the site aligned with the local economic intelligence strategy.
                     if is_crime_like(article):
-                        if crime_count >= crime_cap:
-                            continue
-                        crime_count += 1
+                        logger.info(f"Skipping crime-like RSS article: {title[:40]}...")
+                        continue
                     
                     # Skip if duplicate title, source URL, or image
                     source_url = (article.get('source_url') or '').strip().lower()
@@ -1677,12 +1676,19 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             if is_manchester_source(article):
                 continue
 
-            # Keep crime-like content to a very low cap
-            # Allow up to crime_cap; skip only if we already hit the cap.
+            # Hard block obituary / memorial notice-style content
+            if is_obituary_like(article):
+                continue
+
+            # Hard block obvious low-utility lifestyle / promo / entertainment filler
+            if is_low_utility_article(article):
+                continue
+
+            # Hard block crime / police / court / mugshot-style content from going live.
+            # This keeps the site aligned with the local economic intelligence strategy.
             if is_crime_like(article):
-                if crime_count >= crime_cap:
-                    continue
-                crime_count += 1
+                logger.info(f"Skipping crime-like local RSS article: {title[:40]}...")
+                continue
             if rss_image in used_image_urls:
                 continue
             
@@ -7951,7 +7957,19 @@ async def send_digest_now():
 
         def _is_banned(article):
             category = (article.get('category','') or '').lower()
-            return category in ['sports','sport','entertainment','celebrity','showbiz']
+            title = (article.get('title','') or '').lower()
+            content = (article.get('content','') or '').lower()[:500]
+            text = f"{category} {title} {content}"
+
+            blocked_keywords = [
+                'death notices', 'death notice', 'funeral notices', 'funeral notice',
+                'in memoriam', 'death announcements', 'family announcement'
+            ]
+
+            return (
+                category in ['sports','sport','entertainment','celebrity','showbiz']
+                or any(k in text for k in blocked_keywords)
+            )
 
         local_bucket = []
         business_bucket = []
