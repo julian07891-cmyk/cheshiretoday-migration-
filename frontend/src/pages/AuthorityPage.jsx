@@ -38,6 +38,9 @@ function getToolLogoSrc(name = "") {
   if (cleaned.includes("create")) return "/affiliate-logos/create.ico";
   if (cleaned.includes("virtual office")) return "/affiliate-logos/virtual-office.png";
   if (cleaned.includes("make a will")) return "/affiliate-logos/make-a-will-online.png";
+  if (cleaned.includes("emma")) return "/affiliate-logos/emma.png";
+  if (cleaned.includes("spotlight")) return "/affiliate-logos/spotlight-oral-care.png";
+  if (cleaned.includes("anyvan")) return "/affiliate-logos/anyvan.png";
   if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.png";
 
   return "";
@@ -254,6 +257,24 @@ const RELATED_GUIDE_LIBRARY = [
     title: "What ISO certification means",
     desc: "A practical guide to ISO for small businesses",
     tag: "Compliance"
+  },
+  {
+    slug: "best-mattress-deals-uk",
+    title: "Best mattress deals",
+    desc: "Mattress offers, delivery and trial-period checks",
+    tag: "Home"
+  },
+  {
+    slug: "best-electric-toothbrushes-oral-care-uk",
+    title: "Best oral care products",
+    desc: "Electric toothbrushes, whitening and dental-care essentials",
+    tag: "Household"
+  },
+  {
+    slug: "best-removal-van-services-uk",
+    title: "Best removal van services",
+    desc: "Moving house, furniture delivery and man-and-van options",
+    tag: "Moving"
   }
 ];
 
