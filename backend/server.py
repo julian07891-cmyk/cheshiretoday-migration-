@@ -11120,7 +11120,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 ]
             },
             {"_id": 0, "email": 1}
-        ).to_list(1000)
+        ).to_list(15000)
         if not subscribers:
             logger.info("No subscribers found with daily_brief preference - skipping")
             return
