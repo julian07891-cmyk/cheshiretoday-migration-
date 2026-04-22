@@ -868,8 +868,18 @@ const AdminDashboard = ({ onBack }) => {
           description: editingArticle ? "Your changes have been saved" : "New article published successfully"
         });
         setShowAddArticle(false);
+        const savedArticle = {
+          ...(editingArticle || {}),
+          ...(data.article || {}),
+          ...payload,
+          id: data.article?.id || editingArticle?.id,
+          publishedDate: data.article?.publishedDate || editingArticle?.publishedDate || new Date().toISOString(),
+          source: payload.source || editingArticle?.source || data.article?.source || "Manual Entry",
+          source_url: payload.source_url ?? editingArticle?.source_url ?? editingArticle?.sourceUrl ?? data.article?.source_url ?? "",
+          updated_at: new Date().toISOString()
+        };
+        setArticles(prev => [savedArticle, ...prev.filter(a => a.id !== savedArticle.id)]);
         resetArticleForm();
-        fetchAllData();
       } else {
         throw new Error(data.detail || 'Failed to save article');
       }
