@@ -19,6 +19,7 @@ import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
+import { monetisationTools } from "../config/monetisationTools";
 
 function getSourceLabel(article) {
   const raw = String(article?.source || "").trim();
@@ -353,6 +354,35 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
   return out.slice(0, 3);
 }
 
+function getGuidePromoMeta(guide) {
+  const slug = String(guide?.slug || "").trim();
+  const href = slug ? `/guides/${encodeURIComponent(slug)}` : "";
+
+  const pools = Object.values(monetisationTools || {}).filter(Array.isArray);
+  for (const pool of pools) {
+    const match = pool.find((item) => String(item?.href || "").trim() === href);
+    if (match) {
+      return {
+        badge: match.badge || "Recommended deal",
+        logoSrc: match.logoSrc || "",
+        logoLabel: match.logoLabel || "",
+        desc: match.desc || "",
+        benefit: match.benefit || "",
+        cta: match.cta || "View guide",
+      };
+    }
+  }
+
+  return {
+    badge: String(guide?.monetisation || "").trim().toLowerCase() === "affiliate" ? "Recommended deal" : "Top guide",
+    logoSrc: "",
+    logoLabel: "CT",
+    desc: "Practical comparisons and key checks for readers.",
+    benefit: "Useful next step for readers",
+    cta: "View guide",
+  };
+}
+
 /* ===== AI Guide Promo Block (Monetisation Funnel) ===== */
 const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }) => {
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
@@ -418,22 +448,60 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
   const title = safeText(g?.title) || "In-depth Guide";
   const slug = String(g?.slug || "").trim();
   const href = slug ? `/guides/${encodeURIComponent(slug)}` : null;
+  const promo = getGuidePromoMeta(g);
+  const secondaryGuides = pool.filter((item) => String(item?.slug || "").trim() !== slug).slice(0, 2);
+  const useLogoImage = Boolean(promo.logoSrc) && !/\.ico(?:\?|$)/i.test(String(promo.logoSrc));
+  const logoLabel = promo.logoLabel || String(title).replace(/^best\s+/i, "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "CT";
 
   return (
     <div className={compact
-      ? "not-prose my-7 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white dark:bg-gray-950/50 p-4 shadow-sm"
-      : "mt-6 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20"
+      ? "not-prose my-7 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-950/50 p-4 shadow-sm hover:shadow-md transition"
+      : "mt-6 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-950/40 p-4 shadow-sm hover:shadow-md transition"
     }>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-xs font-extrabold uppercase tracking-wide text-sky-800 dark:text-slate-200 mb-1">
-            {compact ? "Recommended guide" : "In-depth Guide"}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="h-11 w-11 rounded-2xl bg-white dark:bg-gray-900 border border-[#E6E1D8] dark:border-gray-800 flex items-center justify-center overflow-hidden shrink-0">
+            {useLogoImage ? (
+              <>
+                <img
+                  src={promo.logoSrc}
+                  alt=""
+                  className="h-full w-full object-contain p-1.5"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                  }}
+                />
+                <span className="hidden text-sm font-black tracking-tight text-sky-900 dark:text-sky-100">
+                  {logoLabel}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-black tracking-tight text-sky-900 dark:text-sky-100">
+                {logoLabel}
+              </span>
+            )}
           </div>
-          <a href={href} className="block text-base font-black text-sky-950 dark:text-slate-100 hover:underline underline-offset-2">
-            {title}
-          </a>
-          <div className="text-[12px] mt-1 text-slate-700 dark:text-gray-400">
-            Practical comparisons and key checks for readers →
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <div className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 font-bold">
+                {String(promo.badge || "").trim().toLowerCase() === "affiliate" ? "Recommended deal" : (promo.badge || (compact ? "Recommended guide" : "In-depth Guide"))}
+              </div>
+              <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                ★ {Number(g?.sections?.find?.((x) => x?.type === "tool")?.rating || g?.rating || 4.5).toFixed(1)}
+              </div>
+            </div>
+
+            <a href={href} className="block text-base font-black leading-tight text-sky-950 dark:text-slate-100 hover:underline underline-offset-2">
+              {title}
+            </a>
+
+            <div className="text-[13px] mt-1.5 leading-snug text-slate-700 dark:text-gray-300">
+              {promo.desc || "Practical comparisons and key checks for readers."}
+            </div>
+
           </div>
         </div>
 
@@ -441,7 +509,61 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
           href={href}
           className="shrink-0 hidden sm:inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-sky-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-sky-800 dark:hover:bg-sky-600 transition"
         >
-          View →
+          {promo.cta || "View guide"} →
+        </a>
+      </div>
+
+            {compact && secondaryGuides.length > 0 && (
+              <div className="mt-3">
+                <div className="mb-1.5 text-[11px] font-extrabold uppercase tracking-wide text-slate-500 dark:text-gray-400">
+                  Compare other options
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {secondaryGuides.map((item) => {
+                  const itemTitle = safeText(item?.title) || "Guide";
+                  const itemSlug = String(item?.slug || "").trim();
+                  const itemHref = itemSlug ? `/guides/${encodeURIComponent(itemSlug)}` : "#";
+                  const itemPromo = getGuidePromoMeta(item);
+
+                  return (
+                    <a
+                      key={itemSlug}
+                      href={itemHref}
+                      className="rounded-lg border border-[#E6E1D8] dark:border-gray-800 bg-white/80 dark:bg-gray-900/60 px-3 py-2 hover:border-sky-300 dark:hover:border-sky-700 transition"
+                    >
+                      <div className="text-[9px] uppercase tracking-wide font-bold text-slate-500 dark:text-gray-400">
+                        Alternative
+                      </div>
+                      <div className="mt-0.5 text-[11px] font-black leading-snug text-slate-900 dark:text-white">
+                        {itemTitle}
+                      </div>
+                      <div className="mt-0.5 text-[10px] leading-snug text-slate-600 dark:text-gray-300 truncate">
+                        {itemPromo.desc || "Compare another option"}
+                      </div>
+                      <div className="mt-1 text-[10px] font-bold text-sky-800 dark:text-sky-300">
+                        Compare →
+                      </div>
+                    </a>
+                  );
+                })}
+                </div>
+              </div>
+            )}
+
+
+      <div className="mt-3 rounded-lg bg-white/80 dark:bg-gray-900/70 border border-[#EEE8DC] dark:border-gray-800 px-2.5 py-2 text-[12px] font-semibold text-slate-800 dark:text-gray-200">
+        ✓ {promo.benefit || "Useful next step for readers"}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">
+          We may earn a commission if you use affiliate links.
+        </div>
+        <a
+          href={href}
+          className="sm:hidden inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-sky-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-sky-800 dark:hover:bg-sky-600 transition"
+        >
+          {promo.cta || "View guide"} →
         </a>
       </div>
     </div>
