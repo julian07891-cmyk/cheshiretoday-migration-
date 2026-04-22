@@ -3,7 +3,7 @@ export const monetisationTools = {
     { badge: "Affiliate", logoLabel: "DR", logoSrc: "/affiliate-logos/123-reg.png", title: "Best domain registrars", desc: "123 Reg + UK domain setup", benefit: "Secure your business name", cta: "Compare domains", href: "/guides/best-domain-registrars-small-business-uk" },
     { badge: "Affiliate", logoLabel: "WB", logoSrc: "/affiliate-logos/create.ico", title: "Best website builders", desc: "Create + WebHosting UK options", benefit: "Launch without coding", cta: "See builders", href: "/guides/best-website-builders-small-business-uk" },
     { badge: "Affiliate", logoLabel: "AS", logoSrc: "/affiliate-logos/quickbooks.png", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", benefit: "VAT, invoices and reports", cta: "Compare tools", href: "/guides/best-accounting-software-uk" },
-    { badge: "Affiliate", logoLabel: "VO", logoSrc: "/affiliate-logos/virtual-office.png", title: "Best virtual office services", desc: "Business address + remote setup", benefit: "Professional UK address", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
+    { badge: "Affiliate", logoLabel: "VO", logoSrc: "/affiliate-logos/virtual-office.png", title: "Best virtual office services", desc: "Business address + registered office options", benefit: "Professional UK address setup", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
     { badge: "Affiliate", logoLabel: "SS", logoSrc: "/affiliate-logos/safestore.ico", title: "Best self-storage services", desc: "Home + business storage options", benefit: "Flexible space when needed", cta: "View storage", href: "/guides/best-self-storage-services-uk-home-business" },
   ],
 
@@ -28,7 +28,7 @@ export const monetisationTools = {
   ],
 
   shipping: [
-    { badge: "Affiliate", title: "Best parcel & courier services", desc: "Interparcel + multi-carrier options", href: "/guides/best-parcel-courier-services-small-business-uk" },
+    { badge: "Affiliate", title: "Best parcel & courier services", desc: "Interparcel + Parcel ABC quote options", href: "/guides/best-parcel-courier-services-small-business-uk" },
     { badge: "Affiliate", title: "Choose a shipping solution", desc: "Operational setup guide", href: "/guides/how-to-choose-shipping-solution-online-business-uk" },
     { badge: "Affiliate", title: "Best website builders", desc: "Storefront + order flow setup", href: "/guides/best-website-builders-small-business-uk" },
     { badge: "Affiliate", title: "Best self-storage services", desc: "Stock overflow + storage flexibility", href: "/guides/best-self-storage-services-uk-home-business" },
@@ -41,7 +41,8 @@ export const monetisationTools = {
   ],
 
   virtual_office: [
-    { badge: "Affiliate", title: "Best virtual office services", desc: "Business address + remote setup", href: "/guides/best-virtual-office-services-small-business-uk" },
+    { badge: "Affiliate", title: "Best virtual office services", desc: "Business address + registered office options", href: "/guides/best-virtual-office-services-small-business-uk" },
+    { badge: "Affiliate", title: "Best company formation services", desc: "Formation packages + registered office options", href: "/guides/best-company-formation-services-uk" },
     { badge: "Affiliate", title: "Best domain registrars", desc: "Domain + business presence basics", href: "/guides/best-domain-registrars-small-business-uk" },
     { badge: "Affiliate", title: "Best website builders", desc: "Online presence alongside business address", href: "/guides/best-website-builders-small-business-uk" },
   ],
@@ -72,6 +73,7 @@ export const monetisationTools = {
   ],
 
   ai: [
+    { badge: "Affiliate", title: "Best explainer video software", desc: "Whiteboard animation + demo video tools", href: "/guides/best-explainer-video-software-uk" },
     { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + automation", href: "/guides/best-email-marketing-tools-small-business-uk" },
     { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
   ],

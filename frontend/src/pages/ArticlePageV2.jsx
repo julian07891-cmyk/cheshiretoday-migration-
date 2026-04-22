@@ -261,11 +261,13 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-web-hosting-small-business-uk",
     "best-website-builders-small-business-uk",
     "best-virtual-office-services-small-business-uk",
+    "best-company-formation-services-uk",
     "best-self-storage-services-uk-home-business",
     "best-parcel-courier-services-small-business-uk",
     "how-to-choose-shipping-solution-online-business-uk",
     "best-iso-training-certification-courses-uk-businesses",
     "what-iso-certification-means-small-business-uk",
+    "best-explainer-video-software-uk",
   ]);
 
   const push = (slug) => {
@@ -289,6 +291,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-domain-registrars-small-business-uk");
   } else if (context === "virtual-office") {
     push("best-virtual-office-services-small-business-uk");
+    push("best-company-formation-services-uk");
     push("best-domain-registrars-small-business-uk");
     push("best-website-builders-small-business-uk");
   } else if (context === "web-presence") {
@@ -311,11 +314,16 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-iso-training-certification-courses-uk-businesses");
     push("what-iso-certification-means-small-business-uk");
     push("best-accounting-software-uk");
+  } else if (context === "ai") {
+    push("best-explainer-video-software-uk");
+    push("best-email-marketing-tools-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
   } else if (context === "email-marketing") {
     push("best-email-marketing-tools-small-business-uk");
     push("best-website-builders-small-business-uk");
     push("best-domain-registrars-small-business-uk");
   } else if (pillar.includes("business")) {
+    push("best-company-formation-services-uk");
     push("best-accounting-software-uk");
     push("best-email-marketing-tools-small-business-uk");
     push("best-domain-registrars-small-business-uk");
@@ -424,6 +432,8 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
   const fallbackOrder = [
     "best-self-storage-services-uk-home-business",
     "best-virtual-office-services-small-business-uk",
+    "best-company-formation-services-uk",
+    "best-explainer-video-software-uk",
     "best-accounting-software-uk",
     "best-email-marketing-tools-small-business-uk",
     "best-domain-registrars-small-business-uk",
