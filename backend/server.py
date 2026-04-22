@@ -333,6 +333,8 @@ class ManualArticleCreate(BaseModel):
     category: str
     image: Optional[str] = None
     author: Optional[str] = "Cheshire Today"
+    source: Optional[str] = None
+    source_url: Optional[str] = None
     tags: Optional[List[str]] = []
     featured: Optional[bool] = False
     scope: Optional[str] = "cheshire"
@@ -4805,7 +4807,8 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             "tags": tags,
             "featured": article.featured or False,
             "force_live": article.force_live or False,
-            "source": "Manual Entry",
+            "source": article.source or "Manual Entry",
+            "source_url": article.source_url or "",
             "scope": article.scope or "cheshire",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -4858,6 +4861,8 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
             "category": article.category,
             "author": article.author or existing.get("author", "Cheshire Today"),
             "image": article.image or existing.get("image"),
+            "source": article.source or existing.get("source", "Manual Entry"),
+            "source_url": article.source_url if article.source_url is not None else existing.get("source_url", ""),
             "tags": article.tags or existing.get("tags", []),
             "featured": article.featured if article.featured is not None else existing.get("featured", False),
             "force_live": article.force_live if article.force_live is not None else existing.get("force_live", False),

@@ -150,6 +150,8 @@ const AdminDashboard = ({ onBack }) => {
     category: 'Local News',
     image: '',
     author: 'Cheshire Today',
+    source: '',
+    source_url: '',
     tags: '',
     featured: false,
     scope: 'cheshire'
@@ -802,6 +804,8 @@ const AdminDashboard = ({ onBack }) => {
       category: 'Local News',
       image: '',
       author: 'Cheshire Today',
+      source: '',
+      source_url: '',
       tags: '',
       featured: false,
       scope: 'cheshire'
@@ -821,6 +825,8 @@ const AdminDashboard = ({ onBack }) => {
       category: article.category || 'Local News',
       image: article.image || '',
       author: article.author || 'Cheshire Today',
+      source: article.source === 'Manual Entry' ? '' : (article.source || ''),
+      source_url: article.source_url || article.sourceUrl || '',
       tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
       featured: article.featured || false,
       scope: article.scope || 'cheshire'
@@ -4789,6 +4795,31 @@ const handleDeleteArticle = async (articleId) => {
                   onChange={(e) => setArticleForm({...articleForm, author: e.target.value})}
                   placeholder="Author name"
                   data-testid="article-author-input"
+                />
+              </div>
+            </div>
+
+            {/* Source and Source URL */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="source">Source</Label>
+                <Input
+                  id="source"
+                  value={articleForm.source}
+                  onChange={(e) => setArticleForm({...articleForm, source: e.target.value})}
+                  placeholder="e.g. Cheshire Live, BBC News"
+                  data-testid="article-source-input"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="source_url">Source URL</Label>
+                <Input
+                  id="source_url"
+                  value={articleForm.source_url}
+                  onChange={(e) => setArticleForm({...articleForm, source_url: e.target.value})}
+                  placeholder="https://example.com/original-story"
+                  data-testid="article-source-url-input"
                 />
               </div>
             </div>
