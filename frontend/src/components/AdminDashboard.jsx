@@ -491,6 +491,45 @@ const AdminDashboard = ({ onBack }) => {
     }
   }, [isAuthenticated, activeTab]);
 
+  const fetchAdminArticlesPage = async ({ page = 0, search = '', append = false, token = null } = {}) => {
+    const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
+    if (!authToken) return;
+
+    const authHeaders = { 'Authorization': `Bearer ${authToken}` };
+    const skip = page * 50;
+    const params = new URLSearchParams({ skip: String(skip), limit: '50' });
+    const trimmedSearch = String(search || '').trim();
+
+    if (trimmedSearch) {
+      params.set('search', trimmedSearch);
+    }
+
+    const response = await fetch(`${getApiUrl()}/api/admin/articles?${params.toString()}`, { headers: authHeaders });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch admin articles (${response.status})`);
+    }
+
+    const data = await response.json();
+    const newArticles = data.articles || [];
+    const total = Number(data.total || 0);
+
+    setArticles(prev => (append ? [...prev, ...newArticles] : newArticles));
+    setArticlesPage(page);
+    setHasMoreArticles(skip + newArticles.length < total);
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'articles') return;
+
+    const timer = setTimeout(() => {
+      fetchAdminArticlesPage({ page: 0, search: articleSearch }).catch((error) => {
+        console.error('Error searching admin articles:', error);
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [articleSearch, isAuthenticated, activeTab]);
+
   const fetchAllData = async (token = null) => {
     const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
     if (!authToken) {
@@ -544,6 +583,8 @@ const AdminDashboard = ({ onBack }) => {
       setStats(statsData);
       setSubscribers(subscribersData.subscribers || []);
       setArticles(articlesData.articles || []);
+      setArticlesPage(0);
+      setHasMoreArticles(((articlesData.total || 0) > ((articlesData.articles || []).length)));
       
       // Fetch jobs
       try {
@@ -729,20 +770,8 @@ const AdminDashboard = ({ onBack }) => {
 
   const loadMoreArticles = async () => {
     const newPage = articlesPage + 1;
-    const skip = newPage * 50;
-    const authHeaders = getAuthHeaders();
-    
     try {
-      const response = await fetch(`${getApiUrl()}/api/admin/articles?skip=${skip}&limit=50`, { headers: authHeaders });
-      if (response.ok) {
-        const data = await response.json();
-        const newArticles = data.articles || [];
-        if (newArticles.length < 50) {
-          setHasMoreArticles(false);
-        }
-        setArticles(prev => [...prev, ...newArticles]);
-        setArticlesPage(newPage);
-      }
+      await fetchAdminArticlesPage({ page: newPage, search: articleSearch, append: true });
     } catch (error) {
       console.error('Error loading more articles:', error);
     }
@@ -2560,8 +2589,6 @@ const handleDeleteArticle = async (articleId) => {
                       if (articleSubTab === 'local' && article.category !== 'Local News') return false;
                       if (articleSubTab === 'uk' && article.category !== 'UK News') return false;
                       if (articleSubTab === 'sports' && article.category !== 'Sports') return false;
-                      // Filter by search
-                      if (articleSearch && !article.title?.toLowerCase().includes(articleSearch.toLowerCase())) return false;
                       return true;
                     })
                     .map((article) => (

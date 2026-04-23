@@ -4757,15 +4757,44 @@ async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_aut
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/admin/articles")
-async def get_admin_articles(skip: int = 0, limit: int = 50, authorized: bool = Depends(get_admin_auth)):
-    """Get all articles for admin dashboard with full details. Requires admin authentication."""
+async def get_admin_articles(
+    skip: int = 0,
+    limit: int = 50,
+    search: Optional[str] = None,
+    authorized: bool = Depends(get_admin_auth)
+):
+    """Get admin articles with optional full-database search. Requires admin authentication."""
     try:
+        query = {}
+        if search and search.strip():
+            raw_search = search.strip()
+            id_match = re.search(r"([a-f0-9]{24})", raw_search, re.I)
+            search_regex = {"$regex": raw_search, "$options": "i"}
+
+            or_clauses = [
+                {"title": search_regex},
+                {"content": search_regex},
+                {"source": search_regex},
+                {"source_url": search_regex},
+                {"category": search_regex},
+                {"id": search_regex},
+            ]
+
+            if id_match:
+                try:
+                    from bson import ObjectId
+                    or_clauses.append({"_id": ObjectId(id_match.group(1))})
+                except Exception:
+                    pass
+
+            query = {"$or": or_clauses}
+
         articles = await db.articles.find(
-            {}, {"_id": 0}
+            query, {"_id": 0}
         ).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
-        
-        total = await db.articles.count_documents({})
-        return {"articles": articles, "total": total, "skip": skip, "limit": limit}
+
+        total = await db.articles.count_documents(query)
+        return {"articles": articles, "total": total, "skip": skip, "limit": limit, "search": search or ""}
     except Exception as e:
         logger.error(f"Error getting admin articles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
