@@ -4799,6 +4799,30 @@ async def get_admin_articles(
         logger.error(f"Error getting admin articles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+def resolve_manual_article_image(image_url: str, source_url: str) -> str:
+    """Prefer source og:image for manual articles when image is blank or uses Postimg."""
+    chosen = (image_url or "").strip()
+    source = (source_url or "").strip()
+
+    def is_blocked(url: str) -> bool:
+        lowered = (url or "").lower()
+        return any(host in lowered for host in ["postimg.cc", "i.postimg.cc", "postimage.org", "postimages.org"])
+
+    if source and (not chosen or is_blocked(chosen)):
+        try:
+            import urllib.request
+            req = urllib.request.Request(source, headers={"User-Agent": "Mozilla/5.0"})
+            html = urllib.request.urlopen(req, timeout=20).read().decode("utf-8", errors="ignore")
+            m = re.search(r'<meta[^>]+(?:property|name)=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html, re.I)
+            if m:
+                og_image = (m.group(1) or "").strip()
+                if og_image and not is_blocked(og_image):
+                    return og_image
+        except Exception:
+            pass
+
+    return "" if is_blocked(chosen) else chosen
+
 @api_router.post("/admin/articles")
 async def create_manual_article(article: ManualArticleCreate, authorized: bool = Depends(get_admin_auth)):
     """Create a new article manually. Requires admin authentication.
@@ -4824,6 +4848,9 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             if location_tag not in tags:
                 tags.append(location_tag)
         
+        resolved_source_url = article.source_url or ""
+        resolved_image = resolve_manual_article_image(article.image or default_image, resolved_source_url)
+
         # Create article document
         article_doc = {
             "id": article_id,
@@ -4832,12 +4859,12 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             "category": article.category,
             "author": article.author or "Cheshire Today",
             "publishedDate": datetime.now(timezone.utc).isoformat(),
-            "image": article.image or default_image,
+            "image": resolved_image,
             "tags": tags,
             "featured": article.featured or False,
             "force_live": article.force_live or False,
             "source": article.source or "Manual Entry",
-            "source_url": article.source_url or "",
+            "source_url": resolved_source_url,
             "scope": article.scope or "cheshire",
             "created_at": datetime.now(timezone.utc).isoformat()
         }
@@ -4883,15 +4910,19 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         # Auto-detect location from updated title and content
         detected_location = get_article_priority_location(article.title, article.content)
         
+        resolved_source_url = article.source_url if article.source_url is not None else existing.get("source_url", "")
+        candidate_image = article.image if article.image is not None else existing.get("image")
+        resolved_image = resolve_manual_article_image(candidate_image, resolved_source_url)
+
         # Build update document
         update_doc = {
             "title": article.title,
             "content": article.content,
             "category": article.category,
             "author": article.author or existing.get("author", "Cheshire Today"),
-            "image": article.image or existing.get("image"),
+            "image": resolved_image,
             "source": article.source or existing.get("source", "Manual Entry"),
-            "source_url": article.source_url if article.source_url is not None else existing.get("source_url", ""),
+            "source_url": resolved_source_url,
             "tags": article.tags or existing.get("tags", []),
             "featured": article.featured if article.featured is not None else existing.get("featured", False),
             "force_live": article.force_live if article.force_live is not None else existing.get("force_live", False),
