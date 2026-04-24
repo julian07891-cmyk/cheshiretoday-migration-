@@ -64,6 +64,24 @@ class EmailService:
         from urllib.parse import quote
         return f"{self.api_url}/email/track/click/{tracking_id}?url={quote(original_url, safe='')}"
 
+    def _safe_email_image_url(self, image_url: str) -> str:
+        """Return an email-safe image URL, or empty string if the host is blocked for email rendering."""
+        url = (image_url or "").strip()
+        if not url:
+            return ""
+
+        lowered = url.lower()
+        blocked_hosts = [
+            "postimg.cc",
+            "i.postimg.cc",
+            "postimage.org",
+            "postimages.org",
+        ]
+        if any(host in lowered for host in blocked_hosts):
+            return ""
+
+        return url
+
     def _article_url(self, article: dict) -> str:
         """Build canonical article URL with slug."""
         article_id = article.get('id', article.get('_id', ''))
@@ -597,7 +615,7 @@ Cheshire Today Jobs Team
         hero_id = hero.get('id', hero.get('_id', ''))
         hero_url_original = self._article_url(hero)
         hero_url = self._get_tracked_url(tracking_id, hero_url_original)
-        hero_image = hero.get('image', '')
+        hero_image = self._safe_email_image_url(hero.get('image', ''))
         hero_summary = hero.get('content', '')[:200].strip()
         if hero_summary:
             hero_summary = hero_summary + '...'

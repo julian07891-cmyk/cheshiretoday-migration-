@@ -11218,10 +11218,11 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             article.pop('mongo_id', None)
             article.pop('custom_id', None)
         
-        # If no recent articles, get latest 10 regardless of time (still unique by title)
-        if not recent_articles:
-            logger.info("No recent articles, using latest 10 unique articles")
-            pipeline = [
+        # If recent coverage is too thin, top up from latest unique articles regardless of time.
+        if len(recent_articles) < 5:
+            logger.info(f"Only {len(recent_articles)} recent articles found, topping up from latest unique articles")
+
+            fallback_pipeline = [
                 {"$sort": {"publishedDate": -1}},
                 {"$group": {
                     "_id": "$title",
@@ -11236,18 +11237,27 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                     "source": {"$first": "$source"}
                 }},
                 {"$sort": {"publishedDate": -1}},
-                {"$limit": 10}
+                {"$limit": 20}
             ]
-            recent_articles = await db.articles.aggregate(pipeline).to_list(10)
-            
-            # Convert IDs for fallback articles too
-            for article in recent_articles:
+            fallback_articles = await db.articles.aggregate(fallback_pipeline).to_list(20)
+
+            # Convert IDs for fallback articles
+            for article in fallback_articles:
                 if article.get('mongo_id'):
                     article['id'] = str(article['mongo_id'])
                 elif article.get('custom_id'):
                     article['id'] = str(article['custom_id'])
                 article.pop('mongo_id', None)
                 article.pop('custom_id', None)
+
+            seen_titles = {str(a.get('title') or '').strip().lower() for a in recent_articles}
+            for article in fallback_articles:
+                title_key = str(article.get('title') or '').strip().lower()
+                if title_key and title_key not in seen_titles:
+                    recent_articles.append(article)
+                    seen_titles.add(title_key)
+                if len(recent_articles) >= 10:
+                    break
         
         if not recent_articles:
             logger.warning("No articles available for digest")
