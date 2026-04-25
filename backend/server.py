@@ -298,6 +298,20 @@ class AdvertiseLeadCreate(BaseModel):
     tier: Optional[str] = None
     source: Optional[str] = "advertise_page"
 
+class SponsoredPlacementDoc(BaseModel):
+    slug: str
+    placement: str = "article_sidebar"
+    sponsor_name: str
+    title: str
+    description: Optional[str] = None
+    target_url: str
+    image_url: Optional[str] = None
+    cta_text: str = "Learn more"
+    active: bool = True
+    priority: int = 0
+    starts_at: Optional[str] = None
+    ends_at: Optional[str] = None
+
 # =====================================================================================
 # JOB BOARD SYSTEM
 # =====================================================================================
@@ -1022,6 +1036,60 @@ async def admin_article_counts():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+def _serialize_sponsored_placement(doc):
+    if not doc:
+        return None
+    out = dict(doc)
+    out["id"] = str(out.get("_id", ""))
+    out.pop("_id", None)
+    return out
+
+
+@api_router.get("/sponsored-placements")
+async def get_sponsored_placements(placement: str = "article_sidebar", limit: int = 1):
+    """Public endpoint - Return active sponsored placements for a page slot."""
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        safe_limit = max(1, min(int(limit or 1), 5))
+        query = {
+            "placement": str(placement or "article_sidebar").strip(),
+            "active": True,
+            "$and": [
+                {"$or": [{"starts_at": {"$exists": False}}, {"starts_at": None}, {"starts_at": ""}, {"starts_at": {"$lte": now_iso}}]},
+                {"$or": [{"ends_at": {"$exists": False}}, {"ends_at": None}, {"ends_at": ""}, {"ends_at": {"$gte": now_iso}}]},
+            ],
+        }
+        cursor = db.sponsored_placements.find(query).sort([("priority", -1), ("updated_at", -1)]).limit(safe_limit)
+        placements = [_serialize_sponsored_placement(doc) async for doc in cursor]
+        return {"success": True, "placements": placements}
+    except Exception as e:
+        logger.error(f"Error getting sponsored placements: {str(e)}")
+        return {"success": False, "placements": []}
+
+
+@api_router.post("/admin/sponsored-placements/upsert")
+async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool = Depends(get_admin_auth)):
+    """Admin endpoint - Upsert a manual sponsored placement by slug."""
+    doc = payload.model_dump()
+    doc["slug"] = str(doc.get("slug") or "").strip()
+    doc["placement"] = str(doc.get("placement") or "article_sidebar").strip()
+    doc["sponsor_name"] = str(doc.get("sponsor_name") or "").strip()
+    doc["title"] = str(doc.get("title") or "").strip()
+    doc["target_url"] = str(doc.get("target_url") or "").strip()
+
+    if not doc["slug"] or not doc["sponsor_name"] or not doc["title"] or not doc["target_url"]:
+        raise HTTPException(status_code=400, detail="slug, sponsor_name, title and target_url are required")
+
+    if not (doc["target_url"].startswith("https://") or doc["target_url"].startswith("http://")):
+        raise HTTPException(status_code=400, detail="target_url must start with http:// or https://")
+
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    await db.sponsored_placements.update_one({"slug": doc["slug"]}, {"$set": doc, "$setOnInsert": {"created_at": doc["updated_at"]}}, upsert=True)
+    saved = await db.sponsored_placements.find_one({"slug": doc["slug"]})
+    return {"success": True, "placement": _serialize_sponsored_placement(saved)}
+
 
 @api_router.post("/admin/authority-pages/upsert")
 async def upsert_authority_page(payload: AuthorityPageDoc, auth: bool = Depends(get_admin_auth)):

@@ -16,6 +16,7 @@ import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
 import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
+import SponsoredPlacement from "../components/SponsoredPlacement";
 import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
@@ -1053,23 +1054,8 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 
-              <div className="sm:hidden rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 p-4 mb-5">
-                <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                  Local advertising
-                </div>
-                <h3 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
-                  Reach Cheshire readers from £49/month
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                  Promote your business with launch-price sponsored placements.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => navigate("/advertise")}
-                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition"
-                >
-                  View advertising options
-                </button>
+              <div className="sm:hidden mb-5">
+                <SponsoredPlacement placement="article_mobile" compact />
               </div>
 
 <div ref={articleBodyRef} className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
@@ -1252,24 +1238,7 @@ export default function ArticlePageV2({ categories }) {
                   />
                 </div>
 
-                <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 p-4">
-                  <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                    Local advertising
-                  </div>
-                  <h3 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
-                    Reach Cheshire readers from £49/month
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                    Promote your local business with launch-price sponsored placements across Cheshire Today.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/advertise")}
-                    className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition"
-                  >
-                    View advertising options
-                  </button>
-                </div>
+                <SponsoredPlacement placement="article_sidebar" />
 
                 {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}                {/* Latest (fills sidebar height, compact) */}
                 {Array.isArray(moreStories) && moreStories.length > 0 && (
