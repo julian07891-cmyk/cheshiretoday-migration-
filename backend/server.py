@@ -5834,10 +5834,45 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
         result = await db.advertiser_leads.insert_one(lead_doc)
         logger.info(f"Advertising enquiry submitted: {tier or 'unspecified'} by {email}")
 
+        notification_sent = False
+        try:
+            import html as _html
+
+            html_content = f"""
+            <h2>New Cheshire Today advertising enquiry</h2>
+            <p><strong>Package:</strong> {_html.escape(tier or "Not selected")}</p>
+            <p><strong>Name:</strong> {_html.escape(name)}</p>
+            <p><strong>Email:</strong> {_html.escape(email)}</p>
+            <p><strong>Business:</strong> {_html.escape(lead_doc.get("business") or "Not provided")}</p>
+            <p><strong>Budget:</strong> {_html.escape(lead_doc.get("budget") or "Not provided")}</p>
+            <p><strong>Source:</strong> {_html.escape(lead_doc.get("source") or "advertise_page")}</p>
+            <p><strong>Message:</strong><br>{_html.escape(lead_doc.get("message") or "No message").replace(chr(10), "<br>")}</p>
+            <hr>
+            <p>Reply to the advertiser from news@cheshiretoday.co.uk.</p>
+            """
+
+            notification_sent = bool(email_service._send_email(
+                to_email="news@cheshiretoday.co.uk",
+                subject=f"New advertising enquiry — {tier or 'Cheshire Today'}",
+                html_content=html_content,
+            ))
+
+            await db.advertiser_leads.update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"notification_sent": notification_sent, "notification_checked_at": datetime.utcnow()}}
+            )
+        except Exception as email_error:
+            logger.error(f"Failed to send advertising enquiry notification: {str(email_error)}")
+            await db.advertiser_leads.update_one(
+                {"_id": result.inserted_id},
+                {"$set": {"notification_sent": False, "notification_error": str(email_error), "notification_checked_at": datetime.utcnow()}}
+            )
+
         return {
             "success": True,
             "message": "Thanks — your advertising enquiry has been received. We'll reply from news@cheshiretoday.co.uk.",
             "lead_id": str(result.inserted_id),
+            "notification_sent": notification_sent,
         }
     except HTTPException:
         raise
