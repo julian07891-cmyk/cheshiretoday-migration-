@@ -263,6 +263,8 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-virtual-office-services-small-business-uk",
     "best-company-formation-services-uk",
     "best-self-storage-services-uk-home-business",
+    "best-removal-van-services-uk",
+    "best-mattress-deals-uk",
     "best-parcel-courier-services-small-business-uk",
     "how-to-choose-shipping-solution-online-business-uk",
     "best-iso-training-certification-courses-uk-businesses",
@@ -299,8 +301,22 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-web-hosting-small-business-uk");
     push("best-website-builders-small-business-uk");
     push("best-virtual-office-services-small-business-uk");
+  } else if (context === "company-formation") {
+    push("best-company-formation-services-uk");
+    push("best-virtual-office-services-small-business-uk");
+    push("best-domain-registrars-small-business-uk");
+    push("best-website-builders-small-business-uk");
+  } else if (context === "marketing-video") {
+    push("best-explainer-video-software-uk");
+    push("best-email-marketing-tools-small-business-uk");
+    push("best-website-builders-small-business-uk");
+  } else if (context === "moving") {
+    push("best-removal-van-services-uk");
+    push("best-self-storage-services-uk-home-business");
+    push("best-mattress-deals-uk");
   } else if (context === "storage") {
     push("best-self-storage-services-uk-home-business");
+    push("best-removal-van-services-uk");
     push("best-parcel-courier-services-small-business-uk");
     push("how-to-choose-shipping-solution-online-business-uk");
   } else if (context === "wills") {
@@ -723,6 +739,9 @@ export default function ArticlePageV2({ categories }) {
     const title = String(article?.title || "").toLowerCase();
     const summary = String(article?.summary || "").toLowerCase();
     const text = `${sec} ${cat} ${title} ${summary}`.replace(/\s+/g, " ").trim();
+    const hasMovingIntent = /\b(removal van|removals|moving house|house move|man and van|anyvan|relocation|furniture delivery|mattress|bed-in-a-box)\b/.test(text);
+
+    if (hasMovingIntent) return "moving";
 
     // 1) SECTION-FIRST (most reliable when available)
     if (sec.startsWith("ai-")) return "ai";
@@ -748,6 +767,8 @@ export default function ArticlePageV2({ categories }) {
     // Tax first (so “council tax” and “stamp duty” don't fall into generic property)
     if (/\b(hmrc|tax|vat|self assessment|national insurance|ni contributions|council tax|stamp duty)\b/.test(text)) return "tax";
 
+    if (/\b(company formation|limited company|companies house|register a company|incorporate|incorporation|start a business|startup|start-up|sole trader)\b/.test(text)) return "company-formation";
+    if (/\b(explainer video|whiteboard animation|marketing video|product demo|demo video|video marketing|animation software)\b/.test(text)) return "marketing-video";
     if (/\b(business bank|business account|merchant account|payment gateway|worldpay)\b/.test(text)) return "business-banking";
     if (/\b(accounting software|bookkeeping|xero|quickbooks|freeagent)\b/.test(text)) return "accounting";
     if (/\b(virtual office|business address|registered office|mail handling|mail forwarding)\b/.test(text)) return "virtual-office";
