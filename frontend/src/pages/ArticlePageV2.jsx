@@ -1076,7 +1076,16 @@ export default function ArticlePageV2({ categories }) {
                 <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
                 {isMobileView && mobileRemainingContent && !articleExpanded ? (
-                  <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mobileIntroContent || mainContent, pillarLabel) }} />
+                  <>
+                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mobileIntroContent || mainContent, pillarLabel) }} />
+                    <button
+                      type="button"
+                      onClick={() => setArticleExpanded(true)}
+                      className="not-prose mt-4 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-3 transition dark:bg-sky-700 dark:hover:bg-sky-600"
+                    >
+                      Continue reading full article
+                    </button>
+                  </>
                 ) : (
                   <>
                     <div dangerouslySetInnerHTML={{ __html: autoLinkContent(beforeGuideContent || mainContent, pillarLabel) }} />
