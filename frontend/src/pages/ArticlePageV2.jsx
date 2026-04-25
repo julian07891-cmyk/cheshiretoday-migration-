@@ -739,9 +739,13 @@ export default function ArticlePageV2({ categories }) {
     const title = String(article?.title || "").toLowerCase();
     const summary = String(article?.summary || "").toLowerCase();
     const text = `${sec} ${cat} ${title} ${summary}`.replace(/\s+/g, " ").trim();
-    const hasMovingIntent = /\b(removal van|removals|moving house|house move|man and van|anyvan|relocation|furniture delivery|mattress|bed-in-a-box)\b/.test(text);
+    const hasMovingIntent = /\b(removal van|removals|moving house|house move|man and van|anyvan|relocation|furniture delivery|bed-in-a-box|mattress deals?)\b/.test(text);
+    const hasCompanyFormationIntent = /\b(company formation|limited company|companies house|register a company|incorporate|incorporation|start a business|startup|start-up|sole trader)\b/.test(text);
+    const hasMarketingVideoIntent = /\b(explainer video|whiteboard animation|marketing video|product demo|demo video|video marketing|animation software)\b/.test(text);
 
     if (hasMovingIntent) return "moving";
+    if (hasCompanyFormationIntent) return "company-formation";
+    if (hasMarketingVideoIntent) return "marketing-video";
 
     // 1) SECTION-FIRST (most reliable when available)
     if (sec.startsWith("ai-")) return "ai";
@@ -767,8 +771,6 @@ export default function ArticlePageV2({ categories }) {
     // Tax first (so “council tax” and “stamp duty” don't fall into generic property)
     if (/\b(hmrc|tax|vat|self assessment|national insurance|ni contributions|council tax|stamp duty)\b/.test(text)) return "tax";
 
-    if (/\b(company formation|limited company|companies house|register a company|incorporate|incorporation|start a business|startup|start-up|sole trader)\b/.test(text)) return "company-formation";
-    if (/\b(explainer video|whiteboard animation|marketing video|product demo|demo video|video marketing|animation software)\b/.test(text)) return "marketing-video";
     if (/\b(business bank|business account|merchant account|payment gateway|worldpay)\b/.test(text)) return "business-banking";
     if (/\b(accounting software|bookkeeping|xero|quickbooks|freeagent)\b/.test(text)) return "accounting";
     if (/\b(virtual office|business address|registered office|mail handling|mail forwarding)\b/.test(text)) return "virtual-office";
