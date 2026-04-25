@@ -82,6 +82,10 @@ const AdminDashboard = ({ onBack }) => {
   
   // Email history state
   const [emailHistory, setEmailHistory] = useState([]);
+
+  // Advertising leads state
+  const [advertiserLeads, setAdvertiserLeads] = useState([]);
+  const [advertiserLeadsLoading, setAdvertiserLeadsLoading] = useState(false);
   
   // Email analytics state
   const [emailAnalytics, setEmailAnalytics] = useState(null);
@@ -217,6 +221,26 @@ const AdminDashboard = ({ onBack }) => {
     const token = localStorage.getItem(TOKEN_KEY);
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   }, []);
+
+  const fetchAdvertiserLeads = useCallback(async () => {
+    setAdvertiserLeadsLoading(true);
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/advertiser-leads?limit=100`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdvertiserLeads(data.leads || []);
+      } else {
+        toast({ title: "Failed to load advertising leads", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error fetching advertiser leads:", error);
+      toast({ title: "Error loading advertising leads", variant: "destructive" });
+    } finally {
+      setAdvertiserLeadsLoading(false);
+    }
+  }, [getAuthHeaders]);
 
   // Fetch email history
   const fetchEmailHistory = useCallback(async () => {
@@ -2452,6 +2476,21 @@ const handleDeleteArticle = async (articleId) => {
               <span className="sm:hidden">Affil</span>
             </Button>
             <Button 
+              variant={activeTab === 'advertising' ? 'default' : 'ghost'}
+              onClick={() => {
+                setActiveTab('advertising');
+                fetchAdvertiserLeads();
+              }}
+              size="sm"
+              className={`flex items-center gap-2 min-w-fit ${activeTab === 'advertising' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+              data-testid="tab-advertising"
+            >
+              <PoundSterling className="h-4 w-4" />
+              <span className="hidden sm:inline">Advertising</span>
+              <span className="sm:hidden">Ads</span>
+              <Badge variant="secondary" className="ml-1 text-xs hidden sm:inline-flex">{advertiserLeads.length}</Badge>
+            </Button>
+            <Button 
               variant="ghost"
               onClick={() => setActiveTab('jobs')}
               size="sm"
@@ -4040,6 +4079,114 @@ const handleDeleteArticle = async (articleId) => {
                     <p>Products automatically display in sidebars and article footers with your affiliate tag</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === 'advertising' && (
+          <div className="space-y-6">
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PoundSterling className="h-5 w-5 text-amber-600" />
+                  Advertising Leads
+                </CardTitle>
+                <CardDescription>
+                  Enquiries submitted through the /advertise page. Contact businesses from news@cheshiretoday.co.uk, then create sponsored placements using the helper script after payment/review.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="text-sm text-muted-foreground">
+                    {advertiserLeads.length} lead{advertiserLeads.length === 1 ? "" : "s"} loaded
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={fetchAdvertiserLeads}
+                    disabled={advertiserLeadsLoading}
+                  >
+                    {advertiserLeadsLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Refresh
+                  </Button>
+                </div>
+
+                {advertiserLeadsLoading ? (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+                  </div>
+                ) : advertiserLeads.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center">
+                    <p className="font-semibold text-gray-900 dark:text-white">No advertising leads yet</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      New enquiries from the Advertise page will appear here after businesses submit the form.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {advertiserLeads.map((lead) => (
+                      <div key={lead.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-bold text-gray-900 dark:text-white">
+                                {lead.business || lead.name || "Advertising enquiry"}
+                              </h3>
+                              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                                {lead.tier || "Package not selected"}
+                              </Badge>
+                              <Badge variant="outline">
+                                {lead.status || "new"}
+                              </Badge>
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {lead.name} · {lead.email}
+                            </p>
+                            {(lead.phone || lead.website || lead.target_area) && (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {lead.phone ? `Phone: ${lead.phone} · ` : ""}
+                                {lead.website ? `Website: ${lead.website} · ` : ""}
+                                {lead.target_area ? `Area: ${lead.target_area}` : ""}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground md:text-right">
+                            <div>{lead.package_price || ""}</div>
+                            <div>{lead.created_at ? new Date(lead.created_at).toLocaleString("en-GB") : ""}</div>
+                          </div>
+                        </div>
+
+                        {lead.message && (
+                          <p className="mt-3 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {lead.message}
+                          </p>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {lead.email && (
+                            <a
+                              href={`mailto:${lead.email}?subject=${encodeURIComponent("Cheshire Today advertising enquiry")}`}
+                              className="inline-flex items-center rounded-md bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 text-sm font-semibold"
+                            >
+                              Email advertiser
+                            </a>
+                          )}
+                          {lead.website && (
+                            <a
+                              href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-700 px-3 py-2 text-sm font-semibold"
+                            >
+                              Open website
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

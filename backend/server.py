@@ -1132,6 +1132,74 @@ async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool 
     return {"success": True, "placement": _serialize_sponsored_placement(saved)}
 
 
+def _serialize_advertiser_lead(doc):
+    if not doc:
+        return None
+    out = dict(doc)
+    out["id"] = str(out.get("_id", ""))
+    out.pop("_id", None)
+    for key, value in list(out.items()):
+        if hasattr(value, "isoformat"):
+            out[key] = value.isoformat()
+    return out
+
+
+@api_router.get("/admin/advertiser-leads")
+async def get_admin_advertiser_leads(status: str = "", limit: int = 50, auth: bool = Depends(get_admin_auth)):
+    """Admin endpoint - List advertiser enquiries."""
+    try:
+        safe_limit = max(1, min(int(limit or 50), 200))
+        query = {}
+        clean_status = str(status or "").strip()
+        if clean_status:
+            query["status"] = clean_status
+
+        cursor = db.advertiser_leads.find(query).sort("created_at", -1).limit(safe_limit)
+        leads = [_serialize_advertiser_lead(doc) async for doc in cursor]
+
+        total = await db.advertiser_leads.count_documents(query)
+        new_count = await db.advertiser_leads.count_documents({"status": "new"})
+
+        return {
+            "success": True,
+            "leads": leads,
+            "total": total,
+            "new_count": new_count,
+        }
+    except Exception as e:
+        logger.error(f"Error getting advertiser leads: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not load advertiser leads")
+
+
+@api_router.post("/admin/advertiser-leads/{lead_id}/status")
+async def update_admin_advertiser_lead_status(lead_id: str, request: Request, auth: bool = Depends(get_admin_auth)):
+    """Admin endpoint - Update advertiser enquiry status."""
+    try:
+        body = await request.json()
+        status = str(body.get("status") or "").strip().lower()
+        notes = str(body.get("notes") or "").strip()
+
+        allowed = {"new", "contacted", "converted", "declined", "archived"}
+        if status not in allowed:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
+        result = await db.advertiser_leads.update_one(
+            {"_id": ObjectId(lead_id)},
+            {"$set": {"status": status, "admin_notes": notes, "status_updated_at": datetime.utcnow()}}
+        )
+
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Advertiser lead not found")
+
+        saved = await db.advertiser_leads.find_one({"_id": ObjectId(lead_id)})
+        return {"success": True, "lead": _serialize_advertiser_lead(saved)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating advertiser lead status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not update advertiser lead")
+
+
 @api_router.post("/admin/authority-pages/upsert")
 async def upsert_authority_page(payload: AuthorityPageDoc, auth: bool = Depends(get_admin_auth)):
     """
