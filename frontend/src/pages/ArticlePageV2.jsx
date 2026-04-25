@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
@@ -602,6 +602,8 @@ export default function ArticlePageV2({ categories }) {
   const [isMobileView, setIsMobileView] = useState(
     typeof window !== "undefined" ? window.innerWidth < 640 : false
   );
+  const [articleExpanded, setArticleExpanded] = useState(false);
+  const articleBodyRef = useRef(null);
   // --- More stories (below article) ---
   const [moreStories, setMoreStories] = useState([]);
   const [moreStoriesOpen, setMoreStoriesOpen] = useState(false);
@@ -617,6 +619,10 @@ export default function ArticlePageV2({ categories }) {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  useEffect(() => {
+    setArticleExpanded(false);
+  }, [articleId]);
 
   useEffect(() => {
     let mounted = true;
@@ -727,6 +733,25 @@ export default function ArticlePageV2({ categories }) {
     return {
       beforeGuideContent: paragraphs.slice(0, splitIndex).join("\n\n"),
       afterGuideContent: paragraphs.slice(splitIndex).join("\n\n"),
+    };
+  }, [mainContent]);
+
+  const { mobileIntroContent, mobileRemainingContent } = useMemo(() => {
+    const text = String(mainContent || "").trim();
+    if (!text) return { mobileIntroContent: "", mobileRemainingContent: "" };
+
+    const paragraphs = text
+      .split(/\n\s*\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    if (paragraphs.length <= 3) {
+      return { mobileIntroContent: text, mobileRemainingContent: "" };
+    }
+
+    return {
+      mobileIntroContent: paragraphs.slice(0, 2).join("\n\n"),
+      mobileRemainingContent: paragraphs.slice(2).join("\n\n"),
     };
   }, [mainContent]);
 
@@ -1001,6 +1026,21 @@ export default function ArticlePageV2({ categories }) {
                 </button>
               </div>
 
+              {isMobileView && mobileRemainingContent && !articleExpanded && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArticleExpanded(true);
+                    window.setTimeout(() => {
+                      articleBodyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }, 80);
+                  }}
+                  className="sm:hidden mt-4 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-3 transition dark:bg-sky-700 dark:hover:bg-sky-600"
+                >
+                  Continue reading
+                </button>
+              )}
+
               {article.image && (
                 <img
                   src={absoluteImageUrl || article.image}
@@ -1012,23 +1052,49 @@ export default function ArticlePageV2({ categories }) {
                   className="w-full rounded-xl mt-6 mb-6 object-cover"
                 />
               )}
-<div className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
+
+              <div className="sm:hidden rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 p-4 mb-5">
+                <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                  Local advertising
+                </div>
+                <h3 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
+                  Reach Cheshire readers from £49/month
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                  Promote your business with launch-price sponsored placements.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/advertise")}
+                  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition"
+                >
+                  View advertising options
+                </button>
+              </div>
+
+<div ref={articleBodyRef} className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
                 <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
-                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(beforeGuideContent || mainContent, pillarLabel) }} />
-
-                {afterGuideContent && (
+                {isMobileView && mobileRemainingContent && !articleExpanded ? (
+                  <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mobileIntroContent || mainContent, pillarLabel) }} />
+                ) : (
                   <>
-                    <GuidesInlinePromo
-                      guides={guides}
-                      pillarLabel={pillarLabel}
-                      contextToolType={contextToolType}
-                      articleId={articleId}
-                      slot={1}
-                      compact
-                    />
+                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(beforeGuideContent || mainContent, pillarLabel) }} />
 
-                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(afterGuideContent, pillarLabel) }} />
+                    {afterGuideContent && (
+                      <>
+                        <GuidesInlinePromo
+                          guides={guides}
+                          pillarLabel={pillarLabel}
+                          contextToolType={contextToolType}
+                          articleId={articleId}
+                          slot={1}
+                          compact
+                        />
+
+                        <div dangerouslySetInnerHTML={{ __html: autoLinkContent(afterGuideContent, pillarLabel) }} />
+                      </>
+                    )}
                   </>
                 )}
               </div>
