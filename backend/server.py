@@ -9440,6 +9440,20 @@ def _article_slug_from_title(title: str) -> str:
     return slug[:80] if slug else "article"
 
 
+LEGACY_ARTICLE_REDIRECTS = {
+    "69e85a2b5c3fd0f57cf3a438": ("69e9031c87e34f348b321972", "the-cheshire-village-fighting-to-have-its-own-council"),
+    "69df1fb5311960544b7adc0a": ("69e071242549c00aa1d4a4f6", "cheshire-asylum-hotel-shuts-with-immediate-effect"),
+}
+
+
+def _manual_legacy_article_redirect(article_id: str):
+    target = LEGACY_ARTICLE_REDIRECTS.get(str(article_id or "").strip())
+    if not target:
+        return None
+    target_id, target_slug = target
+    return RedirectResponse(url=f"https://cheshiretoday.co.uk/article/{target_id}/{target_slug}", status_code=301)
+
+
 async def _redirect_stale_article_slug_if_needed(article_id: str, slug: str):
     """Recover old Facebook/article links where the old ID is gone but the slug still matches a live article."""
     existing = await _find_article_by_any_id(article_id)
@@ -9520,6 +9534,10 @@ async def serve_article_for_production_head(article_id: str):
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
     """301 /article/{id} -> /article/{uuid}/{slug} (uses PUBLIC_URL)."""
+    manual_redirect = _manual_legacy_article_redirect(article_id)
+    if manual_redirect:
+        return manual_redirect
+
     from fastapi.responses import RedirectResponse
 
     base_url = (os.environ.get("PUBLIC_URL", "https://cheshiretoday.co.uk") or "").rstrip("/") or "https://cheshiretoday.co.uk"
