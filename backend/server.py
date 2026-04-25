@@ -9324,8 +9324,8 @@ async def serve_article_html(article_id: str, request=None):
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
-    # Use the public UUID if present (preferred)
-    public_id = str(article.get("id") or article_id)
+    # Preserve the requested article ID for social canonical URLs after lookup succeeds.
+    public_id = str(article_id or article.get("id") or "").strip()
 
     title = str(article.get("title") or "Cheshire Today")
     desc = str(article.get("summary") or "")
