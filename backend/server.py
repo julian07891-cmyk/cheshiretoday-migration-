@@ -9402,6 +9402,83 @@ async def serve_article_html(article_id: str, request=None):
 
     # Cache modestly to reduce scraper flapping
     return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
+
+async def _find_article_by_any_id(article_id: str):
+    """Return an article from active/archive collections by public id or Mongo _id."""
+    if not article_id:
+        return None
+
+    article = None
+    try:
+        article = await db.articles.find_one({"id": article_id})
+    except Exception:
+        article = None
+
+    if not article:
+        try:
+            article = await db.articles.find_one({"_id": ObjectId(article_id)})
+        except Exception:
+            article = None
+
+    if not article:
+        try:
+            article = await db.archived_articles.find_one({"id": article_id})
+        except Exception:
+            article = None
+
+    if not article:
+        try:
+            article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
+        except Exception:
+            article = None
+
+    return article
+
+
+def _article_slug_from_title(title: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", str(title or "").lower()).strip("-")
+    return slug[:80] if slug else "article"
+
+
+async def _redirect_stale_article_slug_if_needed(article_id: str, slug: str):
+    """Recover old Facebook/article links where the old ID is gone but the slug still matches a live article."""
+    existing = await _find_article_by_any_id(article_id)
+    if existing:
+        return None
+
+    clean_slug = str(slug or "").strip().lower()
+    if not clean_slug or clean_slug == "article" or len(clean_slug) < 12:
+        return None
+
+    words = [w for w in re.split(r"[^a-z0-9]+", clean_slug) if w]
+    if len(words) < 4:
+        return None
+
+    title_regex = r"^\s*" + r"[^a-z0-9]+".join(re.escape(w) for w in words) + r"(?:[^a-z0-9]+)?\s*$"
+    article = None
+
+    try:
+        article = await db.articles.find_one({"title": {"$regex": title_regex, "$options": "i"}})
+    except Exception:
+        article = None
+
+    if not article:
+        try:
+            article = await db.archived_articles.find_one({"title": {"$regex": title_regex, "$options": "i"}})
+        except Exception:
+            article = None
+
+    if not article:
+        return None
+
+    target_id = str(article.get("_id") or article.get("id") or "").strip()
+    if not target_id:
+        return None
+
+    target_slug = _article_slug_from_title(article.get("title") or clean_slug)
+    return RedirectResponse(url=f"https://cheshiretoday.co.uk/article/{target_id}/{target_slug}", status_code=301)
+
+
 @app.get("/article/{article_id}/{slug}")
 async def serve_article_for_production_slug(article_id: str, slug: str, request: Request):
     """Public slug URL serves crawler HTML for bots/social previews and SPA for browsers."""
@@ -9419,6 +9496,10 @@ async def serve_article_for_production_slug(article_id: str, slug: str, request:
         "crawler",
         "bot",
     ])
+
+    stale_redirect = await _redirect_stale_article_slug_if_needed(article_id, slug)
+    if stale_redirect:
+        return stale_redirect
 
     if is_crawler:
         return await serve_article_html(article_id, request)
