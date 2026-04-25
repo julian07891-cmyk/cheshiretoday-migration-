@@ -104,6 +104,8 @@ async def upsert_placement(args):
         "target_url": target_url,
         "image_url": clean(args.image_url),
         "cta_text": clean(args.cta_text) or "Learn more",
+        "package_tier": clean(args.package_tier),
+        "rotation_weight": int(args.rotation_weight or 0) or None,
         "active": not args.inactive,
         "priority": int(args.priority or 0),
         "starts_at": clean(args.starts_at) or None,
@@ -150,6 +152,8 @@ async def main():
     upsert_parser.add_argument("--target-url", required=True)
     upsert_parser.add_argument("--image-url", default="")
     upsert_parser.add_argument("--cta-text", default="Learn more")
+    upsert_parser.add_argument("--package-tier", default="")
+    upsert_parser.add_argument("--rotation-weight", type=int, default=0)
     upsert_parser.add_argument("--priority", type=int, default=0)
     upsert_parser.add_argument("--starts-at", default="")
     upsert_parser.add_argument("--ends-at", default="")

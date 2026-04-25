@@ -293,7 +293,11 @@ class AdvertiseLeadCreate(BaseModel):
     name: str
     email: EmailStr
     business: Optional[str] = None
-    budget: Optional[str] = None
+    budget: Optional[str] = None  # Legacy field kept for backward compatibility
+    package_price: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    target_area: Optional[str] = None
     message: Optional[str] = None
     tier: Optional[str] = None
     source: Optional[str] = "advertise_page"
@@ -307,6 +311,8 @@ class SponsoredPlacementDoc(BaseModel):
     target_url: str
     image_url: Optional[str] = None
     cta_text: str = "Learn more"
+    package_tier: Optional[str] = None
+    rotation_weight: Optional[int] = None
     active: bool = True
     priority: int = 0
     starts_at: Optional[str] = None
@@ -1046,10 +1052,29 @@ def _serialize_sponsored_placement(doc):
     return out
 
 
+def _sponsored_rotation_weight(doc):
+    """Return weighted rotation score for sponsored advert serving."""
+    try:
+        explicit = int(doc.get("rotation_weight") or 0)
+        if explicit > 0:
+            return min(explicit, 20)
+    except Exception:
+        pass
+
+    tier = str(doc.get("package_tier") or "").lower()
+    if "partner" in tier or "premium" in tier:
+        return 4
+    if "featured" in tier:
+        return 2
+    return 1
+
+
 @api_router.get("/sponsored-placements")
 async def get_sponsored_placements(placement: str = "article_sidebar", limit: int = 1):
-    """Public endpoint - Return active sponsored placements for a page slot."""
+    """Public endpoint - Return active sponsored placements for a page slot using weighted rotation."""
     try:
+        import random
+
         now_iso = datetime.now(timezone.utc).isoformat()
         safe_limit = max(1, min(int(limit or 1), 5))
         query = {
@@ -1060,8 +1085,19 @@ async def get_sponsored_placements(placement: str = "article_sidebar", limit: in
                 {"$or": [{"ends_at": {"$exists": False}}, {"ends_at": None}, {"ends_at": ""}, {"ends_at": {"$gte": now_iso}}]},
             ],
         }
-        cursor = db.sponsored_placements.find(query).sort([("priority", -1), ("updated_at", -1)]).limit(safe_limit)
-        placements = [_serialize_sponsored_placement(doc) async for doc in cursor]
+
+        cursor = db.sponsored_placements.find(query).sort([("priority", -1), ("updated_at", -1)]).limit(50)
+        candidates = [doc async for doc in cursor]
+
+        if not candidates:
+            return {"success": True, "placements": []}
+
+        if safe_limit == 1:
+            weights = [_sponsored_rotation_weight(doc) for doc in candidates]
+            chosen = random.choices(candidates, weights=weights, k=1)[0]
+            return {"success": True, "placements": [_serialize_sponsored_placement(chosen)]}
+
+        placements = [_serialize_sponsored_placement(doc) for doc in candidates[:safe_limit]]
         return {"success": True, "placements": placements}
     except Exception as e:
         logger.error(f"Error getting sponsored placements: {str(e)}")
@@ -1077,6 +1113,11 @@ async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool 
     doc["sponsor_name"] = str(doc.get("sponsor_name") or "").strip()
     doc["title"] = str(doc.get("title") or "").strip()
     doc["target_url"] = str(doc.get("target_url") or "").strip()
+    doc["package_tier"] = str(doc.get("package_tier") or "").strip()
+    try:
+        doc["rotation_weight"] = int(doc.get("rotation_weight") or 0) or None
+    except Exception:
+        doc["rotation_weight"] = None
 
     if not doc["slug"] or not doc["sponsor_name"] or not doc["title"] or not doc["target_url"]:
         raise HTTPException(status_code=400, detail="slug, sponsor_name, title and target_url are required")
@@ -5890,6 +5931,10 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
             "email": email,
             "business": str(lead.business or "").strip(),
             "budget": str(lead.budget or "").strip(),
+            "package_price": str(lead.package_price or "").strip(),
+            "phone": str(lead.phone or "").strip(),
+            "website": str(lead.website or "").strip(),
+            "target_area": str(lead.target_area or "").strip(),
             "message": str(lead.message or "").strip(),
             "tier": tier,
             "source": str(lead.source or "advertise_page").strip(),
@@ -5912,7 +5957,10 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
             <p><strong>Name:</strong> {_html.escape(name)}</p>
             <p><strong>Email:</strong> {_html.escape(email)}</p>
             <p><strong>Business:</strong> {_html.escape(lead_doc.get("business") or "Not provided")}</p>
-            <p><strong>Budget:</strong> {_html.escape(lead_doc.get("budget") or "Not provided")}</p>
+            <p><strong>Package price:</strong> {_html.escape(lead_doc.get("package_price") or "Not provided")}</p>
+            <p><strong>Phone:</strong> {_html.escape(lead_doc.get("phone") or "Not provided")}</p>
+            <p><strong>Website/Facebook:</strong> {_html.escape(lead_doc.get("website") or "Not provided")}</p>
+            <p><strong>Target area:</strong> {_html.escape(lead_doc.get("target_area") or "Not provided")}</p>
             <p><strong>Source:</strong> {_html.escape(lead_doc.get("source") or "advertise_page")}</p>
             <p><strong>Message:</strong><br>{_html.escape(lead_doc.get("message") or "No message").replace(chr(10), "<br>")}</p>
             <hr>

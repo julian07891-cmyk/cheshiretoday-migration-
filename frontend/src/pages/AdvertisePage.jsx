@@ -9,9 +9,9 @@ const PRICING = [
     price: "£49 / month",
     badge: "Launch price for small local businesses",
     bullets: [
-      "Rotating sponsored placement on article/sidebar areas",
+      "30-day standard sponsored placement",
+      "Can appear in available article advertising slots",
       "Link to your website, booking page or Facebook page",
-      "Basic monthly snapshot where available",
     ],
     subject: "Advertising enquiry — Local Starter package",
   },
@@ -20,9 +20,9 @@ const PRICING = [
     price: "£99 / month",
     badge: "Most popular launch package",
     bullets: [
-      "Higher-frequency sponsored placement",
-      "Featured mention on relevant local/category areas",
-      "Monthly performance snapshot where available",
+      "30-day higher-priority sponsored rotation",
+      "Can appear in mobile and desktop article advertising slots",
+      "Better visibility than Starter when multiple advertisers are active",
     ],
     subject: "Advertising enquiry — Local Featured package",
   },
@@ -31,8 +31,8 @@ const PRICING = [
     price: "£199 / month",
     badge: "Best for regular local exposure",
     bullets: [
-      "Priority sponsored placement",
-      "Homepage/category visibility where suitable",
+      "30-day priority sponsored rotation",
+      "Article placement plus homepage/category visibility where suitable",
       "One sponsored business spotlight per month",
     ],
     subject: "Advertising enquiry — Local Partner package",
@@ -54,8 +54,20 @@ const AdvertisePage = () => {
           Advertise on Cheshire Today
         </h1>
         <p className="mt-3 text-gray-700 dark:text-gray-300 max-w-3xl">
-          Launch pricing for Cheshire businesses: reach local readers with sponsored placements from £49/month. Choose a package below and we’ll recommend the best fit for your area and goals.
+          Launch pricing for Cheshire businesses: reach local readers with sponsored placements from £49/month. Choose a monthly package below and we’ll recommend the best fit for your area and goals.
         </p>
+
+        <div className="mt-6 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-5 max-w-4xl">
+          <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">
+            How advertising works
+          </h2>
+          <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <p><strong>30-day packages:</strong> each package runs monthly and can be renewed, changed, paused or cancelled.</p>
+            <p><strong>Where adverts appear:</strong> your advert can appear inside article pages, including the mobile in-article advert card and the desktop article sidebar advert slot.</p>
+            <p><strong>Automatic rotation:</strong> when multiple advertisers are active, adverts rotate through available slots. Higher packages receive stronger rotation priority.</p>
+            <p><strong>Manual review:</strong> all adverts are reviewed by Cheshire Today before going live to protect readers and advertisers.</p>
+          </div>
+        </div>
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {PRICING.map((tier) => (
@@ -127,7 +139,10 @@ const AdvertisePage = () => {
                     name: form.name.value,
                     business: form.business.value,
                     email: form.email.value,
-                    budget: form.budget.value,
+                    package_price: selectedTier?.price,
+                    phone: form.phone.value,
+                    website: form.website.value,
+                    target_area: form.target_area.value,
                     message: form.message.value,
                     tier: selectedTier?.name,
                     source: "advertise_page",
@@ -143,16 +158,16 @@ const AdvertisePage = () => {
                   setShowForm(false);
                 }}
               >
+                <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-gray-800 dark:text-gray-200">
+                  Selected package: <strong>{selectedTier?.name}</strong> — <strong>{selectedTier?.price}</strong>
+                </div>
                 <input name="name" required placeholder="Your name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
                 <input name="business" placeholder="Business name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
                 <input name="email" type="email" required placeholder="Email" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
-                <select name="budget" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
-                  <option value="">Estimated budget</option>
-                  <option>£100–£300</option>
-                  <option>£300–£600</option>
-                  <option>£600+</option>
-                </select>
-                <textarea name="message" placeholder="Tell us about your goals" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="phone" placeholder="Phone number (optional)" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="website" placeholder="Website, booking page or Facebook page" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="target_area" placeholder="Target area, e.g. Crewe, Chester, Warrington" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <textarea name="message" placeholder="Tell us what you want to promote" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
 
                 <div className="flex gap-3 pt-2">
                   <button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg py-3 font-semibold">
