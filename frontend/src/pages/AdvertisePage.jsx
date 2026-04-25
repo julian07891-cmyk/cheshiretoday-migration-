@@ -5,37 +5,37 @@ import { trackEvent } from "../utils/trackEvent";
 
 const PRICING = [
   {
-    name: "Starter",
-    price: "£149 / month",
-    badge: "Best for local businesses",
+    name: "Local Starter",
+    price: "£49 / month",
+    badge: "Launch price for small local businesses",
     bullets: [
-      "Sidebar sponsored block (rotating)",
-      "Monthly performance snapshot (clicks + impressions)",
-      "Link to your website or booking page",
+      "Rotating sponsored placement on article/sidebar areas",
+      "Link to your website, booking page or Facebook page",
+      "Basic monthly snapshot where available",
     ],
-    subject: "Advertising enquiry — Starter package",
+    subject: "Advertising enquiry — Local Starter package",
   },
   {
-    name: "Featured",
-    price: "£299 / month",
-    badge: "Most popular",
+    name: "Local Featured",
+    price: "£99 / month",
+    badge: "Most popular launch package",
     bullets: [
-      "Priority sidebar placement (higher frequency)",
-      "Homepage section mention (weekly)",
-      "Monthly performance snapshot (clicks + impressions)",
+      "Higher-frequency sponsored placement",
+      "Featured mention on relevant local/category areas",
+      "Monthly performance snapshot where available",
     ],
-    subject: "Advertising enquiry — Featured package",
+    subject: "Advertising enquiry — Local Featured package",
   },
   {
-    name: "Premium",
-    price: "£499 / month",
-    badge: "Max exposure",
+    name: "Local Partner",
+    price: "£199 / month",
+    badge: "Best for regular local exposure",
     bullets: [
-      "Top-tier sidebar placement (highest frequency)",
-      "Homepage + category featured placement (weekly)",
-      "1 sponsored article / month (editorial-style)",
+      "Priority sponsored placement",
+      "Homepage/category visibility where suitable",
+      "One sponsored business spotlight per month",
     ],
-    subject: "Advertising enquiry — Premium package",
+    subject: "Advertising enquiry — Local Partner package",
   },
 ];
 
@@ -54,7 +54,7 @@ const AdvertisePage = () => {
           Advertise on Cheshire Today
         </h1>
         <p className="mt-3 text-gray-700 dark:text-gray-300 max-w-3xl">
-          Reach local readers across Cheshire with sponsored placements. Choose a package below and we’ll set it up within 24–48 hours.
+          Launch pricing for Cheshire businesses: reach local readers with sponsored placements from £49/month. Choose a package below and we’ll recommend the best fit for your area and goals.
         </p>
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -94,7 +94,7 @@ const AdvertisePage = () => {
   Enquire about {tier.name}
 </button>
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                Prices exclude VAT (if applicable). Packages can be paused or changed monthly.
+                Launch pricing. Packages can be paused, changed or cancelled monthly.
               </p>
             </div>
           ))}

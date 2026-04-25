@@ -289,6 +289,15 @@ class UnsubscribeRequest(BaseModel):
     """Request model for unsubscribe endpoint"""
     email: str
 
+class AdvertiseLeadCreate(BaseModel):
+    name: str
+    email: EmailStr
+    business: Optional[str] = None
+    budget: Optional[str] = None
+    message: Optional[str] = None
+    tier: Optional[str] = None
+    source: Optional[str] = "advertise_page"
+
 # =====================================================================================
 # JOB BOARD SYSTEM
 # =====================================================================================
@@ -5792,6 +5801,50 @@ async def get_job_packages():
             }
         ]
     }
+
+@api_router.post("/leads/advertise")
+async def submit_advertise_lead(lead: AdvertiseLeadCreate):
+    """Public endpoint - Capture advertising enquiries from /advertise."""
+    try:
+        name = str(lead.name or "").strip()
+        email = str(lead.email or "").strip().lower()
+        tier = str(lead.tier or "").strip()
+
+        if len(name) < 2:
+            raise HTTPException(status_code=400, detail="Please enter your name")
+
+        allowed_tiers = {"Local Starter", "Local Featured", "Local Partner", "Starter", "Featured", "Premium"}
+        if tier and tier not in allowed_tiers:
+            raise HTTPException(status_code=400, detail="Invalid advertising package")
+
+        lead_doc = {
+            "name": name,
+            "email": email,
+            "business": str(lead.business or "").strip(),
+            "budget": str(lead.budget or "").strip(),
+            "message": str(lead.message or "").strip(),
+            "tier": tier,
+            "source": str(lead.source or "advertise_page").strip(),
+            "status": "new",
+            "created_at": datetime.utcnow(),
+            "submitted_at": datetime.utcnow(),
+            "notify_email": "news@cheshiretoday.co.uk",
+        }
+
+        result = await db.advertiser_leads.insert_one(lead_doc)
+        logger.info(f"Advertising enquiry submitted: {tier or 'unspecified'} by {email}")
+
+        return {
+            "success": True,
+            "message": "Thanks — your advertising enquiry has been received. We'll reply from news@cheshiretoday.co.uk.",
+            "lead_id": str(result.inserted_id),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting advertising enquiry: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not submit advertising enquiry")
+
 
 @api_router.get("/jobs/{job_id}")
 async def get_job(job_id: str):
