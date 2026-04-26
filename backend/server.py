@@ -48,6 +48,7 @@ from app.perplexity_service import perplexity_service
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
 import stripe
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '').strip()
 
 # Job posting pricing packages (amounts in GBP)
 JOB_POSTING_PACKAGES = {
@@ -7081,32 +7082,48 @@ async def get_job_payment_status(session_id: str, request: Request):
 
 @api_router.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
-    """Handle Stripe webhooks"""
+    """Handle Stripe webhooks using Stripe's official signature verification."""
     try:
         body = await request.body()
         signature = request.headers.get("Stripe-Signature")
-        
-        host_url = str(request.base_url).rstrip('/')
-        webhook_url = f"{host_url}/api/webhook/stripe"
-        stripe_checkout = StripeCheckout(api_key=STRIPE_API_KEY, webhook_url=webhook_url)
-        
-        webhook_response = await stripe_checkout.handle_webhook(body, signature)
-        
-        logger.info(f"Stripe webhook: {webhook_response.event_type} for session {webhook_response.session_id}")
-        
-        if webhook_response.payment_status == "paid":
-            # Find and update the transaction
-            transaction = await db.payment_transactions.find_one({"session_id": webhook_response.session_id})
+
+        if not STRIPE_WEBHOOK_SECRET:
+            logger.error("Stripe webhook secret is not configured")
+            raise HTTPException(status_code=500, detail="Stripe webhook secret is not configured")
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload=body,
+                sig_header=signature,
+                secret=STRIPE_WEBHOOK_SECRET,
+            )
+        except ValueError as e:
+            logger.warning(f"Stripe webhook invalid payload: {e}")
+            raise HTTPException(status_code=400, detail="Invalid Stripe webhook payload")
+        except stripe.error.SignatureVerificationError as e:
+            logger.warning(f"Stripe webhook signature verification failed: {e}")
+            raise HTTPException(status_code=400, detail="Invalid Stripe webhook signature")
+
+        event_type = str(event.get("type") or "")
+        session = event.get("data", {}).get("object", {}) or {}
+        session_id = str(session.get("id") or "")
+        payment_status = str(session.get("payment_status") or "")
+        metadata = dict(session.get("metadata") or {})
+
+        logger.info(f"Stripe webhook: {event_type} for session {session_id}")
+
+        if event_type == "checkout.session.completed" and payment_status == "paid" and session_id:
+            transaction = await db.payment_transactions.find_one({"session_id": session_id})
             if transaction and transaction.get("payment_status") != "completed":
                 await db.payment_transactions.update_one(
-                    {"session_id": webhook_response.session_id},
+                    {"session_id": session_id},
                     {"$set": {"payment_status": "completed", "completed_at": datetime.utcnow()}}
                 )
-                
-                payment_type = webhook_response.metadata.get("type") or transaction.get("type")
+
+                payment_type = metadata.get("type") or transaction.get("type")
 
                 if payment_type == "advertising":
-                    lead_id = webhook_response.metadata.get("advertiser_lead_id") or transaction.get("advertiser_lead_id")
+                    lead_id = metadata.get("advertiser_lead_id") or transaction.get("advertiser_lead_id")
                     if lead_id:
                         await db.advertiser_leads.update_one(
                             {"_id": ObjectId(lead_id)},
@@ -7119,9 +7136,9 @@ async def stripe_webhook(request: Request):
                         await send_advertising_payment_confirmation_email(str(lead_id))
                         logger.info(f"Webhook: Updated advertiser lead {lead_id} to paid pending review")
                 else:
-                    job_id = webhook_response.metadata.get("job_id") or transaction.get("job_id")
+                    job_id = metadata.get("job_id") or transaction.get("job_id")
                     if job_id:
-                        package_id = webhook_response.metadata.get("package_id") or transaction.get("package_id")
+                        package_id = metadata.get("package_id") or transaction.get("package_id")
                         package = JOB_POSTING_PACKAGES.get(package_id, {})
 
                         await db.jobs.update_one(
@@ -7134,9 +7151,11 @@ async def stripe_webhook(request: Request):
                             }}
                         )
                         logger.info(f"Webhook: Updated job {job_id} to pending after payment")
-        
+
         return {"received": True}
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Stripe webhook error: {e}")
         return {"received": True, "error": str(e)}
