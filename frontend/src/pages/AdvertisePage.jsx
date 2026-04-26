@@ -63,7 +63,8 @@ const AdvertisePage = () => {
   const [selectedTier, setSelectedTier] = React.useState(null);
   const [submittedAdvert, setSubmittedAdvert] = React.useState(null);
   const [checkoutLoading, setCheckoutLoading] = React.useState(false);
-  const [detailsSaving, setDetailsSaving] = React.useState(false);
+  const [enquiryLoading, setEnquiryLoading] = React.useState(false);
+  const [enquirySent, setEnquirySent] = React.useState(false);
   const [checkoutError, setCheckoutError] = React.useState("");
 
   const email = "news@cheshiretoday.co.uk";
@@ -173,7 +174,8 @@ const AdvertisePage = () => {
   onClick={() => {
     setSelectedTier(tier);
     setSubmittedAdvert(null);
-    setDetailsSaving(false);
+    setEnquiryLoading(false);
+    setEnquirySent(false);
     setCheckoutError("");
     setShowForm(true);
   }}
@@ -226,28 +228,8 @@ const AdvertisePage = () => {
                   const reviewPayload = { ...payload, package_id: selectedTier?.id };
                   setSubmittedAdvert(reviewPayload);
                   setCheckoutError("");
-                  setDetailsSaving(true);
-
-                  try {
-                    const res = await fetch(getApiUrl() + "/api/leads/advertise", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(payload),
-                    });
-
-                    const data = await res.json();
-
-                    if (!res.ok || !data?.success) {
-                      throw new Error(data?.detail || "Could not submit advertising details");
-                    }
-
-                    trackEvent("advertising_details_submit", { tier: selectedTier?.name });
-                    setSubmittedAdvert(prev => ({ ...prev, lead_id: data.lead_id, details_saved: true }));
-                  } catch (error) {
-                    setCheckoutError("Could not save the advertising details yet. Please try again or contact news@cheshiretoday.co.uk.");
-                  } finally {
-                    setDetailsSaving(false);
-                  }
+                  setEnquirySent(false);
+                  trackEvent("advertising_details_review", { tier: selectedTier?.name });
                 }}
               >
                 <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-gray-800 dark:text-gray-200">
@@ -276,7 +258,7 @@ const AdvertisePage = () => {
                   <div className="mt-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-sm text-gray-800 dark:text-gray-200">
                     <h4 className="font-bold text-gray-900 dark:text-white">Review before payment</h4>
                     <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
-                      {detailsSaving ? "Saving your advert details and sending your confirmation email..." : submittedAdvert.lead_id ? "Advert details saved. You can now continue to secure payment." : "Review your details below."}
+                      Review your details below. No email is sent and no lead is created until you choose secure payment or send an enquiry.
                     </p>
                     <div className="mt-3 space-y-1">
                       <p><strong>Package:</strong> {submittedAdvert.tier} — {submittedAdvert.package_price}</p>
@@ -297,44 +279,87 @@ const AdvertisePage = () => {
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      disabled={checkoutLoading || detailsSaving || !submittedAdvert?.lead_id}
-                      onClick={async () => {
-                        setCheckoutError("");
-                        if (!submittedAdvert?.lead_id) {
-                          setCheckoutError("Please wait until your advert details have been saved before continuing to payment.");
-                          return;
-                        }
-                        setCheckoutLoading(true);
-                        try {
-                          const res = await fetch(getApiUrl() + "/api/advertising/checkout", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              ...submittedAdvert,
-                              package_id: submittedAdvert.package_id,
-                              existing_lead_id: submittedAdvert.lead_id,
-                              origin_url: window.location.origin,
-                            }),
-                          });
-                          const data = await res.json();
-                          trackEvent("advertising_checkout_start", { tier: submittedAdvert.tier });
-                          if (data?.checkout_url) {
-                            window.location.href = data.checkout_url;
-                            return;
+                    <div className="mt-4 grid grid-cols-1 gap-2">
+                      <button
+                        type="button"
+                        disabled={checkoutLoading || enquiryLoading}
+                        onClick={async () => {
+                          setCheckoutError("");
+                          setCheckoutLoading(true);
+                          try {
+                            const res = await fetch(getApiUrl() + "/api/advertising/checkout", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                ...submittedAdvert,
+                                package_id: submittedAdvert.package_id,
+                                origin_url: window.location.origin,
+                              }),
+                            });
+                            const data = await res.json();
+                            trackEvent("advertising_checkout_start", { tier: submittedAdvert.tier });
+                            if (data?.checkout_url) {
+                              window.location.href = data.checkout_url;
+                              return;
+                            }
+                            setCheckoutError(data?.detail || "Could not start advertising checkout. Please contact news@cheshiretoday.co.uk.");
+                          } catch (error) {
+                            setCheckoutError("Could not start advertising checkout. Please contact news@cheshiretoday.co.uk.");
+                          } finally {
+                            setCheckoutLoading(false);
                           }
-                          setCheckoutError(data?.detail || "Could not start advertising checkout. Please contact news@cheshiretoday.co.uk.");
-                        } catch (error) {
-                          setCheckoutError("Could not start advertising checkout. Please contact news@cheshiretoday.co.uk.");
-                        } finally {
-                          setCheckoutLoading(false);
-                        }
-                      }}
-                      className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg py-3 font-semibold"
-                    >
-                      {detailsSaving ? "Saving advert details..." : checkoutLoading ? "Starting secure payment..." : "Continue to secure payment"}
-                    </button>
+                        }}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg py-3 font-semibold"
+                      >
+                        {checkoutLoading ? "Starting secure payment..." : "Continue to secure payment"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={checkoutLoading || enquiryLoading || enquirySent}
+                        onClick={async () => {
+                          setCheckoutError("");
+                          setEnquiryLoading(true);
+                          try {
+                            const res = await fetch(getApiUrl() + "/api/leads/advertise", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                ...submittedAdvert,
+                                package_id: submittedAdvert.package_id,
+                                origin_url: window.location.origin,
+                              }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok || !data?.success) {
+                              throw new Error(data?.detail || "Could not send advertising enquiry");
+                            }
+                            trackEvent("advertising_enquiry_submit", { tier: submittedAdvert.tier });
+                            setEnquirySent(true);
+                          } catch (error) {
+                            setCheckoutError("Could not send the enquiry. Please try again or contact news@cheshiretoday.co.uk.");
+                          } finally {
+                            setEnquiryLoading(false);
+                          }
+                        }}
+                        className="w-full border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg py-3 font-semibold disabled:opacity-60"
+                      >
+                        {enquirySent ? "Enquiry sent" : enquiryLoading ? "Sending enquiry..." : "Send enquiry instead"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={checkoutLoading || enquiryLoading}
+                        onClick={() => {
+                          setSubmittedAdvert(null);
+                          setCheckoutError("");
+                          setEnquirySent(false);
+                        }}
+                        className="w-full text-sm text-gray-600 dark:text-gray-300 hover:underline py-2"
+                      >
+                        Edit details
+                      </button>
+                    </div>
                   </div>
                 )}
               </form>

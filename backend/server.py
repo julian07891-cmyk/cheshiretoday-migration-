@@ -302,6 +302,7 @@ class AdvertiseLeadCreate(BaseModel):
     email: EmailStr
     business: Optional[str] = None
     budget: Optional[str] = None  # Legacy field kept for backward compatibility
+    package_id: Optional[str] = None
     package_price: Optional[str] = None
     phone: Optional[str] = None
     website: Optional[str] = None
@@ -309,6 +310,7 @@ class AdvertiseLeadCreate(BaseModel):
     message: Optional[str] = None
     tier: Optional[str] = None
     source: Optional[str] = "advertise_page"
+    origin_url: Optional[str] = None
 
 class SponsoredPlacementDoc(BaseModel):
     slug: str
@@ -6054,12 +6056,18 @@ async def get_job_packages():
     }
 
 @api_router.post("/leads/advertise")
-async def submit_advertise_lead(lead: AdvertiseLeadCreate):
+async def submit_advertise_lead(lead: AdvertiseLeadCreate, request: Request):
     """Public endpoint - Capture advertising enquiries from /advertise."""
     try:
         name = str(lead.name or "").strip()
         email = str(lead.email or "").strip().lower()
         tier = str(lead.tier or "").strip()
+        tier_to_package_id = {
+            "Local Starter": "local_starter",
+            "Local Featured": "local_featured",
+            "Local Partner": "local_partner",
+        }
+        package_id = str(lead.package_id or "").strip() or tier_to_package_id.get(tier, "")
 
         if len(name) < 2:
             raise HTTPException(status_code=400, detail="Please enter your name")
@@ -6068,11 +6076,19 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
         if tier and tier not in allowed_tiers:
             raise HTTPException(status_code=400, detail="Invalid advertising package")
 
+        if package_id and package_id not in ADVERTISING_PACKAGES:
+            raise HTTPException(status_code=400, detail="Invalid advertising package")
+
+        payment_token = secrets.token_urlsafe(32)
+        origin_url = str(lead.origin_url or "").strip().rstrip("/") or str(request.base_url).rstrip("/")
+        payment_url = f"{origin_url}/advertise/pay?token={payment_token}"
+
         lead_doc = {
             "name": name,
             "email": email,
             "business": str(lead.business or "").strip(),
             "budget": str(lead.budget or "").strip(),
+            "package_id": package_id,
             "package_price": str(lead.package_price or "").strip(),
             "phone": str(lead.phone or "").strip(),
             "website": str(lead.website or "").strip(),
@@ -6084,6 +6100,8 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
             "created_at": datetime.utcnow(),
             "submitted_at": datetime.utcnow(),
             "notify_email": "news@cheshiretoday.co.uk",
+            "payment_token": payment_token,
+            "payment_token_created_at": datetime.utcnow(),
         }
 
         result = await db.advertiser_leads.insert_one(lead_doc)
@@ -6129,6 +6147,12 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
             <p>Your advert can appear in Cheshire Today article advertising slots, including the desktop article sidebar and mobile in-article advert card. Local Partner campaigns may also receive selected homepage/category visibility where suitable.</p>
             <p><strong>Important:</strong> payment does not make your advert live automatically. Cheshire Today reviews adverts before publication. Your 30-day campaign starts once your advert is approved and published.</p>
             <p>If anything needs changing, reply to this email before completing payment.</p>
+            <p style="margin-top:18px;">
+              <a href="{_html.escape(payment_url)}" style="background:#059669;color:#ffffff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">
+                Continue to secure payment
+              </a>
+            </p>
+            <p style="font-size:13px;color:#555;">Payment link: {_html.escape(payment_url)}</p>
             """
 
             client_notification_sent = bool(email_service._send_email(
@@ -6385,6 +6409,61 @@ async def create_advertising_checkout(request: Request, payment: AdvertisingPaym
     except Exception as e:
         logger.error(f"Error creating advertising checkout: {e}")
         raise HTTPException(status_code=500, detail="Could not create advertising checkout")
+
+
+class AdvertisingLeadCheckoutRequest(BaseModel):
+    origin_url: str
+
+
+@api_router.post("/advertising/checkout/from-lead/{payment_token}")
+async def create_advertising_checkout_from_lead(payment_token: str, request: Request, payload: AdvertisingLeadCheckoutRequest):
+    """Create a Stripe checkout session from a saved advertising enquiry."""
+    try:
+        clean_token = str(payment_token or "").strip()
+        if not clean_token:
+            raise HTTPException(status_code=400, detail="Missing payment token")
+
+        lead = await db.advertiser_leads.find_one({"payment_token": clean_token})
+        if not lead:
+            raise HTTPException(status_code=404, detail="Advertising payment link not found")
+
+        if lead.get("payment_status") == "paid":
+            raise HTTPException(status_code=400, detail="This advertising enquiry has already been paid")
+
+        tier_to_package_id = {
+            "Local Starter": "local_starter",
+            "Local Featured": "local_featured",
+            "Local Partner": "local_partner",
+        }
+        package_id = str(lead.get("package_id") or "").strip() or tier_to_package_id.get(str(lead.get("tier") or "").strip(), "")
+        if package_id not in ADVERTISING_PACKAGES:
+            raise HTTPException(status_code=400, detail="Advertising package is missing from this enquiry")
+
+        payment = AdvertisingPaymentRequest(
+            package_id=package_id,
+            origin_url=payload.origin_url,
+            existing_lead_id=str(lead["_id"]),
+            name=lead.get("name") or "Advertiser",
+            business=lead.get("business") or "",
+            email=lead.get("email") or "news@cheshiretoday.co.uk",
+            phone=lead.get("phone") or "",
+            website=lead.get("website") or "",
+            target_area=lead.get("target_area") or "",
+            message=lead.get("message") or "",
+        )
+
+        await db.advertiser_leads.update_one(
+            {"_id": lead["_id"]},
+            {"$set": {"payment_link_clicked_at": datetime.utcnow()}}
+        )
+
+        return await create_advertising_checkout(request, payment)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating advertising checkout from lead: {e}")
+        raise HTTPException(status_code=500, detail="Could not start advertising payment")
 
 
 @api_router.get("/advertising/payment-status/{session_id}")

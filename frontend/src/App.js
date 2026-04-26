@@ -81,6 +81,7 @@ const JobBoard = lazy(() => import("./components/JobBoard"));
 const PostJob = lazy(() => import("./components/PostJob"));
 const PaymentSuccess = lazy(() => import("./components/PaymentSuccess"));
 const AdvertisingPaymentSuccess = lazy(() => import("./components/AdvertisingPaymentSuccess"));
+const AdvertisingPayLater = lazy(() => import("./components/AdvertisingPayLater"));
 const MobileSearch = lazy(() => import("./components/MobileSearch"));
 const MobileMenu = lazy(() => import("./components/MobileMenu"));
 const UnsubscribePage = lazy(() => import("./components/UnsubscribePage"));
@@ -249,6 +250,14 @@ function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <AdvertisingPaymentSuccess />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/advertise/pay"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <AdvertisingPayLater />
                 </Suspense>
               }
             />
