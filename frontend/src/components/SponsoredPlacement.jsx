@@ -14,13 +14,31 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const [loaded, setLoaded] = useState(false);
   const impressionTrackedRef = useRef(null);
 
+  const getForcedPlacementParams = () => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search || "");
+    const forcedPlacement = params.get("sponsored_ad_placement") || "";
+    if (forcedPlacement && forcedPlacement !== placement) return "";
+
+    const forcedSlug = params.get("sponsored_ad_slug") || "";
+    const forcedCampaign = params.get("sponsored_ad_campaign") || "";
+    const query = new URLSearchParams();
+
+    if (forcedSlug) query.set("slug", forcedSlug);
+    if (forcedCampaign) query.set("campaign_id", forcedCampaign);
+
+    const suffix = query.toString();
+    return suffix ? `&${suffix}` : "";
+  };
+
   useEffect(() => {
     let mounted = true;
 
     async function loadPlacement() {
       try {
         const api = getApiUrl().replace(/\/$/, "");
-        const res = await fetch(`${api}/api/sponsored-placements?placement=${encodeURIComponent(placement)}&limit=1`);
+        const forceParams = getForcedPlacementParams();
+        const res = await fetch(`${api}/api/sponsored-placements?placement=${encodeURIComponent(placement)}&limit=1${forceParams}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         const first = Array.isArray(data?.placements) ? data.placements[0] : null;
@@ -44,6 +62,8 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const description = isPaidPlacement ? ad.description : fallbackCopy.description;
   const cta = isPaidPlacement ? (ad.cta_text || "Learn more") : fallbackCopy.cta;
   const sponsor = isPaidPlacement ? (ad.sponsor_name || "Sponsor") : fallbackCopy.eyebrow;
+  const anchorKey = isPaidPlacement ? (ad.campaign_id || ad.slug || "advert") : "advertise";
+  const anchorId = `sponsored-advert-${placement}-${anchorKey}`;
 
   useEffect(() => {
     if (!isPaidPlacement || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
@@ -116,6 +136,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   if (isPaidPlacement) {
     return (
       <a
+        id={anchorId}
         href={targetUrl}
         target="_blank"
         rel="noopener noreferrer sponsored"
@@ -129,6 +150,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
 
   return (
     <button
+      id={anchorId}
       type="button"
       onClick={() => {
         handleClick();

@@ -97,7 +97,9 @@ const AdminDashboard = ({ onBack }) => {
     target_url: "",
     image_url: "",
     cta_text: "Learn more",
-    active: true
+    active: true,
+    source_lead_id: "",
+    campaign_id: ""
   });
   
   // Email analytics state
@@ -308,9 +310,14 @@ const AdminDashboard = ({ onBack }) => {
     const timestamp = Date.now();
     const startsAt = new Date();
     const endsAt = new Date(startsAt.getTime() + (30 * 24 * 60 * 60 * 1000));
-    const payloads = placementsToCreate.map((placement) => ({
+    const sourceLeadId = String(sponsoredPlacementForm.source_lead_id || "").trim();
+    const campaignId = String(sponsoredPlacementForm.campaign_id || "").trim() || `${slugBase}-${timestamp}`;
+    const payloads = placementsToCreate.map((placement, index) => ({
       slug: `${slugBase}-${placement}-${timestamp}`,
       placement,
+      campaign_id: campaignId,
+      source_lead_id: sourceLeadId,
+      notify_client_on_publish: Boolean(sourceLeadId) && index === placementsToCreate.length - 1,
       package_tier: packageTier,
       rotation_weight: rotationWeight,
       priority,
@@ -349,7 +356,9 @@ const AdminDashboard = ({ onBack }) => {
         target_url: "",
         image_url: "",
         cta_text: "Learn more",
-        active: true
+        active: true,
+        source_lead_id: "",
+        campaign_id: ""
       });
       fetchSponsoredPlacements();
     } catch (error) {
@@ -393,7 +402,9 @@ const AdminDashboard = ({ onBack }) => {
       target_url: safeWebsite,
       image_url: "",
       cta_text: "Learn more",
-      active: true
+      active: true,
+      source_lead_id: lead?.id || "",
+      campaign_id: ""
     });
 
     toast({ title: "Sponsored placement form filled from lead" });

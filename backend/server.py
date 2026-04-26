@@ -322,6 +322,9 @@ class SponsoredPlacementDoc(BaseModel):
     image_url: Optional[str] = None
     cta_text: str = "Learn more"
     package_tier: Optional[str] = None
+    campaign_id: Optional[str] = None
+    source_lead_id: Optional[str] = None
+    notify_client_on_publish: Optional[bool] = False
     rotation_weight: Optional[int] = None
     active: bool = True
     priority: int = 0
@@ -1080,8 +1083,8 @@ def _sponsored_rotation_weight(doc):
 
 
 @api_router.get("/sponsored-placements")
-async def get_sponsored_placements(placement: str = "article_sidebar", limit: int = 1):
-    """Public endpoint - Return active sponsored placements for a page slot using weighted rotation."""
+async def get_sponsored_placements(placement: str = "article_sidebar", limit: int = 1, slug: str = "", campaign_id: str = ""):
+    """Public endpoint - Return active sponsored placements for a page slot using weighted rotation or forced preview."""
     try:
         import random
 
@@ -1096,11 +1099,21 @@ async def get_sponsored_placements(placement: str = "article_sidebar", limit: in
             ],
         }
 
+        clean_slug = str(slug or "").strip()
+        clean_campaign_id = str(campaign_id or "").strip()
+        if clean_slug:
+            query["slug"] = clean_slug
+        elif clean_campaign_id:
+            query["campaign_id"] = clean_campaign_id
+
         cursor = db.sponsored_placements.find(query).sort([("priority", -1), ("updated_at", -1)]).limit(50)
         candidates = [doc async for doc in cursor]
 
         if not candidates:
             return {"success": True, "placements": []}
+
+        if clean_slug or clean_campaign_id:
+            return {"success": True, "placements": [_serialize_sponsored_placement(candidates[0])]}
 
         if safe_limit == 1:
             weights = [_sponsored_rotation_weight(doc) for doc in candidates]
@@ -1169,6 +1182,177 @@ async def get_admin_sponsored_placements(limit: int = 100, auth: bool = Depends(
         raise HTTPException(status_code=500, detail="Could not load sponsored placements")
 
 
+async def _latest_public_article_url_for_ad_preview():
+    """Return a recent public article URL suitable for sponsored advert preview links."""
+    try:
+        query = {"$or": [{"archived": {"$exists": False}}, {"archived": False}]}
+        article = await db.articles.find_one(
+            query,
+            {"_id": 1, "id": 1, "title": 1, "publishedDate": 1, "created_at": 1},
+            sort=[("publishedDate", -1), ("created_at", -1)]
+        )
+        if not article:
+            return "https://cheshiretoday.co.uk"
+
+        article_id = str(article.get("id") or article.get("_id"))
+        slug = _article_slug_from_title(article.get("title") or "article")
+        return f"https://cheshiretoday.co.uk/article/{article_id}/{slug}"
+    except Exception as e:
+        logger.error(f"Could not build sponsored advert preview article URL: {str(e)}")
+        return "https://cheshiretoday.co.uk"
+
+
+async def send_sponsored_advert_live_email(source_lead_id: str, campaign_id: str = "", placement_doc: dict = None):
+    """Email the advertiser when their sponsored advert has been published."""
+    try:
+        clean_lead_id = str(source_lead_id or "").strip()
+        if not ObjectId.is_valid(clean_lead_id):
+            return False
+
+        oid = ObjectId(clean_lead_id)
+        clean_campaign_id = str(campaign_id or "").strip()
+
+        claim_query = {
+            "_id": oid,
+            "advert_live_notification_sent": {"$ne": True},
+            "advert_live_notification_sending": {"$ne": True},
+        }
+        claim = await db.advertiser_leads.update_one(
+            claim_query,
+            {"$set": {
+                "advert_live_notification_sending": True,
+                "advert_live_notification_started_at": datetime.utcnow(),
+                "advert_live_notification_campaign_id": clean_campaign_id,
+            }}
+        )
+
+        if claim.modified_count == 0:
+            return False
+
+        lead = await db.advertiser_leads.find_one({"_id": oid})
+        if not lead:
+            return False
+
+        email = str(lead.get("email") or "").strip()
+        if not email:
+            await db.advertiser_leads.update_one(
+                {"_id": oid},
+                {"$set": {
+                    "advert_live_notification_sent": False,
+                    "advert_live_notification_error": "Missing client email",
+                    "advert_live_notification_checked_at": datetime.utcnow(),
+                }, "$unset": {"advert_live_notification_sending": ""}}
+            )
+            return False
+
+        placement_query = {}
+        if clean_campaign_id:
+            placement_query["campaign_id"] = clean_campaign_id
+        elif placement_doc and placement_doc.get("slug"):
+            placement_query["slug"] = placement_doc.get("slug")
+
+        placements = []
+        if placement_query:
+            cursor = db.sponsored_placements.find(placement_query).sort([("placement", 1), ("updated_at", -1)])
+            placements = [doc async for doc in cursor]
+
+        if not placements and placement_doc:
+            placements = [placement_doc]
+
+        preview_base_url = await _latest_public_article_url_for_ad_preview()
+
+        import html as _html
+        import urllib.parse as _urlparse
+
+        def build_preview_link(slot):
+            if not slot:
+                return preview_base_url
+
+            slot_name = str(slot.get("placement") or "article_sidebar").strip()
+            slot_campaign = str(slot.get("campaign_id") or clean_campaign_id or "").strip()
+            slot_slug = str(slot.get("slug") or "").strip()
+            anchor_key = slot_campaign or slot_slug or "advert"
+            params = {"sponsored_ad_placement": slot_name}
+            if slot_campaign:
+                params["sponsored_ad_campaign"] = slot_campaign
+            elif slot_slug:
+                params["sponsored_ad_slug"] = slot_slug
+
+            return f"{preview_base_url}?{_urlparse.urlencode(params)}#sponsored-advert-{slot_name}-{anchor_key}"
+
+        preview_links = []
+        seen_slots = set()
+        for slot in placements:
+            slot_name = str(slot.get("placement") or "article_sidebar").strip()
+            if slot_name in seen_slots:
+                continue
+            seen_slots.add(slot_name)
+            label = "Desktop sidebar advert" if slot_name == "article_sidebar" else "Mobile in-article advert" if slot_name == "article_mobile" else "Advert preview"
+            preview_links.append((label, build_preview_link(slot)))
+
+        if not preview_links:
+            preview_links.append(("View your advert", preview_base_url))
+
+        tier = str(lead.get("tier") or lead.get("package_tier") or (placements[0].get("package_tier") if placements else "") or "Advertising package").strip()
+        business = str(lead.get("business") or lead.get("name") or (placements[0].get("sponsor_name") if placements else "") or "your business").strip()
+        starts_at = placements[0].get("starts_at") if placements else ""
+        ends_at = placements[0].get("ends_at") if placements else ""
+
+        links_html = "".join(
+            f'<p><a href="{_html.escape(url)}" style="background:#059669;color:#ffffff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">{_html.escape(label)}</a></p>'
+            f'<p style="font-size:13px;color:#555;word-break:break-word;">{_html.escape(url)}</p>'
+            for label, url in preview_links
+        )
+
+        html_content = f"""
+        <h2>Your Cheshire Today advert is now live</h2>
+        <p>Good news — your sponsored advert has been reviewed and published on Cheshire Today.</p>
+        <p><strong>Package:</strong> {_html.escape(tier)}</p>
+        <p><strong>Business:</strong> {_html.escape(business)}</p>
+        {f'<p><strong>Campaign start:</strong> {_html.escape(str(starts_at))}</p>' if starts_at else ''}
+        {f'<p><strong>Campaign end:</strong> {_html.escape(str(ends_at))}</p>' if ends_at else ''}
+        <hr>
+        <h3>View your advert</h3>
+        <p>Use the link below to open an article page and jump directly to your advert card.</p>
+        {links_html}
+        <p><strong>Please note:</strong> normal visitors see adverts in rotation, so your advert may not appear on every page load. The preview link above forces your advert to display so you can check it directly.</p>
+        <p>If you need a wording, image, logo or link change, reply to this email.</p>
+        <p>Thank you for advertising with Cheshire Today.</p>
+        """
+
+        sent = bool(email_service._send_email(
+            to_email=email,
+            subject="Your Cheshire Today advert is now live",
+            html_content=html_content,
+        ))
+
+        await db.advertiser_leads.update_one(
+            {"_id": oid},
+            {"$set": {
+                "advert_live_notification_sent": sent,
+                "advert_live_notification_checked_at": datetime.utcnow(),
+                "advert_live_notification_error": "" if sent else "Email service returned false",
+            }, "$unset": {"advert_live_notification_sending": ""}}
+        )
+
+        return sent
+    except Exception as email_error:
+        logger.error(f"Failed to send sponsored advert live email: {str(email_error)}")
+        try:
+            if ObjectId.is_valid(str(source_lead_id or "")):
+                await db.advertiser_leads.update_one(
+                    {"_id": ObjectId(str(source_lead_id))},
+                    {"$set": {
+                        "advert_live_notification_sent": False,
+                        "advert_live_notification_error": str(email_error),
+                        "advert_live_notification_checked_at": datetime.utcnow(),
+                    }, "$unset": {"advert_live_notification_sending": ""}}
+                )
+        except Exception:
+            pass
+        return False
+
+
 @api_router.post("/admin/sponsored-placements/upsert")
 async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool = Depends(get_admin_auth)):
     """Admin endpoint - Upsert a manual sponsored placement by slug."""
@@ -1179,6 +1363,9 @@ async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool 
     doc["title"] = str(doc.get("title") or "").strip()
     doc["target_url"] = str(doc.get("target_url") or "").strip()
     doc["package_tier"] = str(doc.get("package_tier") or "").strip()
+    doc["campaign_id"] = str(doc.get("campaign_id") or "").strip()
+    doc["source_lead_id"] = str(doc.get("source_lead_id") or "").strip()
+    doc["notify_client_on_publish"] = bool(doc.get("notify_client_on_publish"))
     try:
         doc["rotation_weight"] = int(doc.get("rotation_weight") or 0) or None
     except Exception:
@@ -1194,7 +1381,20 @@ async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool 
 
     await db.sponsored_placements.update_one({"slug": doc["slug"]}, {"$set": doc, "$setOnInsert": {"created_at": doc["updated_at"]}}, upsert=True)
     saved = await db.sponsored_placements.find_one({"slug": doc["slug"]})
-    return {"success": True, "placement": _serialize_sponsored_placement(saved)}
+
+    live_notification_sent = False
+    if doc.get("active") and doc.get("source_lead_id") and doc.get("notify_client_on_publish"):
+        live_notification_sent = await send_sponsored_advert_live_email(
+            source_lead_id=doc.get("source_lead_id"),
+            campaign_id=doc.get("campaign_id"),
+            placement_doc=saved,
+        )
+
+    return {
+        "success": True,
+        "placement": _serialize_sponsored_placement(saved),
+        "live_notification_sent": live_notification_sent,
+    }
 
 
 @api_router.delete("/admin/sponsored-placements/{slug}")
