@@ -288,6 +288,11 @@ const AdminDashboard = ({ onBack }) => {
       return;
     }
 
+    if (!/^https?:\/\//i.test(targetUrl)) {
+      toast({ title: "Target URL must start with http:// or https://", variant: "destructive" });
+      return;
+    }
+
     const placementsToCreate = placementChoice === "both"
       ? ["article_sidebar", "article_mobile"]
       : [placementChoice];
@@ -301,6 +306,8 @@ const AdminDashboard = ({ onBack }) => {
       .slice(0, 40) || "sponsored-advert";
 
     const timestamp = Date.now();
+    const startsAt = new Date();
+    const endsAt = new Date(startsAt.getTime() + (30 * 24 * 60 * 60 * 1000));
     const payloads = placementsToCreate.map((placement) => ({
       slug: `${slugBase}-${placement}-${timestamp}`,
       placement,
@@ -313,6 +320,8 @@ const AdminDashboard = ({ onBack }) => {
       target_url: targetUrl,
       image_url: String(sponsoredPlacementForm.image_url || "").trim(),
       cta_text: String(sponsoredPlacementForm.cta_text || "Learn more").trim(),
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
       active: Boolean(sponsoredPlacementForm.active)
     }));
 
@@ -4261,7 +4270,7 @@ const handleDeleteArticle = async (articleId) => {
                 <div className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <h3 className="font-bold text-gray-900 dark:text-white mb-1">Create Sponsored Placement</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Create a paid advert after payment and review. Choose “Desktop + mobile” to show the advertiser in both article advert slots.
+                    Create a paid advert after payment and review. New sponsored placements run for 30 days automatically. Choose “Desktop + mobile” to show the advertiser in both article advert slots.
                   </p>
 
                   <form onSubmit={saveSponsoredPlacement} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -4357,7 +4366,7 @@ const handleDeleteArticle = async (articleId) => {
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <div>
                       <h3 className="font-bold text-gray-900 dark:text-white">Live Sponsored Placements</h3>
-                      <p className="text-sm text-muted-foreground">Paid adverts currently available to display in sponsored slots.</p>
+                      <p className="text-sm text-muted-foreground">Paid adverts available to display in sponsored slots. Expired placements are listed here but will not show publicly.</p>
                     </div>
                     <Button
                       size="sm"
@@ -4386,7 +4395,9 @@ const handleDeleteArticle = async (articleId) => {
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-bold text-gray-900 dark:text-white">{placement.title}</p>
-                                <Badge variant={placement.active ? "default" : "secondary"}>{placement.active ? "active" : "inactive"}</Badge>
+                                <Badge variant={(!placement.active || (placement.ends_at && Date.parse(placement.ends_at) < Date.now())) ? "secondary" : "default"}>
+                                  {placement.ends_at && Date.parse(placement.ends_at) < Date.now() ? "expired" : placement.active ? "active" : "inactive"}
+                                </Badge>
                                 <Badge variant="outline">{placement.placement}</Badge>
                                 {placement.package_tier && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{placement.package_tier}</Badge>}
                               </div>
@@ -4396,6 +4407,9 @@ const handleDeleteArticle = async (articleId) => {
                             <div className="flex flex-col items-start md:items-end gap-2 text-xs text-muted-foreground">
                               <div>Weight: {placement.rotation_weight || "auto"}</div>
                               <div>Priority: {placement.priority || 0}</div>
+                              {placement.ends_at && (
+                                <div>Expires: {new Date(placement.ends_at).toLocaleDateString("en-GB")}</div>
+                              )}
                               <Button
                                 size="sm"
                                 variant="destructive"
