@@ -431,6 +431,25 @@ const AdminDashboard = ({ onBack }) => {
     }
   }, [getAuthHeaders]);
 
+  const deleteAdvertiserLead = useCallback(async (leadId) => {
+    if (!leadId) return;
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/advertiser-leads/${leadId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      toast({ title: "Advertising lead deleted" });
+      setAdvertiserLeads(prev => prev.filter(lead => lead.id !== leadId));
+    } catch (error) {
+      console.error("Error deleting advertiser lead:", error);
+      toast({ title: "Failed to delete advertising lead", variant: "destructive" });
+    }
+  }, [getAuthHeaders]);
+
   // Fetch email history
   const fetchEmailHistory = useCallback(async () => {
     try {
@@ -4560,6 +4579,17 @@ const handleDeleteArticle = async (articleId) => {
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => updateAdvertiserLeadStatus(lead.id, "archived")}>
                             Archive
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              if (window.confirm("Delete this advertising lead permanently?")) {
+                                deleteAdvertiserLead(lead.id);
+                              }
+                            }}
+                          >
+                            Delete lead
                           </Button>
                         </div>
                       </div>

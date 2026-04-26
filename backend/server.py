@@ -1276,6 +1276,26 @@ async def update_admin_advertiser_lead_status(lead_id: str, request: Request, au
         raise HTTPException(status_code=500, detail="Could not update advertiser lead")
 
 
+@api_router.delete("/admin/advertiser-leads/{lead_id}")
+async def delete_admin_advertiser_lead(lead_id: str, auth: bool = Depends(get_admin_auth)):
+    """Admin endpoint - Delete an advertiser enquiry."""
+    try:
+        if not ObjectId.is_valid(lead_id):
+            raise HTTPException(status_code=400, detail="Invalid advertiser lead id")
+
+        result = await db.advertiser_leads.delete_one({"_id": ObjectId(lead_id)})
+
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Advertiser lead not found")
+
+        return {"success": True, "deleted_count": result.deleted_count}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting advertiser lead: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not delete advertiser lead")
+
+
 @api_router.post("/admin/authority-pages/upsert")
 async def upsert_authority_page(payload: AuthorityPageDoc, auth: bool = Depends(get_admin_auth)):
     """
