@@ -46,6 +46,7 @@ from app.perplexity_service import perplexity_service
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
+import stripe
 STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', 'sk_test_emergent')
 
 # Job posting pricing packages (amounts in GBP)
@@ -54,6 +55,13 @@ JOB_POSTING_PACKAGES = {
     "standard": {"price": 15.00, "name": "Standard Listing", "duration_days": 30, "featured": False},
     "featured": {"price": 29.00, "name": "Featured Listing", "duration_days": 30, "featured": True},
     "premium": {"price": 49.00, "name": "Premium Listing", "duration_days": 60, "featured": True}
+}
+
+# Advertising pricing packages (amounts in GBP)
+ADVERTISING_PACKAGES = {
+    "local_starter": {"price": 49.00, "name": "Local Starter", "duration_days": 30, "rotation_weight": 1, "priority": 10},
+    "local_featured": {"price": 99.00, "name": "Local Featured", "duration_days": 30, "rotation_weight": 2, "priority": 20},
+    "local_partner": {"price": 199.00, "name": "Local Partner", "duration_days": 30, "rotation_weight": 4, "priority": 30},
 }
 
 # MongoDB connection
@@ -6107,9 +6115,35 @@ async def submit_advertise_lead(lead: AdvertiseLeadCreate):
                 html_content=html_content,
             ))
 
+            client_html_content = f"""
+            <h2>Your Cheshire Today advertising request</h2>
+            <p>Thanks for sending your advertising details. Please review the summary below before continuing to secure payment on Cheshire Today.</p>
+            <p><strong>Package:</strong> {_html.escape(tier or "Not selected")}</p>
+            <p><strong>Package price:</strong> {_html.escape(lead_doc.get("package_price") or "Not provided")}</p>
+            <p><strong>Business:</strong> {_html.escape(lead_doc.get("business") or "Not provided")}</p>
+            <p><strong>Website/Facebook:</strong> {_html.escape(lead_doc.get("website") or "Not provided")}</p>
+            <p><strong>Target area:</strong> {_html.escape(lead_doc.get("target_area") or "Not provided")}</p>
+            <p><strong>Advert message:</strong><br>{_html.escape(lead_doc.get("message") or "No message").replace(chr(10), "<br>")}</p>
+            <hr>
+            <h3>Where your advert can appear</h3>
+            <p>Your advert can appear in Cheshire Today article advertising slots, including the desktop article sidebar and mobile in-article advert card. Local Partner campaigns may also receive selected homepage/category visibility where suitable.</p>
+            <p><strong>Important:</strong> payment does not make your advert live automatically. Cheshire Today reviews adverts before publication. Your 30-day campaign starts once your advert is approved and published.</p>
+            <p>If anything needs changing, reply to this email before completing payment.</p>
+            """
+
+            client_notification_sent = bool(email_service._send_email(
+                to_email=email,
+                subject=f"Your Cheshire Today advertising request — {tier or 'Advertising'}",
+                html_content=client_html_content,
+            ))
+
             await db.advertiser_leads.update_one(
                 {"_id": result.inserted_id},
-                {"$set": {"notification_sent": notification_sent, "notification_checked_at": datetime.utcnow()}}
+                {"$set": {
+                    "notification_sent": notification_sent,
+                    "client_notification_sent": client_notification_sent,
+                    "notification_checked_at": datetime.utcnow()
+                }}
             )
         except Exception as email_error:
             logger.error(f"Failed to send advertising enquiry notification: {str(email_error)}")
@@ -6226,6 +6260,209 @@ class JobPaymentRequest(BaseModel):
     contact_name: str
     contact_email: str
     contact_phone: Optional[str] = None
+
+class AdvertisingPaymentRequest(BaseModel):
+    package_id: str
+    origin_url: str
+    existing_lead_id: Optional[str] = None
+    name: str
+    business: Optional[str] = None
+    email: EmailStr
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    target_area: Optional[str] = None
+    message: Optional[str] = None
+
+@api_router.post("/advertising/checkout")
+async def create_advertising_checkout(request: Request, payment: AdvertisingPaymentRequest):
+    """Create a Stripe checkout session for advertising packages."""
+    try:
+        package_id = str(payment.package_id or "").strip()
+        if package_id not in ADVERTISING_PACKAGES:
+            raise HTTPException(status_code=400, detail="Invalid advertising package selected")
+
+        package = ADVERTISING_PACKAGES[package_id]
+        amount = package["price"]
+
+        name = str(payment.name or "").strip()
+        business = str(payment.business or "").strip()
+        email = str(payment.email or "").strip().lower()
+        website = str(payment.website or "").strip()
+
+        if len(name) < 2:
+            raise HTTPException(status_code=400, detail="Please enter your name")
+
+        if website and not website.startswith(("https://", "http://")):
+            website = "https://" + website
+
+        lead_doc = {
+            "name": name,
+            "email": email,
+            "business": business,
+            "package_id": package_id,
+            "tier": package["name"],
+            "package_price": f"£{amount:.0f} / 30 days",
+            "phone": str(payment.phone or "").strip(),
+            "website": website,
+            "target_area": str(payment.target_area or "").strip(),
+            "message": str(payment.message or "").strip(),
+            "source": "advertise_checkout",
+            "status": "payment_pending",
+            "payment_status": "pending",
+            "active": False,
+            "submitted_at": datetime.utcnow(),
+        }
+
+        existing_lead_id = str(payment.existing_lead_id or "").strip()
+        if existing_lead_id:
+            existing = await db.advertiser_leads.find_one({"_id": ObjectId(existing_lead_id)})
+            if not existing:
+                raise HTTPException(status_code=404, detail="Advertising enquiry not found")
+            await db.advertiser_leads.update_one(
+                {"_id": ObjectId(existing_lead_id)},
+                {"$set": {**lead_doc, "payment_started_at": datetime.utcnow()}}
+            )
+            lead_id = existing_lead_id
+        else:
+            lead_doc["created_at"] = datetime.utcnow()
+            result = await db.advertiser_leads.insert_one(lead_doc)
+            lead_id = str(result.inserted_id)
+
+        stripe.api_key = STRIPE_API_KEY
+
+        success_url = f"{payment.origin_url}/advertise/payment-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{payment.origin_url}/advertise"
+
+        session = stripe.checkout.Session.create(
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "gbp",
+                    "unit_amount": int(round(amount * 100)),
+                    "product_data": {
+                        "name": f"Cheshire Today advertising — {package['name']}",
+                        "description": "One 30-day sponsored advertising campaign, pending Cheshire Today review before publication",
+                    },
+                },
+                "quantity": 1,
+            }],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "type": "advertising",
+                "advertiser_lead_id": lead_id,
+                "package_id": package_id,
+                "contact_email": email,
+            }
+        )
+
+        await db.payment_transactions.insert_one({
+            "session_id": session.id,
+            "type": "advertising",
+            "advertiser_lead_id": lead_id,
+            "amount": amount,
+            "currency": "gbp",
+            "package_id": package_id,
+            "contact_email": email,
+            "payment_status": "initiated",
+            "created_at": datetime.utcnow(),
+        })
+
+        await db.advertiser_leads.update_one(
+            {"_id": ObjectId(lead_id)},
+            {"$set": {"stripe_session_id": session.id}}
+        )
+
+        return {
+            "success": True,
+            "checkout_url": session.url,
+            "session_id": session.id,
+            "lead_id": lead_id,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating advertising checkout: {e}")
+        raise HTTPException(status_code=500, detail="Could not create advertising checkout")
+
+
+@api_router.get("/advertising/payment-status/{session_id}")
+async def get_advertising_payment_status(session_id: str, request: Request):
+    """Check the status of an advertising payment."""
+    try:
+        stripe.api_key = STRIPE_API_KEY
+
+        session = stripe.checkout.Session.retrieve(session_id)
+        session_status = getattr(session, "status", None)
+        payment_status = getattr(session, "payment_status", None)
+
+        transaction = await db.payment_transactions.find_one({"session_id": session_id, "type": "advertising"})
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Payment not found")
+
+        if transaction.get("payment_status") == "completed":
+            return {
+                "success": True,
+                "status": "completed",
+                "payment_status": "paid",
+                "advertiser_lead_id": transaction.get("advertiser_lead_id"),
+                "message": "Payment already processed. Your advert is pending review."
+            }
+
+        if payment_status == "paid":
+            await db.payment_transactions.update_one(
+                {"session_id": session_id},
+                {"$set": {"payment_status": "completed", "completed_at": datetime.utcnow()}}
+            )
+
+            lead_id = transaction.get("advertiser_lead_id")
+            await db.advertiser_leads.update_one(
+                {"_id": ObjectId(lead_id)},
+                {"$set": {
+                    "status": "paid_pending_review",
+                    "payment_status": "paid",
+                    "paid_at": datetime.utcnow()
+                }}
+            )
+
+            return {
+                "success": True,
+                "status": "completed",
+                "payment_status": "paid",
+                "advertiser_lead_id": lead_id,
+                "message": "Payment successful. Your advert has been received and is pending Cheshire Today review."
+            }
+
+        if session_status == "expired":
+            await db.payment_transactions.update_one(
+                {"session_id": session_id},
+                {"$set": {"payment_status": "expired"}}
+            )
+            await db.advertiser_leads.update_one(
+                {"stripe_session_id": session_id},
+                {"$set": {"status": "payment_expired", "payment_status": "expired"}}
+            )
+            return {
+                "success": False,
+                "status": "expired",
+                "payment_status": "expired",
+                "message": "Payment session expired. Please try again."
+            }
+
+        return {
+            "success": False,
+            "status": session_status,
+            "payment_status": payment_status,
+            "message": "Payment is being processed..."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking advertising payment status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @api_router.post("/jobs/checkout")
 async def create_job_checkout(request: Request, payment: JobPaymentRequest):
@@ -6470,21 +6707,36 @@ async def stripe_webhook(request: Request):
                     {"$set": {"payment_status": "completed", "completed_at": datetime.utcnow()}}
                 )
                 
-                job_id = webhook_response.metadata.get("job_id") or transaction.get("job_id")
-                if job_id:
-                    package_id = webhook_response.metadata.get("package_id") or transaction.get("package_id")
-                    package = JOB_POSTING_PACKAGES.get(package_id, {})
-                    
-                    await db.jobs.update_one(
-                        {"_id": ObjectId(job_id)},
-                        {"$set": {
-                            "status": "pending",
-                            "payment_status": "paid",
-                            "featured": package.get("featured", False),
-                            "paid_at": datetime.utcnow()
-                        }}
-                    )
-                    logger.info(f"Webhook: Updated job {job_id} to pending after payment")
+                payment_type = webhook_response.metadata.get("type") or transaction.get("type")
+
+                if payment_type == "advertising":
+                    lead_id = webhook_response.metadata.get("advertiser_lead_id") or transaction.get("advertiser_lead_id")
+                    if lead_id:
+                        await db.advertiser_leads.update_one(
+                            {"_id": ObjectId(lead_id)},
+                            {"$set": {
+                                "status": "paid_pending_review",
+                                "payment_status": "paid",
+                                "paid_at": datetime.utcnow()
+                            }}
+                        )
+                        logger.info(f"Webhook: Updated advertiser lead {lead_id} to paid pending review")
+                else:
+                    job_id = webhook_response.metadata.get("job_id") or transaction.get("job_id")
+                    if job_id:
+                        package_id = webhook_response.metadata.get("package_id") or transaction.get("package_id")
+                        package = JOB_POSTING_PACKAGES.get(package_id, {})
+
+                        await db.jobs.update_one(
+                            {"_id": ObjectId(job_id)},
+                            {"$set": {
+                                "status": "pending",
+                                "payment_status": "paid",
+                                "featured": package.get("featured", False),
+                                "paid_at": datetime.utcnow()
+                            }}
+                        )
+                        logger.info(f"Webhook: Updated job {job_id} to pending after payment")
         
         return {"received": True}
         

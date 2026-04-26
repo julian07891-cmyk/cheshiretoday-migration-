@@ -80,6 +80,7 @@ const NewsletterPreferences = lazy(
 const JobBoard = lazy(() => import("./components/JobBoard"));
 const PostJob = lazy(() => import("./components/PostJob"));
 const PaymentSuccess = lazy(() => import("./components/PaymentSuccess"));
+const AdvertisingPaymentSuccess = lazy(() => import("./components/AdvertisingPaymentSuccess"));
 const MobileSearch = lazy(() => import("./components/MobileSearch"));
 const MobileMenu = lazy(() => import("./components/MobileMenu"));
 const UnsubscribePage = lazy(() => import("./components/UnsubscribePage"));
@@ -240,6 +241,14 @@ function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <PaymentSuccess />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/advertise/payment-success"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <AdvertisingPaymentSuccess />
                 </Suspense>
               }
             />

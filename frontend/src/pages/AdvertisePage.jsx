@@ -5,6 +5,7 @@ import { trackEvent } from "../utils/trackEvent";
 
 const PRICING = [
   {
+    id: "local_starter",
     name: "Local Starter",
     price: "£49 / month",
     badge: "Launch price for small local businesses",
@@ -16,6 +17,7 @@ const PRICING = [
     subject: "Advertising enquiry — Local Starter package",
   },
   {
+    id: "local_featured",
     name: "Local Featured",
     price: "£99 / month",
     badge: "Most popular launch package",
@@ -27,6 +29,7 @@ const PRICING = [
     subject: "Advertising enquiry — Local Featured package",
   },
   {
+    id: "local_partner",
     name: "Local Partner",
     price: "£199 / month",
     badge: "Best for regular local exposure",
@@ -39,12 +42,54 @@ const PRICING = [
   },
 ];
 
+const AD_SLOTS = [
+  {
+    title: "Desktop article sidebar",
+    description: "Your advert can appear in the right-hand advert slot beside article content on desktop and larger screens.",
+  },
+  {
+    title: "Mobile in-article advert card",
+    description: "Your advert can appear inside article pages as mobile readers scroll through stories.",
+  },
+  {
+    title: "Partner visibility",
+    description: "Local Partner campaigns may also receive selected homepage or category visibility where suitable and agreed.",
+  },
+];
+
 const AdvertisePage = () => {
   const navigate = useNavigate();
   const [showForm, setShowForm] = React.useState(false);
   const [selectedTier, setSelectedTier] = React.useState(null);
+  const [submittedAdvert, setSubmittedAdvert] = React.useState(null);
+  const [checkoutLoading, setCheckoutLoading] = React.useState(false);
+  const [detailsSaving, setDetailsSaving] = React.useState(false);
+  const [checkoutError, setCheckoutError] = React.useState("");
 
   const email = "news@cheshiretoday.co.uk";
+
+  React.useEffect(() => {
+    if (!showForm) return;
+
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const originalWidth = document.body.style.width;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      document.body.style.width = originalWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [showForm]);
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
@@ -66,6 +111,33 @@ const AdvertisePage = () => {
             <p><strong>Where adverts appear:</strong> your advert can appear inside article pages, including the mobile in-article advert card and the desktop article sidebar advert slot.</p>
             <p><strong>Automatic rotation:</strong> when multiple advertisers are active, adverts rotate through available slots. Higher packages receive stronger rotation priority.</p>
             <p><strong>Manual review:</strong> all adverts are reviewed by Cheshire Today before going live to protect readers and advertisers.</p>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Where your advert appears
+          </h2>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 max-w-3xl">
+            Sponsored adverts are clearly labelled and link to your website, booking page or Facebook page. Placement depends on package level, available slots and editorial suitability.
+          </p>
+
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {AD_SLOTS.map((slot) => (
+              <div key={slot.title} className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/20 p-4">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  {slot.title}
+                </h3>
+                <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                  {slot.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 text-sm text-gray-700 dark:text-gray-300">
+            <p><strong>Review before payment:</strong> after you submit your advert details, we show you a summary before you continue to secure payment.</p>
+            <p className="mt-2"><strong>Manual approval:</strong> payment does not make an advert live automatically. Cheshire Today reviews each advert before publication.</p>
           </div>
         </div>
 
@@ -100,6 +172,9 @@ const AdvertisePage = () => {
   className="mt-auto inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 transition"
   onClick={() => {
     setSelectedTier(tier);
+    setSubmittedAdvert(null);
+    setDetailsSaving(false);
+    setCheckoutError("");
     setShowForm(true);
   }}
 >
@@ -113,8 +188,8 @@ const AdvertisePage = () => {
         </div>
 
         {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-lg border border-gray-200 dark:border-gray-700 shadow-xl">
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 py-6 overflow-y-auto overscroll-contain">
+            <div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain border border-gray-200 dark:border-gray-700 shadow-xl">
               <div className="flex items-start justify-between gap-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   Enquire about {selectedTier?.name}
@@ -148,35 +223,120 @@ const AdvertisePage = () => {
                     source: "advertise_page",
                   };
 
-                  await fetch(getApiUrl() + "/api/leads/advertise", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                  });
+                  const reviewPayload = { ...payload, package_id: selectedTier?.id };
+                  setSubmittedAdvert(reviewPayload);
+                  setCheckoutError("");
+                  setDetailsSaving(true);
 
-                  trackEvent("lead_submit", { tier: selectedTier?.name });
-                  setShowForm(false);
+                  try {
+                    const res = await fetch(getApiUrl() + "/api/leads/advertise", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                    });
+
+                    const data = await res.json();
+
+                    if (!res.ok || !data?.success) {
+                      throw new Error(data?.detail || "Could not submit advertising details");
+                    }
+
+                    trackEvent("advertising_details_submit", { tier: selectedTier?.name });
+                    setSubmittedAdvert(prev => ({ ...prev, lead_id: data.lead_id, details_saved: true }));
+                  } catch (error) {
+                    setCheckoutError("Could not save the advertising details yet. Please try again or contact news@cheshiretoday.co.uk.");
+                  } finally {
+                    setDetailsSaving(false);
+                  }
                 }}
               >
                 <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-gray-800 dark:text-gray-200">
-                  Selected package: <strong>{selectedTier?.name}</strong> — <strong>{selectedTier?.price}</strong>
+                  <p>Selected package: <strong>{selectedTier?.name}</strong> — <strong>{selectedTier?.price}</strong></p>
+                  <p className="mt-2"><strong>Before payment:</strong> submit your advert details first. We will show you a summary and then you can continue to secure payment if everything looks right.</p>
+                  <p className="mt-2">Each payment covers one 30-day campaign. Your advert is reviewed before it goes live, and the 30 days start when approved and published.</p>
                 </div>
                 <input name="name" required placeholder="Your name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
-                <input name="business" placeholder="Business name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="business" required placeholder="Business name" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
                 <input name="email" type="email" required placeholder="Email" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
                 <input name="phone" placeholder="Phone number (optional)" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
-                <input name="website" placeholder="Website, booking page or Facebook page" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
-                <input name="target_area" placeholder="Target area, e.g. Crewe, Chester, Warrington" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
-                <textarea name="message" placeholder="Tell us what you want to promote" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="website" required placeholder="Website, booking page or Facebook page" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <input name="target_area" required placeholder="Target area, e.g. Crewe, Chester, Warrington" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
+                <textarea name="message" required placeholder="Tell us what you want to promote" className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" />
 
                 <div className="flex gap-3 pt-2">
                   <button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg py-3 font-semibold">
-                    Send enquiry
+                    Review advert details
                   </button>
                   <button type="button" onClick={() => setShowForm(false)} className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg py-3">
                     Cancel
                   </button>
                 </div>
+
+                {submittedAdvert && (
+                  <div className="mt-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-sm text-gray-800 dark:text-gray-200">
+                    <h4 className="font-bold text-gray-900 dark:text-white">Review before payment</h4>
+                    <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
+                      {detailsSaving ? "Saving your advert details and sending your confirmation email..." : submittedAdvert.lead_id ? "Advert details saved. You can now continue to secure payment." : "Review your details below."}
+                    </p>
+                    <div className="mt-3 space-y-1">
+                      <p><strong>Package:</strong> {submittedAdvert.tier} — {submittedAdvert.package_price}</p>
+                      <p><strong>Business:</strong> {submittedAdvert.business}</p>
+                      <p><strong>Website/Facebook:</strong> {submittedAdvert.website}</p>
+                      <p><strong>Target area:</strong> {submittedAdvert.target_area}</p>
+                      <p><strong>Advert message:</strong> {submittedAdvert.message}</p>
+                    </div>
+
+                    <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3">
+                      <p><strong>Where your advert can appear:</strong> desktop article sidebar and mobile in-article advert card. Local Partner campaigns may also receive selected homepage/category visibility where suitable.</p>
+                      <p className="mt-2"><strong>Important:</strong> payment does not make the advert live automatically. Cheshire Today reviews each advert before publication.</p>
+                    </div>
+
+                    {checkoutError && (
+                      <div className="mt-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/60 p-3 text-sm text-red-700 dark:text-red-300">
+                        {checkoutError}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={checkoutLoading || detailsSaving || !submittedAdvert?.lead_id}
+                      onClick={async () => {
+                        setCheckoutError("");
+                        if (!submittedAdvert?.lead_id) {
+                          setCheckoutError("Please wait until your advert details have been saved before continuing to payment.");
+                          return;
+                        }
+                        setCheckoutLoading(true);
+                        try {
+                          const res = await fetch(getApiUrl() + "/api/advertising/checkout", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              ...submittedAdvert,
+                              package_id: submittedAdvert.package_id,
+                              existing_lead_id: submittedAdvert.lead_id,
+                              origin_url: window.location.origin,
+                            }),
+                          });
+                          const data = await res.json();
+                          trackEvent("advertising_checkout_start", { tier: submittedAdvert.tier });
+                          if (data?.checkout_url) {
+                            window.location.href = data.checkout_url;
+                            return;
+                          }
+                          setCheckoutError(data?.detail || "Could not start advertising checkout. Please contact news@cheshiretoday.co.uk.");
+                        } catch (error) {
+                          setCheckoutError("Could not start advertising checkout. Please contact news@cheshiretoday.co.uk.");
+                        } finally {
+                          setCheckoutLoading(false);
+                        }
+                      }}
+                      className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg py-3 font-semibold"
+                    >
+                      {detailsSaving ? "Saving advert details..." : checkoutLoading ? "Starting secure payment..." : "Continue to secure payment"}
+                    </button>
+                  </div>
+                )}
               </form>
             </div>
           </div>
