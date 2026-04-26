@@ -6486,6 +6486,98 @@ async def create_advertising_checkout_from_lead(payment_token: str, request: Req
         raise HTTPException(status_code=500, detail="Could not start advertising payment")
 
 
+async def send_advertising_payment_confirmation_email(lead_id: str):
+    """Send one client email after an advertising payment is confirmed."""
+    try:
+        if not ObjectId.is_valid(str(lead_id or "")):
+            return False
+
+        oid = ObjectId(lead_id)
+        claim = await db.advertiser_leads.update_one(
+            {
+                "_id": oid,
+                "payment_confirmation_sent": {"$ne": True},
+                "payment_confirmation_sending": {"$ne": True},
+            },
+            {"$set": {"payment_confirmation_sending": True, "payment_confirmation_started_at": datetime.utcnow()}}
+        )
+
+        if claim.modified_count == 0:
+            return False
+
+        lead = await db.advertiser_leads.find_one({"_id": oid})
+        if not lead:
+            return False
+
+        email = str(lead.get("email") or "").strip()
+        if not email:
+            await db.advertiser_leads.update_one(
+                {"_id": oid},
+                {"$set": {
+                    "payment_confirmation_sent": False,
+                    "payment_confirmation_error": "Missing client email",
+                    "payment_confirmation_checked_at": datetime.utcnow(),
+                }, "$unset": {"payment_confirmation_sending": ""}}
+            )
+            return False
+
+        import html as _html
+
+        tier = str(lead.get("tier") or lead.get("package_tier") or "Advertising package").strip()
+        business = str(lead.get("business") or lead.get("name") or "your business").strip()
+        package_price = str(lead.get("package_price") or "").strip()
+        target_area = str(lead.get("target_area") or "").strip()
+        website = str(lead.get("website") or "").strip()
+
+        html_content = f"""
+        <h2>Payment received — Cheshire Today advertising</h2>
+        <p>Thank you. We have received your payment for your Cheshire Today advertising package.</p>
+        <p><strong>Package:</strong> {_html.escape(tier)}</p>
+        <p><strong>Package price:</strong> {_html.escape(package_price or "Paid")}</p>
+        <p><strong>Business:</strong> {_html.escape(business)}</p>
+        <p><strong>Website/Facebook:</strong> {_html.escape(website or "Not provided")}</p>
+        <p><strong>Target area:</strong> {_html.escape(target_area or "Cheshire")}</p>
+        <hr>
+        <h3>What happens next</h3>
+        <p>Your advert is now marked as paid and pending review. Cheshire Today will check the advert details before it goes live.</p>
+        <p>Your 30-day campaign starts once the advert is approved and published, not from the moment of payment.</p>
+        <p>If we need anything else, we will contact you by email. If you want to send a logo, image, updated wording, or any change to your website link, reply to this email.</p>
+        <p>Thank you for advertising with Cheshire Today.</p>
+        """
+
+        sent = bool(email_service._send_email(
+            to_email=email,
+            subject="Payment received — Cheshire Today advertising",
+            html_content=html_content,
+        ))
+
+        await db.advertiser_leads.update_one(
+            {"_id": oid},
+            {"$set": {
+                "payment_confirmation_sent": sent,
+                "payment_confirmation_checked_at": datetime.utcnow(),
+                "payment_confirmation_error": "" if sent else "Email service returned false",
+            }, "$unset": {"payment_confirmation_sending": ""}}
+        )
+
+        return sent
+    except Exception as email_error:
+        logger.error(f"Failed to send advertising payment confirmation email: {str(email_error)}")
+        try:
+            if ObjectId.is_valid(str(lead_id or "")):
+                await db.advertiser_leads.update_one(
+                    {"_id": ObjectId(lead_id)},
+                    {"$set": {
+                        "payment_confirmation_sent": False,
+                        "payment_confirmation_error": str(email_error),
+                        "payment_confirmation_checked_at": datetime.utcnow(),
+                    }, "$unset": {"payment_confirmation_sending": ""}}
+                )
+        except Exception:
+            pass
+        return False
+
+
 @api_router.get("/advertising/payment-status/{session_id}")
 async def get_advertising_payment_status(session_id: str, request: Request):
     """Check the status of an advertising payment."""
@@ -6501,11 +6593,15 @@ async def get_advertising_payment_status(session_id: str, request: Request):
             raise HTTPException(status_code=404, detail="Payment not found")
 
         if transaction.get("payment_status") == "completed":
+            existing_lead_id = transaction.get("advertiser_lead_id")
+            if existing_lead_id:
+                await send_advertising_payment_confirmation_email(str(existing_lead_id))
+
             return {
                 "success": True,
                 "status": "completed",
                 "payment_status": "paid",
-                "advertiser_lead_id": transaction.get("advertiser_lead_id"),
+                "advertiser_lead_id": existing_lead_id,
                 "message": "Payment already processed. Your advert is pending review."
             }
 
@@ -6524,6 +6620,7 @@ async def get_advertising_payment_status(session_id: str, request: Request):
                     "paid_at": datetime.utcnow()
                 }}
             )
+            await send_advertising_payment_confirmation_email(str(lead_id))
 
             return {
                 "success": True,
@@ -6819,6 +6916,7 @@ async def stripe_webhook(request: Request):
                                 "paid_at": datetime.utcnow()
                             }}
                         )
+                        await send_advertising_payment_confirmation_email(str(lead_id))
                         logger.info(f"Webhook: Updated advertiser lead {lead_id} to paid pending review")
                 else:
                     job_id = webhook_response.metadata.get("job_id") or transaction.get("job_id")
