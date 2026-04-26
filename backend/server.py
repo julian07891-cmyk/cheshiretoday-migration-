@@ -1104,6 +1104,48 @@ async def get_sponsored_placements(placement: str = "article_sidebar", limit: in
         return {"success": False, "placements": []}
 
 
+@api_router.post("/sponsored-placements/{slug}/impression")
+async def track_sponsored_placement_impression(slug: str):
+    """Public endpoint - Track a sponsored placement impression."""
+    try:
+        clean_slug = str(slug or "").strip()
+        if not clean_slug:
+            return {"success": False}
+
+        await db.sponsored_placements.update_one(
+            {"slug": clean_slug},
+            {
+                "$inc": {"impression_count": 1},
+                "$set": {"last_impression_at": datetime.now(timezone.utc).isoformat()}
+            }
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error tracking sponsored placement impression: {str(e)}")
+        return {"success": False}
+
+
+@api_router.post("/sponsored-placements/{slug}/click")
+async def track_sponsored_placement_click(slug: str):
+    """Public endpoint - Track a sponsored placement click."""
+    try:
+        clean_slug = str(slug or "").strip()
+        if not clean_slug:
+            return {"success": False}
+
+        await db.sponsored_placements.update_one(
+            {"slug": clean_slug},
+            {
+                "$inc": {"click_count": 1},
+                "$set": {"last_click_at": datetime.now(timezone.utc).isoformat()}
+            }
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error tracking sponsored placement click: {str(e)}")
+        return {"success": False}
+
+
 @api_router.get("/admin/sponsored-placements")
 async def get_admin_sponsored_placements(limit: int = 100, auth: bool = Depends(get_admin_auth)):
     """Admin endpoint - List sponsored placements including inactive adverts."""

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { getApiUrl } from "../utils/api";
 import { trackEvent } from "../utils/trackEvent";
 
@@ -12,6 +12,7 @@ const fallbackCopy = {
 const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) => {
   const [ad, setAd] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const impressionTrackedRef = useRef(null);
 
   useEffect(() => {
     let mounted = true;
@@ -44,6 +45,16 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const cta = isPaidPlacement ? (ad.cta_text || "Learn more") : fallbackCopy.cta;
   const sponsor = isPaidPlacement ? (ad.sponsor_name || "Sponsor") : fallbackCopy.eyebrow;
 
+  useEffect(() => {
+    if (!isPaidPlacement || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
+
+    impressionTrackedRef.current = ad.slug;
+    const api = getApiUrl().replace(/\/$/, "");
+    fetch(`${api}/api/sponsored-placements/${encodeURIComponent(ad.slug)}/impression`, {
+      method: "POST"
+    }).catch(() => {});
+  }, [isPaidPlacement, ad?.slug]);
+
   if (!loaded && !compact) {
     return null;
   }
@@ -55,6 +66,13 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
       slug: ad?.slug || "advertise_cta",
       destination: targetUrl,
     });
+
+    if (isPaidPlacement && ad?.slug) {
+      const api = getApiUrl().replace(/\/$/, "");
+      fetch(`${api}/api/sponsored-placements/${encodeURIComponent(ad.slug)}/click`, {
+        method: "POST"
+      }).catch(() => {});
+    }
   };
 
   const inner = (

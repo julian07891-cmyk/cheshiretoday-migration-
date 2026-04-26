@@ -4405,6 +4405,8 @@ const handleDeleteArticle = async (articleId) => {
                               {placement.description && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{placement.description}</p>}
                             </div>
                             <div className="flex flex-col items-start md:items-end gap-2 text-xs text-muted-foreground">
+                              <div>Impressions: {placement.impression_count || 0}</div>
+                              <div>Clicks: {placement.click_count || 0}</div>
                               <div>Weight: {placement.rotation_weight || "auto"}</div>
                               <div>Priority: {placement.priority || 0}</div>
                               {placement.ends_at && (
