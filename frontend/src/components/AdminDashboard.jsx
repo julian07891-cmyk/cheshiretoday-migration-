@@ -377,6 +377,33 @@ const AdminDashboard = ({ onBack }) => {
     }
   }, [getAuthHeaders]);
 
+  const prepareSponsoredPlacementFromLead = useCallback((lead) => {
+    const business = String(lead?.business || lead?.name || "").trim();
+    const website = String(lead?.website || "").trim();
+    const tier = String(lead?.tier || lead?.package_tier || "Local Starter").trim();
+    const message = String(lead?.message || "").trim();
+    const safeWebsite = website && /^https?:\/\//i.test(website) ? website : website ? `https://${website}` : "";
+
+    setSponsoredPlacementForm({
+      placement: "both",
+      package_tier: tier || "Local Starter",
+      sponsor_name: business,
+      title: business ? `${business} — sponsored local business` : "",
+      description: message,
+      target_url: safeWebsite,
+      image_url: "",
+      cta_text: "Learn more",
+      active: true
+    });
+
+    toast({ title: "Sponsored placement form filled from lead" });
+
+    setTimeout(() => {
+      const form = document.getElementById("create-sponsored-placement");
+      if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }, []);
+
   const updateAdvertiserLeadStatus = useCallback(async (leadId, status) => {
     try {
       const res = await fetch(`${getApiUrl()}/api/admin/advertiser-leads/${leadId}/status`, {
@@ -4267,7 +4294,7 @@ const handleDeleteArticle = async (articleId) => {
                   </p>
                 </div>
 
-                <div className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                <div id="create-sponsored-placement" className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <h3 className="font-bold text-gray-900 dark:text-white mb-1">Create Sponsored Placement</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Create a paid advert after payment and review. New sponsored placements run for 30 days automatically. Choose “Desktop + mobile” to show the advertiser in both article advert slots.
@@ -4468,7 +4495,7 @@ const handleDeleteArticle = async (articleId) => {
                                 {lead.tier || "Package not selected"}
                               </Badge>
                               <Badge variant="outline">
-                                {lead.status || "new"}
+                                {lead.status === "payment_pending" ? "checkout started, not paid" : lead.status === "paid_pending_review" ? "paid — needs review" : lead.status || "new"}
                               </Badge>
                             </div>
                             <p className="mt-1 text-sm text-muted-foreground">
@@ -4512,6 +4539,15 @@ const handleDeleteArticle = async (articleId) => {
                             >
                               Open website
                             </a>
+                          )}
+                          {(lead.status === "paid_pending_review" || lead.payment_status === "paid") && (
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => prepareSponsoredPlacementFromLead(lead)}
+                            >
+                              Create advert from lead
+                            </Button>
                           )}
                           <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "contacted")}>
                             Mark contacted
