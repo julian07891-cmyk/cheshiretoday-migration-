@@ -86,6 +86,19 @@ const AdminDashboard = ({ onBack }) => {
   // Advertising leads state
   const [advertiserLeads, setAdvertiserLeads] = useState([]);
   const [advertiserLeadsLoading, setAdvertiserLeadsLoading] = useState(false);
+  const [sponsoredPlacements, setSponsoredPlacements] = useState([]);
+  const [sponsoredPlacementsLoading, setSponsoredPlacementsLoading] = useState(false);
+  const [sponsoredPlacementForm, setSponsoredPlacementForm] = useState({
+    placement: "both",
+    package_tier: "Local Starter",
+    sponsor_name: "",
+    title: "",
+    description: "",
+    target_url: "",
+    image_url: "",
+    cta_text: "Learn more",
+    active: true
+  });
   
   // Email analytics state
   const [emailAnalytics, setEmailAnalytics] = useState(null);
@@ -239,6 +252,146 @@ const AdminDashboard = ({ onBack }) => {
       toast({ title: "Error loading advertising leads", variant: "destructive" });
     } finally {
       setAdvertiserLeadsLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  const fetchSponsoredPlacements = useCallback(async () => {
+    setSponsoredPlacementsLoading(true);
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/sponsored-placements?limit=100`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSponsoredPlacements(data.placements || []);
+      } else {
+        toast({ title: "Failed to load sponsored placements", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error fetching sponsored placements:", error);
+      toast({ title: "Error loading sponsored placements", variant: "destructive" });
+    } finally {
+      setSponsoredPlacementsLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  const saveSponsoredPlacement = useCallback(async (event) => {
+    event.preventDefault();
+
+    const sponsorName = String(sponsoredPlacementForm.sponsor_name || "").trim();
+    const placementChoice = String(sponsoredPlacementForm.placement || "both").trim();
+    const packageTier = String(sponsoredPlacementForm.package_tier || "Local Starter").trim();
+    const targetUrl = String(sponsoredPlacementForm.target_url || "").trim();
+
+    if (!sponsorName || !sponsoredPlacementForm.title || !targetUrl) {
+      toast({ title: "Sponsor name, advert title and target URL are required", variant: "destructive" });
+      return;
+    }
+
+    const placementsToCreate = placementChoice === "both"
+      ? ["article_sidebar", "article_mobile"]
+      : [placementChoice];
+
+    const rotationWeight = packageTier.includes("Partner") ? 4 : packageTier.includes("Featured") ? 2 : 1;
+    const priority = packageTier.includes("Partner") ? 30 : packageTier.includes("Featured") ? 20 : 10;
+    const slugBase = sponsorName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "sponsored-advert";
+
+    const timestamp = Date.now();
+    const payloads = placementsToCreate.map((placement) => ({
+      slug: `${slugBase}-${placement}-${timestamp}`,
+      placement,
+      package_tier: packageTier,
+      rotation_weight: rotationWeight,
+      priority,
+      sponsor_name: sponsorName,
+      title: String(sponsoredPlacementForm.title || "").trim(),
+      description: String(sponsoredPlacementForm.description || "").trim(),
+      target_url: targetUrl,
+      image_url: String(sponsoredPlacementForm.image_url || "").trim(),
+      cta_text: String(sponsoredPlacementForm.cta_text || "Learn more").trim(),
+      active: Boolean(sponsoredPlacementForm.active)
+    }));
+
+    try {
+      for (const payload of payloads) {
+        const res = await fetch(`${getApiUrl()}/api/admin/sponsored-placements/upsert`, {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      }
+
+      toast({ title: payloads.length > 1 ? "Desktop and mobile sponsored placements created" : "Sponsored placement created" });
+      setSponsoredPlacementForm({
+        placement: "both",
+        package_tier: "Local Starter",
+        sponsor_name: "",
+        title: "",
+        description: "",
+        target_url: "",
+        image_url: "",
+        cta_text: "Learn more",
+        active: true
+      });
+      fetchSponsoredPlacements();
+    } catch (error) {
+      console.error("Error saving sponsored placement:", error);
+      toast({ title: "Failed to create sponsored placement", variant: "destructive" });
+    }
+  }, [fetchSponsoredPlacements, getAuthHeaders, sponsoredPlacementForm]);
+
+  const deleteSponsoredPlacement = useCallback(async (slug) => {
+    if (!slug) return;
+
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/sponsored-placements/${encodeURIComponent(slug)}`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      toast({ title: "Sponsored placement deleted" });
+      setSponsoredPlacements(prev => prev.filter(item => item.slug !== slug));
+    } catch (error) {
+      console.error("Error deleting sponsored placement:", error);
+      toast({ title: "Failed to delete sponsored placement", variant: "destructive" });
+    }
+  }, [getAuthHeaders]);
+
+  const updateAdvertiserLeadStatus = useCallback(async (leadId, status) => {
+    try {
+      const res = await fetch(`${getApiUrl()}/api/admin/advertiser-leads/${leadId}/status`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data?.lead) {
+        setAdvertiserLeads(prev => prev.map(lead => lead.id === leadId ? data.lead : lead));
+      }
+
+      toast({ title: `Lead marked as ${status}` });
+    } catch (error) {
+      console.error("Error updating advertiser lead:", error);
+      toast({ title: "Failed to update advertising lead", variant: "destructive" });
     }
   }, [getAuthHeaders]);
 
@@ -2480,6 +2633,7 @@ const handleDeleteArticle = async (articleId) => {
               onClick={() => {
                 setActiveTab('advertising');
                 fetchAdvertiserLeads();
+                fetchSponsoredPlacements();
               }}
               size="sm"
               className={`flex items-center gap-2 min-w-fit ${activeTab === 'advertising' ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
@@ -4093,10 +4247,171 @@ const handleDeleteArticle = async (articleId) => {
                   Advertising Leads
                 </CardTitle>
                 <CardDescription>
-                  Enquiries submitted through the /advertise page. Contact businesses from news@cheshiretoday.co.uk, then create sponsored placements using the helper script after payment/review.
+                  Enquiries submitted through the /advertise page. Contact businesses from news@cheshiretoday.co.uk, then create sponsored placements after payment and review.
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-gray-700 dark:text-gray-300">
+                  <p className="font-bold text-gray-900 dark:text-white">After a lead converts</p>
+                  <p className="mt-1">
+                    Confirm payment, collect the advert title/message/link/image, review it for suitability, then create a sponsored placement. Active placements appear in the mobile in-article advert card and desktop article sidebar slot.
+                  </p>
+                </div>
+
+                <div className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-1">Create Sponsored Placement</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create a paid advert after payment and review. Choose “Desktop + mobile” to show the advertiser in both article advert slots.
+                  </p>
+
+                  <form onSubmit={saveSponsoredPlacement} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Placement</Label>
+                      <select
+                        value={sponsoredPlacementForm.placement}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, placement: e.target.value }))}
+                        className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                      >
+                        <option value="both">Desktop + mobile article slots</option>
+                        <option value="article_sidebar">Desktop article sidebar only</option>
+                        <option value="article_mobile">Mobile in-article card only</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Package</Label>
+                      <select
+                        value={sponsoredPlacementForm.package_tier}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, package_tier: e.target.value }))}
+                        className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                      >
+                        <option value="Local Starter">Local Starter — standard rotation</option>
+                        <option value="Local Featured">Local Featured — stronger rotation</option>
+                        <option value="Local Partner">Local Partner — priority rotation</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Sponsor / business name</Label>
+                      <Input
+                        value={sponsoredPlacementForm.sponsor_name}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, sponsor_name: e.target.value }))}
+                        placeholder="Business name"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Target URL</Label>
+                      <Input
+                        value={sponsoredPlacementForm.target_url}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, target_url: e.target.value }))}
+                        placeholder="https://example.com"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Advert title</Label>
+                      <Input
+                        value={sponsoredPlacementForm.title}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, title: e.target.value }))}
+                        placeholder="Advert headline"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">CTA text</Label>
+                      <Input
+                        value={sponsoredPlacementForm.cta_text}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, cta_text: e.target.value }))}
+                        placeholder="Learn more"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <Label className="text-xs">Image URL optional</Label>
+                      <Input
+                        value={sponsoredPlacementForm.image_url}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, image_url: e.target.value }))}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <Label className="text-xs">Advert message</Label>
+                      <Textarea
+                        value={sponsoredPlacementForm.description}
+                        onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Short sponsored message shown on the advert card"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 flex justify-end">
+                      <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white">
+                        Create sponsored placement
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+
+                <div className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white">Live Sponsored Placements</h3>
+                      <p className="text-sm text-muted-foreground">Paid adverts currently available to display in sponsored slots.</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={fetchSponsoredPlacements}
+                      disabled={sponsoredPlacementsLoading}
+                    >
+                      {sponsoredPlacementsLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                      Refresh
+                    </Button>
+                  </div>
+
+                  {sponsoredPlacementsLoading ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-amber-600" />
+                    </div>
+                  ) : sponsoredPlacements.length === 0 ? (
+                    <p className="rounded border border-dashed border-gray-300 dark:border-gray-700 p-4 text-sm text-muted-foreground">
+                      No paid sponsored placements are active. Article pages will show the fallback “Advertise from £49/month” card.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sponsoredPlacements.map((placement) => (
+                        <div key={placement.slug || placement.id} className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-bold text-gray-900 dark:text-white">{placement.title}</p>
+                                <Badge variant={placement.active ? "default" : "secondary"}>{placement.active ? "active" : "inactive"}</Badge>
+                                <Badge variant="outline">{placement.placement}</Badge>
+                                {placement.package_tier && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{placement.package_tier}</Badge>}
+                              </div>
+                              <p className="mt-1 text-sm text-muted-foreground">{placement.sponsor_name} · {placement.target_url}</p>
+                              {placement.description && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{placement.description}</p>}
+                            </div>
+                            <div className="flex flex-col items-start md:items-end gap-2 text-xs text-muted-foreground">
+                              <div>Weight: {placement.rotation_weight || "auto"}</div>
+                              <div>Priority: {placement.priority || 0}</div>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="mt-1"
+                                onClick={() => deleteSponsoredPlacement(placement.slug)}
+                              >
+                                Delete advert
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="text-sm text-muted-foreground">
                     {advertiserLeads.length} lead{advertiserLeads.length === 1 ? "" : "s"} loaded
@@ -4182,6 +4497,18 @@ const handleDeleteArticle = async (articleId) => {
                               Open website
                             </a>
                           )}
+                          <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "contacted")}>
+                            Mark contacted
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "converted")}>
+                            Mark converted
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "declined")}>
+                            Decline
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => updateAdvertiserLeadStatus(lead.id, "archived")}>
+                            Archive
+                          </Button>
                         </div>
                       </div>
                     ))}

@@ -1104,6 +1104,19 @@ async def get_sponsored_placements(placement: str = "article_sidebar", limit: in
         return {"success": False, "placements": []}
 
 
+@api_router.get("/admin/sponsored-placements")
+async def get_admin_sponsored_placements(limit: int = 100, auth: bool = Depends(get_admin_auth)):
+    """Admin endpoint - List sponsored placements including inactive adverts."""
+    try:
+        safe_limit = max(1, min(int(limit or 100), 300))
+        cursor = db.sponsored_placements.find({}).sort([("active", -1), ("priority", -1), ("updated_at", -1)]).limit(safe_limit)
+        placements = [_serialize_sponsored_placement(doc) async for doc in cursor]
+        return {"success": True, "placements": placements, "total": len(placements)}
+    except Exception as e:
+        logger.error(f"Error getting admin sponsored placements: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not load sponsored placements")
+
+
 @api_router.post("/admin/sponsored-placements/upsert")
 async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool = Depends(get_admin_auth)):
     """Admin endpoint - Upsert a manual sponsored placement by slug."""
@@ -1130,6 +1143,17 @@ async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool 
     await db.sponsored_placements.update_one({"slug": doc["slug"]}, {"$set": doc, "$setOnInsert": {"created_at": doc["updated_at"]}}, upsert=True)
     saved = await db.sponsored_placements.find_one({"slug": doc["slug"]})
     return {"success": True, "placement": _serialize_sponsored_placement(saved)}
+
+
+@api_router.delete("/admin/sponsored-placements/{slug}")
+async def delete_admin_sponsored_placement(slug: str, auth: bool = Depends(get_admin_auth)):
+    """Admin endpoint - Delete a sponsored placement by slug."""
+    try:
+        result = await db.sponsored_placements.delete_one({"slug": str(slug or "").strip()})
+        return {"success": True, "deleted_count": result.deleted_count}
+    except Exception as e:
+        logger.error(f"Error deleting sponsored placement: {str(e)}")
+        raise HTTPException(status_code=500, detail="Could not delete sponsored placement")
 
 
 def _serialize_advertiser_lead(doc):
