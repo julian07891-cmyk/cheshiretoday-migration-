@@ -1070,8 +1070,8 @@ return (
                 <div className="w-full aspect-[16/9] md:aspect-[4/3] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
                 <div className="mt-4 h-20 max-w-[720px] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
               </div>
-              <aside className="lg:col-span-4 h-full">
-                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 h-full">
+              <aside className="lg:col-span-4">
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:h-full">
                   <div className="h-5 w-28 rounded bg-slate-200/70 dark:bg-gray-800 mb-4" />
                   <div className="space-y-3">
                     {Array.from({ length: 4 }).map((_, i) => (
@@ -1162,9 +1162,9 @@ return (
             </div>
 
             {/* Right: Top Stories (compact) */}
-            <aside className="lg:col-span-4 h-full">
+            <aside className="lg:col-span-4">
               {topStories.length > 0 && (
-                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 h-full">
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:h-full">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
