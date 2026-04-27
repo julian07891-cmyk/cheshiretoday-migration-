@@ -89,7 +89,7 @@ const AdminDashboard = ({ onBack }) => {
   const [sponsoredPlacements, setSponsoredPlacements] = useState([]);
   const [sponsoredPlacementsLoading, setSponsoredPlacementsLoading] = useState(false);
   const [sponsoredPlacementForm, setSponsoredPlacementForm] = useState({
-    placement: "both",
+    placement: "article_both",
     package_tier: "Local Starter",
     sponsor_name: "",
     title: "",
@@ -295,9 +295,11 @@ const AdminDashboard = ({ onBack }) => {
       return;
     }
 
-    const placementsToCreate = placementChoice === "both"
-      ? ["article_sidebar", "article_mobile"]
-      : [placementChoice];
+    const placementGroups = {
+      article_both: ["article_sidebar", "article_mobile"],
+      homepage_both: ["homepage_sidebar", "homepage_mobile"],
+    };
+    const placementsToCreate = placementGroups[placementChoice] || [placementChoice];
 
     const rotationWeight = packageTier.includes("Partner") ? 4 : packageTier.includes("Featured") ? 2 : 1;
     const priority = packageTier.includes("Partner") ? 30 : packageTier.includes("Featured") ? 20 : 10;
@@ -348,7 +350,7 @@ const AdminDashboard = ({ onBack }) => {
 
       toast({ title: payloads.length > 1 ? "Desktop and mobile sponsored placements created" : "Sponsored placement created" });
       setSponsoredPlacementForm({
-        placement: "both",
+        placement: "article_both",
         package_tier: "Local Starter",
         sponsor_name: "",
         title: "",
@@ -394,7 +396,7 @@ const AdminDashboard = ({ onBack }) => {
     const safeWebsite = website && /^https?:\/\//i.test(website) ? website : website ? `https://${website}` : "";
 
     setSponsoredPlacementForm({
-      placement: "both",
+      placement: "article_both",
       package_tier: tier || "Local Starter",
       sponsor_name: business,
       title: business ? `${business} — sponsored local business` : "",
@@ -4327,7 +4329,7 @@ const handleDeleteArticle = async (articleId) => {
                 <div id="create-sponsored-placement" className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
                   <h3 className="font-bold text-gray-900 dark:text-white mb-1">Create Sponsored Placement</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Create a paid advert after payment and review. New sponsored placements run for 30 days automatically. Choose “Desktop + mobile” to show the advertiser in both article advert slots.
+                    Create a paid advert after payment and review. New sponsored placements run for 30 days automatically. Choose article or homepage slots below, including desktop + mobile pairs.
                   </p>
 
                   <form onSubmit={saveSponsoredPlacement} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -4338,9 +4340,12 @@ const handleDeleteArticle = async (articleId) => {
                         onChange={(e) => setSponsoredPlacementForm(prev => ({ ...prev, placement: e.target.value }))}
                         className="w-full p-3 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
                       >
-                        <option value="both">Desktop + mobile article slots</option>
+                        <option value="article_both">Desktop + mobile article slots</option>
+                        <option value="homepage_both">Desktop + mobile homepage slots</option>
                         <option value="article_sidebar">Desktop article sidebar only</option>
                         <option value="article_mobile">Mobile in-article card only</option>
+                        <option value="homepage_sidebar">Desktop homepage sidebar only</option>
+                        <option value="homepage_mobile">Mobile homepage card only</option>
                       </select>
                     </div>
 

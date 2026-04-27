@@ -11,6 +11,7 @@ import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import HeroMonetisationStrip from "../components/homepage/HeroMonetisationStrip";
+import SponsoredPlacement from "../components/SponsoredPlacement";
 import LeadSection from "../components/homepage/LeadSection";
 import NewsFooter from "../components/NewsFooter";
 import SubscribeSection from "../components/SubscribeSection";
@@ -1064,7 +1065,7 @@ return (
       {loading && (
         <div className="mt-4 animate-pulse">
           <section>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div className="lg:col-span-8 flex flex-col">
                 <div className="w-full aspect-[16/9] md:aspect-[4/3] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
                 <div className="mt-4 h-20 max-w-[720px] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
@@ -1154,6 +1155,10 @@ return (
               <div className="mt-4 max-w-[720px]">
                 <SubscribeInlineBanner />
               </div>
+
+              <div className="mt-4 max-w-[720px]">
+                <HeroMonetisationStrip limit={2} compact />
+              </div>
             </div>
 
             {/* Right: Top Stories (compact) */}
@@ -1166,9 +1171,15 @@ return (
                   </div>
                   <TopStoriesGrid stories={topStories} />
 
+                  <div className="mt-4 hidden lg:block">
+                    <SponsoredPlacement placement="homepage_sidebar" />
+                  </div>
                 </div>
               )}
 
+              <div className="mt-4 lg:hidden">
+                <SponsoredPlacement placement="homepage_mobile" compact />
+              </div>
 
             </aside>
           </div>
@@ -1176,8 +1187,6 @@ return (
       )}
 
 
-
-      <HeroMonetisationStrip />
 
       {/* --- Main content: 2-column news layout --- */}
       {!loading && !err && (
