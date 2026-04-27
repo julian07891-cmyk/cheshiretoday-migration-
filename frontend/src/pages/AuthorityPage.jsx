@@ -41,6 +41,7 @@ function getToolLogoSrc(name = "") {
   if (cleaned.includes("emma")) return "/affiliate-logos/emma.png";
   if (cleaned.includes("spotlight")) return "/affiliate-logos/spotlight-oral-care.png";
   if (cleaned.includes("anyvan")) return "/affiliate-logos/anyvan.png";
+  if (cleaned.includes("cloudlearn")) return "/affiliate-logos/cloudlearn.ico";
   if (cleaned.includes("isoq")) return "/affiliate-logos/isoqar.png";
 
   return "";
@@ -275,6 +276,12 @@ const RELATED_GUIDE_LIBRARY = [
     title: "Best removal van services",
     desc: "Moving house, furniture delivery and man-and-van options",
     tag: "Moving"
+  },
+  {
+    slug: "best-online-gcse-a-level-courses-uk",
+    title: "Best online GCSE and A-Level courses",
+    desc: "Flexible study, adult learners and recognised qualifications",
+    tag: "Education"
   }
 ];
 
@@ -338,6 +345,7 @@ function getRelatedGuides(currentSlug = "", category = "") {
     "what-iso-certification-means-small-business-uk",
     "best-self-storage-services-uk-home-business",
     "best-online-will-writing-services-uk",
+    "best-online-gcse-a-level-courses-uk",
     "best-mattress-deals-uk",
     "best-electric-toothbrushes-oral-care-uk",
     "best-removal-van-services-uk",
