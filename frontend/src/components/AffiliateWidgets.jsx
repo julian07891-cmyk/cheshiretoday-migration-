@@ -106,12 +106,32 @@ export const SAMPLE_PRODUCTS = {
   ]
 };
 
-// Helper function to randomly select products from a category
+// Helper functions for stable daily affiliate rotation
+const getDailyRotationOffset = (key, total) => {
+  if (!total) return 0;
+  const now = new Date();
+  const dayKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
+  const source = `${dayKey}:${key}`;
+  let hash = 0;
+  for (const ch of source) {
+    hash = (hash * 31 + ch.charCodeAt(0)) % 2147483647;
+  }
+  return hash % total;
+};
+
+const getRotatedProducts = (products, count = 2, offset = 0, key = 'default') => {
+  const clean = [...(products || [])];
+  if (!clean.length) return [];
+  const start = getDailyRotationOffset(key, clean.length);
+  const rotated = clean.map((_, idx) => clean[(start + idx) % clean.length]);
+  const safeCount = Math.min(count, rotated.length);
+  return Array.from({ length: safeCount }, (_, idx) => rotated[(offset + idx) % rotated.length]);
+};
+
+// Helper function to select products from a category using stable daily rotation
 export const getRandomProducts = (category, count = 2, offset = 0) => {
   const products = SAMPLE_PRODUCTS[category] || SAMPLE_PRODUCTS['default'];
-  const shuffled = [...products].sort(() => 0.5 - Math.random());
-  // Skip 'offset' products and take 'count' products
-  return shuffled.slice(offset, offset + count);
+  return getRotatedProducts(products, count, offset, `sample:${category}`);
 };
 
 // Star rating component
@@ -229,13 +249,11 @@ const useAffiliateProducts = (category, count, offset = 0) => {
       if (!mounted) return;
       
       if (dbData && dbData.products.length > 0) {
-        // Use database products
+        // Use database products with stable daily rotation
         const categoryProducts = dbData.by_category[category] || dbData.by_category['default'] || dbData.products;
-        const shuffled = [...categoryProducts].sort(() => 0.5 - Math.random());
-        // Skip 'offset' products and take 'count' products
-        setProducts(shuffled.slice(offset, offset + count));
+        setProducts(getRotatedProducts(categoryProducts, count, offset, `db:${category}`));
       } else {
-        // Fallback to hardcoded products with offset support
+        // Fallback to hardcoded products with stable daily rotation
         setProducts(getRandomProducts(category, count, offset));
       }
       setLoaded(true);

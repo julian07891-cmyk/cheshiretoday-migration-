@@ -12,13 +12,36 @@ function getInitials(title = "") {
   return words.map((word) => word[0]).join("").toUpperCase() || "CT";
 }
 
+function getDailyRotationOffset(key = "", total = 0) {
+  if (!total) return 0;
+  const now = new Date();
+  const dayKey = `${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
+  const source = `${dayKey}:${key}`;
+  let hash = 0;
+  for (const ch of source) {
+    hash = (hash * 31 + ch.charCodeAt(0)) % 2147483647;
+  }
+  return hash % total;
+}
+
+function getRotatedSlice(items = [], start = 0, limit = 0, key = "") {
+  const clean = (items || []).filter(Boolean);
+  if (!clean.length || limit <= 0) return [];
+
+  const offset = getDailyRotationOffset(key, clean.length);
+  const rotated = clean.map((_, idx) => clean[(offset + idx) % clean.length]);
+  const count = Math.min(limit, rotated.length);
+
+  return Array.from({ length: count }, (_, idx) => rotated[(start + idx) % rotated.length]).filter(
+    (item, idx, arr) => arr.findIndex((x) => x?.href === item?.href) === idx
+  );
+}
+
 export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "" }) {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
   const items = useMemo(() => {
-    return (monetisationTools.homepage_primary || [])
-      .slice(start, start + limit)
-      .filter(Boolean);
+    return getRotatedSlice(monetisationTools.homepage_primary || [], start, limit, "homepage_primary");
   }, [start, limit]);
 
   if (!items.length) return null;

@@ -5,6 +5,7 @@ export const monetisationTools = {
     { badge: "Affiliate", logoLabel: "AS", logoSrc: "/affiliate-logos/quickbooks.png", title: "Best accounting software", desc: "QuickBooks + UK small-business picks", benefit: "VAT, invoices and reports", cta: "Compare tools", href: "/guides/best-accounting-software-uk" },
     { badge: "Affiliate", logoLabel: "VO", logoSrc: "/affiliate-logos/virtual-office.png", title: "Best virtual office services", desc: "Business address + registered office options", benefit: "Professional UK address setup", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
     { badge: "Affiliate", logoLabel: "SS", logoSrc: "/affiliate-logos/safestore.ico", title: "Best self-storage services", desc: "Home + business storage options", benefit: "Flexible space when needed", cta: "View storage", href: "/guides/best-self-storage-services-uk-home-business" },
+    { badge: "Affiliate", logoLabel: "CL", logoSrc: "/affiliate-logos/cloudlearn.ico", title: "Best online GCSE & A-Level courses", desc: "CloudLearn + flexible online qualifications", benefit: "Study around work and family", cta: "See courses", href: "/guides/best-online-gcse-a-level-courses-uk" },
   ],
 
   web_presence: [
