@@ -1260,14 +1260,15 @@ async def send_sponsored_advert_live_email(source_lead_id: str, campaign_id: str
         if not placements and placement_doc:
             placements = [placement_doc]
 
-        preview_base_url = await _latest_public_article_url_for_ad_preview()
+        preview_article_base_url = await _latest_public_article_url_for_ad_preview()
+        preview_homepage_base_url = "https://cheshiretoday.co.uk"
 
         import html as _html
         import urllib.parse as _urlparse
 
         def build_preview_link(slot):
             if not slot:
-                return preview_base_url
+                return preview_article_base_url
 
             slot_name = str(slot.get("placement") or "article_sidebar").strip()
             slot_campaign = str(slot.get("campaign_id") or clean_campaign_id or "").strip()
@@ -1279,7 +1280,8 @@ async def send_sponsored_advert_live_email(source_lead_id: str, campaign_id: str
             elif slot_slug:
                 params["sponsored_ad_slug"] = slot_slug
 
-            return f"{preview_base_url}?{_urlparse.urlencode(params)}#sponsored-advert-{slot_name}-{anchor_key}"
+            base_url = preview_homepage_base_url if slot_name.startswith("homepage_") else preview_article_base_url
+            return f"{base_url}?{_urlparse.urlencode(params)}#sponsored-advert-{slot_name}-{anchor_key}"
 
         preview_links = []
         seen_slots = set()
@@ -1288,11 +1290,17 @@ async def send_sponsored_advert_live_email(source_lead_id: str, campaign_id: str
             if slot_name in seen_slots:
                 continue
             seen_slots.add(slot_name)
-            label = "Desktop sidebar advert" if slot_name == "article_sidebar" else "Mobile in-article advert" if slot_name == "article_mobile" else "Advert preview"
+            label = (
+                "Desktop homepage advert" if slot_name == "homepage_sidebar"
+                else "Mobile homepage advert" if slot_name == "homepage_mobile"
+                else "Desktop sidebar advert" if slot_name == "article_sidebar"
+                else "Mobile in-article advert" if slot_name == "article_mobile"
+                else "Advert preview"
+            )
             preview_links.append((label, build_preview_link(slot)))
 
         if not preview_links:
-            preview_links.append(("View your advert", preview_base_url))
+            preview_links.append(("View your advert", preview_article_base_url))
 
         tier = str(lead.get("tier") or lead.get("package_tier") or (placements[0].get("package_tier") if placements else "") or "Advertising package").strip()
         business = str(lead.get("business") or lead.get("name") or (placements[0].get("sponsor_name") if placements else "") or "your business").strip()
@@ -1314,7 +1322,7 @@ async def send_sponsored_advert_live_email(source_lead_id: str, campaign_id: str
         {f'<p><strong>Campaign end:</strong> {_html.escape(str(ends_at))}</p>' if ends_at else ''}
         <hr>
         <h3>View your advert</h3>
-        <p>Use the link below to open an article page and jump directly to your advert card.</p>
+        <p>Use the links below to open the homepage or an article page and jump directly to your advert card.</p>
         {links_html}
         <p><strong>Please note:</strong> normal visitors see adverts in rotation, so your advert may not appear on every page load. The preview link above forces your advert to display so you can check it directly.</p>
         <p>If you need a wording, image, logo or link change, reply to this email.</p>
