@@ -49,10 +49,10 @@ export default function TopStoriesGrid({ stories = [] }) {
           <Link
             key={story.id || story.url || story.title || idx}
             to={href}
-            className="group flex w-full gap-3 overflow-hidden rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-5 min-h-[148px] hover:border-emerald-300 transition-colors"
+            className="group flex w-full gap-4 overflow-hidden rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 min-h-[156px] hover:border-emerald-300 transition-colors"
           >
             {story.image ? (
-              <div className="h-20 w-28 flex-none overflow-hidden rounded-md bg-slate-100 dark:bg-gray-800">
+              <div className="h-28 w-36 flex-none overflow-hidden rounded-md bg-slate-100 dark:bg-gray-800">
                 <img
                   src={story.image}
                   alt={title}
@@ -61,12 +61,12 @@ export default function TopStoriesGrid({ stories = [] }) {
                 />
               </div>
             ) : (
-              <div className="h-20 w-28 flex-none rounded-md bg-slate-100 dark:bg-gray-800" />
+              <div className="h-28 w-36 flex-none rounded-md bg-slate-100 dark:bg-gray-800" />
             )}
 
             <div className="min-w-0 flex-1">
 
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-snug line-clamp-3 group-hover:underline underline-offset-2">
+              <h3 className="text-[15px] font-semibold text-slate-900 dark:text-white leading-snug line-clamp-3 group-hover:underline underline-offset-2">
                 {title}
               </h3>
 

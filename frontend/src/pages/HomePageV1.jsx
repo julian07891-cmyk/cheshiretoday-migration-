@@ -1168,7 +1168,7 @@ return (
               </div>
 
               {topStories.length > 0 && (
-                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:h-full">
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
