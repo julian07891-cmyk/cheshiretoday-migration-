@@ -1152,11 +1152,11 @@ return (
                 />
               )}
 
-              <div className="mt-4 w-full">
+              <div className="mt-3 w-full">
                 <SubscribeInlineBanner />
               </div>
 
-              <div className="mt-4 w-full">
+              <div className="mt-3 w-full">
                 <HeroMonetisationStrip limit={2} compact />
               </div>
             </div>
@@ -1193,7 +1193,7 @@ return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left: Latest feed */}
           
-          <main className="lg:col-span-8 lg:-mt-4">
+          <main className="lg:col-span-8 lg:-mt-6">
 
             {/* Latest */}
             {Array.isArray(latestFeed) && latestFeed.length > 0 && (
