@@ -101,6 +101,7 @@ const AdminDashboard = ({ onBack }) => {
     source_lead_id: "",
     campaign_id: ""
   });
+  const [editingSponsoredPlacementSlug, setEditingSponsoredPlacementSlug] = useState("");
   
   // Email analytics state
   const [emailAnalytics, setEmailAnalytics] = useState(null);
@@ -295,11 +296,12 @@ const AdminDashboard = ({ onBack }) => {
       return;
     }
 
+    const isEditingPlacement = Boolean(editingSponsoredPlacementSlug);
     const placementGroups = {
       article_both: ["article_sidebar", "article_mobile"],
       homepage_both: ["homepage_sidebar", "homepage_mobile"],
     };
-    const placementsToCreate = placementGroups[placementChoice] || [placementChoice];
+    const placementsToCreate = isEditingPlacement ? [placementChoice] : (placementGroups[placementChoice] || [placementChoice]);
 
     const rotationWeight = packageTier.includes("Partner") ? 4 : packageTier.includes("Featured") ? 2 : 1;
     const priority = packageTier.includes("Partner") ? 30 : packageTier.includes("Featured") ? 20 : 10;
@@ -315,7 +317,7 @@ const AdminDashboard = ({ onBack }) => {
     const sourceLeadId = String(sponsoredPlacementForm.source_lead_id || "").trim();
     const campaignId = String(sponsoredPlacementForm.campaign_id || "").trim() || `${slugBase}-${timestamp}`;
     const payloads = placementsToCreate.map((placement, index) => ({
-      slug: `${slugBase}-${placement}-${timestamp}`,
+      slug: isEditingPlacement ? editingSponsoredPlacementSlug : `${slugBase}-${placement}-${timestamp}`,
       placement,
       campaign_id: campaignId,
       source_lead_id: sourceLeadId,
@@ -348,7 +350,8 @@ const AdminDashboard = ({ onBack }) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       }
 
-      toast({ title: payloads.length > 1 ? "Desktop and mobile sponsored placements created" : "Sponsored placement created" });
+      toast({ title: isEditingPlacement ? "Sponsored placement updated" : (payloads.length > 1 ? "Desktop and mobile sponsored placements created" : "Sponsored placement created") });
+      setEditingSponsoredPlacementSlug("");
       setSponsoredPlacementForm({
         placement: "article_both",
         package_tier: "Local Starter",
@@ -367,7 +370,50 @@ const AdminDashboard = ({ onBack }) => {
       console.error("Error saving sponsored placement:", error);
       toast({ title: "Failed to create sponsored placement", variant: "destructive" });
     }
-  }, [fetchSponsoredPlacements, getAuthHeaders, sponsoredPlacementForm]);
+  }, [editingSponsoredPlacementSlug, fetchSponsoredPlacements, getAuthHeaders, sponsoredPlacementForm]);
+
+
+  const editSponsoredPlacement = useCallback((placement) => {
+    if (!placement?.slug) return;
+
+    setEditingSponsoredPlacementSlug(placement.slug);
+    setSponsoredPlacementForm({
+      placement: placement.placement || "article_sidebar",
+      package_tier: placement.package_tier || "Local Starter",
+      sponsor_name: placement.sponsor_name || "",
+      title: placement.title || "",
+      description: placement.description || "",
+      target_url: placement.target_url || "",
+      image_url: placement.image_url || "",
+      cta_text: placement.cta_text || "Learn more",
+      active: Boolean(placement.active),
+      source_lead_id: placement.source_lead_id || "",
+      campaign_id: placement.campaign_id || ""
+    });
+
+    toast({ title: "Sponsored placement loaded for editing" });
+    setTimeout(() => {
+      const form = document.getElementById("create-sponsored-placement");
+      if (form) form.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, []);
+
+  const cancelSponsoredPlacementEdit = useCallback(() => {
+    setEditingSponsoredPlacementSlug("");
+    setSponsoredPlacementForm({
+      placement: "article_both",
+      package_tier: "Local Starter",
+      sponsor_name: "",
+      title: "",
+      description: "",
+      target_url: "",
+      image_url: "",
+      cta_text: "Learn more",
+      active: true,
+      source_lead_id: "",
+      campaign_id: ""
+    });
+  }, []);
 
   const deleteSponsoredPlacement = useCallback(async (slug) => {
     if (!slug) return;
@@ -4327,9 +4373,9 @@ const handleDeleteArticle = async (articleId) => {
                 </div>
 
                 <div id="create-sponsored-placement" className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4">
-                  <h3 className="font-bold text-gray-900 dark:text-white mb-1">Create Sponsored Placement</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white mb-1">{editingSponsoredPlacementSlug ? "Edit Sponsored Placement" : "Create Sponsored Placement"}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Create a paid advert after payment and review. New sponsored placements run for 30 days automatically. Choose article or homepage slots below, including desktop + mobile pairs.
+                    {editingSponsoredPlacementSlug ? `Editing ${editingSponsoredPlacementSlug}. Save updates this existing advert without creating a duplicate.` : "Create a paid advert after payment and review. New sponsored placements run for 30 days automatically. Choose article or homepage slots below, including desktop + mobile pairs."}
                   </p>
 
                   <form onSubmit={saveSponsoredPlacement} className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -4416,9 +4462,14 @@ const handleDeleteArticle = async (articleId) => {
                       />
                     </div>
 
-                    <div className="md:col-span-2 flex justify-end">
+                    <div className="md:col-span-2 flex flex-col sm:flex-row justify-end gap-2">
+                      {editingSponsoredPlacementSlug && (
+                        <Button type="button" variant="outline" onClick={cancelSponsoredPlacementEdit}>
+                          Cancel edit
+                        </Button>
+                      )}
                       <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white">
-                        Create sponsored placement
+                        {editingSponsoredPlacementSlug ? "Save advert changes" : "Create sponsored placement"}
                       </Button>
                     </div>
                   </form>
@@ -4507,14 +4558,22 @@ const handleDeleteArticle = async (articleId) => {
                                 {placement.ends_at && (
                                   <div>Expires: {new Date(placement.ends_at).toLocaleDateString("en-GB")}</div>
                                 )}
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="mt-1"
-                                  onClick={() => deleteSponsoredPlacement(placement.slug)}
-                                >
-                                  Delete advert
-                                </Button>
+                                <div className="flex flex-col gap-2 mt-1 w-full md:w-auto">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => editSponsoredPlacement(placement)}
+                                  >
+                                    Edit advert
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => deleteSponsoredPlacement(placement.slug)}
+                                  >
+                                    Delete advert
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </div>
