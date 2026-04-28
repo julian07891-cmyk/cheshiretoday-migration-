@@ -4451,41 +4451,75 @@ const handleDeleteArticle = async (articleId) => {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {sponsoredPlacements.map((placement) => (
-                        <div key={placement.slug || placement.id} className="rounded border border-gray-200 dark:border-gray-700 p-3">
-                          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-bold text-gray-900 dark:text-white">{placement.title}</p>
-                                <Badge variant={(!placement.active || (placement.ends_at && Date.parse(placement.ends_at) < Date.now())) ? "secondary" : "default"}>
-                                  {placement.ends_at && Date.parse(placement.ends_at) < Date.now() ? "expired" : placement.active ? "active" : "inactive"}
-                                </Badge>
-                                <Badge variant="outline">{placement.placement}</Badge>
-                                {placement.package_tier && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{placement.package_tier}</Badge>}
+                      {sponsoredPlacements.map((placement) => {
+                        const impressions = Number(placement.impression_count || 0);
+                        const clicks = Number(placement.click_count || 0);
+                        const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00";
+                        const placementLabel = (
+                          placement.placement === "homepage_sidebar" ? "Homepage desktop"
+                          : placement.placement === "homepage_mobile" ? "Homepage mobile"
+                          : placement.placement === "article_sidebar" ? "Article desktop"
+                          : placement.placement === "article_mobile" ? "Article mobile"
+                          : placement.placement
+                        );
+                        const statusVariant = (!placement.active || (placement.ends_at && Date.parse(placement.ends_at) < Date.now())) ? "secondary" : "default";
+                        const statusLabel = placement.ends_at && Date.parse(placement.ends_at) < Date.now() ? "expired" : placement.active ? "active" : "inactive";
+
+                        return (
+                          <div key={placement.slug || placement.id} className="rounded border border-gray-200 dark:border-gray-700 p-3">
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-bold text-gray-900 dark:text-white">{placement.title}</p>
+                                  <Badge variant={statusVariant}>{statusLabel}</Badge>
+                                  <Badge variant="outline">{placementLabel}</Badge>
+                                  {placement.package_tier && <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">{placement.package_tier}</Badge>}
+                                </div>
+                                <p className="mt-1 text-sm text-muted-foreground break-all">{placement.sponsor_name} · {placement.target_url}</p>
+                                {placement.description && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{placement.description}</p>}
+
+                                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                  <div className="rounded bg-muted/40 px-2 py-2">
+                                    <div className="text-muted-foreground">Impressions</div>
+                                    <div className="font-semibold text-foreground">{impressions}</div>
+                                  </div>
+                                  <div className="rounded bg-muted/40 px-2 py-2">
+                                    <div className="text-muted-foreground">Clicks</div>
+                                    <div className="font-semibold text-foreground">{clicks}</div>
+                                  </div>
+                                  <div className="rounded bg-muted/40 px-2 py-2">
+                                    <div className="text-muted-foreground">CTR</div>
+                                    <div className="font-semibold text-foreground">{ctr}%</div>
+                                  </div>
+                                  <div className="rounded bg-muted/40 px-2 py-2">
+                                    <div className="text-muted-foreground">Campaign</div>
+                                    <div className="font-semibold text-foreground truncate">{placement.campaign_id || "—"}</div>
+                                  </div>
+                                </div>
                               </div>
-                              <p className="mt-1 text-sm text-muted-foreground">{placement.sponsor_name} · {placement.target_url}</p>
-                              {placement.description && <p className="mt-2 text-sm text-gray-700 dark:text-gray-300">{placement.description}</p>}
-                            </div>
-                            <div className="flex flex-col items-start md:items-end gap-2 text-xs text-muted-foreground">
-                              <div>Impressions: {placement.impression_count || 0}</div>
-                              <div>Clicks: {placement.click_count || 0}</div>
-                              <div>Weight: {placement.rotation_weight || "auto"}</div>
-                              <div>Priority: {placement.priority || 0}</div>
-                              {placement.ends_at && (
-                                <div>Expires: {new Date(placement.ends_at).toLocaleDateString("en-GB")}</div>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="mt-1"
-                                onClick={() => deleteSponsoredPlacement(placement.slug)}
-                              >
-                                Delete advert
-                              </Button>
+
+                              <div className="flex flex-col items-start md:items-end gap-2 text-xs text-muted-foreground shrink-0">
+                                <div>Weight: {placement.rotation_weight || "auto"}</div>
+                                <div>Priority: {placement.priority || 0}</div>
+                                {placement.starts_at && (
+                                  <div>Starts: {new Date(placement.starts_at).toLocaleDateString("en-GB")}</div>
+                                )}
+                                {placement.ends_at && (
+                                  <div>Expires: {new Date(placement.ends_at).toLocaleDateString("en-GB")}</div>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  className="mt-1"
+                                  onClick={() => deleteSponsoredPlacement(placement.slug)}
+                                >
+                                  Delete advert
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
