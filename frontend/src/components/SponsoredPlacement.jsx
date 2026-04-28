@@ -67,6 +67,8 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const isHomepageSidebar = placement === "homepage_sidebar" && compact === false;
   const cardSizeClass = isHomepageSidebar ? "p-5 lg:min-h-[300px] lg:flex lg:flex-col lg:justify-center" : "p-4";
   const showHomepageFallbackExtras = !isPaidPlacement && isHomepageSidebar;
+  const isHomepagePlacement = placement === "homepage_sidebar" || placement === "homepage_mobile";
+  const adImageClass = isHomepagePlacement ? "mt-3 h-24 w-full rounded-lg object-contain bg-white p-3" : "mt-3 w-full rounded-lg object-cover";
 
   useEffect(() => {
     if (!isPaidPlacement || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
@@ -116,7 +118,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
           alt={title}
           loading="lazy"
           decoding="async"
-          className="mt-3 w-full rounded-lg object-cover"
+          className={adImageClass}
         />
       )}
 
