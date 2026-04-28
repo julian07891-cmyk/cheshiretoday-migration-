@@ -64,6 +64,9 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const sponsor = isPaidPlacement ? (ad.sponsor_name || "Sponsor") : fallbackCopy.eyebrow;
   const anchorKey = isPaidPlacement ? (ad.campaign_id || ad.slug || "advert") : "advertise";
   const anchorId = `sponsored-advert-${placement}-${anchorKey}`;
+  const isHomepageSidebar = placement === "homepage_sidebar" && compact === false;
+  const cardSizeClass = isHomepageSidebar ? "p-5 lg:min-h-[300px] lg:flex lg:flex-col lg:justify-center" : "p-4";
+  const showHomepageFallbackExtras = !isPaidPlacement && isHomepageSidebar;
 
   useEffect(() => {
     if (!isPaidPlacement || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
@@ -127,7 +130,15 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
         </p>
       )}
 
-      <span className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition">
+      {showHomepageFallbackExtras && (
+        <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
+          <li className="flex items-center gap-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-600" />Homepage visibility</li>
+          <li className="flex items-center gap-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-600" />Local Cheshire audience</li>
+          <li className="flex items-center gap-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-600" />Fast setup and approval</li>
+        </ul>
+      )}
+
+      <span className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition">
         {cta}
       </span>
     </>
@@ -141,7 +152,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
         target="_blank"
         rel="noopener noreferrer sponsored"
         onClick={handleClick}
-        className="block rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 p-4 hover:shadow-sm transition"
+        className={`block rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 ${cardSizeClass} hover:shadow-sm transition`}
       >
         {inner}
       </a>
@@ -156,7 +167,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
         handleClick();
         window.location.href = targetUrl;
       }}
-      className="w-full text-left rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 p-4 hover:shadow-sm transition"
+      className={`w-full text-left rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 ${cardSizeClass} hover:shadow-sm transition`}
     >
       {inner}
     </button>

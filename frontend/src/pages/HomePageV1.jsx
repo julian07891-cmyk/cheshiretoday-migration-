@@ -1068,7 +1068,7 @@ return (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div className="lg:col-span-8 flex flex-col">
                 <div className="w-full aspect-[16/9] md:aspect-[4/3] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
-                <div className="mt-4 h-20 max-w-[720px] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
+                <div className="mt-4 h-20 w-full rounded-xl bg-slate-200/70 dark:bg-gray-800" />
               </div>
               <aside className="lg:col-span-4">
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:h-full">
@@ -1152,17 +1152,21 @@ return (
                 />
               )}
 
-              <div className="mt-4 max-w-[720px]">
+              <div className="mt-4 w-full">
                 <SubscribeInlineBanner />
               </div>
 
-              <div className="mt-4 max-w-[720px]">
+              <div className="mt-4 w-full">
                 <HeroMonetisationStrip limit={2} compact />
               </div>
             </div>
 
-            {/* Right: Top Stories (compact) */}
+            {/* Right: Sponsored placement + Top Stories (compact) */}
             <aside className="lg:col-span-4">
+              <div className="hidden lg:block mb-4">
+                <SponsoredPlacement placement="homepage_sidebar" />
+              </div>
+
               {topStories.length > 0 && (
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:h-full">
                   <div className="flex items-center justify-between mb-3">
@@ -1170,10 +1174,6 @@ return (
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
                   </div>
                   <TopStoriesGrid stories={topStories} />
-
-                  <div className="mt-4 hidden lg:block">
-                    <SponsoredPlacement placement="homepage_sidebar" />
-                  </div>
                 </div>
               )}
 
