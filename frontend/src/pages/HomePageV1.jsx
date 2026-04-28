@@ -1110,7 +1110,7 @@ return (
             </main>
 
             <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 self-start">
-              <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24 self-start h-fit">
+              <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                     <div className="h-5 w-24 rounded bg-slate-200/70 dark:bg-gray-800 mb-4" />
@@ -1136,10 +1136,11 @@ return (
       {!loading && err && <div className="py-6 text-red-600">{err}</div>}
 
       {!loading && !err && (
-        <section className="mt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          <main className="lg:col-span-8">
+            <section className="mb-4">
             {/* Left: Hero (dominant) */}
-            <div className="lg:col-span-8 flex flex-col">
+            <div className="flex flex-col">
               {hero && (
                   <HeroStoryCard
                   image={hero.image}
@@ -1160,13 +1161,9 @@ return (
                 <HeroMonetisationStrip limit={2} compact />
               </div>
             </div>
+            </section>
 
-            {/* Right: Sponsored placement + Top Stories (compact) */}
-            <aside className="lg:col-span-4">
-              <div className="hidden lg:block mb-4">
-                <SponsoredPlacement placement="homepage_sidebar" />
-              </div>
-
+            <section className="mb-4 lg:hidden space-y-4">
               {topStories.length > 0 && (
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -1176,24 +1173,9 @@ return (
                   <TopStoriesGrid stories={topStories} />
                 </div>
               )}
+              <SponsoredPlacement placement="homepage_mobile" compact />
+            </section>
 
-              <div className="mt-4 lg:hidden">
-                <SponsoredPlacement placement="homepage_mobile" compact />
-              </div>
-
-            </aside>
-          </div>
-        </section>
-      )}
-
-
-
-      {/* --- Main content: 2-column news layout --- */}
-      {!loading && !err && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left: Latest feed */}
-          
-          <main className="lg:col-span-8 lg:-mt-6">
 
             {/* Latest */}
             {Array.isArray(latestFeed) && latestFeed.length > 0 && (
@@ -1341,13 +1323,22 @@ return (
                 </div>
 </section>
             )}
-
           </main>
 
+          <aside className="hidden lg:block lg:col-span-4 space-y-3 [overflow-anchor:none]">
+            <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24 self-start">
+              <SponsoredPlacement placement="homepage_sidebar" />
 
-          {/* Right: Sidebar widgets */}
-          <aside className="hidden lg:block lg:col-span-4 lg:-mt-4 self-start">
-            <div className="space-y-6 md:space-y-8 lg:sticky lg:top-24 self-start h-fit">
+              {topStories.length > 0 && (
+                <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
+                    <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
+                  </div>
+                  <TopStoriesGrid stories={topStories} />
+                </div>
+              )}
+
 
             {/* Business & Money */}
             {Array.isArray(businessFeed) && businessFeed.length > 0 && (
