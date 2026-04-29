@@ -488,6 +488,16 @@ const AdminDashboard = ({ onBack }) => {
     }
   }, [getAuthHeaders]);
 
+  const buildAdvertiserLeadMailto = useCallback((lead) => {
+    const business = String(lead?.business || lead?.name || "your business").trim();
+    const tier = String(lead?.tier || lead?.package_tier || "selected package").trim();
+    const price = String(lead?.package_price || "").trim();
+    const area = String(lead?.target_area || "your chosen area").trim();
+    const subject = `Cheshire Today advertising enquiry — ${business}`;
+    const body = `Hi ${lead?.name || "there"},\n\nThanks for your advertising enquiry with Cheshire Today.\n\nPackage selected: ${tier}${price ? ` — ${price}` : ""}\nTarget area: ${area}\n\nTo prepare your advert, please send over:\n- Your preferred advert headline\n- Short advert message\n- Website, booking page or Facebook page link\n- Logo or image you would like us to use\n- Any offer, launch, event or service you want to promote\n\nOnce we have the details, we will review the advert for suitability before it goes live. Paid adverts are clearly labelled and can run in the agreed sponsored slots for the 30-day campaign period.\n\nKind regards,\nCheshire Today`;
+    return `mailto:${lead?.email || ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }, []);
+
   const prepareSponsoredPlacementFromLead = useCallback((lead) => {
     const business = String(lead?.business || lead?.name || "").trim();
     const website = String(lead?.website || "").trim();
@@ -4748,7 +4758,7 @@ const handleDeleteArticle = async (articleId) => {
                         <div className="mt-3 flex flex-wrap gap-2">
                           {lead.email && (
                             <a
-                              href={`mailto:${lead.email}?subject=${encodeURIComponent("Cheshire Today advertising enquiry")}`}
+                              href={buildAdvertiserLeadMailto(lead)}
                               className="inline-flex items-center rounded-md bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 text-sm font-semibold"
                             >
                               Email advertiser
