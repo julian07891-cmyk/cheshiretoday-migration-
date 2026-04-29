@@ -278,6 +278,50 @@ const AdminDashboard = ({ onBack }) => {
     }
   }, [getAuthHeaders]);
 
+  const exportSponsoredPlacementsCsv = useCallback(() => {
+    const rows = Array.isArray(sponsoredPlacements) ? sponsoredPlacements : [];
+    if (rows.length === 0) {
+      toast({ title: "No sponsored placements to export", variant: "destructive" });
+      return;
+    }
+
+    const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, "\"\"")}"`;
+    const headers = ["Sponsor", "Title", "Placement", "Package", "Status", "Starts", "Expires", "Impressions", "Clicks", "CTR", "Target URL", "Campaign ID", "Slug"];
+    const lines = rows.map((placement) => {
+      const impressions = Number(placement.impression_count || 0);
+      const clicks = Number(placement.click_count || 0);
+      const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) + "%" : "0.00%";
+      const status = placement.ends_at && Date.parse(placement.ends_at) < Date.now() ? "expired" : placement.active ? "active" : "inactive";
+      return [
+        placement.sponsor_name,
+        placement.title,
+        placement.placement,
+        placement.package_tier,
+        status,
+        placement.starts_at ? new Date(placement.starts_at).toLocaleDateString("en-GB") : "",
+        placement.ends_at ? new Date(placement.ends_at).toLocaleDateString("en-GB") : "",
+        impressions,
+        clicks,
+        ctr,
+        placement.target_url,
+        placement.campaign_id,
+        placement.slug,
+      ].map(escapeCsv).join(",");
+    });
+
+    const csv = [headers.map(escapeCsv).join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `cheshire-today-sponsored-placements-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: "Sponsored placements CSV exported" });
+  }, [sponsoredPlacements]);
+
   const saveSponsoredPlacement = useCallback(async (event) => {
     event.preventDefault();
 
@@ -4481,15 +4525,25 @@ const handleDeleteArticle = async (articleId) => {
                       <h3 className="font-bold text-gray-900 dark:text-white">Live Sponsored Placements</h3>
                       <p className="text-sm text-muted-foreground">Paid adverts available to display in sponsored slots. Expired placements are listed here but will not show publicly.</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={fetchSponsoredPlacements}
-                      disabled={sponsoredPlacementsLoading}
-                    >
-                      {sponsoredPlacementsLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                      Refresh
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={exportSponsoredPlacementsCsv}
+                        disabled={sponsoredPlacements.length === 0}
+                      >
+                        Export CSV
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={fetchSponsoredPlacements}
+                        disabled={sponsoredPlacementsLoading}
+                      >
+                        {sponsoredPlacementsLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                        Refresh
+                      </Button>
+                    </div>
                   </div>
 
                   {sponsoredPlacementsLoading ? (
