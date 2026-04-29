@@ -142,6 +142,50 @@ const AdvertisePage = () => {
           </div>
         </div>
 
+        <div className="mt-6 md:mt-8 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 p-4 md:p-6 shadow">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Sponsored profile option</p>
+              <h2 className="mt-1 text-xl font-bold text-gray-900 dark:text-white">Sponsored Business Spotlight</h2>
+              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 max-w-3xl">
+                Give your business more context than a banner advert. A Business Spotlight can introduce who you are, what you offer, where you operate and why Cheshire readers should contact you.
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">Included with Local Partner</span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <div className="rounded-lg bg-white/70 dark:bg-gray-900/40 border border-emerald-100 dark:border-emerald-900/50 p-3">
+              <strong className="text-gray-900 dark:text-white">Best for launches</strong>
+              <p className="mt-1">Useful for new services, offers, openings, events, recruitment pushes or local awareness campaigns.</p>
+            </div>
+            <div className="rounded-lg bg-white/70 dark:bg-gray-900/40 border border-emerald-100 dark:border-emerald-900/50 p-3">
+              <strong className="text-gray-900 dark:text-white">More trust than a banner</strong>
+              <p className="mt-1">Readers get a short sponsored profile alongside your website, booking page or Facebook link.</p>
+            </div>
+            <div className="rounded-lg bg-white/70 dark:bg-gray-900/40 border border-emerald-100 dark:border-emerald-900/50 p-3">
+              <strong className="text-gray-900 dark:text-white">Clearly labelled</strong>
+              <p className="mt-1">Every spotlight is reviewed before publication and clearly marked as sponsored.</p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="mt-4 inline-flex w-full md:w-auto items-center justify-center rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-3 transition"
+            onClick={() => {
+              const tier = PRICING.find((item) => item.id === "local_partner") || PRICING[2];
+              setSelectedTier(tier);
+              setSubmittedAdvert(null);
+              setEnquiryLoading(false);
+              setEnquirySent(false);
+              setCheckoutError("");
+              setShowForm(true);
+            }}
+          >
+            Enquire about Business Spotlight
+          </button>
+        </div>
+
         <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
           {PRICING.map((tier) => (
             <div
