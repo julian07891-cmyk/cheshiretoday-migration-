@@ -116,6 +116,38 @@ const AdvertisePage = () => {
         </div>
 
         <div className="mt-6 md:mt-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 md:p-6 shadow">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Advertiser package</p>
+              <h2 className="mt-1 text-xl font-bold text-gray-900 dark:text-white">What your campaign includes</h2>
+              <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 max-w-3xl">
+                Cheshire Today advertising is built for local businesses that want simple, visible promotion without intrusive popups or confusing ad networks.
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center justify-center rounded-full bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">From £49/month</span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <div className="rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
+              <strong className="text-gray-900 dark:text-white">Clear local visibility</strong>
+              <p className="mt-1">Sponsored placements across available homepage and article slots.</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
+              <strong className="text-gray-900 dark:text-white">Direct traffic</strong>
+              <p className="mt-1">Link readers to your website, booking page, offer page or Facebook page.</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
+              <strong className="text-gray-900 dark:text-white">Performance reporting</strong>
+              <p className="mt-1">Campaign views, clicks and CTR can be reviewed from the advertiser dashboard.</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-3">
+              <strong className="text-gray-900 dark:text-white">Simple setup</strong>
+              <p className="mt-1">Send a headline, message, link and logo or image. We review before publishing.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 md:mt-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 md:p-6 shadow">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Where your advert appears
           </h2>
