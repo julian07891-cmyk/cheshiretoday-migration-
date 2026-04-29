@@ -11,7 +11,7 @@ const PRICING = [
     badge: "Launch price for small local businesses",
     bullets: [
       "30-day standard sponsored placement",
-      "Can appear in available article advertising slots",
+      "Homepage or article sponsored slot, depending on availability",
       "Link to your website, booking page or Facebook page",
     ],
     subject: "Advertising enquiry — Local Starter package",
@@ -23,8 +23,8 @@ const PRICING = [
     badge: "Most popular launch package",
     bullets: [
       "30-day higher-priority sponsored rotation",
-      "Can appear in mobile and desktop article advertising slots",
-      "Better visibility than Starter when multiple advertisers are active",
+      "Can appear in desktop and mobile sponsored placements",
+      "Stronger rotation and better visibility when multiple advertisers are active",
     ],
     subject: "Advertising enquiry — Local Featured package",
   },
@@ -35,7 +35,7 @@ const PRICING = [
     badge: "Best for regular local exposure",
     bullets: [
       "30-day priority sponsored rotation",
-      "Article placement plus homepage/category visibility where suitable",
+      "Homepage, article and selected category visibility where suitable",
       "One sponsored business spotlight per month",
     ],
     subject: "Advertising enquiry — Local Partner package",
@@ -44,16 +44,16 @@ const PRICING = [
 
 const AD_SLOTS = [
   {
-    title: "Desktop article sidebar",
-    description: "Your advert can appear in the right-hand advert slot beside article content on desktop and larger screens.",
+    title: "Homepage desktop sponsor slot",
+    description: "Your advert can appear in a prominent right-hand homepage sponsor slot on desktop and larger screens.",
   },
   {
-    title: "Mobile in-article advert card",
-    description: "Your advert can appear inside article pages as mobile readers scroll through stories.",
+    title: "Mobile homepage sponsor card",
+    description: "Your advert can appear as a clearly labelled mobile sponsor card for readers browsing the homepage.",
   },
   {
     title: "Partner visibility",
-    description: "Local Partner campaigns may also receive selected homepage or category visibility where suitable and agreed.",
+    description: "Local Partner campaigns may also receive selected article, category or business spotlight visibility where suitable and agreed.",
   },
 ];
 
@@ -100,7 +100,7 @@ const AdvertisePage = () => {
           Advertise on Cheshire Today
         </h1>
         <p className="mt-3 text-gray-700 dark:text-gray-300 max-w-3xl">
-          Launch pricing for Cheshire businesses: reach local readers with sponsored placements from £49/month. Choose a monthly package below and we’ll recommend the best fit for your area and goals.
+          Launch pricing for Cheshire businesses: reach local readers across the homepage and article pages with sponsored placements from £49/month. Choose a monthly package below and we’ll recommend the best fit for your area and goals.
         </p>
 
         <div className="mt-6 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-5 max-w-4xl">
@@ -109,7 +109,7 @@ const AdvertisePage = () => {
           </h2>
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
             <p><strong>30-day packages:</strong> each package runs monthly and can be renewed, changed, paused or cancelled.</p>
-            <p><strong>Where adverts appear:</strong> your advert can appear inside article pages, including the mobile in-article advert card and the desktop article sidebar advert slot.</p>
+            <p><strong>Where adverts appear:</strong> your advert can appear in available homepage and article advertising slots, including desktop and mobile placements.</p>
             <p><strong>Automatic rotation:</strong> when multiple advertisers are active, adverts rotate through available slots. Higher packages receive stronger rotation priority.</p>
             <p><strong>Manual review:</strong> all adverts are reviewed by Cheshire Today before going live to protect readers and advertisers.</p>
           </div>
@@ -269,7 +269,7 @@ const AdvertisePage = () => {
                     </div>
 
                     <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3">
-                      <p><strong>Where your advert can appear:</strong> desktop article sidebar and mobile in-article advert card. Local Partner campaigns may also receive selected homepage/category visibility where suitable.</p>
+                      <p><strong>Where your advert can appear:</strong> available homepage and article sponsored slots, including desktop and mobile placements. Local Partner campaigns may also receive selected category or business spotlight visibility where suitable.</p>
                       <p className="mt-2"><strong>Important:</strong> payment does not make the advert live automatically. Cheshire Today reviews each advert before publication.</p>
                     </div>
 
