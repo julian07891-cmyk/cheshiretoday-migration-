@@ -4433,7 +4433,7 @@ const handleDeleteArticle = async (articleId) => {
                 <div className="mb-4 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-4 text-sm text-gray-700 dark:text-gray-300">
                   <p className="font-bold text-gray-900 dark:text-white">After a lead converts</p>
                   <p className="mt-1">
-                    Confirm payment, collect the advert title/message/link/image, review it for suitability, then create a sponsored placement. Active placements appear in the mobile in-article advert card and desktop article sidebar slot.
+                    Confirm payment, collect the advert title/message/link/image, review it for suitability, then create a sponsored placement. Active placements can appear in available homepage and article sponsored slots, including desktop and mobile placements.
                   </p>
                 </div>
 
