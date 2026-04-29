@@ -494,9 +494,10 @@ const AdminDashboard = ({ onBack }) => {
     const tier = String(lead?.tier || lead?.package_tier || "Local Starter").trim();
     const message = String(lead?.message || "").trim();
     const safeWebsite = website && /^https?:\/\//i.test(website) ? website : website ? `https://${website}` : "";
+    const isPartnerLead = /partner/i.test(tier);
 
     setSponsoredPlacementForm({
-      placement: "article_both",
+      placement: isPartnerLead ? "homepage_both" : "article_both",
       package_tier: tier || "Local Starter",
       sponsor_name: business,
       title: business ? `${business} — sponsored local business` : "",
@@ -4666,6 +4667,13 @@ const handleDeleteArticle = async (articleId) => {
                   )}
                 </div>
 
+                <div className="mb-4 rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-sm text-gray-700 dark:text-gray-300">
+                  <p className="font-bold text-gray-900 dark:text-white">Business Spotlight workflow</p>
+                  <p className="mt-1">
+                    Local Partner enquiries are treated as Business Spotlight leads. When a paid Local Partner lead is ready, “Create advert from lead” pre-fills the sponsored placement form with homepage desktop + mobile slots.
+                  </p>
+                </div>
+
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="text-sm text-muted-foreground">
                     {advertiserLeads.length} lead{advertiserLeads.length === 1 ? "" : "s"} loaded
@@ -4705,6 +4713,11 @@ const handleDeleteArticle = async (articleId) => {
                               <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
                                 {lead.tier || "Package not selected"}
                               </Badge>
+                              {/partner/i.test(String(lead.tier || lead.package_tier || "")) && (
+                                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                                  Business Spotlight
+                                </Badge>
+                              )}
                               <Badge variant="outline">
                                 {lead.status === "payment_pending" ? "checkout started, not paid" : lead.status === "paid_pending_review" ? "paid — needs review" : lead.status || "new"}
                               </Badge>
