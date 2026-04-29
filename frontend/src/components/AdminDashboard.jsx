@@ -278,6 +278,16 @@ const AdminDashboard = ({ onBack }) => {
     }
   }, [getAuthHeaders]);
 
+  const sponsoredPlacementReport = React.useMemo(() => {
+    const rows = Array.isArray(sponsoredPlacements) ? sponsoredPlacements : [];
+    const now = Date.now();
+    const active = rows.filter((placement) => placement.active && (!placement.ends_at || Date.parse(placement.ends_at) >= now)).length;
+    const impressions = rows.reduce((sum, placement) => sum + Number(placement.impression_count || 0), 0);
+    const clicks = rows.reduce((sum, placement) => sum + Number(placement.click_count || 0), 0);
+    const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : "0.00";
+    return { active, impressions, clicks, ctr };
+  }, [sponsoredPlacements]);
+
   const exportSponsoredPlacementsCsv = useCallback(() => {
     const rows = Array.isArray(sponsoredPlacements) ? sponsoredPlacements : [];
     if (rows.length === 0) {
@@ -4543,6 +4553,25 @@ const handleDeleteArticle = async (articleId) => {
                         {sponsoredPlacementsLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                         Refresh
                       </Button>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <div className="rounded bg-muted/40 px-3 py-3">
+                      <div className="text-muted-foreground">Active campaigns</div>
+                      <div className="text-lg font-bold text-foreground">{sponsoredPlacementReport.active}</div>
+                    </div>
+                    <div className="rounded bg-muted/40 px-3 py-3">
+                      <div className="text-muted-foreground">Impressions</div>
+                      <div className="text-lg font-bold text-foreground">{sponsoredPlacementReport.impressions}</div>
+                    </div>
+                    <div className="rounded bg-muted/40 px-3 py-3">
+                      <div className="text-muted-foreground">Clicks</div>
+                      <div className="text-lg font-bold text-foreground">{sponsoredPlacementReport.clicks}</div>
+                    </div>
+                    <div className="rounded bg-muted/40 px-3 py-3">
+                      <div className="text-muted-foreground">Average CTR</div>
+                      <div className="text-lg font-bold text-foreground">{sponsoredPlacementReport.ctr}%</div>
                     </div>
                   </div>
 
