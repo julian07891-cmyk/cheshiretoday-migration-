@@ -94,16 +94,16 @@ const AdvertisePage = () => {
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="container mx-auto px-4 py-10 max-w-5xl">
+      <div className="container mx-auto px-4 py-6 md:py-10 max-w-5xl">
         <button onClick={() => navigate("/")} className="text-sm text-emerald-600 hover:underline mb-4">← Back to Home</button>
-        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
+        <h1 className="text-2xl md:text-4xl font-extrabold text-gray-900 dark:text-white">
           Advertise on Cheshire Today
         </h1>
         <p className="mt-3 text-gray-700 dark:text-gray-300 max-w-3xl">
           Launch pricing for Cheshire businesses: reach local readers across the homepage and article pages with sponsored placements from £49/month. Choose a monthly package below and we’ll recommend the best fit for your area and goals.
         </p>
 
-        <div className="mt-6 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-5 max-w-4xl">
+        <div className="mt-5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-4 md:p-5 max-w-4xl">
           <h2 className="text-lg font-extrabold text-gray-900 dark:text-white">
             How advertising works
           </h2>
@@ -115,7 +115,7 @@ const AdvertisePage = () => {
           </div>
         </div>
 
-        <div className="mt-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow">
+        <div className="mt-6 md:mt-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 md:p-6 shadow">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             Where your advert appears
           </h2>
@@ -142,11 +142,11 @@ const AdvertisePage = () => {
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
           {PRICING.map((tier) => (
             <div
               key={tier.name}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow flex flex-col"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 md:p-6 shadow flex flex-col"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -367,7 +367,7 @@ const AdvertisePage = () => {
           </div>
         )}
 
-        <div className="mt-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow max-w-3xl">
+        <div className="mt-8 md:mt-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 md:p-6 shadow max-w-3xl">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">
             Not sure which package fits?
           </h3>
