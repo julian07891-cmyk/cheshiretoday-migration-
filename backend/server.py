@@ -1464,7 +1464,7 @@ async def update_admin_advertiser_lead_status(lead_id: str, request: Request, au
         status = str(body.get("status") or "").strip().lower()
         notes = str(body.get("notes") or "").strip()
 
-        allowed = {"new", "contacted", "converted", "declined", "archived"}
+        allowed = {"new", "contacted", "converted", "declined", "archived", "advert_live", "renewal_due", "expired"}
         if status not in allowed:
             raise HTTPException(status_code=400, detail="Invalid status")
 

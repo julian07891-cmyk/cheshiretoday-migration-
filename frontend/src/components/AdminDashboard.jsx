@@ -4729,7 +4729,7 @@ const handleDeleteArticle = async (articleId) => {
                                 </Badge>
                               )}
                               <Badge variant="outline">
-                                {lead.status === "payment_pending" ? "checkout started, not paid" : lead.status === "paid_pending_review" ? "paid — needs review" : lead.status || "new"}
+                                {lead.status === "payment_pending" ? "checkout started, not paid" : lead.status === "paid_pending_review" ? "paid — needs review" : lead.status === "advert_live" ? "advert live" : lead.status === "renewal_due" ? "renewal due" : lead.status === "expired" ? "expired" : lead.status || "new"}
                               </Badge>
                             </div>
                             <p className="mt-1 text-sm text-muted-foreground">
@@ -4794,6 +4794,15 @@ const handleDeleteArticle = async (articleId) => {
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "converted")}>
                             Mark converted
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "advert_live")}>
+                            Mark advert live
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "renewal_due")}>
+                            Renewal due
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "expired")}>
+                            Mark expired
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => updateAdvertiserLeadStatus(lead.id, "declined")}>
                             Decline
