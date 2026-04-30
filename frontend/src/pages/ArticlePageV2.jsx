@@ -258,6 +258,9 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-online-will-writing-services-uk",
     "best-accounting-software-uk",
     "best-business-bank-accounts-uk",
+    "best-small-business-insurance-uk",
+    "best-payroll-software-uk",
+    "best-tax-software-uk",
     "best-email-marketing-tools-small-business-uk",
     "best-domain-registrars-small-business-uk",
     "best-web-hosting-small-business-uk",
@@ -305,6 +308,18 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-accounting-software-uk");
     push("best-email-marketing-tools-small-business-uk");
     push("best-domain-registrars-small-business-uk");
+  } else if (context === "business-insurance") {
+    push("best-small-business-insurance-uk");
+    push("best-business-bank-accounts-uk");
+    push("best-accounting-software-uk");
+  } else if (context === "payroll") {
+    push("best-payroll-software-uk");
+    push("best-accounting-software-uk");
+    push("best-tax-software-uk");
+  } else if (context === "tax-software") {
+    push("best-tax-software-uk");
+    push("best-accounting-software-uk");
+    push("council-tax-bands-cheshire");
   } else if (context === "business-banking") {
     push("best-business-bank-accounts-uk");
     push("best-accounting-software-uk");
@@ -815,6 +830,9 @@ export default function ArticlePageV2({ categories }) {
     // Tax first (so “council tax” and “stamp duty” don't fall into generic property)
     if (/\b(hmrc|tax|vat|self assessment|national insurance|ni contributions|council tax|stamp duty)\b/.test(text)) return "tax";
 
+    if (/\b(business insurance|public liability|employers liability|employer liability|professional indemnity|insurance policy|insurance cover)\b/.test(text)) return "business-insurance";
+    if (/\b(payroll software|paye|auto-enrolment|auto enrolment|payslip|payslips|employee payroll)\b/.test(text)) return "payroll";
+    if (/\b(tax software|self assessment software|making tax digital|mtd|vat software|tax return software)\b/.test(text)) return "tax-software";
     if (/\b(business bank|business account|merchant account|payment gateway|worldpay)\b/.test(text)) return "business-banking";
     if (/\b(accounting software|bookkeeping|xero|quickbooks|freeagent)\b/.test(text)) return "accounting";
     if (/\b(virtual office|business address|registered office|mail handling|mail forwarding)\b/.test(text)) return "virtual-office";

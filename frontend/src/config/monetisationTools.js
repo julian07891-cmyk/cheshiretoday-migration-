@@ -21,6 +21,24 @@ export const monetisationTools = {
     { badge: "Affiliate", title: "Best domain registrars", desc: "Get the domain layer set up first", href: "/guides/best-domain-registrars-small-business-uk" },
   ],
 
+  business_insurance: [
+    { badge: "Guide", title: "Best small business insurance", desc: "Public liability, employers’ liability and professional cover", href: "/guides/best-small-business-insurance-uk" },
+    { badge: "Guide", title: "Best business bank accounts", desc: "Fees, features and startup-friendly accounts", href: "/guides/best-business-bank-accounts-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
+  ],
+
+  payroll: [
+    { badge: "Guide", title: "Best payroll software", desc: "PAYE, pensions and small business payroll", href: "/guides/best-payroll-software-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
+    { badge: "Guide", title: "Best tax software", desc: "Self assessment, VAT and small business tax returns", href: "/guides/best-tax-software-uk" },
+  ],
+
+  tax_software: [
+    { badge: "Guide", title: "Best tax software", desc: "Self assessment, VAT and small business tax returns", href: "/guides/best-tax-software-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
+    { badge: "Guide", title: "Council tax guide", desc: "Bands, bills, and local reference", href: "/guides/council-tax-bands-cheshire" },
+  ],
+
   business_banking: [
     { badge: "Guide", title: "Best business bank accounts", desc: "Fees, features and startup-friendly accounts", href: "/guides/best-business-bank-accounts-uk" },
     { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
