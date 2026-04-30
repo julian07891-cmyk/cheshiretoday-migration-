@@ -4755,6 +4755,12 @@ const handleDeleteArticle = async (articleId) => {
                           </p>
                         )}
 
+                        {lead.status === "payment_pending" && (
+                          <div className="mt-3 rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-200">
+                            <strong>Checkout started but not paid.</strong> Follow up if this is a real advertiser, or archive the lead if it was a test or abandoned checkout.
+                          </div>
+                        )}
+
                         <div className="mt-3 flex flex-wrap gap-2">
                           {lead.email && (
                             <a
