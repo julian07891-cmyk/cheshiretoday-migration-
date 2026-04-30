@@ -70,13 +70,24 @@ export const monetisationTools = {
   ],
 
   // Compatibility keys for older components still expecting these names
+  mortgages: [
+    { badge: "Guide", title: "Best mortgage rates", desc: "Fixed, tracker and remortgage options", href: "/guides/best-mortgage-rates-uk" },
+  ],
+
+  savings: [
+    { badge: "Guide", title: "Best savings accounts", desc: "Easy access, fixed-rate and ISA options", href: "/guides/best-savings-accounts-uk" },
+    { badge: "Guide", title: "Best ISA platforms", desc: "Stocks & shares, cash and lifetime ISA options", href: "/guides/best-isa-platforms-uk" },
+  ],
+
   credit: [
+    { badge: "Guide", title: "Best credit cards", desc: "0% purchase, balance transfer and rewards options", href: "/guides/best-credit-cards-uk" },
     { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
   ],
 
   energy: [
+    { badge: "Guide", title: "Cheap energy tariffs", desc: "Gas and electricity switching checks", href: "/guides/cheap-energy-tariffs-uk" },
+    { badge: "Guide", title: "Best broadband deals", desc: "Speed, price and contract checks", href: "/guides/best-broadband-deals-uk" },
     { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + automation", href: "/guides/best-email-marketing-tools-small-business-uk" },
-    { badge: "Affiliate", title: "Best domain registrars", desc: "123 Reg + domain setup", href: "/guides/best-domain-registrars-small-business-uk" },
   ],
 
   property: [

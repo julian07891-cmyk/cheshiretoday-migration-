@@ -271,6 +271,12 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-iso-training-certification-courses-uk-businesses",
     "what-iso-certification-means-small-business-uk",
     "best-explainer-video-software-uk",
+    "best-mortgage-rates-uk",
+    "best-savings-accounts-uk",
+    "best-credit-cards-uk",
+    "cheap-energy-tariffs-uk",
+    "best-broadband-deals-uk",
+    "best-isa-platforms-uk",
   ]);
 
   const push = (slug) => {
@@ -282,7 +288,17 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     want.push(key);
   };
 
-  if (context === "tax" || context === "property") {
+  if (context === "mortgages") {
+    push("best-mortgage-rates-uk");
+  } else if (context === "savings") {
+    push("best-savings-accounts-uk");
+    push("best-isa-platforms-uk");
+  } else if (context === "credit") {
+    push("best-credit-cards-uk");
+  } else if (context === "energy") {
+    push("cheap-energy-tariffs-uk");
+    push("best-broadband-deals-uk");
+  } else if (context === "tax" || context === "property") {
     push("council-tax-bands-cheshire");
   } else if (context === "accounting") {
     push("best-accounting-software-uk");
