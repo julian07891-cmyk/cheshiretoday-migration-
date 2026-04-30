@@ -9965,6 +9965,34 @@ async def generate_sitemap():
             xml_content += '    <priority>0.8</priority>\n'
             xml_content += '  </url>\n'
         
+        # Add published authority guide pages
+        authority_pages = await db.authority_pages.find(
+            {"status": {"$in": ["published", "live"]}},
+            {"_id": 0, "slug": 1, "updatedAt": 1}
+        ).sort("updatedAt", -1).limit(250).to_list(250)
+
+        for page in authority_pages:
+            guide_slug = str(page.get("slug") or "").strip()
+            if not guide_slug:
+                continue
+
+            updated_at = page.get("updatedAt")
+            guide_lastmod = datetime.utcnow().strftime("%Y-%m-%d")
+            if isinstance(updated_at, str):
+                try:
+                    guide_lastmod = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).strftime("%Y-%m-%d")
+                except Exception:
+                    guide_lastmod = datetime.utcnow().strftime("%Y-%m-%d")
+            elif hasattr(updated_at, "strftime"):
+                guide_lastmod = updated_at.strftime("%Y-%m-%d")
+
+            xml_content += '  <url>\n'
+            xml_content += f'    <loc>{saxutils.escape(base_url)}/guides/{saxutils.escape(guide_slug)}</loc>\n'
+            xml_content += f'    <lastmod>{guide_lastmod}</lastmod>\n'
+            xml_content += '    <changefreq>weekly</changefreq>\n'
+            xml_content += '    <priority>0.7</priority>\n'
+            xml_content += '  </url>\n'
+
         # Add all articles with images
         for article in articles:
             article_id = str(article.get("id") or article["_id"])
