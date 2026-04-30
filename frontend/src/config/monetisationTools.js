@@ -119,6 +119,29 @@ export const monetisationTools = {
     { badge: "Affiliate", title: "Best self-storage services", desc: "Useful for moving and decluttering", href: "/guides/best-self-storage-services-uk-home-business" },
   ],
 
+  ai_tools: [
+    { badge: "Guide", title: "Best AI tools", desc: "ChatGPT, Claude, Gemini and creative AI tools", href: "/guides/best-ai-tools-uk" },
+    { badge: "Guide", title: "Best AI productivity tools", desc: "AI tools for work, notes, writing and content", href: "/guides/best-ai-productivity-tools-uk" },
+    { badge: "Guide", title: "Best AI writing tools", desc: "AI writing assistants for business and creators", href: "/guides/best-ai-writing-tools-uk" },
+    { badge: "Affiliate", title: "Best explainer video software", desc: "Whiteboard animation + demo video tools", href: "/guides/best-explainer-video-software-uk" },
+  ],
+
+  business_credit: [
+    { badge: "Guide", title: "Best business credit cards", desc: "Cashback, fees and eligibility checks", href: "/guides/best-business-credit-cards-uk" },
+    { badge: "Guide", title: "Best business bank accounts", desc: "Fees, features and startup-friendly accounts", href: "/guides/best-business-bank-accounts-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
+  ],
+
+  home_buying: [
+    { badge: "Guide", title: "Cost of buying a home in Cheshire", desc: "Upfront and monthly buying costs", href: "/guides/cost-of-buying-home-cheshire-2026" },
+    { badge: "Guide", title: "Best mortgage rates", desc: "Fixed, tracker and remortgage options", href: "/guides/best-mortgage-rates-uk" },
+    { badge: "Guide", title: "Council tax guide", desc: "Bands, bills, and local reference", href: "/guides/council-tax-bands-cheshire" },
+  ],
+
+  oral_care: [
+    { badge: "Affiliate", title: "Best oral care products", desc: "Electric toothbrushes and dental-care essentials", href: "/guides/best-electric-toothbrushes-oral-care-uk" },
+  ],
+
   ai: [
     { badge: "Affiliate", title: "Best explainer video software", desc: "Whiteboard animation + demo video tools", href: "/guides/best-explainer-video-software-uk" },
     { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + automation", href: "/guides/best-email-marketing-tools-small-business-uk" },

@@ -261,6 +261,12 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-small-business-insurance-uk",
     "best-payroll-software-uk",
     "best-tax-software-uk",
+    "best-ai-tools-uk",
+    "best-ai-productivity-tools-uk",
+    "best-ai-writing-tools-uk",
+    "best-business-credit-cards-uk",
+    "cost-of-buying-home-cheshire-2026",
+    "best-electric-toothbrushes-oral-care-uk",
     "best-email-marketing-tools-small-business-uk",
     "best-domain-registrars-small-business-uk",
     "best-web-hosting-small-business-uk",
@@ -299,10 +305,12 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-isa-platforms-uk");
   } else if (context === "credit") {
     push("best-credit-cards-uk");
+    push("best-business-credit-cards-uk");
   } else if (context === "energy") {
     push("cheap-energy-tariffs-uk");
     push("best-broadband-deals-uk");
   } else if (context === "tax" || context === "property") {
+    push("cost-of-buying-home-cheshire-2026");
     push("council-tax-bands-cheshire");
   } else if (context === "accounting") {
     push("best-accounting-software-uk");
@@ -365,9 +373,10 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("what-iso-certification-means-small-business-uk");
     push("best-accounting-software-uk");
   } else if (context === "ai") {
+    push("best-ai-tools-uk");
+    push("best-ai-productivity-tools-uk");
+    push("best-ai-writing-tools-uk");
     push("best-explainer-video-software-uk");
-    push("best-email-marketing-tools-small-business-uk");
-    push("best-domain-registrars-small-business-uk");
   } else if (context === "email-marketing") {
     push("best-email-marketing-tools-small-business-uk");
     push("best-website-builders-small-business-uk");
