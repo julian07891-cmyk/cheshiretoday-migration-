@@ -21,6 +21,12 @@ export const monetisationTools = {
     { badge: "Affiliate", title: "Best domain registrars", desc: "Get the domain layer set up first", href: "/guides/best-domain-registrars-small-business-uk" },
   ],
 
+  business_banking: [
+    { badge: "Guide", title: "Best business bank accounts", desc: "Fees, features and startup-friendly accounts", href: "/guides/best-business-bank-accounts-uk" },
+    { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
+    { badge: "Affiliate", title: "Best company formation services", desc: "Formation packages + registered office options", href: "/guides/best-company-formation-services-uk" },
+  ],
+
   accounting: [
     { badge: "Affiliate", title: "Best accounting software", desc: "QuickBooks + UK accounting options", href: "/guides/best-accounting-software-uk" },
     { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp for customer retention", href: "/guides/best-email-marketing-tools-small-business-uk" },

@@ -257,6 +257,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "council-tax-bands-cheshire",
     "best-online-will-writing-services-uk",
     "best-accounting-software-uk",
+    "best-business-bank-accounts-uk",
     "best-email-marketing-tools-small-business-uk",
     "best-domain-registrars-small-business-uk",
     "best-web-hosting-small-business-uk",
@@ -305,6 +306,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-email-marketing-tools-small-business-uk");
     push("best-domain-registrars-small-business-uk");
   } else if (context === "business-banking") {
+    push("best-business-bank-accounts-uk");
     push("best-accounting-software-uk");
     push("best-email-marketing-tools-small-business-uk");
     push("best-domain-registrars-small-business-uk");
