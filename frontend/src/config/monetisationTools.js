@@ -54,6 +54,17 @@ export const monetisationTools = {
     { badge: "Affiliate", title: "Choose a shipping solution", desc: "Operational setup guide", href: "/guides/how-to-choose-shipping-solution-online-business-uk" },
   ],
 
+  moving: [
+    { badge: "Affiliate", title: "Best removal van services", desc: "AnyVan + moving support", href: "/guides/best-removal-van-services-uk" },
+    { badge: "Affiliate", title: "Best self-storage services", desc: "Storage during a move", href: "/guides/best-self-storage-services-uk-home-business" },
+    { badge: "Affiliate", title: "Best mattress deals", desc: "Emma Sleep + home setup", href: "/guides/best-mattress-deals-uk" },
+  ],
+
+  wills: [
+    { badge: "Affiliate", title: "Best online will writing services", desc: "Make a Will Online + estate planning", href: "/guides/best-online-will-writing-services-uk" },
+    { badge: "Affiliate", title: "Best self-storage services", desc: "Practical support for family property and belongings", href: "/guides/best-self-storage-services-uk-home-business" },
+  ],
+
   local_utility: [
     { badge: "Guide", title: "Council tax guide", desc: "Bands, bills, and local reference", href: "/guides/council-tax-bands-cheshire" },
   ],
