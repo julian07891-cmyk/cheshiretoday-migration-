@@ -1,0 +1,48 @@
+{
+  "slug": "best-tax-software-uk",
+  "title": "Best tax software in the UK (2026): self assessment, VAT and small business tax returns",
+  "category": "Tax",
+  "monetisation": "none",
+  "status": "published",
+  "sections": [
+    {
+      "type": "intro",
+      "content": "Tax software can help sole traders, landlords, freelancers and small businesses prepare records, manage VAT, track expenses and submit tax information. This guide explains what UK users should compare before choosing tax software."
+    },
+    {
+      "type": "section",
+      "title": "1. Who tax software is useful for",
+      "content": "Tax software can be useful for self-employed workers, landlords, directors, freelancers and small companies. It can help organise income, expenses, receipts and tax deadlines."
+    },
+    {
+      "type": "section",
+      "title": "2. Self Assessment support",
+      "content": "If you file a Self Assessment tax return, compare whether the software supports the income types you need, such as self-employment, rental income, dividends, interest, pensions or employment income."
+    },
+    {
+      "type": "section",
+      "title": "3. VAT and Making Tax Digital",
+      "content": "VAT-registered businesses should check whether software supports VAT records and Making Tax Digital submissions. Businesses should also check whether the software fits their accounting method and accountant workflow."
+    },
+    {
+      "type": "section",
+      "title": "4. Expense tracking and receipts",
+      "content": "Good tax software should make it easy to track business expenses, upload receipts, categorise transactions and keep evidence organised in case records are needed later."
+    },
+    {
+      "type": "section",
+      "title": "5. What to compare before choosing",
+      "content": "Compare price, HMRC compatibility, accountant access, bank feeds, receipt capture, VAT support, landlord support, payroll links, customer support and whether the software is suitable for your level of tax complexity."
+    },
+    {
+      "type": "faq",
+      "title": "Can tax software submit directly to HMRC?",
+      "content": "Some tax software supports direct submissions, while other tools focus on record keeping. Always check the specific HMRC submission features before choosing."
+    },
+    {
+      "type": "faq",
+      "title": "Do I still need an accountant if I use tax software?",
+      "content": "Tax software can reduce admin, but some people still use an accountant for advice, complex returns, tax planning or checking figures before submission."
+    }
+  ]
+}
