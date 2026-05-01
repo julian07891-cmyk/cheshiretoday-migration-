@@ -218,6 +218,29 @@ const AdvertisePage = () => {
           </button>
         </div>
 
+        <div className="mt-6 md:mt-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 md:p-6 shadow">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Which package should I choose?
+          </h2>
+          <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 max-w-3xl">
+            Choose based on how much local visibility you want and whether you need a simple advert or a stronger sponsored profile.
+          </p>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-700 dark:text-gray-300">
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3">
+              <strong className="text-gray-900 dark:text-white">Local Starter</strong>
+              <p className="mt-1">Best for testing local visibility, promoting a simple offer, or sending readers to a website or Facebook page.</p>
+            </div>
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/20 p-3">
+              <strong className="text-gray-900 dark:text-white">Local Featured</strong>
+              <p className="mt-1">Best for businesses that want stronger rotation and better visibility across desktop and mobile placements.</p>
+            </div>
+            <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/20 p-3">
+              <strong className="text-gray-900 dark:text-white">Local Partner</strong>
+              <p className="mt-1">Best for regular local exposure, campaigns with a story, and Business Spotlight-style promotion.</p>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
           {PRICING.map((tier) => (
             <div
