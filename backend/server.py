@@ -12355,17 +12355,21 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         subscriber_emails = unique_emails[:daily_send_cap]
         logger.info(f"Found {len(subscriber_emails)} valid Daily Brief subscribers from {len(unique_emails)} eligible unique subscribers")
         
-        # Get latest articles (published in last 24 hours for variety)
-        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
-        
-        # Use aggregation to get unique articles by title
+        # Get latest articles from the last 24 hours, then choose quality-first.
+        # This prevents weak newest stories from crowding out better money/business/local-impact articles.
+        cutoff_time = datetime.utcnow() - timedelta(hours=24)
+        cutoff_time_iso = cutoff_time.isoformat()
+
         pipeline = [
-            {"$match": {"publishedDate": {"$gte": cutoff_time.isoformat()}}},
+            {"$match": {"$or": [
+                {"publishedDate": {"$gte": cutoff_time}},
+                {"publishedDate": {"$gte": cutoff_time_iso}}
+            ]}},
             {"$sort": {"publishedDate": -1}},
             {"$group": {
-                "_id": "$title",  # Group by title to remove duplicates
-                "mongo_id": {"$first": "$_id"},  # Keep MongoDB _id
-                "custom_id": {"$first": "$id"},  # Keep custom id if exists
+                "_id": "$title",
+                "mongo_id": {"$first": "$_id"},
+                "custom_id": {"$first": "$id"},
                 "title": {"$first": "$title"},
                 "content": {"$first": "$content"},
                 "category": {"$first": "$category"},
@@ -12375,25 +12379,15 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 "source": {"$first": "$source"}
             }},
             {"$sort": {"publishedDate": -1}},
-            {"$limit": 10}
+            {"$limit": 80}
         ]
-        
-        recent_articles = await db.articles.aggregate(pipeline).to_list(10)
-        
-        # Convert IDs to string format for email links
-        # IMPORTANT: Use mongo_id (ObjectId hex) as the primary ID since that's what the API expects
-        for article in recent_articles:
-            if article.get('mongo_id'):
-                article['id'] = str(article['mongo_id'])
-            elif article.get('custom_id'):
-                article['id'] = str(article['custom_id'])
-            article.pop('mongo_id', None)
-            article.pop('custom_id', None)
-        
-        # If recent coverage is too thin, top up from latest unique articles regardless of time.
-        if len(recent_articles) < 5:
-            logger.info(f"Only {len(recent_articles)} recent articles found, topping up from latest unique articles")
 
+        recent_articles = await db.articles.aggregate(pipeline).to_list(80)
+
+        # If the 24h query returns nothing, fall back to latest unique articles so the digest does not fail.
+        # This is a safety fallback only, not the default newsletter pool.
+        if not recent_articles:
+            logger.warning("No 24h articles found for Daily Brief; falling back to latest unique articles")
             fallback_pipeline = [
                 {"$sort": {"publishedDate": -1}},
                 {"$group": {
@@ -12411,147 +12405,216 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 {"$sort": {"publishedDate": -1}},
                 {"$limit": 20}
             ]
-            fallback_articles = await db.articles.aggregate(fallback_pipeline).to_list(20)
+            recent_articles = await db.articles.aggregate(fallback_pipeline).to_list(20)
 
-            # Convert IDs for fallback articles
-            for article in fallback_articles:
-                if article.get('mongo_id'):
-                    article['id'] = str(article['mongo_id'])
-                elif article.get('custom_id'):
-                    article['id'] = str(article['custom_id'])
-                article.pop('mongo_id', None)
-                article.pop('custom_id', None)
+        for article in recent_articles:
+            if article.get("mongo_id"):
+                article["id"] = str(article["mongo_id"])
+            elif article.get("custom_id"):
+                article["id"] = str(article["custom_id"])
+            article.pop("mongo_id", None)
+            article.pop("custom_id", None)
 
-            seen_titles = {str(a.get('title') or '').strip().lower() for a in recent_articles}
-            for article in fallback_articles:
-                title_key = str(article.get('title') or '').strip().lower()
-                if title_key and title_key not in seen_titles:
-                    recent_articles.append(article)
-                    seen_titles.add(title_key)
-                if len(recent_articles) >= 10:
-                    break
-        
         if not recent_articles:
             logger.warning("No articles available for digest")
             return
-        
-        # Enhanced deduplication - check for similar topics, not just exact titles
+
+        def _term_match(blob: str, term: str) -> bool:
+            term = str(term or "").lower().strip()
+            if not term:
+                return False
+            if " " in term:
+                return term in blob
+            return re.search(rf"\b{re.escape(term)}\b", blob) is not None
+
+        def _has_any(blob: str, terms: list) -> bool:
+            return any(_term_match(blob, term) for term in terms)
+
         def get_title_keywords(title):
-            """Extract key words from title for similarity checking"""
-            stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'for', 'to', 'of', 'in', 'on', 'at', 'with', 'as', 'by'}
-            words = title.lower().split()
-            return set(w for w in words if len(w) > 3 and w not in stop_words)
-        
+            """Extract key words from title for similarity checking."""
+            stop_words = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'for', 'to', 'of', 'in', 'on', 'at', 'with', 'as', 'by', 'and', 'from', 'this', 'that', 'will'}
+            words = str(title or "").lower().split()
+            return set(w.strip(".,:;!?()[]'\"") for w in words if len(w.strip(".,:;!?()[]'\"")) > 3 and w not in stop_words)
+
+        towns = [
+            'cheshire', 'crewe', 'macclesfield', 'wilmslow', 'chester', 'warrington',
+            'nantwich', 'congleton', 'northwich', 'knutsford', 'sandbach', 'middlewich',
+            'alsager', 'winsford', 'ellesmere port'
+        ]
+
+        money_terms = [
+            'mortgage', 'rent', 'council tax', 'tax', 'vat', 'savings', 'rates', 'bills',
+            'energy', 'inflation', 'budget', 'cost', 'prices', 'wages', 'pay', 'pension',
+            'retirement'
+        ]
+
+        business_terms = [
+            'business', 'jobs', 'job', 'workforce', 'redundancy', 'investment', 'company',
+            'startup', 'factory', 'employer', 'retail', 'hospitality', 'growth', 'market'
+        ]
+
+        property_terms = [
+            'property', 'housing', 'house', 'home', 'planning', 'landlord', 'development'
+        ]
+
+        ai_terms = [
+            'ai', 'artificial intelligence', 'chatgpt', 'openai', 'gemini', 'automation',
+            'software', 'cyber', 'data centre', 'digital', 'cloud', 'startup', 'chip',
+            'semiconductor', 'microsoft', 'google'
+        ]
+
+        weak_terms = [
+            'celebrity', 'showbiz', 'gaming', 'xbox', 'playstation', 'nintendo',
+            'sports', 'sport', 'football', 'tv', 'horror', 'dinosaur', 'squirrel',
+            'osprey', 'museum', 'twins', 'different dads', 'underwater forests'
+        ]
+
+        crime_terms = [
+            'police', 'court', 'jailed', 'assault', 'murder', 'stabbed', 'arrest',
+            'crime', 'crash', 'live updates'
+        ]
+
+        def _article_blob(article):
+            return " ".join([
+                str(article.get("title") or ""),
+                str(article.get("category") or ""),
+                str(article.get("content") or "")[:700],
+            ]).lower()
+
+        def _is_banned(article):
+            category = (article.get('category', '') or '').lower()
+            blob = _article_blob(article)
+            if category in ['sports', 'sport', 'entertainment', 'celebrity', 'showbiz']:
+                return True
+            return _has_any(blob, weak_terms)
+
+        def _is_local(article):
+            return _has_any(_article_blob(article), towns)
+
+        def _is_business(article):
+            return _has_any(_article_blob(article), money_terms + business_terms + property_terms)
+
+        def _is_tech(article):
+            blob = _article_blob(article)
+            title = str(article.get("title") or "").lower()
+            category = str(article.get("category") or "").lower()
+            if _has_any(blob, weak_terms):
+                return False
+            return _has_any(category, ['ai', 'technology']) or _has_any(title, ai_terms)
+
+        def _score_article(article):
+            blob = _article_blob(article)
+            title = str(article.get("title") or "")
+            score = 0
+            reasons = []
+
+            if _is_local(article):
+                score += 30
+                reasons.append("local")
+            if _has_any(blob, money_terms):
+                score += 25
+                reasons.append("money")
+            if _has_any(blob, business_terms):
+                score += 22
+                reasons.append("business/jobs")
+            if _has_any(blob, property_terms):
+                score += 18
+                reasons.append("property")
+            if _is_tech(article):
+                score += 18
+                reasons.append("AI/tech")
+            if _has_any(blob, ['save', 'savings', 'advice', 'retirement', 'job losses', 'cost of living', 'mortgage', 'council tax']):
+                score += 18
+                reasons.append("reader-impact")
+            if any(ch.isdigit() for ch in title):
+                score += 8
+                reasons.append("number")
+            if len(title) <= 95:
+                score += 5
+                reasons.append("clear-title")
+            if _has_any(blob, crime_terms):
+                score -= 35
+                reasons.append("crime/live-update penalty")
+            if _has_any(blob, weak_terms):
+                score -= 40
+                reasons.append("weak-topic penalty")
+
+            return score, reasons
+
+        # Enhanced deduplication - check for similar topics, not just exact titles.
         seen_titles = set()
         seen_keywords = []
-        unique_articles = []
-        
+        unique_candidates = []
+
         for article in recent_articles:
             title = article.get('title', '')
             title_normalized = title.lower().strip()[:50]
             title_keywords = get_title_keywords(title)
-            
-            # Check for exact duplicate
-            if title_normalized in seen_titles:
+
+            if not title_normalized or title_normalized in seen_titles:
                 continue
-            
-            # Check for similar topic (more than 50% keyword overlap)
+
             is_similar = False
             for prev_keywords in seen_keywords:
-                if len(title_keywords) > 0 and len(prev_keywords) > 0:
+                if title_keywords and prev_keywords:
                     overlap = len(title_keywords & prev_keywords)
                     similarity = overlap / min(len(title_keywords), len(prev_keywords))
                     if similarity > 0.5:
                         is_similar = True
                         break
-            
+
             if not is_similar:
                 seen_titles.add(title_normalized)
                 seen_keywords.append(title_keywords)
-                unique_articles.append(article)
-        
-                
-        # ==========================================================
-        # Authority Pillar Enforcement (Project Model)
-        # Local → Business/Finance → AI & Tech → National Context
-        # (No Sports / Entertainment / generic noise in scheduled brief)
-        # ==========================================================
+                unique_candidates.append(article)
 
-        towns = [
-            'crewe','macclesfield','wilmslow','chester','warrington','nantwich','congleton',
-            'northwich','knutsford','sandbach','middlewich','alsager','winsford','ellesmere port'
-        ]
+        scored_candidates = []
+        rejected_count = 0
 
-        def _is_local(article):
-            category = (article.get('category','') or '').lower()
-            title = (article.get('title','') or '').lower()
-            content = (article.get('content','') or '').lower()[:500]
-            return any(k in category for k in ['local','cheshire']) or any(t in title or t in content for t in towns)
-
-        def _is_business(article):
-            category = (article.get('category','') or '').lower()
-            title = (article.get('title','') or '').lower()
-            return (
-                any(k in category for k in ['business','finance','economy','property'])
-                or any(k in title for k in ['finance','mortgage','rates','tax','budget','inflation','jobs','housing','market'])
-            )
-
-        def _is_tech(article):
-            category = (article.get('category','') or '').lower()
-            title = (article.get('title','') or '').lower()
-
-            # Exclude gaming / entertainment tech explicitly
-            banned_keywords = [
-                'game','gaming','xbox','playstation','nintendo',
-                'resident evil','horror','celebrity','showbiz'
-            ]
-            if any(b in title for b in banned_keywords):
-                return False
-
-            keywords = [
-                'ai','artificial intelligence','chatgpt','openai','gemini','deepmind',
-                'machine learning','ml','automation','robot','cyber','security',
-                'data','digital','software','startup','nvidia','microsoft',
-                'google','apple','tesla','chip','semiconductor','cloud',
-                'enterprise','infrastructure','data centre'
-            ]
-
-            return (
-                any(k in category for k in ['tech','technology','ai'])
-                or any(k in title for k in keywords)
-            )
-
-        def _is_banned(article):
-            category = (article.get('category','') or '').lower()
-            return category in ['sports','sport','entertainment','celebrity','showbiz']
-
-        local_bucket = []
-        business_bucket = []
-        tech_bucket = []
-        national_bucket = []
-
-        for a in unique_articles:
-            if _is_banned(a):
+        for article in unique_candidates:
+            score, reasons = _score_article(article)
+            if _is_banned(article) or score < 30:
+                rejected_count += 1
                 continue
-            if _is_local(a):
-                local_bucket.append(a)
-            elif _is_business(a):
-                business_bucket.append(a)
-            elif _is_tech(a):
-                tech_bucket.append(a)
-            else:
-                national_bucket.append(a)
+            scored_candidates.append((score, reasons, article))
 
-        # Cap per pillar to match email layout expectations
-        local_bucket = local_bucket[:3]
-        business_bucket = business_bucket[:2]
-        tech_bucket = tech_bucket[:1]
-        national_bucket = national_bucket[:2]
+        scored_candidates.sort(key=lambda item: item[0], reverse=True)
 
-        # Final ordered list
-        unique_articles = (local_bucket + business_bucket + tech_bucket + national_bucket)[:10]
+        # Quality-first Daily Brief:
+        # one lead story + one supporting story + up to three related stories, only if genuinely useful.
+        selected_articles = []
+        seen_selected_titles = set()
 
-        logger.info(f"Sending Daily Brief with {len(unique_articles)} unique articles (local={len(local_bucket)}, business={len(business_bucket)}, tech={len(tech_bucket)}, national={len(national_bucket)}) to {len(subscriber_emails)} subscribers")
+        for score, reasons, article in scored_candidates:
+            title_key = str(article.get("title") or "").strip().lower()
+            if not title_key or title_key in seen_selected_titles:
+                continue
+            selected_articles.append(article)
+            seen_selected_titles.add(title_key)
+            if len(selected_articles) >= 5:
+                break
+
+        # If the quality threshold is too strict on a slow day, allow the strongest available candidates,
+        # but never banned/weak topics.
+        if len(selected_articles) < 2:
+            for article in unique_candidates:
+                if _is_banned(article):
+                    continue
+                title_key = str(article.get("title") or "").strip().lower()
+                if not title_key or title_key in seen_selected_titles:
+                    continue
+                selected_articles.append(article)
+                seen_selected_titles.add(title_key)
+                if len(selected_articles) >= 2:
+                    break
+
+        unique_articles = selected_articles
+
+        local_count = len([a for a in unique_articles if _is_local(a)])
+        business_count = len([a for a in unique_articles if _is_business(a)])
+        tech_count = len([a for a in unique_articles if _is_tech(a)])
+
+        logger.info(f"Sending quality-first Daily Brief with {len(unique_articles)} articles (local={local_count}, business_or_money={business_count}, tech={tech_count}, rejected={rejected_count}) to {len(subscriber_emails)} subscribers")
         
         # Update status to "sending" with article count
         await db.digest_log.update_one(
