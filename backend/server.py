@@ -12240,6 +12240,54 @@ async def daily_article_generation(count: int = 12):
     except Exception as e:
         logger.error(f"Critical error in daily article generation: {str(e)}")
 
+async def _select_rotating_email_batch(digest_key: str, unique_emails: list, send_cap: int):
+    """
+    Select a fair rotating email batch for capped newsletter sends.
+    Reads a per-digest cursor from MongoDB; the cursor is saved after the send attempt.
+    """
+    if not unique_emails or send_cap <= 0:
+        return [], 0, 0, 0
+
+    stable_emails = sorted(
+        [email for email in unique_emails if email],
+        key=lambda value: str(value).lower()
+    )
+
+    total = len(stable_emails)
+    capped = min(send_cap, total)
+
+    cursor_doc = await db.email_batch_cursors.find_one({"digest_key": digest_key}) or {}
+    start_index = int(cursor_doc.get("next_index") or 0)
+    if start_index < 0 or start_index >= total:
+        start_index = 0
+
+    end_index = start_index + capped
+    if end_index <= total:
+        batch = stable_emails[start_index:end_index]
+    else:
+        batch = stable_emails[start_index:] + stable_emails[:end_index % total]
+
+    next_index = (start_index + capped) % total
+
+    return batch, start_index, next_index, total
+
+
+async def _save_email_batch_cursor(digest_key: str, next_index: int, start_index: int, batch_size: int, total_eligible: int):
+    """Persist the next newsletter batch cursor after a send attempt."""
+    await db.email_batch_cursors.update_one(
+        {"digest_key": digest_key},
+        {"$set": {
+            "digest_key": digest_key,
+            "next_index": next_index,
+            "last_start_index": start_index,
+            "last_batch_size": batch_size,
+            "total_eligible": total_eligible,
+            "updated_at": datetime.now(timezone.utc)
+        }},
+        upsert=True
+    )
+
+
 async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
     """
     Send The Daily Brief to all subscribers with daily_brief preference.
@@ -12352,8 +12400,12 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             logger.warning(f"Skipping {len(invalid_emails)} invalid emails: {invalid_emails[:5]}...")
         
         daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "2000"))
-        subscriber_emails = unique_emails[:daily_send_cap]
-        logger.info(f"Found {len(subscriber_emails)} valid Daily Brief subscribers from {len(unique_emails)} eligible unique subscribers")
+        subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
+            "DailyBrief",
+            unique_emails,
+            daily_send_cap
+        )
+        logger.info(f"Found {len(subscriber_emails)} rotating Daily Brief subscribers from {total_eligible} eligible unique subscribers (start={batch_start}, next={batch_next})")
         
         # Get latest articles from the last 24 hours, then choose quality-first.
         # This prevents weak newest stories from crowding out better money/business/local-impact articles.
@@ -12654,6 +12706,18 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             }}
         )
         
+        if success_count > 0:
+            await _save_email_batch_cursor(
+                "DailyBrief",
+                batch_next,
+                batch_start,
+                len(subscriber_emails),
+                total_eligible
+            )
+            logger.info(f"✅ Daily Brief batch cursor advanced to {batch_next}")
+        else:
+            logger.warning("Daily Brief batch cursor not advanced because success_count was 0")
+
         logger.info(f"✅ Digest log updated for {digest_time} ({date_key})")
         
     except Exception as e:
@@ -12717,26 +12781,58 @@ async def send_weekly_roundup_email():
         
         logger.info("📰 Proceeding with Weekly Roundup email send...")
         
-        # Get subscribers with weekly_roundup preference
+        # Get active subscribers for Weekly Roundup.
+        # Existing large list had weekly_roundup=False as a system default, not a manual opt-out.
+        # Include default Daily Brief subscribers unless they later explicitly update preferences.
         subscribers = await db.subscribers.find(
-            {"weekly_roundup": True},
+            {
+                "$and": [
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                    {"$or": [
+                        {"weekly_roundup": True},
+                        {"$and": [
+                            {"daily_brief": True},
+                            {"preferences_updated_at": {"$exists": False}}
+                        ]}
+                    ]}
+                ]
+            },
             {"_id": 0, "email": 1}
-        ).to_list(1000)
+        ).to_list(15000)
         
         if not subscribers:
-            logger.info("No subscribers found with weekly_roundup preference - skipping")
+            logger.info("No subscribers found for Weekly Roundup - skipping")
             await db.scheduler_locks.delete_one({"job": lock_key})
             return
         
-        subscriber_emails = [s.get('email') for s in subscribers if s.get('email')][:250]
-        logger.info(f"Found {len(subscriber_emails)} subscribers for Weekly Roundup first batch")
+        import re
+        email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        seen_emails = set()
+        unique_emails = []
+
+        for s in subscribers:
+            email = (s.get('email') or '').lower().strip()
+            if email and email not in seen_emails and email_regex.match(email) and not email.endswith('@example.com'):
+                seen_emails.add(email)
+                unique_emails.append(s.get('email'))
+
+        weekly_send_cap = int(os.environ.get("WEEKLY_ROUNDUP_SEND_CAP", os.environ.get("DAILY_BRIEF_SEND_CAP", "2000")))
+        subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
+            "WeeklyRoundup",
+            unique_emails,
+            weekly_send_cap
+        )
+        logger.info(f"Found {len(subscriber_emails)} rotating Weekly Roundup subscribers from {total_eligible} eligible unique subscribers (start={batch_start}, next={batch_next})")
         
         # Get top performing articles from the past week (by view_count)
         one_week_ago = now - timedelta(days=7)
         
         # Get big read (most viewed article)
         big_read = await db.articles.find_one(
-            {"publishedDate": {"$gte": one_week_ago.isoformat()}},
+            {"$or": [
+                {"publishedDate": {"$gte": one_week_ago}},
+                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+            ]},
             sort=[("view_count", -1)]
         )
         
@@ -12755,7 +12851,10 @@ async def send_weekly_roundup_email():
         
         # Get top 5 trending articles (excluding big read)
         icymi_cursor = db.articles.find(
-            {"publishedDate": {"$gte": one_week_ago.isoformat()}},
+            {"$or": [
+                {"publishedDate": {"$gte": one_week_ago}},
+                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+            ]},
             sort=[("view_count", -1)]
         ).limit(6)
         
@@ -12802,6 +12901,18 @@ async def send_weekly_roundup_email():
         except Exception as log_error:
             logger.warning(f"Could not log weekly roundup send: {log_error}")
         
+        if success_count > 0:
+            await _save_email_batch_cursor(
+                "WeeklyRoundup",
+                batch_next,
+                batch_start,
+                len(subscriber_emails),
+                total_eligible
+            )
+            logger.info(f"✅ Weekly Roundup batch cursor advanced to {batch_next}")
+        else:
+            logger.warning("Weekly Roundup batch cursor not advanced because success_count was 0")
+
         # Release lock
         await db.scheduler_locks.delete_one({"job": lock_key})
         
