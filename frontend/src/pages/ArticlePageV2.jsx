@@ -440,13 +440,28 @@ function getGuidePromoMeta(guide) {
     }
   }
 
+  const smartSlug = String(guide?.slug || "").toLowerCase();
+
+  let smartCta = "Compare options";
+  if (smartSlug.includes("mortgage") || smartSlug.includes("savings") || smartSlug.includes("credit")) {
+    smartCta = "Compare rates";
+  } else if (smartSlug.includes("software") || smartSlug.includes("tools") || smartSlug.includes("ai")) {
+    smartCta = "See best options";
+  } else if (smartSlug.includes("storage")) {
+    smartCta = "Compare storage options";
+  } else if (smartSlug.includes("removal") || smartSlug.includes("moving")) {
+    smartCta = "Compare moving options";
+  } else if (smartSlug.includes("services") || smartSlug.includes("providers") || smartSlug.includes("formation")) {
+    smartCta = "View providers";
+  }
+
   return {
     badge: String(guide?.monetisation || "").trim().toLowerCase() === "affiliate" ? "Recommended deal" : "Top guide",
     logoSrc: "",
     logoLabel: "CT",
     desc: "Practical comparisons and key checks for readers.",
     benefit: "Useful next step for readers",
-    cta: "View guide",
+    cta: smartCta,
   };
 }
 
@@ -482,6 +497,27 @@ const GuidePromoBlock = ({ guides = [], category, pillarLabel, contextToolType }
     </div>
   );
 };
+
+
+function getGuideSectionHeading(contextToolType, pillarLabel) {
+  const t = String(contextToolType || "").toLowerCase();
+  const p = String(pillarLabel || "").toLowerCase();
+
+  if (t.includes("business") || p.includes("business")) {
+    return "Starting or running a business?";
+  }
+  if (t.includes("finance") || p.includes("finance")) {
+    return "Looking to improve your finances?";
+  }
+  if (p.includes("local")) {
+    return "What this means for your household";
+  }
+  if (t.includes("ai") || t.includes("tech") || p.includes("ai")) {
+    return "Tools and platforms to consider";
+  }
+
+  return "What to do next";
+}
 
 const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, slot = 0, compact = false }) => {
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
@@ -555,6 +591,11 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              {compact && (
+                <div className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-full bg-emerald-600 text-white font-extrabold">
+                  Top Pick
+                </div>
+              )}
               <div className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-full bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300 font-bold">
                 {String(promo.badge || "").trim().toLowerCase() === "affiliate" ? "Recommended deal" : (promo.badge || (compact ? "Recommended guide" : "In-depth Guide"))}
               </div>
@@ -1119,22 +1160,7 @@ export default function ArticlePageV2({ categories }) {
                   </>
                 ) : (
                   <>
-                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(beforeGuideContent || mainContent, pillarLabel) }} />
-
-                    {afterGuideContent && (
-                      <>
-                        <GuidesInlinePromo
-                          guides={guides}
-                          pillarLabel={pillarLabel}
-                          contextToolType={contextToolType}
-                          articleId={articleId}
-                          slot={1}
-                          compact
-                        />
-
-                        <div dangerouslySetInnerHTML={{ __html: autoLinkContent(afterGuideContent, pillarLabel) }} />
-                      </>
-                    )}
+                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
                   </>
                 )}
               </div>
@@ -1172,14 +1198,25 @@ export default function ArticlePageV2({ categories }) {
 
               </div>
 
-              <div className="mt-6">
-                <SubscribeInlineBanner />
-              </div>
-
-              <div className="mt-6">
-                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} />
+              <section className="mt-8 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-4 md:p-5">
+                <div className="mb-3">
+                  <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
+                    {getGuideSectionHeading(contextToolType, pillarLabel)}
+                  </div>
+                  <h2 className="mt-1 text-lg font-black tracking-tight text-slate-950 dark:text-white">
+                    Best options based on this story
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-gray-300">
+                    Practical next steps, comparisons and tools for readers who want to act on the issue covered above.
+                  </p>
+                </div>
+                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
                 
               {/* GuidePromoBlock intentionally disabled for controlled non-Amazon rollout */}
+              </section>
+
+              <div className="mt-6">
+                <SubscribeInlineBanner />
               </div>
               {/* More stories — match homepage layout */}
               
