@@ -133,6 +133,12 @@ class EmailService:
                     email_payload["reply_to"] = self.reply_to
                 payload.append(email_payload)
 
+            chunk_number = i // 100 + 1
+            first_to = str(chunk[0].get("to") or "") if chunk else ""
+            first_domain = first_to.split("@", 1)[1] if "@" in first_to else "unknown"
+            subject = str(chunk[0].get("subject") or "")[:120] if chunk else ""
+            response = None
+
             try:
                 response = httpx.post(
                     "https://api.resend.com/emails/batch",
@@ -140,15 +146,34 @@ class EmailService:
                     json=payload,
                     timeout=60.0,
                 )
+                if response.status_code >= 400:
+                    logger.error(
+                        "Resend batch rejected before raise: "
+                        f"chunk={chunk_number} size={len(chunk)} status={response.status_code} "
+                        f"subject={subject!r} first_domain={first_domain} "
+                        f"body={response.text[:1000]}"
+                    )
                 response.raise_for_status()
                 success_count += len(chunk)
             except Exception as e:
+                status_code = getattr(response, "status_code", "no_response")
                 detail = ""
                 try:
-                    detail = response.text[:500]
+                    detail = response.text[:1000] if response is not None else ""
                 except Exception:
                     pass
-                logger.error(f"Resend batch send failed for chunk {i // 100 + 1}: {str(e)} {detail}")
+                logger.error(
+                    "Resend batch send failed: "
+                    f"chunk={chunk_number} size={len(chunk)} status={status_code} "
+                    f"subject={subject!r} first_domain={first_domain} "
+                    f"error={type(e).__name__}: {str(e)} response={detail}"
+                )
+
+        if success_count == 0 and batch_messages:
+            logger.error(
+                f"Resend batch send completed with zero successes for {len(batch_messages)} messages; "
+                "check Resend rejection logs above"
+            )
 
         return success_count
 
