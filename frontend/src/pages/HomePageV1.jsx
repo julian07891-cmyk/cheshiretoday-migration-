@@ -305,29 +305,42 @@ const navigate = useNavigate();
     const editorialPool = filterEditorialPool(Array.isArray(newestFirst) ? newestFirst : []);
 
     const isStrategicHomepageStory = (a) => {
+      // Preserve manually curated / explicitly promoted articles.
+      if (a?.featured || a?.force_live || a?.is_priority_cheshire) return true;
+
       const cat = String(a?.category || "").toLowerCase();
       const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
 
       // Hard-block obvious entertainment / celebrity / lifestyle filler
-      if (/\b(celebrity|showbiz|love\s+island|netflix|movie|film|tv\b|album|concert|music\s+video|book\s+launch|novel|bts|kanye|rapper|festival\s+sponsor|music\s+festival)\b/.test(t)) return false;
+      if (/\b(celebrity|showbiz|love\s+island|netflix|movie|film|tv\b|album|concert|music\s+video|book\s+launch|novel|bts|kanye|rapper|festival\s+sponsor|music\s+festival|james\s+bond\s+song)\b/.test(t)) return false;
       if (cat.includes("entertainment")) return false;
 
       // Hard-block shopping/review/listicle filler that belongs in guides, not the live homepage news feed
-      if (/\b(best\b|buying\s+guide|tried\s+and\s+tested|tasted\s+and\s+rated|reviewed\s+and\s+rated|top\s+picks|bean-to-cup|pressure\s+washer|power-washing|pool-cleaning|mowing|hot\s+chocolate|easter\s+eggs?|supermarket\s+easter|choc\s+horror|flavour\s+bars?)\b/.test(t)) return false;
+      if (/\b(best\b|buying\s+guide|tried\s+and\s+tested|tasted\s+and\s+rated|reviewed\s+and\s+rated|top\s+picks|bean-to-cup|pressure\s+washer|power-washing|pool-cleaning|mowing|hot\s+chocolate|easter\s+eggs?|supermarket\s+easter|choc\s+horror|flavour\s+bars?|butter\s+beans?)\b/.test(t)) return false;
       if (/\b(collectible|coffee\s+machines?)\b/.test(t)) return false;
 
       // Hard-block soft lifestyle / local leisure fluff
-      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|pub|cafe|bar|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|food\s+tour|food\s+tours|walking\s+food\s+tours?|food\s+and\s+drink\s+festival|arts\s+festival|festival\s+returns?)\b/.test(t)) return false;
+      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|pub|cafe|bar|garden\s+centre|miniature\s+railway|train\s+rides?|secret\s+play\s+area|ice\s+cream|golf\s+buggies|tearoom|limited\s+edition\s+menu|chester\s+races\s+menu|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|food\s+tour|food\s+tours|walking\s+food\s+tours?|food\s+and\s+drink\s+festival|arts\s+festival|festival\s+returns?)\b/.test(t)) return false;
+
+      // Hard-block weak nature/science/oddity tech unless it has clear AI, business, money or public-impact relevance
+      if (/\b(dragonflies?|frogs?|birds?|wetlands?|sewage|underwater\s+forests?|dinosaur|skull|squirrels?|ospreys?|habitat\s+powerhouses?|soviet\s+science|symbols\s+of\s+soviet|anne\s+boleyn|different\s+dads|super\s+weird|super\s+odd|super\s+rare)\b/.test(t)) {
+        if (!/\b(ai|artificial\s+intelligence|automation|cyber|software|data\s+centre|business|market|investment|company|jobs?|money|cost|bills?|tax|housing|planning)\b/.test(t)) return false;
+      }
 
       // Hard-block abstract astronomy/science unless it has clear AI/tech/business relevance
       if (/\b(artemis|nasa|moon|space|planet|earth|boötes|bootes|herdsman|constellation|astronomy|scientists?|researchers?|study\s+finds?)\b/.test(t)) {
-        if (!isAiTech(a) && !/\b(chip|gpu|ai|tech|cyber|robot|automation|business|market|investment|valuation|funding|company|shares?)\b/.test(t)) {
+        if (!/\b(chip|gpu|ai|tech|cyber|robot|automation|business|market|investment|valuation|funding|company|shares?)\b/.test(t)) {
           return false;
         }
       }
 
+      // Hard-block live incident / crime churn unless manually promoted or clear public-impact utility
+      if (/\b(live\s+updates?|crash\s+shuts|smash\s+leaves|shoplifter|jailed|arrested|assault|murder|court)\b/.test(t)) {
+        if (!/\b(transport|road\s+closure|rail|school|council|business|jobs?|housing|tax)\b/.test(t)) return false;
+      }
+
       // Hard-block tragedy / emotional human-interest filler unless there is direct public-impact utility
-      if (/\b(devastated\s+mum|heartbreaking|touching\s+tribute|emotional\s+message)\b/.test(t)) {
+      if (/\b(devastated\s+mum|heartbreaking|touching\s+tribute|emotional\s+message|state\s+of\s+panic)\b/.test(t)) {
         if (!/\b(cost|bills?|benefits?|housing|jobs?|tax|nhs|school|planning|transport|energy)\b/.test(t)) return false;
       }
 
