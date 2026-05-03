@@ -114,7 +114,7 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
                     {cta} →
                   </span>
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                    Deal
+                    Guide
                   </span>
                 </div>
               </div>
