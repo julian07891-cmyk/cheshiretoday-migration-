@@ -9230,6 +9230,86 @@ async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_pre
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/send-weekly-roundup-test")
+async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk", auth: bool = Depends(get_admin_auth)):
+    """
+    TEST ENDPOINT: Send Weekly Roundup to a SINGLE email address for testing.
+    Does not update scheduler locks, digest_log, or email_batch_cursors.
+    """
+    try:
+        logger.info(f"TEST WEEKLY ROUNDUP: Sending test to {test_email}")
+
+        now = datetime.now(timezone.utc)
+        one_week_ago = now - timedelta(days=7)
+
+        big_read = await db.articles.find_one(
+            {"$or": [
+                {"publishedDate": {"$gte": one_week_ago}},
+                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+            ]},
+            sort=[("view_count", -1)]
+        )
+
+        if not big_read:
+            big_read = await db.articles.find_one({}, sort=[("publishedDate", -1)])
+
+        if not big_read:
+            return {"success": False, "message": "No articles available for Weekly Roundup test"}
+
+        if big_read.get("_id"):
+            big_read["id"] = str(big_read["_id"])
+
+        icymi_cursor = db.articles.find(
+            {"$or": [
+                {"publishedDate": {"$gte": one_week_ago}},
+                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+            ]},
+            sort=[("view_count", -1)]
+        ).limit(6)
+
+        icymi_articles = []
+        async for article in icymi_cursor:
+            if str(article.get("_id")) != str(big_read.get("_id")):
+                if is_digest_excluded(article):
+                    continue
+                if article.get("_id"):
+                    article["id"] = str(article["_id"])
+                icymi_articles.append(article)
+                if len(icymi_articles) >= 5:
+                    break
+
+        result = email_service.send_weekly_roundup(
+            to_emails=[test_email],
+            big_read=big_read,
+            icymi_articles=icymi_articles,
+            property_of_week=None,
+            food_review=None
+        )
+
+        if isinstance(result, tuple):
+            success_count, tracking_id = result
+        else:
+            success_count, tracking_id = result, None
+
+        return {
+            "success": success_count > 0,
+            "message": f"Test Weekly Roundup sent to {test_email}",
+            "email_type": "WeeklyRoundup",
+            "emails_sent": success_count,
+            "tracking_id": tracking_id,
+            "big_read": {
+                "id": big_read.get("id"),
+                "title": (big_read.get("title") or "")[:80]
+            },
+            "icymi_count": len(icymi_articles),
+            "icymi_titles": [(a.get("title") or "")[:80] for a in icymi_articles]
+        }
+
+    except Exception as e:
+        logger.error(f"Error sending Weekly Roundup test: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================
 # NEW EMAIL ENDPOINTS (January 2026)
 # ============================================
