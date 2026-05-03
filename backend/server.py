@@ -9310,6 +9310,130 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/send-weekly-roundup-batch-test")
+async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get_admin_auth)):
+    """
+    DIAGNOSTIC ENDPOINT: Send Weekly Roundup to a small rotating batch.
+    Does not update scheduler locks, digest_log, or email_batch_cursors.
+    Use to reproduce Resend batch behaviour safely before Sunday scheduler runs.
+    """
+    try:
+        safe_cap = max(1, min(int(cap), 100))
+        logger.info(f"TEST WEEKLY ROUNDUP BATCH: Sending diagnostic batch with cap={safe_cap}")
+
+        subscribers = await db.subscribers.find(
+            {
+                "$and": [
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                    {"$or": [
+                        {"weekly_roundup": True},
+                        {"$and": [
+                            {"daily_brief": True},
+                            {"preferences_updated_at": {"$exists": False}}
+                        ]}
+                    ]}
+                ]
+            },
+            {"_id": 0, "email": 1}
+        ).to_list(15000)
+
+        import re
+        email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        seen_emails = set()
+        unique_emails = []
+
+        for s in subscribers:
+            email = (s.get("email") or "").lower().strip()
+            if email and email not in seen_emails and email_regex.match(email) and not email.endswith("@example.com"):
+                seen_emails.add(email)
+                unique_emails.append(s.get("email"))
+
+        subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
+            "WeeklyRoundup",
+            unique_emails,
+            safe_cap
+        )
+
+        if not subscriber_emails:
+            return {"success": False, "message": "No eligible Weekly Roundup subscribers found"}
+
+        now = datetime.now(timezone.utc)
+        one_week_ago = now - timedelta(days=7)
+
+        big_read = await db.articles.find_one(
+            {"$or": [
+                {"publishedDate": {"$gte": one_week_ago}},
+                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+            ]},
+            sort=[("view_count", -1)]
+        )
+
+        if not big_read:
+            big_read = await db.articles.find_one({}, sort=[("publishedDate", -1)])
+
+        if not big_read:
+            return {"success": False, "message": "No articles available for Weekly Roundup batch test"}
+
+        if big_read.get("_id"):
+            big_read["id"] = str(big_read["_id"])
+
+        icymi_cursor = db.articles.find(
+            {"$or": [
+                {"publishedDate": {"$gte": one_week_ago}},
+                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+            ]},
+            sort=[("view_count", -1)]
+        ).limit(6)
+
+        icymi_articles = []
+        async for article in icymi_cursor:
+            if str(article.get("_id")) != str(big_read.get("_id")):
+                if is_digest_excluded(article):
+                    continue
+                if article.get("_id"):
+                    article["id"] = str(article["_id"])
+                icymi_articles.append(article)
+                if len(icymi_articles) >= 5:
+                    break
+
+        result = email_service.send_weekly_roundup(
+            to_emails=subscriber_emails,
+            big_read=big_read,
+            icymi_articles=icymi_articles,
+            property_of_week=None,
+            food_review=None
+        )
+
+        if isinstance(result, tuple):
+            success_count, tracking_id = result
+        else:
+            success_count, tracking_id = result, None
+
+        return {
+            "success": success_count > 0,
+            "message": f"Weekly Roundup batch diagnostic sent to {len(subscriber_emails)} subscribers",
+            "email_type": "WeeklyRoundup",
+            "requested_cap": cap,
+            "safe_cap": safe_cap,
+            "emails_selected": len(subscriber_emails),
+            "emails_sent": success_count,
+            "batch_start": batch_start,
+            "batch_next_if_saved": batch_next,
+            "total_eligible": total_eligible,
+            "tracking_id": tracking_id,
+            "first_domain": subscriber_emails[0].split("@", 1)[1] if subscriber_emails and "@" in subscriber_emails[0] else "unknown",
+            "big_read": {
+                "id": big_read.get("id"),
+                "title": (big_read.get("title") or "")[:80]
+            },
+            "icymi_count": len(icymi_articles)
+        }
+
+    except Exception as e:
+        logger.error(f"Error sending Weekly Roundup batch diagnostic: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ============================================
 # NEW EMAIL ENDPOINTS (January 2026)
 # ============================================
