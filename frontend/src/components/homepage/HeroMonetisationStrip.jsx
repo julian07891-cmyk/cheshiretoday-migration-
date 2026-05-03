@@ -37,7 +37,7 @@ function getRotatedSlice(items = [], start = 0, limit = 0, key = "") {
   );
 }
 
-export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "" }) {
+export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers" }) {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
   const items = useMemo(() => {
@@ -54,10 +54,10 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
     <section className={`${compact ? "mt-4" : "mt-5"} ${className}`} aria-label="Recommended guides and tools">
       <div className="mb-2">
         <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
-          Useful next steps
+          {eyebrow}
         </div>
         <div className="text-sm font-black tracking-tight text-slate-950 dark:text-white">
-          Guides and tools for readers
+          {title}
         </div>
       </div>
       <div className={gridClass}>
