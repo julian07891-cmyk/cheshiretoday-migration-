@@ -21,6 +21,7 @@ import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy"
 
 import { FEATURES } from "../config/features";
 import { monetisationTools } from "../config/monetisationTools";
+import { trackEvent } from "../utils/trackEvent";
 
 function getSourceLabel(article) {
   const raw = String(article?.source || "").trim();
@@ -557,6 +558,15 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
 
   if (!g) return null;
 
+  const trackGuideClick = (clickTarget = "card") => trackEvent("guide_click", {
+    placement: "article_guide_block",
+    clickTarget,
+    slug: String(g?.slug || ""),
+    articleId: String(articleId || ""),
+    contextToolType: String(contextToolType || ""),
+    compact: Boolean(compact),
+  });
+
   const title = safeText(g?.title) || "In-depth Guide";
   const slug = String(g?.slug || "").trim();
   const href = slug ? `/guides/${encodeURIComponent(slug)}` : null;
@@ -611,7 +621,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
               </div>
             </div>
 
-            <a href={href} className="block text-base font-black leading-tight text-sky-950 dark:text-slate-100 hover:underline underline-offset-2">
+            <a href={href} onClick={() => trackGuideClick("title")} className="block text-base font-black leading-tight text-sky-950 dark:text-slate-100 hover:underline underline-offset-2">
               {title}
             </a>
 
@@ -624,6 +634,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
 
         <a
           href={href}
+          onClick={() => trackGuideClick("cta_desktop")}
           className="shrink-0 hidden sm:inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-sky-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-sky-800 dark:hover:bg-sky-600 transition"
         >
           {promo.cta || "View guide"} →
@@ -678,6 +689,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
         </div>
         <a
           href={href}
+          onClick={() => trackGuideClick("cta_mobile")}
           className="sm:hidden inline-flex items-center justify-center rounded-lg bg-slate-900 dark:bg-sky-700 px-3 py-2 text-xs font-extrabold text-white hover:bg-sky-800 dark:hover:bg-sky-600 transition"
         >
           {promo.cta || "View guide"} →
