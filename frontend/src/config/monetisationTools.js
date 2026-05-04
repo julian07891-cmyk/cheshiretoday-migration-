@@ -6,6 +6,9 @@ export const monetisationTools = {
     { badge: "Affiliate", logoLabel: "VO", logoSrc: "/affiliate-logos/virtual-office.png", title: "Need a business address? Compare options", desc: "Business address + registered office options", benefit: "Professional UK address setup", cta: "See providers", href: "/guides/best-virtual-office-services-small-business-uk" },
     { badge: "Affiliate", logoLabel: "SS", logoSrc: "/affiliate-logos/safestore.ico", title: "Moving or decluttering? Compare storage", desc: "Home + business storage options", benefit: "Flexible space when needed", cta: "Compare storage options", href: "/guides/best-self-storage-services-uk-home-business" },
     { badge: "Affiliate", logoLabel: "CL", logoSrc: "/affiliate-logos/cloudlearn.ico", title: "Upskilling? Compare online courses", desc: "CloudLearn + flexible online qualifications", benefit: "Study around work and family", cta: "See courses", href: "/guides/best-online-gcse-a-level-courses-uk" },
+    { badge: "Guide", logoLabel: "MR", title: "Mortgage due soon? Compare rates", desc: "Fixed, tracker and remortgage options", benefit: "Check what your next deal could cost", cta: "Compare rates", href: "/guides/best-mortgage-rates-uk" },
+    { badge: "Guide", logoLabel: "SA", title: "Savings sitting idle? Compare accounts", desc: "Easy access, fixed-rate and ISA options", benefit: "Make cash work harder", cta: "Compare savings", href: "/guides/best-savings-accounts-uk" },
+    { badge: "Guide", logoLabel: "EN", title: "Bills rising? Check energy deals", desc: "Gas, electricity and switching checks", benefit: "Review household costs", cta: "Check tariffs", href: "/guides/cheap-energy-tariffs-uk" },
   ],
 
   web_presence: [
