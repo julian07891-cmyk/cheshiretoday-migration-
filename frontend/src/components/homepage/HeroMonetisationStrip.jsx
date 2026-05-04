@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { FEATURES } from "../../config/features";
 import { monetisationTools } from "../../config/monetisationTools";
+import { trackEvent } from "../../utils/trackEvent";
 
 function getInitials(title = "") {
   const words = String(title || "")
@@ -70,6 +71,13 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
             <a
               key={it.href}
               href={it.href}
+              onClick={() => trackEvent("guide_click", {
+                placement: "homepage_monetisation_strip",
+                title,
+                href: it.href,
+                start,
+                compact: Boolean(compact),
+              })}
               className="group relative rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-950/40 p-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-sky-300 dark:hover:border-sky-700 transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-3">
