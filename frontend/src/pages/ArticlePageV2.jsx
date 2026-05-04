@@ -317,6 +317,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
   } else if (context === "tax" || context === "property") {
     push("cost-of-buying-home-cheshire-2026");
     push("council-tax-bands-cheshire");
+    push("best-mortgage-rates-uk");
   } else if (context === "accounting") {
     push("best-accounting-software-uk");
     push("best-email-marketing-tools-small-business-uk");
