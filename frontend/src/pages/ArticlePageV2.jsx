@@ -300,15 +300,20 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
 
   if (context === "mortgages") {
     push("best-mortgage-rates-uk");
+    push("best-savings-accounts-uk");
+    push("best-isa-platforms-uk");
   } else if (context === "savings") {
     push("best-savings-accounts-uk");
     push("best-isa-platforms-uk");
+    push("best-mortgage-rates-uk");
   } else if (context === "credit") {
     push("best-credit-cards-uk");
     push("best-business-credit-cards-uk");
+    push("best-savings-accounts-uk");
   } else if (context === "energy") {
     push("cheap-energy-tariffs-uk");
     push("best-broadband-deals-uk");
+    push("best-savings-accounts-uk");
   } else if (context === "tax" || context === "property") {
     push("cost-of-buying-home-cheshire-2026");
     push("council-tax-bands-cheshire");
