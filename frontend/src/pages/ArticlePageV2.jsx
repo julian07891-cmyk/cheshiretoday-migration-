@@ -807,26 +807,6 @@ export default function ArticlePageV2({ categories }) {
 
   const { main: mainContent, attribution } = useMemo(() => splitAttribution(rawBody), [rawBody]);
 
-  const { beforeGuideContent, afterGuideContent } = useMemo(() => {
-    const text = String(mainContent || "").trim();
-    if (!text) return { beforeGuideContent: "", afterGuideContent: "" };
-
-    const paragraphs = text
-      .split(/\n\s*\n+/)
-      .map((p) => p.trim())
-      .filter(Boolean);
-
-    if (paragraphs.length < 4) {
-      return { beforeGuideContent: text, afterGuideContent: "" };
-    }
-
-    const splitIndex = Math.max(2, Math.floor(paragraphs.length / 2));
-    return {
-      beforeGuideContent: paragraphs.slice(0, splitIndex).join("\n\n"),
-      afterGuideContent: paragraphs.slice(splitIndex).join("\n\n"),
-    };
-  }, [mainContent]);
-
   const { mobileIntroContent, mobileRemainingContent } = useMemo(() => {
     const text = String(mainContent || "").trim();
     if (!text) return { mobileIntroContent: "", mobileRemainingContent: "" };
