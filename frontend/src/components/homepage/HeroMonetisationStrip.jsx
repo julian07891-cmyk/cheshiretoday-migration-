@@ -38,12 +38,18 @@ function getRotatedSlice(items = [], start = 0, limit = 0, key = "") {
   );
 }
 
-export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers" }) {
+export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "" }) {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
   const items = useMemo(() => {
-    return getRotatedSlice(monetisationTools.homepage_primary || [], start, limit, "homepage_primary");
-  }, [start, limit]);
+    const sourceItems = focus === "finance"
+      ? (monetisationTools.homepage_primary || []).filter((item) =>
+          /mortgage|savings|energy|tariff|bills|credit/i.test(`${item?.title || ""} ${item?.href || ""}`)
+        )
+      : (monetisationTools.homepage_primary || []);
+
+    return getRotatedSlice(sourceItems, start, limit, `homepage_primary_${focus || "all"}`);
+  }, [start, limit, focus]);
 
   if (!items.length) return null;
 

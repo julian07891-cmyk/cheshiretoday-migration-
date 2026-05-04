@@ -1171,7 +1171,7 @@ return (
               </div>
 
               <div className="mt-3 w-full">
-                <HeroMonetisationStrip limit={2} compact />
+                <HeroMonetisationStrip limit={2} compact focus="finance" />
               </div>
             </div>
             </section>
