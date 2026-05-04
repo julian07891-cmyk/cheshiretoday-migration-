@@ -389,6 +389,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     push("best-domain-registrars-small-business-uk");
   } else if (pillar.includes("business")) {
     push("best-company-formation-services-uk");
+    push("best-business-bank-accounts-uk");
     push("best-accounting-software-uk");
     push("best-email-marketing-tools-small-business-uk");
     push("best-domain-registrars-small-business-uk");
