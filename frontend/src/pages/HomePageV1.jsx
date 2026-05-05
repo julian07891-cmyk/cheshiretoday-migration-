@@ -172,7 +172,7 @@ export default function HomePageV1() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  
+
   const [showMoreStories, setShowMoreStories] = useState(false);
   const [showLatest, setShowLatest] = useState(false);
   const [showAiBiz, setShowAiBiz] = useState(false);
@@ -423,7 +423,18 @@ const navigate = useNavigate();
       if (/\b(investment|economy|economic|business|finance|tax|hmrc|mortgage|savings|bank|banks|inflation|interest\s*rate|jobs?|wages?|salary|benefits?|housing|planning|rent|energy|transport|rail|trains?|buses?|factory|strike|strikes)\b/.test(t)) score += 90;
       if (/\b(ai|artificial\s+intelligence|tech|technology)\b/.test(t)) score += 35;
 
+
+      // Penalise pure planning / housing approvals from dominating top positions.
+      // Keep jobs/warehouse/retail/business-impact developments competitive.
+      const planningText = (String(a?.title || "") + " " + String(a?.summary || "")).toLowerCase();
+      const isPlanningOnly = /(planning|housing|estate|new homes|approved|approval|application|apartments|flats)/.test(planningText);
+      const hasBusinessImpact = /(jobs?|warehouse|retail|business|factory|investment|town centre|store|stores|employment)/.test(planningText);
+      if (isPlanningOnly && !hasBusinessImpact) {
+        score -= 320;
+      }
+
       return score;
+
     };
 
     const objectIdMs = (v) => {
@@ -829,7 +840,7 @@ const isMoney = (a) => {
 
 
 
-    
+
     // Fallback: if Business & Money ends up empty, fill with newest 3 non-AI
     if (financeArticles.length === 0) {
       for (const a of poolRanked) {
@@ -882,7 +893,7 @@ const isMoney = (a) => {
       pushMoney(a);
     }
 
-    
+
     // Fallback: if Mortgages & Savings ends up empty, fill with newest 6 non-AI
     if (moneyFeed.length === 0) {
       for (const a of poolRanked) {
@@ -915,7 +926,7 @@ const isMoney = (a) => {
     moneyFeed.sort((a,b)=> new Date(b.publishedDate||b.date||0)-new Date(a.publishedDate||a.date||0));
 
 
-    
+
     // (Removed) Property & Housing fallback fill: keep this block strictly property/housing.
 
 
@@ -946,20 +957,22 @@ const isMoney = (a) => {
       );
     };
 
-    // Pass 1: Local (4)
-    for (const a of poolAll) {
+    // Pass 1: Business/Finance (4) — lead Latest with high-intent money/business value first
+    const latestBusinessCandidates = poolAll
+      .filter((a) => !isAiTech(a) && (isBusiness(a) || isMoney(a)))
+      .sort((a, b) => rankScore(b) - rankScore(a));
+
+    for (const a of latestBusinessCandidates) {
       if (latestCards.length >= 4) break;
+      pushLatest(a, "Business");
+    }
+
+    // Pass 2: Local (4) — still included, but no longer dominates the first row
+    for (const a of poolAll) {
+      if (latestCards.length >= 8) break;
       if (!isLocal(a)) continue;
       if (isAiTech(a)) continue;
       pushLatest(a, "Local News");
-    }
-
-    // Pass 2: Business/Finance (4)
-    for (const a of poolAll) {
-      if (latestCards.length >= 8) break;
-      if (isAiTech(a)) continue;
-      if (!isBusiness(a) && !isMoney(a)) continue;
-      pushLatest(a, "Business");
     }
 
     // Pass 3: AI/Tech (3)
@@ -1228,7 +1241,7 @@ return (
                     </div>
                   ))}
                 </div>
-              
+
 
                 <div className="mt-3 flex justify-end">
                   <button
@@ -1323,7 +1336,7 @@ return (
                     </div>
                   ))}
                 </div>
-              
+
 
                 <div className="mt-3 flex justify-end">
                   <button
