@@ -11733,6 +11733,21 @@ async def sync_rss_now():
             if sync_low_utility_kw.search(text_all):
                 continue
 
+            # Block low-value incident / animal / tabloid filler
+            sync_noise_kw = re.compile(
+                r"(driver|crash|injured|pulled from vehicle|emergency services|"
+                r"zoo|wildlife park|lion|antelopes?|dogs? brains?|rescued animals?|"
+                r"I had to|family says|heartbroken|after my|rescued by firefighters)",
+                re.I,
+            )
+            sync_econ_kw = re.compile(
+                r"\b(mortgage|rent|rents|tax|budget|inflation|interest\s*rate|rates|jobs|wages|economy|economic|business|finance|markets?|prices?|bills?|energy|council|planning|housing|investment|trade|tariff|regulation|ofgem|ofwat|boe|bank of england|warehouse|development|stores?|retail|jobs?)\b",
+                re.I,
+            )
+            if sync_noise_kw.search(text_all) and not sync_econ_kw.search(text_all):
+                continue
+
+
             if cat_lower == 'science' and not science_keep_kw.search(text_all):
                 continue
 
