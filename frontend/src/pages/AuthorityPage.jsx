@@ -149,7 +149,7 @@ function BestPickCta({ tools = [], monetisation = "affiliate" }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => trackEvent("guide_provider_click", {
-                  guide: slug,
+                  guide: page?.slug || "",
                   provider: name,
                   position: 1,
                   destination: link,
