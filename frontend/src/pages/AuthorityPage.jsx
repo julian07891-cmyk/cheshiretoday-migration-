@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getApiUrl } from "../utils/api";
+import { trackEvent } from "../utils/trackEvent";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import NewsFooter from "../components/NewsFooter";
 
@@ -740,6 +741,12 @@ export default function AuthorityPage() {
                                   href={link}
                                   target="_blank"
                                   rel="noreferrer"
+                                  onClick={() => trackEvent("guide_provider_click", {
+                                    guide: slug,
+                                    provider: name,
+                                    position: idx + 1,
+                                    destination: link,
+                                  })}
                                   className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-slate-950 hover:bg-emerald-800 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-black transition"
                                 >
                                   Visit provider →
