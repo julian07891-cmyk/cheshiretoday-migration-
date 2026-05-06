@@ -33,11 +33,11 @@ class FacebookService:
         FACEBOOK_PAGE_ACCESS_TOKEN may already be a Page token. If so, use it directly.
         If it is a User token, fall back to fetching the Page token from the Page edge.
         """
-        if self._page_token:
-            return self._page_token
-
         if not self.user_access_token:
             return None
+
+        # Render env tokens can be rotated; avoid reusing a stale cached token.
+        self._page_token = None
 
         try:
             async with httpx.AsyncClient() as client:
