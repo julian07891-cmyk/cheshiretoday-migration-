@@ -533,13 +533,15 @@ class FacebookService:
                     shares = post.get("shares", {}).get("count", 0) if post.get("shares") else 0
                     engagement_score = likes + (comments * 2) + (shares * 3)
                     
-                    # Extract article title from message if present
-                    message = post.get("message", "")
+                    # Extract title/first line from Facebook caption.
+                    # Older auto-posts start with 📰, while newer manual posts use plain hooks.
+                    message = post.get("message", "") or ""
                     title = ""
-                    if "📰" in message:
-                        # Extract title after emoji
-                        title_line = message.split("\n")[0]
-                        title = title_line.replace("📰", "").strip()
+                    for line in message.split("\n"):
+                        cleaned = line.strip().replace("📰", "").strip()
+                        if cleaned:
+                            title = cleaned
+                            break
                     
                     posts.append({
                         "post_id": post.get("id"),
