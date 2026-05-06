@@ -474,7 +474,7 @@ class FacebookService:
                 response = await client.get(
                     f"{self.base_url}/{post_id}",
                     params={
-                        "fields": "likes.summary(true),comments.summary(true),shares",
+                        "fields": "reactions.summary(true),comments.summary(true),shares",
                         "access_token": page_token
                     },
                     timeout=15.0
@@ -489,7 +489,7 @@ class FacebookService:
                     }
                 
                 # Extract metrics
-                likes = result.get("likes", {}).get("summary", {}).get("total_count", 0)
+                reactions = result.get("reactions", {}).get("summary", {}).get("total_count", 0)
                 comments = result.get("comments", {}).get("summary", {}).get("total_count", 0)
                 shares = result.get("shares", {}).get("count", 0) if result.get("shares") else 0
                 
