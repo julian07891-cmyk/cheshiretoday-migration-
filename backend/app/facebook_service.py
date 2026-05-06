@@ -494,12 +494,12 @@ class FacebookService:
                 shares = result.get("shares", {}).get("count", 0) if result.get("shares") else 0
                 
                 # Calculate engagement score (weighted)
-                engagement_score = likes + (comments * 2) + (shares * 3)
+                engagement_score = reactions + (comments * 2) + (shares * 3)
                 
                 return {
                     "success": True,
                     "post_id": post_id,
-                    "likes": likes,
+                    "reactions": reactions,
                     "comments": comments,
                     "shares": shares,
                     "engagement_score": engagement_score
@@ -532,7 +532,7 @@ class FacebookService:
                 response = await client.get(
                     f"{self.base_url}/{self.page_id}/posts",
                     params={
-                        "fields": "id,message,created_time,likes.summary(true),comments.summary(true),shares",
+                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares",
                         "limit": limit,
                         "access_token": page_token
                     },
@@ -550,10 +550,10 @@ class FacebookService:
                 
                 posts = []
                 for post in result.get("data", []):
-                    likes = post.get("likes", {}).get("summary", {}).get("total_count", 0)
+                    reactions = post.get("reactions", {}).get("summary", {}).get("total_count", 0)
                     comments = post.get("comments", {}).get("summary", {}).get("total_count", 0)
                     shares = post.get("shares", {}).get("count", 0) if post.get("shares") else 0
-                    engagement_score = likes + (comments * 2) + (shares * 3)
+                    engagement_score = reactions + (comments * 2) + (shares * 3)
                     
                     # Extract title/first line from Facebook caption.
                     # Older auto-posts start with 📰, while newer manual posts use plain hooks.
@@ -570,7 +570,8 @@ class FacebookService:
                         "title": title[:100] if title else "Unknown",
                         "message_preview": message[:150] + "..." if len(message) > 150 else message,
                         "created_time": post.get("created_time"),
-                        "likes": likes,
+                        "likes": reactions,
+                        "reactions": reactions,
                         "comments": comments,
                         "shares": shares,
                         "engagement_score": engagement_score
