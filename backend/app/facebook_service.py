@@ -530,7 +530,7 @@ class FacebookService:
             async with httpx.AsyncClient() as client:
                 # Fetch recent posts with engagement
                 response = await client.get(
-                    f"{self.base_url}/{self.page_id}/posts",
+                    f"{self.base_url}/{self.page_id}/feed",
                     params={
                         "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares",
                         "limit": limit,
