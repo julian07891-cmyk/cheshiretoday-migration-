@@ -28,12 +28,34 @@ class FacebookService:
         return bool(self.user_access_token and self.page_id)
     
     async def get_page_token(self) -> Optional[str]:
-        """Get the actual Page Access Token from User Token"""
+        """Return a usable Page Access Token.
+
+        FACEBOOK_PAGE_ACCESS_TOKEN may already be a Page token. If so, use it directly.
+        If it is a User token, fall back to fetching the Page token from the Page edge.
+        """
         if self._page_token:
             return self._page_token
-            
+
+        if not self.user_access_token:
+            return None
+
         try:
             async with httpx.AsyncClient() as client:
+                # First try the configured token directly against the Page.
+                direct_response = await client.get(
+                    f"{self.base_url}/{self.page_id}",
+                    params={
+                        "fields": "id,name",
+                        "access_token": self.user_access_token
+                    },
+                    timeout=15.0
+                )
+                direct_result = direct_response.json()
+                if direct_result.get("id") == self.page_id and "error" not in direct_result:
+                    self._page_token = self.user_access_token
+                    return self._page_token
+
+                # Fallback: configured token is probably a User token; fetch Page token.
                 response = await client.get(
                     f"{self.base_url}/{self.page_id}",
                     params={
