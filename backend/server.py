@@ -8330,32 +8330,28 @@ async def get_facebook_analytics(auth: bool = Depends(get_admin_auth)):
 async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
     """
     Get actionable insights from Facebook post performance.
-    Analyzes which categories and topics perform best.
+    Uses internal post logs when available, otherwise falls back to live Facebook Graph data.
     """
     try:
-        # Get our posting history with article details
+        # Fetch engagement/content data from Facebook first so insights still work without DB logs.
+        engagement_data = await facebook_service.fetch_recent_posts_engagement(limit=30)
+        posts = engagement_data.get("posts", []) if engagement_data.get("success") else []
+        
+        # Get our posting history with article details if present.
         recent_logs = await db.facebook_post_log.find({}).sort("posted_at", -1).limit(100).to_list(100)
         
-        if not recent_logs:
+        if not recent_logs and not posts:
             return {
                 "success": True,
-                "message": "Not enough data yet. Post more articles to get insights.",
+                "message": "Not enough Facebook data yet. Post more articles or Reels to get insights.",
                 "insights": []
             }
         
-        # Get article details for posted items
-        article_ids = [log.get("article_id") for log in recent_logs if log.get("article_id")]
-        
-        # Fetch engagement from Facebook
-        engagement_data = await facebook_service.fetch_recent_posts_engagement(limit=30)
-        posts = engagement_data.get("posts", [])
-        
-        # Analyze by category (from our logs)
+        # Analyze by category when internal logs can be matched to articles.
         category_stats = {}
         for log in recent_logs:
             article_id = log.get("article_id")
             if article_id:
-                # Try to get article to find category
                 article = await db.articles.find_one({"_id": ObjectId(article_id)}) if ObjectId.is_valid(article_id) else None
                 if not article:
                     article = await db.articles.find_one({"id": article_id})
@@ -8370,18 +8366,33 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
         # Generate insights
         insights = []
         
-        # Top engagement insight
         if posts:
-            top_post = posts[0]
+            top_post = max(
+                posts,
+                key=lambda p: (p.get("engagement_score", 0), p.get("created_time") or "")
+            )
+            source_stats = {}
+            for post in posts:
+                source_type = post.get("source_type", "unknown")
+                source_stats[source_type] = source_stats.get(source_type, 0) + 1
+            
             insights.append({
                 "type": "top_performer",
                 "icon": "🏆",
-                "title": "Top Performing Post",
-                "description": f'"{top_post.get("title", "Unknown")}" got {top_post.get("likes", 0)} likes, {top_post.get("comments", 0)} comments, {top_post.get("shares", 0)} shares',
+                "title": "Top Performing Content",
+                "description": f'"{top_post.get("title", "Unknown")}" got {top_post.get("likes", 0)} reactions, {top_post.get("comments", 0)} comments, {top_post.get("shares", 0)} shares',
                 "engagement_score": top_post.get("engagement_score", 0)
             })
+            
+            top_source = max(source_stats.items(), key=lambda x: x[1])
+            insights.append({
+                "type": "content_mix",
+                "icon": "🎬" if top_source[0] in ["videos", "video_reels"] else "📰",
+                "title": "Most Common Facebook Format",
+                "description": f'{top_source[0].replace("_", " ").title()} - {top_source[1]} items in the latest Facebook analytics sample',
+                "recommendation": "Recent activity includes Reels/videos, so the analytics now checks feed posts and video content together."
+            })
         
-        # Category insights
         if category_stats:
             sorted_categories = sorted(category_stats.items(), key=lambda x: x[1]["count"], reverse=True)
             top_category = sorted_categories[0]
@@ -8393,31 +8404,46 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
                 "recommendation": f"You're posting a lot of {top_category[0]} content. Consider diversifying if engagement is low."
             })
         
-        # Posting frequency insight
-        if recent_logs:
-            from datetime import timedelta
-            week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-            
-            def make_aware(dt):
-                """Ensure datetime is timezone-aware"""
-                if dt is None:
-                    return None
-                if isinstance(dt, datetime):
-                    if dt.tzinfo is None:
-                        return dt.replace(tzinfo=timezone.utc)
-                    return dt
-                return None
-            
-            posts_this_week = len([l for l in recent_logs if l.get("posted_at") and make_aware(l["posted_at"]) and make_aware(l["posted_at"]) > week_ago])
-            insights.append({
-                "type": "frequency",
-                "icon": "📅",
-                "title": "Posting Frequency",
-                "description": f"{posts_this_week} posts in the last 7 days",
-                "recommendation": "Aim for 3-4 posts per day at peak times (8 AM, 1 PM, 7 PM) for best engagement."
-            })
+        # Posting frequency insight from internal logs if available, otherwise from Facebook created_time.
+        from datetime import timedelta
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         
-        # Time-based insight
+        def make_aware(dt):
+            if dt is None:
+                return None
+            if isinstance(dt, datetime):
+                if dt.tzinfo is None:
+                    return dt.replace(tzinfo=timezone.utc)
+                return dt
+            return None
+        
+        def parse_facebook_time(value):
+            if not value:
+                return None
+            try:
+                return datetime.strptime(value, "%Y-%m-%dT%H:%M:%S%z")
+            except Exception:
+                return None
+        
+        if recent_logs:
+            posts_this_week = len([
+                l for l in recent_logs
+                if l.get("posted_at") and make_aware(l["posted_at"]) and make_aware(l["posted_at"]) > week_ago
+            ])
+        else:
+            posts_this_week = len([
+                p for p in posts
+                if parse_facebook_time(p.get("created_time")) and parse_facebook_time(p.get("created_time")) > week_ago
+            ])
+        
+        insights.append({
+            "type": "frequency",
+            "icon": "📅",
+            "title": "Posting Frequency",
+            "description": f"{posts_this_week} Facebook items found in the last 7 days",
+            "recommendation": "Aim for consistent morning and after-work posts, with Reels used for simple visual stories and links reinforced in captions/comments."
+        })
+        
         if posts:
             avg_engagement = sum(p.get("engagement_score", 0) for p in posts) / len(posts)
             insights.append({
@@ -8425,12 +8451,12 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
                 "icon": "💡",
                 "title": "Average Engagement",
                 "description": f"Average engagement score: {round(avg_engagement, 1)}",
-                "recommendation": "Posts with local location mentions tend to perform better. Try including Chester, Knutsford, or Warrington in headlines."
+                "recommendation": "If Meta still reports zero reactions in this dashboard, check Facebook Page permissions/insights access because content is now being found successfully."
             })
         
         return {
             "success": True,
-            "total_posts_analyzed": len(recent_logs),
+            "total_posts_analyzed": len(posts) if posts else len(recent_logs),
             "category_breakdown": category_stats,
             "insights": insights
         }
