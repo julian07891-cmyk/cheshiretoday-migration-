@@ -9,6 +9,7 @@ from pymongo.errors import DuplicateKeyError
 import os
 import re
 import logging
+import httpx
 import secrets
 import hashlib
 from pathlib import Path
