@@ -511,10 +511,11 @@ class FacebookService:
     
     async def fetch_recent_posts_engagement(self, limit: int = 20) -> Dict:
         """
-        Fetch engagement metrics for recent page posts.
+        Fetch engagement metrics for recent Facebook Page content.
+        Merges normal feed posts with videos/Reels where the Graph API exposes them.
         
         Args:
-            limit: Number of recent posts to fetch
+            limit: Number of recent items to fetch per Facebook edge
             
         Returns:
             Dict with list of posts and their engagement
@@ -528,61 +529,100 @@ class FacebookService:
         
         try:
             async with httpx.AsyncClient() as client:
-                # Fetch recent posts with engagement
-                response = await client.get(
-                    f"{self.base_url}/{self.page_id}/feed",
-                    params={
-                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares",
-                        "limit": limit,
-                        "access_token": page_token
+                posts_by_id = {}
+                errors = []
+
+                edges = [
+                    {
+                        "name": "feed",
+                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,message,created_time,permalink_url"
                     },
-                    timeout=30.0
-                )
-                
-                result = response.json()
-                
-                if "error" in result:
+                    {
+                        "name": "videos",
+                        "fields": "id,description,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,description,created_time,permalink_url"
+                    },
+                    {
+                        "name": "video_reels",
+                        "fields": "id,description,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,description,created_time,permalink_url"
+                    }
+                ]
+
+                for edge in edges:
+                    result = None
+                    for fields in (edge["fields"], edge["fallback_fields"]):
+                        response = await client.get(
+                            f"{self.base_url}/{self.page_id}/{edge['name']}",
+                            params={
+                                "fields": fields,
+                                "limit": limit,
+                                "access_token": page_token
+                            },
+                            timeout=30.0
+                        )
+                        candidate = response.json()
+                        if "error" not in candidate:
+                            result = candidate
+                            break
+                        errors.append(f"{edge['name']}: {candidate['error'].get('message', 'Unknown error')}")
+
+                    if not result:
+                        logger.warning(f"Facebook analytics edge failed: {edge['name']}")
+                        continue
+
+                    for post in result.get("data", []):
+                        post_id = post.get("id")
+                        if not post_id or post_id in posts_by_id:
+                            continue
+
+                        reactions = post.get("reactions", {}).get("summary", {}).get("total_count", 0)
+                        comments = post.get("comments", {}).get("summary", {}).get("total_count", 0)
+                        shares = post.get("shares", {}).get("count", 0) if post.get("shares") else 0
+                        engagement_score = reactions + (comments * 2) + (shares * 3)
+
+                        message = post.get("message") or post.get("description") or ""
+                        title = ""
+                        for line in message.split("\n"):
+                            cleaned = line.strip().replace("📰", "").strip()
+                            if cleaned:
+                                title = cleaned
+                                break
+
+                        posts_by_id[post_id] = {
+                            "post_id": post_id,
+                            "source_type": edge["name"],
+                            "title": title[:100] if title else "Unknown",
+                            "message_preview": message[:150] + "..." if len(message) > 150 else message,
+                            "created_time": post.get("created_time"),
+                            "permalink_url": post.get("permalink_url"),
+                            "likes": reactions,
+                            "reactions": reactions,
+                            "comments": comments,
+                            "shares": shares,
+                            "engagement_score": engagement_score
+                        }
+
+                posts = list(posts_by_id.values())
+
+                if not posts and errors:
                     return {
                         "success": False,
-                        "error": result["error"].get("message", "Unknown error"),
+                        "error": "; ".join(errors[:3]),
                         "posts": []
                     }
-                
-                posts = []
-                for post in result.get("data", []):
-                    reactions = post.get("reactions", {}).get("summary", {}).get("total_count", 0)
-                    comments = post.get("comments", {}).get("summary", {}).get("total_count", 0)
-                    shares = post.get("shares", {}).get("count", 0) if post.get("shares") else 0
-                    engagement_score = reactions + (comments * 2) + (shares * 3)
-                    
-                    # Extract title/first line from Facebook caption.
-                    # Older auto-posts start with 📰, while newer manual posts use plain hooks.
-                    message = post.get("message", "") or ""
-                    title = ""
-                    for line in message.split("\n"):
-                        cleaned = line.strip().replace("📰", "").strip()
-                        if cleaned:
-                            title = cleaned
-                            break
-                    
-                    posts.append({
-                        "post_id": post.get("id"),
-                        "title": title[:100] if title else "Unknown",
-                        "message_preview": message[:150] + "..." if len(message) > 150 else message,
-                        "created_time": post.get("created_time"),
-                        "likes": reactions,
-                        "reactions": reactions,
-                        "comments": comments,
-                        "shares": shares,
-                        "engagement_score": engagement_score
-                    })
-                
-                # Sort by engagement score
-                posts.sort(key=lambda x: x["engagement_score"], reverse=True)
-                
+
+                # Rank by engagement, but use freshness as the tie-breaker so zero-engagement lists stay current.
+                posts.sort(
+                    key=lambda x: (x.get("engagement_score", 0), x.get("created_time") or ""),
+                    reverse=True
+                )
+
                 return {
                     "success": True,
                     "total_posts": len(posts),
+                    "warnings": errors[:3],
                     "posts": posts
                 }
                 
