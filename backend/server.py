@@ -8270,6 +8270,100 @@ async def cancel_scheduled_post(post_id: str, auth: bool = Depends(get_admin_aut
 # FACEBOOK ANALYTICS ENDPOINTS
 # ============================================================================
 
+@api_router.get("/facebook/analytics/debug-edges")
+async def debug_facebook_analytics_edges(auth: bool = Depends(get_admin_auth)):
+    """
+    Admin-only diagnostic for Facebook Graph content edges.
+    Shows which Page edges expose the newest posts/Reels without exposing tokens.
+    """
+    try:
+        page_token = await facebook_service.get_page_token()
+        if not page_token:
+            return {"success": False, "error": "Could not get page token", "edges": []}
+
+        edges = [
+            {
+                "name": "promotable_posts",
+                "fields": "id,message,created_time,permalink_url"
+            },
+            {
+                "name": "feed",
+                "fields": "id,message,created_time,permalink_url"
+            },
+            {
+                "name": "published_posts",
+                "fields": "id,message,created_time,permalink_url"
+            },
+            {
+                "name": "posts",
+                "fields": "id,message,created_time,permalink_url"
+            },
+            {
+                "name": "photos",
+                "fields": "id,name,created_time,permalink_url"
+            },
+            {
+                "name": "videos",
+                "fields": "id,description,created_time,permalink_url"
+            },
+            {
+                "name": "video_reels",
+                "fields": "id,description,created_time,permalink_url"
+            }
+        ]
+
+        diagnostics = []
+        async with httpx.AsyncClient() as client:
+            for edge in edges:
+                response = await client.get(
+                    f"{facebook_service.base_url}/{facebook_service.page_id}/{edge['name']}",
+                    params={
+                        "fields": edge["fields"],
+                        "limit": 10,
+                        "access_token": page_token
+                    },
+                    timeout=30.0
+                )
+                result = response.json()
+
+                if "error" in result:
+                    diagnostics.append({
+                        "edge": edge["name"],
+                        "success": False,
+                        "error": result["error"].get("message", "Unknown error"),
+                        "count": 0,
+                        "items": []
+                    })
+                    continue
+
+                items = []
+                for item in result.get("data", [])[:5]:
+                    message = item.get("message") or item.get("description") or item.get("name") or ""
+                    items.append({
+                        "id": item.get("id"),
+                        "created_time": item.get("created_time"),
+                        "title": message[:120] if message else "Unknown",
+                        "permalink_url": item.get("permalink_url")
+                    })
+
+                diagnostics.append({
+                    "edge": edge["name"],
+                    "success": True,
+                    "count": len(result.get("data", [])),
+                    "items": items
+                })
+
+        return {
+            "success": True,
+            "page_id": facebook_service.page_id,
+            "edges": diagnostics
+        }
+
+    except Exception as e:
+        logger.error(f"Error debugging Facebook analytics edges: {str(e)}")
+        return {"success": False, "error": str(e), "edges": []}
+
+
 @api_router.get("/facebook/analytics")
 async def get_facebook_analytics(auth: bool = Depends(get_admin_auth)):
     """
