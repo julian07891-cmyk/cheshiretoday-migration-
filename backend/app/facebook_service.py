@@ -41,21 +41,7 @@ class FacebookService:
 
         try:
             async with httpx.AsyncClient() as client:
-                # First try the configured token directly against the Page.
-                direct_response = await client.get(
-                    f"{self.base_url}/{self.page_id}",
-                    params={
-                        "fields": "id,name",
-                        "access_token": self.user_access_token
-                    },
-                    timeout=15.0
-                )
-                direct_result = direct_response.json()
-                if direct_result.get("id") == self.page_id and "error" not in direct_result:
-                    self._page_token = self.user_access_token
-                    return self._page_token
-
-                # Fallback: configured token is probably a User token; fetch Page token.
+                # First try to exchange the configured token for the actual Page token.
                 response = await client.get(
                     f"{self.base_url}/{self.page_id}",
                     params={
@@ -67,6 +53,20 @@ class FacebookService:
                 result = response.json()
                 if "access_token" in result:
                     self._page_token = result["access_token"]
+                    return self._page_token
+
+                # Fallback: configured token may already be a Page token; verify direct access.
+                direct_response = await client.get(
+                    f"{self.base_url}/{self.page_id}",
+                    params={
+                        "fields": "id,name",
+                        "access_token": self.user_access_token
+                    },
+                    timeout=15.0
+                )
+                direct_result = direct_response.json()
+                if direct_result.get("id") == self.page_id and "error" not in direct_result:
+                    self._page_token = self.user_access_token
                     return self._page_token
         except Exception as e:
             logger.error(f"Error getting page token: {e}")
