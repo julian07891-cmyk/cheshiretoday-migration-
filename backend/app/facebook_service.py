@@ -534,6 +534,11 @@ class FacebookService:
 
                 edges = [
                     {
+                        "name": "promotable_posts",
+                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,message,created_time,permalink_url"
+                    },
+                    {
                         "name": "feed",
                         "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
                         "fallback_fields": "id,message,created_time,permalink_url"
