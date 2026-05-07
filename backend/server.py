@@ -8315,7 +8315,7 @@ async def get_facebook_analytics(auth: bool = Depends(get_admin_auth)):
                 "total_comments": total_comments,
                 "total_shares": total_shares,
                 "total_engagement_score": total_engagement,
-                "avg_engagement_per_post": round(total_engagement / len(posts), 1) if posts else 0
+                "avg_engagement_per_post": round(total_engagement / len(posts), 2) if posts else 0
             },
             "top_post": top_post,
             "posts": posts
@@ -8450,7 +8450,7 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
                 "type": "engagement_summary",
                 "icon": "💡",
                 "title": "Average Engagement",
-                "description": f"Average engagement score: {round(avg_engagement, 1)}",
+                "description": f"Average engagement score: {round(avg_engagement, 2)}",
                 "recommendation": "If Meta still reports zero reactions in this dashboard, check Facebook Page permissions/insights access because content is now being found successfully."
             })
         

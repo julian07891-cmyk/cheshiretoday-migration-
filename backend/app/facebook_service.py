@@ -539,6 +539,21 @@ class FacebookService:
                         "fallback_fields": "id,message,created_time,permalink_url"
                     },
                     {
+                        "name": "published_posts",
+                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,message,created_time,permalink_url"
+                    },
+                    {
+                        "name": "posts",
+                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,message,created_time,permalink_url"
+                    },
+                    {
+                        "name": "photos",
+                        "fields": "id,name,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
+                        "fallback_fields": "id,name,created_time,permalink_url"
+                    },
+                    {
                         "name": "videos",
                         "fields": "id,description,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
                         "fallback_fields": "id,description,created_time,permalink_url"
@@ -582,7 +597,7 @@ class FacebookService:
                         shares = post.get("shares", {}).get("count", 0) if post.get("shares") else 0
                         engagement_score = reactions + (comments * 2) + (shares * 3)
 
-                        message = post.get("message") or post.get("description") or ""
+                        message = post.get("message") or post.get("description") or post.get("name") or ""
                         title = ""
                         for line in message.split("\n"):
                             cleaned = line.strip().replace("📰", "").strip()
