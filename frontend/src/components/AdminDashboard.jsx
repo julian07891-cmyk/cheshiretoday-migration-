@@ -3842,11 +3842,11 @@ const handleDeleteArticle = async (articleId) => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-purple-50 rounded-lg p-4 text-center">
                       <p className="text-3xl font-bold text-purple-700">{fbAnalytics.summary?.total_posts_analyzed || 0}</p>
-                      <p className="text-sm text-purple-600">Posts Analyzed</p>
+                      <p className="text-sm text-purple-600">Facebook Items</p>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-4 text-center">
                       <p className="text-3xl font-bold text-blue-700">{fbAnalytics.summary?.total_likes || 0}</p>
-                      <p className="text-sm text-blue-600">Total Likes</p>
+                      <p className="text-sm text-blue-600">Total Reactions</p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4 text-center">
                       <p className="text-3xl font-bold text-green-700">{fbAnalytics.summary?.total_comments || 0}</p>
@@ -3897,22 +3897,22 @@ const handleDeleteArticle = async (articleId) => {
               </Card>
             )}
 
-            {/* Top Posts */}
+            {/* Facebook Content Performance */}
             {fbAnalytics?.success && fbAnalytics.posts?.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-green-600" />
-                    Top Performing Posts
+                    Facebook Content Performance
                   </CardTitle>
-                  <CardDescription>Ranked by engagement score</CardDescription>
+                  <CardDescription>Feed posts, videos and Reels ranked by engagement score, with newest items shown first when scores are tied</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {fbAnalytics.posts.slice(0, 10).map((post, index) => (
                       <div 
                         key={post.post_id}
-                        className={`flex items-center gap-3 p-3 rounded-lg ${
+                        className={`flex items-start gap-3 p-3 rounded-lg ${
                           index === 0 ? 'bg-yellow-50 border border-yellow-200' :
                           index < 3 ? 'bg-green-50' : 'bg-muted'
                         }`}
@@ -3924,9 +3924,26 @@ const handleDeleteArticle = async (articleId) => {
                           {index + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground truncate text-sm">{post.title}</p>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                            <span>❤️ {post.likes}</span>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-medium text-foreground text-sm leading-snug">{post.title}</p>
+                            {post.permalink_url && (
+                              <a
+                                href={post.permalink_url.startsWith('http') ? post.permalink_url : `https://www.facebook.com${post.permalink_url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-shrink-0 text-blue-600 hover:text-blue-800"
+                                title="Open on Facebook"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            <Badge variant="outline" className="capitalize">
+                              {(post.source_type || 'facebook').replace('_', ' ')}
+                            </Badge>
+                            <span>{formatDate(post.created_time)}</span>
+                            <span>❤️ {post.reactions ?? post.likes ?? 0}</span>
                             <span>💬 {post.comments}</span>
                             <span>🔄 {post.shares}</span>
                             <span className="text-purple-600 font-medium">Score: {post.engagement_score}</span>
