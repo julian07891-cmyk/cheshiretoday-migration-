@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Menu, X, Loader2 } from 'lucide-react';
+import { Search, Menu, X, Loader2, Facebook } from 'lucide-react';
 import { Button } from './ui/button';
 import FestiveBanner from './FestiveBanner';
 import WeatherWidget from './WeatherWidget';
 import DarkModeToggle from './DarkModeToggle';
 import { articleService } from '../services/api';
 import { buildArticleUrl } from '../utils/articleUrl';
+
+const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
 const NewsHeader = ({ onMenuClick, categories, activeCategory, onCategoryChange, onArticleClick }) => {
   // Top-nav should be minimal (homepage focus). Keep other categories available elsewhere.
@@ -92,7 +94,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
             <span>
               {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
-            
+
             {/* Weather - center/right */}
             <div className="hidden md:block">
               <WeatherWidget compact />
@@ -107,9 +109,9 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
           <div className="flex items-center justify-between py-3 md:py-4">
             {/* Logo - Compact on mobile */}
             <div className="flex items-center space-x-2 md:space-x-3">
-              <img 
-                src="/logo.png" 
-                alt="Cheshire Today" 
+              <img
+                src="/logo.png"
+                alt="Cheshire Today"
                 className="h-8 md:h-10 w-auto"
               />
               <div>
@@ -159,7 +161,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                 ) : (
                   <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
                 )}
-                
+
                 {/* Search Results Dropdown */}
                 {searchOpen && searchResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-slate-50 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
@@ -169,8 +171,8 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                         onClick={() => handleSearchResultClick(article)}
                         className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
                       >
-                        <img 
-                          src={article.image} 
+                        <img
+                          src={article.image}
                           alt={article.title}
                           className="w-12 h-12 object-cover rounded"
                         />
@@ -187,13 +189,32 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                   </div>
                 )}
               </div>
-              
+
+              <a
+                href={FACEBOOK_PAGE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Cheshire Today on Facebook"
+                className="h-10 w-10 rounded-full border border-slate-300/50 dark:border-gray-700 flex items-center justify-center text-[#1E3A8A] dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Facebook className="h-4 w-4" />
+              </a>
+
               {/* Dark Mode Toggle */}
               <DarkModeToggle />
             </div>
 
             {/* Mobile Menu Button */}
             <div className="flex items-center gap-2 md:hidden">
+              <a
+                href={FACEBOOK_PAGE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Cheshire Today on Facebook"
+                className="h-9 w-9 rounded-full border border-slate-300/50 dark:border-gray-700 flex items-center justify-center text-[#1E3A8A] dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Facebook className="h-4 w-4" />
+              </a>
               <DarkModeToggle />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -267,12 +288,22 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                 />
                 <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
-              
+
               {/* Mobile Weather */}
               <div className="mb-4">
                 <WeatherWidget compact />
               </div>
-              
+
+              <a
+                href={FACEBOOK_PAGE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mb-4 flex items-center justify-center gap-2 rounded-full bg-[#1877F2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166FE5] transition-colors"
+              >
+                <Facebook className="h-4 w-4" />
+                Follow us on Facebook
+              </a>
+
               <div className="space-y-2">
                 {navCategories.map((category) => (
                   <button

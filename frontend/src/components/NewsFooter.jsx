@@ -1,8 +1,10 @@
 import React from 'react';
-import { Mail, Settings } from 'lucide-react';
+import { Mail, Settings, Facebook } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { newsletterService } from '../services/api';
 import NewsletterPreferences from './NewsletterPreferences';
+
+const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
 const NewsFooter = () => {
   const currentYear = new Date().getFullYear();
@@ -131,7 +133,16 @@ const NewsFooter = () => {
             <p className="text-sm text-neutral-600 dark:text-slate-400 dark:text-slate-400 mb-4">
               Cheshire’s local economic intelligence platform covering local news, business, finance and AI & tech.
             </p>
-            {/* Social links intentionally hidden until real public profile URLs are confirmed */}
+            <a
+              href={FACEBOOK_PAGE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-[#1877F2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166FE5] transition-colors"
+              aria-label="Follow Cheshire Today on Facebook"
+            >
+              <Facebook className="h-4 w-4" />
+              Follow us on Facebook
+            </a>
           </div>
 
           {/* Footer Links */}
