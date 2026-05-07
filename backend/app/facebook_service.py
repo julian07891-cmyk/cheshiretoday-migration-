@@ -511,8 +511,9 @@ class FacebookService:
     
     async def fetch_recent_posts_engagement(self, limit: int = 20) -> Dict:
         """
-        Fetch engagement metrics for recent Facebook Page content.
-        Merges normal feed posts with videos/Reels where the Graph API exposes them.
+        Fetch recent Facebook Page content first, then enrich each item with engagement.
+        This avoids Facebook Graph dropping newer feed posts when engagement fields are requested
+        directly on list edges.
         
         Args:
             limit: Number of recent items to fetch per Facebook edge
@@ -529,77 +530,85 @@ class FacebookService:
         
         try:
             async with httpx.AsyncClient() as client:
-                posts_by_id = {}
+                posts_by_key = {}
                 errors = []
 
                 edges = [
                     {
-                        "name": "promotable_posts",
-                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,message,created_time,permalink_url"
-                    },
-                    {
                         "name": "feed",
-                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,message,created_time,permalink_url"
+                        "fields": "id,message,created_time,permalink_url"
                     },
                     {
                         "name": "published_posts",
-                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,message,created_time,permalink_url"
+                        "fields": "id,message,created_time,permalink_url"
                     },
                     {
                         "name": "posts",
-                        "fields": "id,message,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,message,created_time,permalink_url"
+                        "fields": "id,message,created_time,permalink_url"
                     },
                     {
                         "name": "photos",
-                        "fields": "id,name,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,name,created_time,permalink_url"
+                        "fields": "id,name,created_time,permalink_url"
                     },
                     {
                         "name": "videos",
-                        "fields": "id,description,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,description,created_time,permalink_url"
+                        "fields": "id,description,created_time,permalink_url"
                     },
                     {
                         "name": "video_reels",
-                        "fields": "id,description,created_time,reactions.summary(true),comments.summary(true),shares,permalink_url",
-                        "fallback_fields": "id,description,created_time,permalink_url"
+                        "fields": "id,description,created_time,permalink_url"
                     }
                 ]
 
                 for edge in edges:
-                    result = None
-                    for fields in (edge["fields"], edge["fallback_fields"]):
-                        response = await client.get(
-                            f"{self.base_url}/{self.page_id}/{edge['name']}",
-                            params={
-                                "fields": fields,
-                                "limit": limit,
-                                "access_token": page_token
-                            },
-                            timeout=30.0
-                        )
-                        candidate = response.json()
-                        if "error" not in candidate:
-                            result = candidate
-                            break
-                        errors.append(f"{edge['name']}: {candidate['error'].get('message', 'Unknown error')}")
+                    response = await client.get(
+                        f"{self.base_url}/{self.page_id}/{edge['name']}",
+                        params={
+                            "fields": edge["fields"],
+                            "limit": limit,
+                            "access_token": page_token
+                        },
+                        timeout=30.0
+                    )
+                    result = response.json()
 
-                    if not result:
+                    if "error" in result:
+                        errors.append(f"{edge['name']}: {result['error'].get('message', 'Unknown error')}")
                         logger.warning(f"Facebook analytics edge failed: {edge['name']}")
                         continue
 
                     for post in result.get("data", []):
                         post_id = post.get("id")
-                        if not post_id or post_id in posts_by_id:
+                        if not post_id:
                             continue
 
-                        reactions = post.get("reactions", {}).get("summary", {}).get("total_count", 0)
-                        comments = post.get("comments", {}).get("summary", {}).get("total_count", 0)
-                        shares = post.get("shares", {}).get("count", 0) if post.get("shares") else 0
+                        permalink_url = post.get("permalink_url")
+                        dedupe_key = post_id
+                        if permalink_url:
+                            dedupe_key = (
+                                permalink_url
+                                .replace("https://www.facebook.com", "")
+                                .replace("http://www.facebook.com", "")
+                            )
+
+                        if dedupe_key in posts_by_key:
+                            continue
+
+                        engagement_response = await client.get(
+                            f"{self.base_url}/{post_id}",
+                            params={
+                                "fields": "reactions.summary(true),comments.summary(true),shares",
+                                "access_token": page_token
+                            },
+                            timeout=15.0
+                        )
+                        engagement_result = engagement_response.json()
+                        if "error" in engagement_result:
+                            engagement_result = {}
+
+                        reactions = engagement_result.get("reactions", {}).get("summary", {}).get("total_count", 0)
+                        comments = engagement_result.get("comments", {}).get("summary", {}).get("total_count", 0)
+                        shares = engagement_result.get("shares", {}).get("count", 0) if engagement_result.get("shares") else 0
                         engagement_score = reactions + (comments * 2) + (shares * 3)
 
                         message = post.get("message") or post.get("description") or post.get("name") or ""
@@ -610,13 +619,17 @@ class FacebookService:
                                 title = cleaned
                                 break
 
-                        posts_by_id[post_id] = {
+                        source_type = edge["name"]
+                        if permalink_url and "/reel/" in permalink_url:
+                            source_type = "reel"
+
+                        posts_by_key[dedupe_key] = {
                             "post_id": post_id,
-                            "source_type": edge["name"],
+                            "source_type": source_type,
                             "title": title[:100] if title else "Unknown",
                             "message_preview": message[:150] + "..." if len(message) > 150 else message,
                             "created_time": post.get("created_time"),
-                            "permalink_url": post.get("permalink_url"),
+                            "permalink_url": permalink_url,
                             "likes": reactions,
                             "reactions": reactions,
                             "comments": comments,
@@ -624,7 +637,7 @@ class FacebookService:
                             "engagement_score": engagement_score
                         }
 
-                posts = list(posts_by_id.values())
+                posts = list(posts_by_key.values())
 
                 if not posts and errors:
                     return {
