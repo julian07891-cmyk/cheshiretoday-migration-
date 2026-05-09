@@ -6,6 +6,7 @@ import WeatherWidget from './WeatherWidget';
 import DarkModeToggle from './DarkModeToggle';
 import { articleService } from '../services/api';
 import { buildArticleUrl } from '../utils/articleUrl';
+import { trackEvent } from '../utils/trackEvent';
 
 const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
@@ -195,6 +196,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow Cheshire Today on Facebook"
+                onClick={() => trackEvent("social_click", { network: "facebook", placement: "header_desktop", destination: FACEBOOK_PAGE_URL })}
                 className="h-10 w-10 rounded-full border border-slate-300/50 dark:border-gray-700 flex items-center justify-center text-[#1E3A8A] dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <Facebook className="h-4 w-4" />
@@ -211,6 +213,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Follow Cheshire Today on Facebook"
+                onClick={() => trackEvent("social_click", { network: "facebook", placement: "header_mobile_icon", destination: FACEBOOK_PAGE_URL })}
                 className="h-9 w-9 rounded-full border border-slate-300/50 dark:border-gray-700 flex items-center justify-center text-[#1E3A8A] dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <Facebook className="h-4 w-4" />
@@ -298,6 +301,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                 href={FACEBOOK_PAGE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackEvent("social_click", { network: "facebook", placement: "mobile_menu", destination: FACEBOOK_PAGE_URL })}
                 className="mb-4 flex items-center justify-center gap-2 rounded-full bg-[#1877F2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166FE5] transition-colors"
               >
                 <Facebook className="h-4 w-4" />

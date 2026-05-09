@@ -3,6 +3,7 @@ import { Mail, Settings, Facebook } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { newsletterService } from '../services/api';
 import NewsletterPreferences from './NewsletterPreferences';
+import { trackEvent } from '../utils/trackEvent';
 
 const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
@@ -137,6 +138,7 @@ const NewsFooter = () => {
               href={FACEBOOK_PAGE_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackEvent("social_click", { network: "facebook", placement: "footer", destination: FACEBOOK_PAGE_URL })}
               className="inline-flex items-center gap-2 rounded-full bg-[#1877F2] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166FE5] transition-colors"
               aria-label="Follow Cheshire Today on Facebook"
             >
