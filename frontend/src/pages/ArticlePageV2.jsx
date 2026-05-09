@@ -1197,7 +1197,7 @@ export default function ArticlePageV2({ categories }) {
 
               </div>
 
-              <section className="mt-8 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-4 md:p-5">
+              <section className="mt-8 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-4 md:p-5 lg:hidden">
                 <div className="mb-3">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
                     {getGuideSectionHeading(contextToolType, pillarLabel)}
@@ -1318,6 +1318,21 @@ export default function ArticlePageV2({ categories }) {
                     onArticleClick={(a) => navigate("/article/" + a.id)}
                   />
                 </div>
+
+                <section className="rounded-xl border border-[#E6E1D8] dark:border-gray-800 bg-white/80 dark:bg-gray-950/40 p-4">
+                  <div className="mb-3">
+                    <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-sky-800 dark:text-sky-300">
+                      {getGuideSectionHeading(contextToolType, pillarLabel)}
+                    </div>
+                    <h3 className="mt-1 text-sm font-black tracking-tight text-slate-950 dark:text-white">
+                      Best options based on this story
+                    </h3>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
+                      Practical next steps, comparisons and tools linked to the issue covered in this article.
+                    </p>
+                  </div>
+                  <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
+                </section>
 
                 <SponsoredPlacement placement="article_sidebar" />
 
