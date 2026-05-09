@@ -38,18 +38,25 @@ function getRotatedSlice(items = [], start = 0, limit = 0, key = "") {
   );
 }
 
-export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "" }) {
+export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "", excludeFocus = "" }) {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
   const items = useMemo(() => {
-    const sourceItems = focus === "finance"
-      ? (monetisationTools.homepage_primary || []).filter((item) =>
-          /mortgage|savings|energy|tariff|bills|credit/i.test(`${item?.title || ""} ${item?.href || ""}`)
-        )
-      : (monetisationTools.homepage_primary || []);
+    const isFinanceGuide = (item) =>
+      /mortgage|savings|energy|tariff|bills|credit/i.test(`${item?.title || ""} ${item?.href || ""}`);
 
-    return getRotatedSlice(sourceItems, start, limit, `homepage_primary_${focus || "all"}`);
-  }, [start, limit, focus]);
+    let sourceItems = monetisationTools.homepage_primary || [];
+
+    if (focus === "finance") {
+      sourceItems = sourceItems.filter(isFinanceGuide);
+    }
+
+    if (excludeFocus === "finance") {
+      sourceItems = sourceItems.filter((item) => !isFinanceGuide(item));
+    }
+
+    return getRotatedSlice(sourceItems, start, limit, `homepage_primary_${focus || "all"}_${excludeFocus || "none"}`);
+  }, [start, limit, focus, excludeFocus]);
 
   if (!items.length) return null;
 
