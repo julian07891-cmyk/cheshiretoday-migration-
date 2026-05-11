@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getApiUrl } from "../utils/api";
+import { buildArticleUrl } from "../utils/articleUrl";
 import { Clock } from "lucide-react";
 import { filterEditorialPool } from "../utils/editorialPolicy";
 
@@ -80,7 +81,7 @@ export default function SidebarMoreStories({ currentId, limit = 6, title = "More
           return (
             <a
               key={id}
-              href={`/article/${encodeURIComponent(id)}`}
+              href={buildArticleUrl(a)}
               className="block rounded-lg border border-[#E6E1D8] bg-transparent px-3 py-3 hover:bg-[#F2EEE6] transition"
             >
               <div className="flex items-center gap-2 mb-1">

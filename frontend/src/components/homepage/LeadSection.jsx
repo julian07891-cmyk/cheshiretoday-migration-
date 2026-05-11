@@ -1,5 +1,6 @@
 import React from "react";
 import CompactArticleCard from "../CompactArticleCard";
+import { buildArticleUrl } from "../../utils/articleUrl";
 
 /**
  * LeadSection
@@ -40,7 +41,7 @@ export default function LeadSection({
     location: a?.town || a?.location || "Cheshire",
     publishedDate: a?.publishedDate,
     readTime: a?.readTime || 3,
-    url: a?.url || (a?.id || a?._id ? `/article/${a.id || a._id}` : "/"),
+    url: a?.url || buildArticleUrl(a),
   });
 
   const collapsedCount = 4;
