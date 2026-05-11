@@ -12812,8 +12812,41 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         })
         
         if existing:
-            logger.info(f"⏭️ {digest_time} for {date_key} already exists (status: {existing.get('status')}), skipping...")
-            return
+            existing_status = existing.get("status")
+            existing_sent_at = existing.get("sent_at")
+            existing_success_count = int(existing.get("success_count") or 0)
+
+            if isinstance(existing_sent_at, datetime):
+                if existing_sent_at.tzinfo is None:
+                    existing_sent_at = existing_sent_at.replace(tzinfo=timezone.utc)
+                existing_age_minutes = (now - existing_sent_at).total_seconds() / 60
+            else:
+                existing_age_minutes = 0
+
+            stale_in_progress = (
+                existing_status in ("claimed", "sending")
+                and existing_success_count == 0
+                and existing_age_minutes >= 90
+            )
+
+            if stale_in_progress:
+                logger.warning(
+                    f"♻️ Reclaiming stale {digest_time} digest lock for {date_key} "
+                    f"(status={existing_status}, age={int(existing_age_minutes)}m, success_count=0)"
+                )
+                await db.digest_log.update_one(
+                    {"_id": existing["_id"]},
+                    {"$set": {
+                        "status": "failed",
+                        "error": "Marked failed automatically because digest was stuck in claimed/sending state",
+                        "failed_at": now,
+                        "reclaimed_at": now
+                    }}
+                )
+                await db.digest_log.delete_one({"_id": existing["_id"]})
+            else:
+                logger.info(f"⏭️ {digest_time} for {date_key} already exists (status: {existing_status}), skipping...")
+                return
         
         # ============================================
         # Step 2: Try atomic insert - MongoDB unique index ensures only ONE wins
