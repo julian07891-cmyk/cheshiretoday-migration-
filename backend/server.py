@@ -10462,7 +10462,11 @@ async def generate_rss_feed():
         
         for article in articles:
             article_id = str(article.get('id', article.get('_id', '')))
-            title = saxutils.escape(article.get('title', 'Untitled'))
+            raw_title = article.get('title', 'Untitled')
+            slug = re.sub(r"[^a-z0-9]+", "-", str(raw_title or "").lower()).strip("-")
+            slug = slug[:80] if slug else "article"
+            article_url = f"{base_url}/article/{article_id}/{slug}"
+            title = saxutils.escape(raw_title)
             description = saxutils.escape(article.get('content', '')[:300] + '...')
             pub_date = article.get('publishedDate', datetime.utcnow().isoformat())
             category = saxutils.escape(article.get('category', 'News'))
@@ -10481,8 +10485,8 @@ async def generate_rss_feed():
             
             rss += '  <item>\n'
             rss += f'    <title>{title}</title>\n'
-            rss += f'    <link>{base_url}/article/{article_id}</link>\n'
-            rss += f'    <guid isPermaLink="true">{base_url}/article/{article_id}</guid>\n'
+            rss += f'    <link>{saxutils.escape(article_url)}</link>\n'
+            rss += f'    <guid isPermaLink="true">{saxutils.escape(article_url)}</guid>\n'
             rss += f'    <description>{description}</description>\n'
             rss += f'    <pubDate>{formatted_date}</pubDate>\n'
             rss += f'    <category>{category}</category>\n'

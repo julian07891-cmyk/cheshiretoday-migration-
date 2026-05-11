@@ -159,11 +159,15 @@ class PushNotificationService:
         Returns:
             Dict with results
         """
+        import re
+        slug = re.sub(r"[^a-z0-9]+", "-", str(article_title or "").lower()).strip("-")
+        slug = slug[:80] if slug else "article"
+
         return await self.send_to_all(
             subscriptions=subscriptions,
             title=f"🔴 {category}",
             body=article_title,
-            url=f"/article/{article_id}",
+            url=f"/article/{article_id}/{slug}",
             icon="/logo192.png",
             tag=f"breaking-{article_id}"
         )
