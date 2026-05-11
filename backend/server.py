@@ -4417,15 +4417,38 @@ async def subscribe_newsletter(request: SubscribeRequest):
         existing = await db.subscribers.find_one({"email": email}, {"_id": 0})
         
         if existing:
-            # Update preferences if provided
+            # If this email previously unsubscribed, reactivate it cleanly.
+            update_data = {}
+            unset_data = {}
+
             if request.preferences:
-                await db.subscribers.update_one(
-                    {"email": email},
-                    {"$set": {"preferences": request.preferences}}
-                )
+                update_data["preferences"] = request.preferences
+
+            if existing.get("active") is False:
+                update_data.update({
+                    "active": True,
+                    "daily_brief": True,
+                    "weekly_roundup": False,
+                    "breaking_news": False,
+                    "reactivated_at": datetime.now(timezone.utc).isoformat(),
+                    "preferences_updated_at": datetime.now(timezone.utc).isoformat(),
+                })
+                unset_data.update({
+                    "unsubscribe_method": "",
+                    "unsubscribe_reason": "",
+                })
+
+            if update_data or unset_data:
+                update_op = {}
+                if update_data:
+                    update_op["$set"] = update_data
+                if unset_data:
+                    update_op["$unset"] = unset_data
+                await db.subscribers.update_one({"email": email}, update_op)
+
             return SubscribeResponse(
                 success=True,
-                message="You're already subscribed to our newsletter!"
+                message="You're already subscribed to our newsletter!" if existing.get("active") is not False else "Welcome back — your Daily Brief subscription has been reactivated."
             )
         
         # Default preferences
@@ -5070,22 +5093,58 @@ async def get_admin_stats(authorized: bool = Depends(get_admin_auth)):
 # =====================================================================================
 
 @api_router.post("/newsletter/unsubscribe")
-async def unsubscribe_newsletter(request: UnsubscribeRequest):
+async def unsubscribe_newsletter(payload: UnsubscribeRequest, request: Request):
     """
     Public endpoint to unsubscribe from newsletter.
-    Completely removes the subscriber from the database.
+    Soft-unsubscribes so future sends exclude the email while keeping an audit trail.
     """
     try:
-        email = request.email.lower().strip()
+        email = payload.email.lower().strip()
         
         if not email:
             raise HTTPException(status_code=400, detail="Email is required")
         
-        # Find and delete the subscriber
-        result = await db.subscribers.delete_one({"email": email})
-        
-        if result.deleted_count == 0:
-            # Still return success - don't reveal if email exists
+        now_iso = datetime.now(timezone.utc).isoformat()
+        subscriber = await db.subscribers.find_one({"email": email})
+
+        audit_doc = {
+            "email": email,
+            "requested_at": now_iso,
+            "method": "public_unsubscribe",
+            "matched_subscriber": bool(subscriber),
+            "ip": request.client.host if request.client else None,
+            "user_agent": request.headers.get("user-agent", "")[:300],
+        }
+
+        if subscriber:
+            audit_doc.update({
+                "subscriber_id": subscriber.get("id"),
+                "previous_active": subscriber.get("active"),
+                "previous_daily_brief": subscriber.get("daily_brief"),
+                "previous_weekly_roundup": subscriber.get("weekly_roundup"),
+                "previous_breaking_news": subscriber.get("breaking_news"),
+                "previous_preferences_updated_at": subscriber.get("preferences_updated_at"),
+            })
+
+            await db.subscribers.update_one(
+                {"email": email},
+                {"$set": {
+                    "active": False,
+                    "daily_brief": False,
+                    "weekly_roundup": False,
+                    "breaking_news": False,
+                    "unsubscribed_at": now_iso,
+                    "unsubscribe_method": "public_unsubscribe",
+                    "preferences_updated_at": now_iso,
+                }}
+            )
+
+        try:
+            await db.unsubscribe_log.insert_one(audit_doc)
+        except Exception as audit_error:
+            logger.warning(f"Failed to write unsubscribe audit log: {audit_error}")
+
+        if not subscriber:
             logger.info(f"Unsubscribe attempt for non-existent email: {email[:3]}***")
             return {
                 "success": True,
@@ -9044,7 +9103,10 @@ async def send_digest_now():
         # Resend Pro cleanup mode: send to active subscribers in larger controlled batches.
         subscribers = await db.subscribers.find(
             {
-                "$or": [{"active": True}, {"active": {"$exists": False}}]
+                "$and": [
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]}
+                ]
             },
             {"_id": 0, "email": 1}
         ).to_list(15000)
@@ -9591,7 +9653,12 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
     try:
         # Get subscribers with breaking_news preference
         subscribers = await db.subscribers.find(
-            {"breaking_news": True},
+            {
+                "$and": [
+                    {"breaking_news": True},
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]}
+                ]
+            },
             {"_id": 0, "email": 1}
         ).to_list(1000)
         
@@ -9865,8 +9932,11 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
     Requires admin authentication.
     """
     try:
-        # Get ALL subscribers
-        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+        # Get active subscribers only
+        subscribers = await db.subscribers.find(
+            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"_id": 0, "email": 1}
+        ).to_list(10000)
         
         if not subscribers:
             return {
@@ -9881,7 +9951,7 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
         
         # Update all subscribers to have daily_brief enabled by default
         await db.subscribers.update_many(
-            {},
+            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
             {"$set": {"daily_brief": True}}
         )
         
@@ -9910,7 +9980,10 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
 async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
     """Send Site Update (Part 1) to ALL subscribers. Requires admin authentication."""
     try:
-        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+        subscribers = await db.subscribers.find(
+            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"_id": 0, "email": 1}
+        ).to_list(10000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
 
@@ -9948,7 +10021,10 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
 async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
     """Send Site Update (Part 2) to ALL subscribers. Requires admin authentication."""
     try:
-        subscribers = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+        subscribers = await db.subscribers.find(
+            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"_id": 0, "email": 1}
+        ).to_list(10000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
 

@@ -15,6 +15,7 @@ const UnsubscribePage = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null); // 'success', 'error', null
   const [message, setMessage] = useState('');
+  const emailFromLink = Boolean(searchParams.get('email'));
 
   // If email is in URL params, auto-submit
   useEffect(() => {
@@ -92,7 +93,9 @@ const UnsubscribePage = () => {
               Unsubscribe
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              We're sorry to see you go. Enter your email below to unsubscribe from all Cheshire Today emails.
+              {emailFromLink
+                ? `To complete your unsubscribe, confirm the email below and press the red button. This will stop all Cheshire Today emails for ${email}.`
+                : "We're sorry to see you go. Enter your email below to unsubscribe from all Cheshire Today emails."}
             </p>
           </div>
 
@@ -148,7 +151,7 @@ const UnsubscribePage = () => {
                     Processing...
                   </>
                 ) : (
-                  'Unsubscribe'
+                  emailFromLink ? 'Confirm unsubscribe' : 'Unsubscribe'
                 )}
               </Button>
             </form>
