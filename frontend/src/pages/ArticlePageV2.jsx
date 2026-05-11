@@ -11,6 +11,7 @@ import { toast } from "../hooks/use-toast.js";
 
 import { Loader2 } from "lucide-react";
 import { getApiUrl } from "../utils/api";
+import { buildArticleUrl } from "../utils/articleUrl";
 import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
@@ -1234,7 +1235,7 @@ export default function ArticlePageV2({ categories }) {
                     {moreStoriesFirstCards.map((a, idx) => (
                       <div key={a?.id || a?._id || idx}>
                         <CompactArticleCard
-                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          onClick={() => navigate(a?.url || buildArticleUrl(a))}
                           article={{
                             title: a?.title,
                             content: a?.summary || a?.content || "",
@@ -1244,7 +1245,7 @@ export default function ArticlePageV2({ categories }) {
                             location: a?.town || a?.location || "Cheshire",
                             publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
                             readTime: a?.readTime || 3,
-                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                            url: a?.url || buildArticleUrl(a),
                           }}
                         />
                       </div>
@@ -1257,7 +1258,7 @@ export default function ArticlePageV2({ categories }) {
                       articles={moreStoriesWithoutImages.map((a) => ({
                         ...a,
                         publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
-                        url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                        url: a?.url || buildArticleUrl(a),
                       }))}
                     />
                   )}
@@ -1266,7 +1267,7 @@ export default function ArticlePageV2({ categories }) {
                     {moreStoriesRemainingCards.map((a, idx) => (
                       <div key={a?.id || a?._id || `remaining-${idx}`}>
                         <CompactArticleCard
-                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          onClick={() => navigate(a?.url || buildArticleUrl(a))}
                           article={{
                             title: a?.title,
                             content: a?.summary || a?.content || "",
@@ -1276,7 +1277,7 @@ export default function ArticlePageV2({ categories }) {
                             location: a?.town || a?.location || "Cheshire",
                             publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
                             readTime: a?.readTime || 3,
-                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                            url: a?.url || buildArticleUrl(a),
                           }}
                         />
                       </div>
@@ -1315,7 +1316,7 @@ export default function ArticlePageV2({ categories }) {
                     articleId={articleId}
                     variant="sidebar"
                     limit={6}
-                    onArticleClick={(a) => navigate("/article/" + a.id)}
+                    onArticleClick={(a) => navigate(buildArticleUrl(a))}
                   />
                 </div>
 
@@ -1351,7 +1352,7 @@ export default function ArticlePageV2({ categories }) {
                         <CompactArticleCard
                           key={a?.id || a?._id || idx}
                           horizontal
-                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          onClick={() => navigate(a?.url || buildArticleUrl(a))}
                           article={{
                             id: a?.id || a?._id || String(idx),
                             title: a?.title,
@@ -1362,7 +1363,7 @@ export default function ArticlePageV2({ categories }) {
                             location: a?.town || a?.location || "Cheshire",
                             publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
                             readTime: a?.readTime || 3,
-                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                            url: a?.url || buildArticleUrl(a),
                           }}
                         />
                       ))}
@@ -1384,7 +1385,7 @@ export default function ArticlePageV2({ categories }) {
                         <CompactArticleCard
                           key={a?.id || a?._id || `more-sidebar-${idx}`}
                           horizontal
-                          onClick={() => navigate(a?.url || ("/article/" + (a?.id || a?._id || "")))}
+                          onClick={() => navigate(a?.url || buildArticleUrl(a))}
                           article={{
                             id: a?.id || a?._id || String(idx),
                             title: a?.title,
@@ -1395,7 +1396,7 @@ export default function ArticlePageV2({ categories }) {
                             location: a?.town || a?.location || "Cheshire",
                             publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
                             readTime: a?.readTime || 3,
-                            url: a?.url || ("/article/" + (a?.id || a?._id || "")),
+                            url: a?.url || buildArticleUrl(a),
                           }}
                         />
                       ))}

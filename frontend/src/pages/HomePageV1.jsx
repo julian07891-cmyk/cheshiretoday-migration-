@@ -1175,7 +1175,7 @@ return (
                   headline={hero.title || "Untitled"}
                   publishedTime={hero.publishedDate || ""}
                   readTime={3}
-                  url={`/article/${articleKey(hero) || "hero"}`}
+                  url={buildArticleUrl(hero)}
                 />
               )}
 
@@ -1215,7 +1215,7 @@ return (
                   {latestSplit.firstCards.map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
                       <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                       />
                     </div>
@@ -1225,7 +1225,7 @@ return (
                 {latestSplit.headlineStrip.length > 0 && (
                   <TextHeadlineStrip
                     articles={latestSplit.headlineStrip}
-                    onClick={(a) => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                    onClick={(a) => navigate(a.url || buildArticleUrl(a))}
                   />
                 )}
 
@@ -1235,7 +1235,7 @@ return (
                   {latestSplit.remainingCards.map((a, idx) => (
                     <div key={a?.id || a?._id || idx}>
                       <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                       />
                     </div>
@@ -1267,7 +1267,7 @@ return (
                   {aiBizSplit.firstCards.map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                       />
                     </div>
@@ -1284,7 +1284,7 @@ return (
                   {aiBizSplit.remainingCards.map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                       />
                     </div>
@@ -1313,7 +1313,7 @@ return (
                   {moreStoriesSplit.firstCards.map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                       />
                     </div>
@@ -1330,7 +1330,7 @@ return (
                   {moreStoriesSplit.remainingCards.map((a, i) => (
                     <div key={a?.id || a?._id || i}>
                       <CompactArticleCard
-                        onClick={() => navigate(a.url || ("/article/" + (a.id || a._id || "")))}
+                        onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                       />
                     </div>
