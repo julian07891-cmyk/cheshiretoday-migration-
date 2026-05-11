@@ -2731,10 +2731,24 @@ async def _remove_duplicates_internal():
         for group_key, group in duplicate_groups.items():
             if len(group) > 1:
                 display_title = (group[0].get('title') or '').strip()
-                # Sort by content length (longest first)
-                group.sort(key=lambda x: len(x.get('content', '')), reverse=True)
+                def duplicate_keep_score(x):
+                    """Prefer manually edited/protected articles over longer reimports."""
+                    protected = bool(x.get("manual_edit_protected") or x.get("manual_edited"))
+                    force_live = bool(x.get("force_live"))
+                    updated = x.get("manual_edited_at") or x.get("updated_at") or x.get("created_at") or x.get("publishedDate") or ""
+                    updated_key = updated.isoformat() if hasattr(updated, "isoformat") else str(updated or "")
+                    return (
+                        1 if protected else 0,
+                        1 if force_live else 0,
+                        updated_key,
+                        len(x.get("content", "") or ""),
+                    )
+
+                # Keep the best canonical record. Manual/admin-edited records must win
+                # over longer imported duplicates so editor changes are not replaced.
+                group.sort(key=duplicate_keep_score, reverse=True)
                 
-                # Keep the first one (longest content), archive and remove the rest
+                # Keep the first one, archive and remove the rest
                 for article in group[1:]:
                     # Archive before deletion
                     article['archived_at'] = datetime.now(timezone.utc).isoformat()
@@ -5419,6 +5433,9 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
             "featured": article.featured if article.featured is not None else existing.get("featured", False),
             "force_live": article.force_live if article.force_live is not None else existing.get("force_live", False),
             "scope": article.scope or existing.get("scope", "cheshire"),
+            "manual_edited": True,
+            "manual_edited_at": datetime.now(timezone.utc).isoformat(),
+            "manual_edit_protected": True,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -10814,7 +10831,7 @@ def _article_slug_from_title(title: str) -> str:
 LEGACY_ARTICLE_REDIRECTS = {
     "69e85a2b5c3fd0f57cf3a438": ("69e9031c87e34f348b321972", "the-cheshire-village-fighting-to-have-its-own-council"),
     "69df1fb5311960544b7adc0a": ("69e071242549c00aa1d4a4f6", "cheshire-asylum-hotel-shuts-with-immediate-effect"),
-    "6a0166ee3ab76ea50644bc29": ("6a01bb6b786635b5c03e888b", "cheshire-town-confirms-food-and-drink-festival-return-and-it-s-free"),
+    "6a0166ee3ab76ea50644bc29": ("8abea102-5d81-4f55-b746-99f25fa46bb5", "cheshire-town-confirms-food-and-drink-festival-return-and-it-s-free"),
 }
 
 
