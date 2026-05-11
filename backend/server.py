@@ -10822,6 +10822,60 @@ def _manual_legacy_article_redirect(article_id: str):
     return RedirectResponse(url=f"https://cheshiretoday.co.uk/article/{target_id}/{target_slug}", status_code=301)
 
 
+async def _redirect_facebook_logged_article_if_needed(article_id: str):
+    """Recover short Facebook links whose old Mongo _id no longer exists.
+
+    Facebook posts historically used /article/{mongo_id}. If the same story is later
+    reimported under a new Mongo _id, use facebook_post_log.title to find the
+    current article and redirect to its canonical URL.
+    """
+    clean_id = str(article_id or "").strip()
+    if not clean_id:
+        return None
+
+    existing = await _find_article_by_any_id(clean_id)
+    if existing:
+        return None
+
+    log = None
+    try:
+        log = await db.facebook_post_log.find_one({"article_id": clean_id})
+    except Exception:
+        log = None
+
+    title = str((log or {}).get("title") or "").strip()
+    if not title or len(title) < 12:
+        return None
+
+    words = [w for w in re.split(r"[^a-z0-9]+", title.lower()) if len(w) > 2]
+    if len(words) < 4:
+        return None
+
+    title_regex = r"^\s*" + r"[^a-z0-9]+".join(re.escape(w) for w in words[:12]) + r".*$"
+
+    article = None
+    try:
+        article = await db.articles.find_one({"title": {"$regex": title_regex, "$options": "i"}})
+    except Exception:
+        article = None
+
+    if not article:
+        try:
+            article = await db.archived_articles.find_one({"title": {"$regex": title_regex, "$options": "i"}})
+        except Exception:
+            article = None
+
+    if not article:
+        return None
+
+    target_id = str(article.get("id") or article.get("_id") or "").strip()
+    if not target_id:
+        return None
+
+    target_slug = _article_slug_from_title(article.get("title") or title)
+    return RedirectResponse(url=f"https://cheshiretoday.co.uk/article/{target_id}/{target_slug}", status_code=301)
+
+
 async def _redirect_stale_article_slug_if_needed(article_id: str, slug: str):
     """Recover old Facebook/article links where the old ID is gone but the slug still matches a live article."""
     existing = await _find_article_by_any_id(article_id)
@@ -10933,6 +10987,10 @@ async def serve_article_for_production(article_id: str):
             article = None
 
     if not article:
+        facebook_redirect = await _redirect_facebook_logged_article_if_needed(article_id)
+        if facebook_redirect:
+            return facebook_redirect
+
         # If missing, keep crawler HTML behaviour (no redirect)
         return await serve_article_html(article_id)
 
