@@ -1095,10 +1095,12 @@ Cheshire Today Jobs Team
         </html>
         '''
         
-        # Send to all subscribers with daily_brief preference
-        batch_messages = []
-        for email in to_emails:
-            from urllib.parse import quote
+        # Send to all subscribers with daily_brief preference.
+        # Build personalised messages in small chunks instead of holding all 2,000
+        # rendered HTML bodies in memory at once.
+        from urllib.parse import quote
+
+        def build_recipient_message(email: str) -> dict:
             recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
             prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
             unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
@@ -1110,18 +1112,24 @@ Cheshire Today Jobs Team
                 .replace("__PREFS_URL__", tracked_prefs)
                 .replace("__UNSUB_URL__", tracked_unsub)
             )
-            batch_messages.append({
+            return {
                 "to": email,
                 "subject": subject,
                 "html": html_personal,
                 "text": None,
-            })
+            }
+
+        success_count = 0
 
         if getattr(self, "resend_enabled", False):
-            success_count = self._send_resend_batch(batch_messages)
+            for i in range(0, len(to_emails), 100):
+                chunk_emails = to_emails[i:i + 100]
+                batch_messages = [build_recipient_message(email) for email in chunk_emails]
+                success_count += self._send_resend_batch(batch_messages)
+                del batch_messages
         else:
-            success_count = 0
-            for item in batch_messages:
+            for email in to_emails:
+                item = build_recipient_message(email)
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
                     success_count += 1
         
