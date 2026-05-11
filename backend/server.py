@@ -4316,14 +4316,14 @@ async def get_article_meta(article_id: str):
                 "title": "Cheshire Today - Local News",
                 "description": "Stay informed with the latest news from Cheshire",
                 "image": "",
-                "url": base_url
+                "url": public_url
             }
         
         return {
             "title": article.get('title', 'Cheshire Today Article'),
             "description": article.get('content', '')[:200],
             "image": article.get('image', ''),
-            "url": f"{base_url}/article/{article_id}",
+            "url": f"{public_url}/article/{article_id}",
             "author": article.get('author', 'Cheshire Today'),
             "publishedDate": article.get('publishedDate', article.get('created_at'))
         }
@@ -4336,7 +4336,7 @@ async def get_article_meta(article_id: str):
             "title": "Cheshire Today - Local News",
             "description": "Stay informed with the latest news from Cheshire",
             "image": "",
-            "url": base_url
+            "url": public_url
         }
 
 @api_router.delete("/articles/{article_id}")
@@ -10810,6 +10810,7 @@ def _article_slug_from_title(title: str) -> str:
 LEGACY_ARTICLE_REDIRECTS = {
     "69e85a2b5c3fd0f57cf3a438": ("69e9031c87e34f348b321972", "the-cheshire-village-fighting-to-have-its-own-council"),
     "69df1fb5311960544b7adc0a": ("69e071242549c00aa1d4a4f6", "cheshire-asylum-hotel-shuts-with-immediate-effect"),
+    "6a0166ee3ab76ea50644bc29": ("6a01bb6b786635b5c03e888b", "cheshire-town-confirms-food-and-drink-festival-return-and-it-s-free"),
 }
 
 
@@ -10877,6 +10878,10 @@ async def serve_article_for_production_slug(article_id: str, slug: str, request:
         "crawler",
         "bot",
     ])
+
+    manual_redirect = _manual_legacy_article_redirect(article_id)
+    if manual_redirect:
+        return manual_redirect
 
     stale_redirect = await _redirect_stale_article_slug_if_needed(article_id, slug)
     if stale_redirect:
