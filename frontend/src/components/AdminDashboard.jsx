@@ -4137,7 +4137,9 @@ const handleDeleteArticle = async (articleId) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Archived Articles</CardTitle>
-                    <CardDescription>{archivedArticles.length} articles in archive</CardDescription>
+                    <CardDescription>
+                      {archivedArticles.length} articles in archive · {archivedArticles.filter(article => article.archive_reason === 'needs_manual_review').length} need AI manual review
+                    </CardDescription>
                   </div>
                   <Button
                     variant="outline"
