@@ -170,6 +170,30 @@ async def delete_admin_token(token: str):
     if token in admin_tokens:
         del admin_tokens[token]
 
+NEWSLETTER_EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
+
+def is_deliverable_newsletter_email(email: str) -> bool:
+    """Block invalid, reserved, and test-only addresses before newsletter delivery."""
+    e = (email or "").strip().lower()
+    if not e or not NEWSLETTER_EMAIL_REGEX.match(e):
+        return False
+
+    local, _, domain = e.rpartition("@")
+    if not local or not domain:
+        return False
+
+    if local.startswith("unsubscribe-test-"):
+        return False
+
+    if domain.startswith("example."):
+        return False
+
+    if "test" in local and "cheshiretoday" in domain:
+        return False
+
+    return True
+
 def verify_admin_token(token: str) -> bool:
     """Sync wrapper - DEPRECATED, use verify_admin_token_db"""
     # Legacy sync check for backwards compatibility
@@ -9086,11 +9110,8 @@ async def cleanup_invalid_emails():
         
         for s in subscribers:
             email = s.get('email', '').strip()
-            # Remove if: empty, example.com, invalid format, or test addresses
-            if not email or \
-               email.endswith('@example.com') or \
-               not email_regex.match(email) or \
-               'test' in email.lower() and '@cheshiretoday' in email.lower():
+            # Remove if: empty, reserved/example domain, invalid format, or test addresses
+            if not is_deliverable_newsletter_email(email):
                 invalid_ids.append(s.get('_id'))
                 invalid_emails.append(email)
         
@@ -9586,7 +9607,7 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
 
         for s in subscribers:
             email = (s.get("email") or "").lower().strip()
-            if email and email not in seen_emails and email_regex.match(email) and not email.endswith("@example.com"):
+            if email and email not in seen_emails and is_deliverable_newsletter_email(email):
                 seen_emails.add(email)
                 unique_emails.append(s.get("email"))
 
@@ -13037,7 +13058,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             email = s.get('email', '').lower().strip()
             if email and email not in seen_emails:
                 # Validate email format
-                if email_regex.match(email) and not email.endswith('@example.com'):
+                if is_deliverable_newsletter_email(email):
                     seen_emails.add(email)
                     unique_emails.append(s.get('email'))  # Keep original case
                 else:
@@ -13459,7 +13480,7 @@ async def send_weekly_roundup_email():
 
         for s in subscribers:
             email = (s.get('email') or '').lower().strip()
-            if email and email not in seen_emails and email_regex.match(email) and not email.endswith('@example.com'):
+            if email and email not in seen_emails and is_deliverable_newsletter_email(email):
                 seen_emails.add(email)
                 unique_emails.append(s.get('email'))
 
