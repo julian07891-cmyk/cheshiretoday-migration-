@@ -5526,18 +5526,44 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
             # Clear location if article no longer matches any specific location
             update_doc["location"] = None
         
+        unset_doc = {}
+        restored_from_manual_review = False
+
+        if existing.get("verification_status") == "needs_manual_review" or existing.get("archive_reason") == "needs_manual_review":
+            restored_from_manual_review = True
+            update_doc.update({
+                "archived": False,
+                "verification_status": "manual_corrected_verified_limited",
+                "rewrite_status": "manual_corrected",
+                "ai_rewritten": False,
+                "manual_review_restored_at": datetime.now(timezone.utc).isoformat(),
+            })
+            unset_doc.update({
+                "archived_at": "",
+                "archive_reason": "",
+                "manual_review_hidden_from_public": "",
+                "manual_review_hits": "",
+                "manual_review_reason": "",
+                "manual_review_created_at": "",
+            })
+
+        update_operation = {"$set": update_doc}
+        if unset_doc:
+            update_operation["$unset"] = unset_doc
+
         # Update in database
         await db.articles.update_one(
             {"id": article_id},
-            {"$set": update_doc}
+            update_operation
         )
         
         logger.info(f"Article updated: {article.title}")
         
         return {
             "success": True,
-            "message": "Article updated successfully",
-            "location_detected": detected_location
+            "message": "Article updated and restored successfully" if restored_from_manual_review else "Article updated successfully",
+            "location_detected": detected_location,
+            "restored_from_manual_review": restored_from_manual_review
         }
         
     except HTTPException:
@@ -5739,7 +5765,7 @@ async def get_archived_articles(
         # Get articles from main collection with archived flag (legacy system)
         legacy_archived = await db.articles.find(
             {"archived": True},
-            {"_id": 1, "id": 1, "title": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source_url": 1}
+            {"_id": 1, "id": 1, "title": 1, "content": 1, "summary": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source": 1, "source_url": 1, "author": 1, "tags": 1, "featured": 1, "force_live": 1, "scope": 1, "location": 1}
         ).to_list(None)
         
         for article in legacy_archived:
@@ -5752,7 +5778,7 @@ async def get_archived_articles(
         # Get articles from archived_articles collection (new system)
         new_archived = await db.archived_articles.find(
             {},
-            {"_id": 1, "id": 1, "title": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source_url": 1}
+            {"_id": 1, "id": 1, "title": 1, "content": 1, "summary": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source": 1, "source_url": 1, "author": 1, "tags": 1, "featured": 1, "force_live": 1, "scope": 1, "location": 1}
         ).to_list(None)
         
         for article in new_archived:

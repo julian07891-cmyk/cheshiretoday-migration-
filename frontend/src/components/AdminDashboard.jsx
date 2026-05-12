@@ -1264,6 +1264,14 @@ const AdminDashboard = ({ onBack }) => {
           updated_at: new Date().toISOString()
         };
         setArticles(prev => [savedArticle, ...prev.filter(a => a.id !== savedArticle.id)]);
+        if (data.restored_from_manual_review) {
+          fetchArchivedArticles();
+          fetchArticleStats();
+          toast({
+            title: "✅ Article Restored",
+            description: "Manual review article was edited and restored to the live site"
+          });
+        }
         resetArticleForm();
       } else {
         throw new Error(data.detail || 'Failed to save article');
@@ -4191,6 +4199,17 @@ const handleDeleteArticle = async (articleId) => {
                             </div>
                           )}
                         </div>
+                        {article.archive_reason === 'needs_manual_review' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleEditArticle(article); }}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            title="Edit manual review article"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
