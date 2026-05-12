@@ -5739,7 +5739,7 @@ async def get_archived_articles(
         # Get articles from main collection with archived flag (legacy system)
         legacy_archived = await db.articles.find(
             {"archived": True},
-            {"_id": 1, "id": 1, "title": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1}
+            {"_id": 1, "id": 1, "title": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source_url": 1}
         ).to_list(None)
         
         for article in legacy_archived:
@@ -5752,7 +5752,7 @@ async def get_archived_articles(
         # Get articles from archived_articles collection (new system)
         new_archived = await db.archived_articles.find(
             {},
-            {"_id": 1, "id": 1, "title": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1}
+            {"_id": 1, "id": 1, "title": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source_url": 1}
         ).to_list(None)
         
         for article in new_archived:

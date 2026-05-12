@@ -4173,13 +4173,21 @@ const handleDeleteArticle = async (articleId) => {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-muted-foreground dark:text-gray-300 truncate text-sm">{article.title}</p>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {article.archive_reason === 'needs_manual_review' && (
+                              <Badge variant="destructive" className="text-xs">Needs manual review</Badge>
+                            )}
                             <Badge variant="secondary" className="text-xs">{article.category}</Badge>
                             <span className="text-xs text-gray-400">{article.publishedDate?.substring(0, 10)}</span>
-                            {article.archive_reason && (
+                            {article.archive_reason && article.archive_reason !== 'needs_manual_review' && (
                               <span className="text-xs text-gray-400">• {article.archive_reason}</span>
                             )}
                           </div>
+                          {article.archive_reason === 'needs_manual_review' && (
+                            <div className="mt-1 text-xs text-red-600 dark:text-red-400 line-clamp-2">
+                              Triggered by: {(article.manual_review_hits || []).join(', ') || 'AI rewrite risk phrase'}
+                            </div>
+                          )}
                         </div>
                         <Button
                           variant="ghost"
