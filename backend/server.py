@@ -2029,6 +2029,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
+                    ai_rewrite_used = False
                     
                     if request.use_perplexity:
                         # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
@@ -2043,6 +2044,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                                 ),
                                 timeout=45
                             )
+                            ai_rewrite_used = bool((detailed_content or "").strip() and detailed_content != original_content)
                             perplexity_cost_estimate += 0.005
                         except Exception as px_err:
                             logger.warning(f"Perplexity rewrite failed/timed out for {category_name}: {title[:60]}... | {px_err}")
@@ -2068,6 +2070,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
                     
                     article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+                    article = apply_ai_manual_review_guard(
+                        article,
+                        article.get('content', ''),
+                        ai_rewrite_used,
+                        title
+                    )
                     
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
                     try:
@@ -2188,6 +2196,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
+            ai_rewrite_used = False
             
             if request.use_perplexity:
                 # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
@@ -2202,6 +2211,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         ),
                         timeout=45
                     )
+                    ai_rewrite_used = bool((detailed_content or "").strip() and detailed_content != original_content)
                     perplexity_cost_estimate += 0.005
                 except Exception as px_err:
                     logger.warning(f"Perplexity rewrite failed/timed out for local article: {title[:60]}... | {px_err}")
@@ -2228,6 +2238,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
             
             article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+            article = apply_ai_manual_review_guard(
+                article,
+                article.get('content', ''),
+                ai_rewrite_used,
+                title
+            )
             
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
             try:
@@ -12555,6 +12571,72 @@ def sanitize_rss_text(text: str, source_url: str = "") -> str:
         t = '\n\n'.join([c for c in chunks if c])
     t = re.sub(r'\n{3,}', '\n\n', t).strip()
     return t
+
+
+# =====================================================================================
+# AI REWRITE MANUAL REVIEW GUARD
+# Flags likely hallucinated / unsupported detail patterns before publication.
+# =====================================================================================
+AI_MANUAL_REVIEW_RISK_TERMS = [
+    "police spokesperson",
+    "wished to remain anonymous",
+    "repair bills",
+    "windows shattered",
+    "smashed bottles",
+    "councillor commented",
+    "hashtags",
+    "trending locally",
+    "British Retail Consortium",
+    "Night Time Industries Association",
+    "according to local residents",
+    "residents have rallied",
+    "one regular",
+    "closure wave",
+    "tourists seeking",
+    "source ingredients",
+    "police have been notified",
+    "officers attending",
+    "a spokesperson confirmed",
+    "millions of views",
+    "insiders suggest",
+    "analysts in recent reports",
+]
+
+
+def find_ai_manual_review_hits(content: str):
+    text = (content or "").lower()
+    hits = []
+    for term in AI_MANUAL_REVIEW_RISK_TERMS:
+        if term.lower() in text and term not in hits:
+            hits.append(term)
+    return hits
+
+
+def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: bool = False, title: str = ""):
+    if not ai_rewrite_used:
+        return article
+
+    article["ai_rewritten"] = True
+    article["is_rewritten"] = True
+
+    hits = find_ai_manual_review_hits(content)
+    if hits:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        article["verification_status"] = "needs_manual_review"
+        article["rewrite_status"] = "ai_rewrite_needs_review"
+        article["archived"] = True
+        article["archived_at"] = now_iso
+        article["archive_reason"] = "needs_manual_review"
+        article["manual_review_hidden_from_public"] = True
+        article["manual_review_hits"] = hits
+        article["manual_review_reason"] = "AI rewrite contained risky invented-detail phrases; verify against source before promotion or social sharing."
+        article["manual_review_created_at"] = now_iso
+        logger.warning(f"AI rewrite hidden for manual review: {title[:80]} | hits={hits}")
+    else:
+        article.setdefault("verification_status", "ai_rewrite_auto_screened")
+        article.setdefault("rewrite_status", "ai_rewritten")
+
+    return article
 
 
 # Initialize scheduler
