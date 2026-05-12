@@ -10850,6 +10850,12 @@ async def serve_article_html(article_id: str, request=None):
             img = img.replace("/ALTERNATES/s810/", "/ALTERNATES/s1200/")
 
         # Guardian
+        # Do not resize signed Guardian image URLs by changing width=...
+        # Guardian validates the s= signature against the query string; modifying
+        # width without regenerating the signature causes Facebook to receive
+        # "401 Unauthorized - invalid signature".
+        if "i.guim.co.uk" in img and "s=" in img:
+            return img
         if "i.guim.co.uk" in img and "width=140" in img:
             img = img.replace("width=140", "width=1200")
         if "i.guim.co.uk" in img and "width=240" in img:
