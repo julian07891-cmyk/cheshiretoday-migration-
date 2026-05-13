@@ -10890,7 +10890,7 @@ async def serve_article_html(article_id: str, request=None):
     title = str(article.get("title") or "Cheshire Today")
     desc = str(article.get("summary") or "")
 
-    def normalize_social_image(raw_img) -> str:
+    def normalize_social_image(raw_img, source_url=None) -> str:
         img = str(raw_img).strip() if raw_img else ""
         if not img:
             return "https://cheshiretoday.co.uk/social-share.jpg"
@@ -10903,13 +10903,24 @@ async def serve_article_html(article_id: str, request=None):
         if "/ALTERNATES/s810/" in img:
             img = img.replace("/ALTERNATES/s810/", "/ALTERNATES/s1200/")
 
-        # Guardian
-        # Do not resize signed Guardian image URLs by changing width=...
-        # Guardian validates the s= signature against the query string; modifying
-        # width without regenerating the signature causes Facebook to receive
-        # "401 Unauthorized - invalid signature".
+        # Guardian signed image URLs cannot be resized by editing width=...
+        # If we have a small signed thumbnail, fetch the valid large signed og:image
+        # from the Guardian source page instead.
         if "i.guim.co.uk" in img and "s=" in img:
+            if ("width=140" in img or "width=240" in img) and source_url and "theguardian.com" in str(source_url):
+                try:
+                    import urllib.request
+                    req = urllib.request.Request(str(source_url), headers={"User-Agent": "Mozilla/5.0"})
+                    source_html = urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore")
+                    m = re.search(r"<meta[^>]+property=[\"\x27]og:image[\"\x27][^>]+content=[\"\x27]([^\"\x27]+)[\"\x27]", source_html, re.I)
+                    if m:
+                        candidate = m.group(1).replace("&amp;", "&").strip()
+                        if "i.guim.co.uk" in candidate and "width=140" not in candidate and "width=240" not in candidate:
+                            return candidate
+                except Exception:
+                    pass
             return img
+
         if "i.guim.co.uk" in img and "width=140" in img:
             img = img.replace("width=140", "width=1200")
         if "i.guim.co.uk" in img and "width=240" in img:
@@ -10925,7 +10936,7 @@ async def serve_article_html(article_id: str, request=None):
 
         return img
 
-    img = normalize_social_image(article.get("image"))
+    img = normalize_social_image(article.get("image"), article.get("source_url"))
 
     # Canonical/OG should point at the real domain (not Render)
     slug = re.sub(r"[^a-z0-9]+","-", title.lower()).strip("-")
