@@ -10529,10 +10529,20 @@ async def generate_news_sitemap():
         # Get articles from last 48 hours (Google News requirement)
         cutoff_date = datetime.utcnow() - timedelta(hours=48)
         
+        cutoff_iso = cutoff_date.isoformat()
+
         articles = await db.articles.find(
-            {"publishedDate": {"$gte": cutoff_date.isoformat()}},
-            {'_id': 1, 'id': 1, 'title': 1, 'publishedDate': 1, 'category': 1}
-        ).sort('publishedDate', -1).limit(1000).to_list(1000)
+            {
+                "archived": {"$ne": True},
+                "$or": [
+                    {"publishedDate": {"$gte": cutoff_date}},
+                    {"publishedDate": {"$gte": cutoff_iso}},
+                    {"created_at": {"$gte": cutoff_date}},
+                    {"created_at": {"$gte": cutoff_iso}},
+                ],
+            },
+            {"_id": 1, "id": 1, "title": 1, "publishedDate": 1, "created_at": 1, "category": 1}
+        ).sort("created_at", -1).limit(1000).to_list(1000)
         
         # Build Google News sitemap XML
         xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -10547,7 +10557,7 @@ async def generate_news_sitemap():
             slug = (slug[:80] if slug else "article")
             
             # Parse published date
-            pub_date = article.get('publishedDate', '')
+            pub_date = article.get('publishedDate') or article.get('created_at') or ''
             if isinstance(pub_date, str):
                 try:
                     pub_date = datetime.fromisoformat(pub_date.replace('Z', '+00:00'))
