@@ -4210,7 +4210,30 @@ async def get_seo_article_page(article_id: str, request: Request):
         description_src = summary if len(summary.strip()) >= 40 else content
         description = (description_src[:160]).replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;") if description_src else title
 
-        image = str(article.get("image") or f"{base_url}/social-share.jpg")
+        def normalize_social_image_url(raw_image: str) -> str:
+            image_url = str(raw_image or "").strip().replace("&amp;", "&")
+            if not image_url:
+                return f"{base_url}/social-share.jpg"
+
+            lowered = image_url.lower()
+
+            if "i.guim.co.uk" in lowered:
+                if re.search(r"([?&])width=\d+", image_url):
+                    image_url = re.sub(r"([?&])width=\d+", r"\1width=1200", image_url)
+                else:
+                    image_url += ("&" if "?" in image_url else "?") + "width=1200"
+                image_url = re.sub(r"([?&])quality=\d+", r"\1quality=85", image_url)
+
+            if "ichef.bbci.co.uk" in lowered:
+                image_url = re.sub(r"/standard/(240|320|480|624|800)/", "/standard/1024/", image_url)
+                image_url = re.sub(r"/news/(240|320|480|624|800)/", "/news/1024/", image_url)
+
+            if "i2-prod.cheshire-live.co.uk" in lowered or "i-prod.cheshire-live.co.uk" in lowered or "/alternates/s" in lowered:
+                image_url = re.sub(r"/ALTERNATES/s(615b?|810|1200)/", "/ALTERNATES/s1200/", image_url, flags=re.IGNORECASE)
+
+            return image_url
+
+        image = normalize_social_image_url(article.get("image") or f"{base_url}/social-share.jpg")
         category = str(article.get("category") or "News")
         author = str(article.get("author") or "Cheshire Today")
         published_date = str(article.get("publishedDate") or article.get("created_at") or "")
