@@ -5428,13 +5428,16 @@ async def get_admin_articles(
         raise HTTPException(status_code=500, detail=str(e))
 
 def resolve_manual_article_image(image_url: str, source_url: str) -> str:
-    """Prefer source og:image for manual articles when image is blank or uses Postimg."""
+    """Prefer source og:image for manual articles when image is blank; allow direct Postimg image files for manual uploads."""
     chosen = (image_url or "").strip()
     source = (source_url or "").strip()
 
     def is_blocked(url: str) -> bool:
         lowered = (url or "").lower()
-        return any(host in lowered for host in ["postimg.cc", "i.postimg.cc", "postimage.org", "postimages.org"])
+        postimg_host = any(host in lowered for host in ["postimg.cc", "i.postimg.cc", "postimage.org", "postimages.org"])
+        if postimg_host:
+            return not re.search(r"\.(jpg|jpeg|png|webp|gif)(\?.*)?$", lowered)
+        return False
 
     if source and (not chosen or is_blocked(chosen)):
         try:
