@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { 
   BarChart3, Users, FileText, Mail, RefreshCw, Trash2,
@@ -49,6 +49,7 @@ const AdminDashboard = ({ onBack }) => {
   const [stats, setStats] = useState(null);
   const [subscribers, setSubscribers] = useState([]);
   const [articles, setArticles] = useState([]);
+  const currentAdminArticleSearchRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -870,6 +871,7 @@ const AdminDashboard = ({ onBack }) => {
     const total = Number(data.total || 0);
 
     setArticles(prev => (append ? [...prev, ...newArticles] : newArticles));
+    if (!append && page === 0) currentAdminArticleSearchRef.current = trimmedSearch;
     setArticlesPage(page);
     setHasMoreArticles(skip + newArticles.length < total);
   };
@@ -877,14 +879,17 @@ const AdminDashboard = ({ onBack }) => {
   useEffect(() => {
     if (!isAuthenticated || activeTab !== 'articles') return;
 
+    const trimmedSearch = String(articleSearch || '').trim();
+    if (articles.length > 0 && articlesPage === 0 && currentAdminArticleSearchRef.current === trimmedSearch) return;
+
     const timer = setTimeout(() => {
-      fetchAdminArticlesPage({ page: 0, search: articleSearch }).catch((error) => {
+      fetchAdminArticlesPage({ page: 0, search: trimmedSearch }).catch((error) => {
         console.error('Error searching admin articles:', error);
       });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [articleSearch, isAuthenticated, activeTab]);
+  }, [articleSearch, isAuthenticated, activeTab, articles.length, articlesPage]);
 
   const fetchAllData = async (token = null) => {
     const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
