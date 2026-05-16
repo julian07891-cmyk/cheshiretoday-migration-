@@ -32,6 +32,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
   const [searchLoading, setSearchLoading] = useState(false);
   const [isFestive, setIsFestive] = useState(false);
   const searchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
 
   useEffect(() => {
     const now = new Date();
@@ -42,7 +43,9 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
   // Close search when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
+      const clickedDesktopSearch = searchRef.current && searchRef.current.contains(event.target);
+      const clickedMobileSearch = mobileSearchRef.current && mobileSearchRef.current.contains(event.target);
+      if (!clickedDesktopSearch && !clickedMobileSearch) {
         setSearchOpen(false);
         setSearchResults([]);
       }
@@ -79,8 +82,37 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
       window.location.href = buildArticleUrl(article);
     }
     setSearchOpen(false);
+    setMobileMenuOpen(false);
     setSearchQuery('');
     setSearchResults([]);
+  };
+
+  const isHomeCategory = (category) => {
+    const id = String(category?.id || '').toLowerCase();
+    const name = String(category?.name || '').toLowerCase();
+    return id === 'all' || name === 'all' || name === 'all news' || name === 'home';
+  };
+
+  const getCategoryLabel = (category) => isHomeCategory(category) ? 'Home' : category.name;
+
+  const handleCategoryClick = (category) => {
+    if (isHomeCategory(category)) {
+      if (onCategoryChange) {
+        onCategoryChange(category.id);
+      } else {
+        window.location.href = '/';
+      }
+
+      if (window.location.pathname !== '/' && !onCategoryChange) {
+        window.location.href = '/';
+      }
+
+      setMobileMenuOpen(false);
+      return;
+    }
+
+    onCategoryChange && onCategoryChange(category.id);
+    setMobileMenuOpen(false);
   };
 
   return (
@@ -109,17 +141,17 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between py-3 md:py-4">
             {/* Logo - Compact on mobile */}
-            <div className="flex items-center space-x-2 md:space-x-3">
+            <a href="/" aria-label="Cheshire Today home" className="flex items-center space-x-2 md:space-x-3 min-w-0">
               <img
                 src="/logo.png"
                 alt="Cheshire Today"
-                className="h-8 md:h-10 w-auto"
+                className="h-8 md:h-10 w-auto flex-shrink-0"
               />
-              <div>
-                <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white">Cheshire Today</h1>
+              <div className="min-w-0">
+                <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white truncate">Cheshire Today</h1>
                 <p className="hidden md:block text-sm font-medium text-slate-600 dark:text-gray-300 tracking-wide">Local · Business · Finance</p>
               </div>
-            </div>
+            </a>
 
             {/* Desktop Search & Controls */}
             <div className="hidden md:flex items-center space-x-4">
@@ -233,14 +265,14 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
               {navCategories.map((category) => (
                 <button
                   key={category.id}
-                  onClick={() => onCategoryChange && onCategoryChange(category.id)}
+                  onClick={() => handleCategoryClick(category)}
                   className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
                     String(activeCategory).toLowerCase() === String(category.id).toLowerCase()
                       ? 'bg-[#1E3A8A] text-white rounded'
                       : 'text-gray-700 dark:text-gray-300 hover:text-[#1E3A8A] dark:hover:text-blue-400'
                   }`}
                 >
-                  {category.name}
+                  {getCategoryLabel(category)}
                 </button>
               ))}
             </div>
@@ -281,15 +313,47 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
               </div>
 
 {/* Mobile Search */}
-              <div className="relative mb-4">
+              <div className="relative mb-4" ref={mobileSearchRef}>
                 <input
                   type="text"
                   placeholder="Search news..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchOpen(true)}
                   className="w-full h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
-                <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                {searchLoading ? (
+                  <Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
+                ) : (
+                  <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                )}
+
+                {searchOpen && searchResults.length > 0 && (
+                  <div className="mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
+                    {searchResults.map((article) => (
+                      <button
+                        type="button"
+                        key={article.id}
+                        onClick={() => handleSearchResultClick(article)}
+                        className="flex w-full items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0 text-left"
+                      >
+                        <img
+                          src={article.image}
+                          alt={article.title}
+                          className="w-12 h-12 object-cover rounded flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+                            {article.title}
+                          </h4>
+                          <span className="text-xs text-[#1E3A8A] dark:text-blue-400">
+                            {article.category}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Mobile Weather */}
@@ -312,17 +376,14 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                 {navCategories.map((category) => (
                   <button
                     key={category.id}
-                    onClick={() => {
-                      onCategoryChange && onCategoryChange(category.id);
-                      setMobileMenuOpen(false);
-                    }}
+                    onClick={() => handleCategoryClick(category)}
                     className={`block w-full text-left px-4 py-2 rounded transition-colors ${
                       String(activeCategory).toLowerCase() === String(category.id).toLowerCase()
                         ? 'bg-[#1E3A8A] text-white'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
-                    {category.name}
+                    {getCategoryLabel(category)}
                   </button>
                 ))}
               </div>
