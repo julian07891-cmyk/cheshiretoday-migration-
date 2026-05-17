@@ -43,7 +43,7 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
 
   const items = useMemo(() => {
     const isFinanceGuide = (item) =>
-      /mortgage|savings|energy|tariff|bills|credit/i.test(`${item?.title || ""} ${item?.href || ""}`);
+      /mortgage|savings|energy|tariff|bills|credit|mobile|sim|phone/i.test(`${item?.title || ""} ${item?.href || ""}`);
 
     let sourceItems = monetisationTools.homepage_primary || [];
 

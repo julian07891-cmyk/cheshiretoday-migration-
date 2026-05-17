@@ -9,6 +9,7 @@ export const monetisationTools = {
     { badge: "Guide", logoLabel: "MR", title: "Mortgage due soon? Compare rates", desc: "Fixed, tracker and remortgage options", benefit: "Check what your next deal could cost", cta: "Compare rates", href: "/guides/best-mortgage-rates-uk" },
     { badge: "Guide", logoLabel: "SA", title: "Savings sitting idle? Compare accounts", desc: "Easy access, fixed-rate and ISA options", benefit: "Make cash work harder", cta: "Compare savings", href: "/guides/best-savings-accounts-uk" },
     { badge: "Guide", logoLabel: "EN", title: "Bills rising? Check energy deals", desc: "Gas, electricity and switching checks", benefit: "Review household costs", cta: "Check tariffs", href: "/guides/cheap-energy-tariffs-uk" },
+    { badge: "Affiliate", logoLabel: "SIM", title: "Mobile bill high? Compare SIM deals", desc: "Data, coverage and contract flexibility", benefit: "Review another monthly bill", cta: "Compare SIM deals", href: "/guides/best-mobile-sim-deals-uk" },
   ],
 
   web_presence: [
