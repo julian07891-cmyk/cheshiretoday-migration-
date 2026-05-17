@@ -1183,6 +1183,10 @@ return (
                 <SubscribeInlineBanner />
               </div>
 
+              <div className="mt-3 w-full lg:hidden">
+                <SponsoredPlacement placement="homepage_mobile" compact />
+              </div>
+
               <div className="mt-3 w-full">
                 <HeroMonetisationStrip limit={2} compact focus="finance" />
               </div>
@@ -1199,7 +1203,6 @@ return (
                   <TopStoriesGrid stories={topStories} />
                 </div>
               )}
-              <SponsoredPlacement placement="homepage_mobile" compact />
             </section>
 
 
