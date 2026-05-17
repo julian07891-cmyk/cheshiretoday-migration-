@@ -1408,8 +1408,9 @@ async def upsert_sponsored_placement(payload: SponsoredPlacementDoc, auth: bool 
     if not doc["slug"] or not doc["sponsor_name"] or not doc["title"] or not doc["target_url"]:
         raise HTTPException(status_code=400, detail="slug, sponsor_name, title and target_url are required")
 
-    if not (doc["target_url"].startswith("https://") or doc["target_url"].startswith("http://")):
-        raise HTTPException(status_code=400, detail="target_url must start with http:// or https://")
+    allowed_target_schemes = ("https://", "http://", "mailto:")
+    if not doc["target_url"].lower().startswith(allowed_target_schemes):
+        raise HTTPException(status_code=400, detail="target_url must start with http://, https:// or mailto:")
 
     doc["updated_at"] = datetime.now(timezone.utc).isoformat()
 
