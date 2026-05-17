@@ -114,6 +114,7 @@ export const monetisationTools = {
   energy: [
     { badge: "Guide", title: "Cheap energy tariffs", desc: "Gas and electricity switching checks", href: "/guides/cheap-energy-tariffs-uk" },
     { badge: "Guide", title: "Best broadband deals", desc: "Speed, price and contract checks", href: "/guides/best-broadband-deals-uk" },
+    { badge: "Affiliate", title: "Best mobile SIM deals", desc: "Data, coverage and contract flexibility", href: "/guides/best-mobile-sim-deals-uk" },
     { badge: "Affiliate", title: "Best email marketing tools", desc: "Mailchimp + automation", href: "/guides/best-email-marketing-tools-small-business-uk" },
   ],
 

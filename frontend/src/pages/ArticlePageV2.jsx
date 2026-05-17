@@ -288,6 +288,7 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
     "best-credit-cards-uk",
     "cheap-energy-tariffs-uk",
     "best-broadband-deals-uk",
+    "best-mobile-sim-deals-uk",
     "best-isa-platforms-uk",
   ]);
 
@@ -315,7 +316,12 @@ function pickGuidesForPillar(guides, pillarLabel, contextToolType = "") {
   } else if (context === "energy") {
     push("cheap-energy-tariffs-uk");
     push("best-broadband-deals-uk");
+    push("best-mobile-sim-deals-uk");
     push("best-savings-accounts-uk");
+  } else if (context === "mobile") {
+    push("best-mobile-sim-deals-uk");
+    push("best-broadband-deals-uk");
+    push("cheap-energy-tariffs-uk");
   } else if (context === "tax" || context === "property") {
     push("cost-of-buying-home-cheshire-2026");
     push("council-tax-bands-cheshire");
@@ -864,6 +870,7 @@ export default function ArticlePageV2({ categories }) {
     if (sec === "property" || sec === "housing" || sec === "planning") return "property";
     if (sec === "credit") return "credit";
     if (sec === "energy" || sec === "utilities") return "energy";
+    if (sec === "mobile" || sec === "telecoms" || sec === "phones") return "mobile";
 
     // 2) CATEGORY NEXT
     if (cat.includes("ai") || cat.includes("tech")) return "ai";
@@ -873,6 +880,7 @@ export default function ArticlePageV2({ categories }) {
     if (cat.includes("property") || cat.includes("housing") || cat.includes("planning")) return "property";
     if (cat.includes("credit")) return "credit";
     if (cat.includes("energy") || cat.includes("utilities") || cat.includes("broadband")) return "energy";
+    if (cat.includes("mobile") || cat.includes("telecom") || cat.includes("phone contract") || cat.includes("sim")) return "mobile";
 
     // 3) KEYWORD FALLBACK (ordered by intent)
     if (/\b(chatgpt|openai|gemini|llm|ai|artificial intelligence|machine learning)\b/.test(text)) return "ai";
@@ -898,6 +906,7 @@ export default function ArticlePageV2({ categories }) {
     if (/\b(property|house price|rent|rental|landlord|tenant|letting|planning permission|green belt)\b/.test(text)) return "property";
 
     if (/\b(credit card|balance transfer|apr|loan|debt)\b/.test(text)) return "credit";
+    if (/\b(mobile sim|sim-only|sim only|sim deal|sim deals|phone contract|mobile contract|mobile network|mobile data|mobile bill|mobile bills|roaming|smartphone deal|smartphone deals)\b/.test(text)) return "mobile";
     if (/\b(energy|tariff|broadband|utilities)\b/.test(text)) return "energy";
 
     return "";
