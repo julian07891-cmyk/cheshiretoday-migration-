@@ -14,6 +14,28 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const [loaded, setLoaded] = useState(false);
   const impressionTrackedRef = useRef(null);
 
+  const getPreviewAd = () => {
+    if (typeof window === "undefined") return null;
+
+    const params = new URLSearchParams(window.location.search || "");
+    if (params.get("sponsored_ad_preview") !== "1") return null;
+
+    const forcedPlacement = params.get("sponsored_ad_placement") || "";
+    if (forcedPlacement && forcedPlacement !== placement) return null;
+
+    return {
+      preview: true,
+      slug: `preview-retreat-social-club-${placement}`,
+      campaign_id: "preview-retreat-social-club",
+      sponsor_name: params.get("sponsor_name") || "The Retreat Social Club",
+      title: params.get("title") || "The Retreat Social Club Opens This July",
+      description: params.get("description") || "A new inclusive social club supporting adults with learning disabilities, autism, ADHD and additional needs is opening at Hayloft Farm, Capenhurst. Join the open day on Wednesday 1 July 2026, 11am–3pm.",
+      cta_text: params.get("cta_text") || "RSVP / Enquire",
+      image_url: params.get("image_url") || "",
+      target_url: params.get("target_url") || "mailto:theretreat@embracecare.org.uk?subject=The%20Retreat%20Social%20Club%20Open%20Day%20Enquiry",
+    };
+  };
+
   const getForcedPlacementParams = () => {
     if (typeof window === "undefined") return "";
     const params = new URLSearchParams(window.location.search || "");
@@ -36,6 +58,12 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
 
     async function loadPlacement() {
       try {
+        const previewAd = getPreviewAd();
+        if (previewAd) {
+          if (mounted) setAd(previewAd);
+          return;
+        }
+
         const api = getApiUrl().replace(/\/$/, "");
         const forceParams = getForcedPlacementParams();
         const res = await fetch(`${api}/api/sponsored-placements?placement=${encodeURIComponent(placement)}&limit=1${forceParams}`);
@@ -69,7 +97,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const showHomepageFallbackExtras = !isPaidPlacement && isHomepageSidebar;
 
   useEffect(() => {
-    if (!isPaidPlacement || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
+    if (!isPaidPlacement || ad?.preview || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
 
     impressionTrackedRef.current = ad.slug;
     const api = getApiUrl().replace(/\/$/, "");
@@ -90,7 +118,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
       destination: targetUrl,
     });
 
-    if (isPaidPlacement && ad?.slug) {
+    if (isPaidPlacement && !ad?.preview && ad?.slug) {
       const api = getApiUrl().replace(/\/$/, "");
       fetch(`${api}/api/sponsored-placements/${encodeURIComponent(ad.slug)}/click`, {
         method: "POST"
@@ -111,13 +139,21 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
       )}
 
       {isPaidPlacement && ad.image_url && (
-        <img
-          src={ad.image_url}
-          alt={title}
-          loading="lazy"
-          decoding="async"
-          className="mt-3 w-full rounded-lg object-cover"
-        />
+        <a
+          href={ad.image_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open sponsored advert image"
+          className="block mt-3"
+        >
+          <img
+            src={ad.image_url}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            className="w-full rounded-lg object-cover"
+          />
+        </a>
       )}
 
       <h3 className="mt-2 text-base font-extrabold text-slate-900 dark:text-white">
@@ -138,24 +174,32 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
         </ul>
       )}
 
-      <span className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition">
-        {cta}
-      </span>
+      {isPaidPlacement ? (
+        <a
+          href={targetUrl}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          onClick={handleClick}
+          className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition"
+        >
+          {cta}
+        </a>
+      ) : (
+        <span className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition">
+          {cta}
+        </span>
+      )}
     </>
   );
 
   if (isPaidPlacement) {
     return (
-      <a
+      <div
         id={anchorId}
-        href={targetUrl}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
-        onClick={handleClick}
         className={`block rounded-xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/20 ${cardSizeClass} hover:shadow-sm transition`}
       >
         {inner}
-      </a>
+      </div>
     );
   }
 
