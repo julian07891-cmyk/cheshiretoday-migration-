@@ -220,8 +220,13 @@ function formatDateTime(dateString) {
 
 function buildDescription(article) {
   const summary = safeText(article?.summary).trim();
-  if (summary.length >= 40) return summary.slice(0, 200);
-  return safeText(article?.content).trim().slice(0, 200);
+  const source = summary.length >= 40 ? summary : safeText(article?.content).trim();
+  const compact = source.replace(/\s+/g, " ").trim();
+
+  if (compact.length <= 200) return compact;
+
+  const clipped = compact.slice(0, 197).replace(/\s+\S*$/, "").trim();
+  return `${clipped || compact.slice(0, 197).trim()}...`;
 }
 
 
@@ -539,25 +544,13 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
   const list = Array.isArray(guides) ? guides : [];
   const picked = pickGuidesForPillar(list, pillarLabel, contextToolType);
 
-  const fallbackOrder = [
-    "best-self-storage-services-uk-home-business",
-    "best-virtual-office-services-small-business-uk",
-    "best-company-formation-services-uk",
-    "best-explainer-video-software-uk",
-    "best-accounting-software-uk",
-    "best-email-marketing-tools-small-business-uk",
-    "best-domain-registrars-small-business-uk",
-  ];
-
   const monetisedPool = picked.filter(
     (item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire"
   );
 
-  const fallbackPool = fallbackOrder
-    .map((slug) => list.find((item) => String(item?.slug || "").trim() === slug))
-    .filter(Boolean);
-
-  const pool = monetisedPool.length > 0 ? monetisedPool : fallbackPool;
+  // Do not fall back to generic commercial guides.
+  // Irrelevant accounting/storage/virtual-office promos on simple local articles damage reader trust.
+  const pool = monetisedPool;
 
   const seed = `${String(articleId || "").trim()}-${slot}`;
   const hash = Array.from(seed).reduce((acc, ch) => ((acc * 31) + ch.charCodeAt(0)) >>> 0, 0);
@@ -840,8 +833,8 @@ export default function ArticlePageV2({ categories }) {
     }
 
     return {
-      mobileIntroContent: paragraphs.slice(0, 2).join("\n\n"),
-      mobileRemainingContent: paragraphs.slice(2).join("\n\n"),
+      mobileIntroContent: paragraphs.slice(0, 1).join("\n\n"),
+      mobileRemainingContent: paragraphs.slice(1).join("\n\n"),
     };
   }, [mainContent]);
 
@@ -911,6 +904,12 @@ export default function ArticlePageV2({ categories }) {
 
     return "";
   }, [article]);
+
+  const shouldShowArticleGuidePromo = useMemo(() => {
+    const picked = pickGuidesForPillar(guides, pillarLabel, contextToolType);
+    return picked.some((item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire");
+  }, [guides, pillarLabel, contextToolType]);
+
 
 
   useEffect(() => {
@@ -1123,7 +1122,7 @@ export default function ArticlePageV2({ categories }) {
               </div>
 
               {description && (
-                <p className="mt-4 text-[1.02rem] leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
+                <p className="hidden sm:block mt-4 text-[1.02rem] leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
                   {description}
                 </p>
               )}
@@ -1140,36 +1139,38 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 
-              <div className="sm:hidden mb-5">
-                <SponsoredPlacement placement="article_mobile" compact />
-              </div>
+              {isMobileView && mobileRemainingContent && !articleExpanded && (
+                <div className="sm:hidden rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5">
+                  <div className="prose prose-lg prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-6 prose-p:leading-9 [&>div>p]:my-6 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
+                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mobileIntroContent || mainContent, pillarLabel) }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setArticleExpanded(true);
+                      window.setTimeout(() => {
+                        articleBodyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 80);
+                    }}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-3 transition dark:bg-sky-700 dark:hover:bg-sky-600"
+                  >
+                    Read more…
+                  </button>
+                </div>
+              )}
 
+{(!isMobileView || !mobileRemainingContent || articleExpanded) && (
 <div ref={articleBodyRef} className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
                 <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
-                {isMobileView && mobileRemainingContent && !articleExpanded ? (
-                  <>
-                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mobileIntroContent || mainContent, pillarLabel) }} />
-                    <button
-                      type="button"
-                      onClick={() => setArticleExpanded(true)}
-                      className="not-prose mt-4 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-3 transition dark:bg-sky-700 dark:hover:bg-sky-600"
-                    >
-                      Continue reading full article
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
-                  </>
-                )}
+                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
               </div>
 
 
               
               
 
-              {(article.source || article.source_url) && (
+              {(!isMobileView || !mobileRemainingContent || articleExpanded) && (article.source || article.source_url) && (
                 <div className="mt-8 pt-6 border-t border-border">
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Source:{" "}
@@ -1197,7 +1198,13 @@ export default function ArticlePageV2({ categories }) {
 
 
               </div>
+)}
 
+              <div className="sm:hidden mt-6">
+                <SponsoredPlacement placement="article_mobile" compact />
+              </div>
+
+              {shouldShowArticleGuidePromo && (
               <section className="mt-8 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-4 md:p-5 lg:hidden">
                 <div className="mb-3">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
@@ -1214,6 +1221,7 @@ export default function ArticlePageV2({ categories }) {
                 
               {/* GuidePromoBlock intentionally disabled for controlled non-Amazon rollout */}
               </section>
+              )}
 
               <div className="mt-6">
                 <SubscribeInlineBanner />
