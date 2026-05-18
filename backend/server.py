@@ -11075,6 +11075,8 @@ LEGACY_ARTICLE_REDIRECTS = {
     "69e85a2b5c3fd0f57cf3a438": ("69e9031c87e34f348b321972", "the-cheshire-village-fighting-to-have-its-own-council"),
     "69df1fb5311960544b7adc0a": ("69e071242549c00aa1d4a4f6", "cheshire-asylum-hotel-shuts-with-immediate-effect"),
     "6a0166ee3ab76ea50644bc29": ("8abea102-5d81-4f55-b746-99f25fa46bb5", "cheshire-town-confirms-food-and-drink-festival-return-and-it-s-free"),
+    "6a0aa09c406651729119b2bf": ("6a0aa0bf406651729119b2c2", "vicious-circle-of-rising-costs-is-fuelling-crisis-for-traders"),
+    "6a09f7ce9dfc21e2577620c0": ("6a0af519406651729119b2de", "why-does-amazon-have-no-western-rivals"),
 }
 
 
@@ -11132,7 +11134,7 @@ async def _redirect_facebook_logged_article_if_needed(article_id: str):
     if not article:
         return None
 
-    target_id = str(article.get("id") or article.get("_id") or "").strip()
+    target_id = str(article.get("_id") or article.get("id") or "").strip()
     if not target_id:
         return None
 
@@ -11258,7 +11260,7 @@ async def serve_article_for_production(article_id: str):
         # If missing, keep crawler HTML behaviour (no redirect)
         return await serve_article_html(article_id)
 
-    public_id = str(article.get("id") or article_id)
+    public_id = str(article.get("_id") or article.get("id") or article_id)
     raw_title = str(article.get("title") or "article")
     slug = re.sub(r"[^a-z0-9]+", "-", raw_title.lower()).strip("-")
     slug = (slug[:80] if slug else "article")
