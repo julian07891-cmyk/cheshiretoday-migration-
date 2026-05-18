@@ -10666,6 +10666,45 @@ async def generate_news_sitemap():
             },
             {"_id": 1, "id": 1, "title": 1, "publishedDate": 1, "created_at": 1, "category": 1}
         ).sort("created_at", -1).limit(1000).to_list(1000)
+
+        strategic_news_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI"}
+        news_sitemap_excluded_title_patterns = [
+            r"\bsports quiz\b",
+            r"\bcrash\b",
+            r"\bsmash\b",
+            r"\bhit-and-run\b",
+            r"\bemergency services\b",
+            r"\bknocked off\b",
+            r"\bpolice\b",
+            r"\bcourt\b",
+            r"\bjailed\b",
+            r"\bcharged\b",
+            r"\bmurder\b",
+            r"\bassault\b",
+            r"\bjohn fury\b",
+            r"\bnigel farage\b",
+            r"\bcameo\b",
+            r"\bporn\b",
+            r"\bstarwatch\b",
+            r"\bmoon\b",
+            r"\bperiod drama\b",
+            r"\bfree to watch\b",
+            r"\bhair dryer\b",
+            r"\bcruise ship\b",
+            r"\binfection risk\b",
+        ]
+
+        def include_article_in_news_sitemap(article):
+            title = str(article.get("title") or "").strip()
+            category = str(article.get("category") or "").strip()
+            if not title:
+                return False
+            if category not in strategic_news_categories:
+                return False
+            title_lower = title.lower()
+            if any(re.search(pattern, title_lower) for pattern in news_sitemap_excluded_title_patterns):
+                return False
+            return True
         
         # Build Google News sitemap XML
         xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -10673,7 +10712,9 @@ async def generate_news_sitemap():
         xml_content += '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n'
         
         for article in articles:
-            article_id = str(article.get('id', article.get('_id', '')))
+            if not include_article_in_news_sitemap(article):
+                continue
+            article_id = str(article.get('_id') or article.get('id') or '')
             raw_title = str(article.get("title","News Article"))
             title = saxutils.escape(raw_title[:100])
             slug = re.sub(r"[^a-z0-9]+","-", raw_title.lower()).strip("-")
