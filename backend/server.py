@@ -10942,7 +10942,10 @@ async def serve_article_html(article_id: str, request=None):
     public_id = str(article_id or article.get("id") or "").strip()
 
     title = str(article.get("title") or "Cheshire Today")
-    desc = str(article.get("summary") or "")
+    summary = str(article.get("summary") or "").strip()
+    content = str(article.get("content") or "").strip()
+    desc_src = summary if len(summary) >= 40 else content
+    desc = re.sub(r"\s+", " ", desc_src).strip()[:180]
 
     def normalize_social_image(raw_img, source_url=None) -> str:
         img = str(raw_img).strip() if raw_img else ""
