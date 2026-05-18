@@ -1122,19 +1122,10 @@ export default function ArticlePageV2({ categories }) {
                 </button>
               </div>
 
-              {isMobileView && mobileRemainingContent && !articleExpanded && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setArticleExpanded(true);
-                    window.setTimeout(() => {
-                      articleBodyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    }, 80);
-                  }}
-                  className="sm:hidden mt-4 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-3 transition dark:bg-sky-700 dark:hover:bg-sky-600"
-                >
-                  Continue reading
-                </button>
+              {description && (
+                <p className="mt-4 text-[1.02rem] leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
+                  {description}
+                </p>
               )}
 
               {article.image && (
