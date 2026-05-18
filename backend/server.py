@@ -10488,8 +10488,52 @@ async def generate_sitemap():
         # which indexes cheshiretoday.co.uk, not preview/staging environments
         base_url = 'https://cheshiretoday.co.uk'
         
-        # Get recent articles from database (limit to 500 for performance)
-        articles = await db.articles.find({}, {'_id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1}).sort('publishedDate', -1).limit(500).to_list(500)
+        # Get recent active articles from database (limit to 500 for performance).
+        # Sitemap should submit only index-worthy strategic pages, not every transient RSS item.
+        articles = await db.articles.find(
+            {"archived": {"$ne": True}},
+            {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1}
+        ).sort('publishedDate', -1).limit(500).to_list(500)
+
+        strategic_article_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI"}
+        sitemap_excluded_title_patterns = [
+            r"\bsports quiz\b",
+            r"\bcrash\b",
+            r"\bsmash\b",
+            r"\bhit-and-run\b",
+            r"\bemergency services\b",
+            r"\bknocked off\b",
+            r"\bpolice\b",
+            r"\bcourt\b",
+            r"\bjailed\b",
+            r"\bcharged\b",
+            r"\bmurder\b",
+            r"\bassault\b",
+            r"\bjohn fury\b",
+            r"\bnigel farage\b",
+            r"\bcameo\b",
+            r"\bporn\b",
+            r"\bstarwatch\b",
+            r"\bmoon\b",
+            r"\bperiod drama\b",
+            r"\bfree to watch\b",
+            r"\bhair dryer\b",
+            r"\bcruise ship\b",
+            r"\binfection risk\b",
+        ]
+
+        def include_article_in_sitemap(article):
+            title = str(article.get("title") or "").strip()
+            category = str(article.get("category") or "").strip()
+            image = str(article.get("image") or "").strip()
+            if not title or not image:
+                return False
+            if category not in strategic_article_categories:
+                return False
+            title_lower = title.lower()
+            if any(re.search(pattern, title_lower) for pattern in sitemap_excluded_title_patterns):
+                return False
+            return True
         
         # Start building XML with image namespace
         xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -10551,9 +10595,11 @@ async def generate_sitemap():
             xml_content += '    <priority>0.7</priority>\n'
             xml_content += '  </url>\n'
 
-        # Add all articles with images
+        # Add only strategic, index-worthy articles with images
         for article in articles:
-            article_id = str(article.get("id") or article["_id"])
+            if not include_article_in_sitemap(article):
+                continue
+            article_id = str(article.get("_id") or article.get("id") or "")
             raw_title = str(article.get("title") or "Cheshire Today Article")
             slug = re.sub(r"[^a-z0-9]+","-", raw_title.lower()).strip("-")
             slug = (slug[:80] if slug else "article")
