@@ -1220,7 +1220,7 @@ async def _latest_public_article_url_for_ad_preview():
         if not article:
             return "https://cheshiretoday.co.uk"
 
-        article_id = str(article.get("id") or article.get("_id"))
+        article_id = str(article.get("_id") or article.get("id"))
         slug = _article_slug_from_title(article.get("title") or "article")
         return f"https://cheshiretoday.co.uk/article/{article_id}/{slug}"
     except Exception as e:
@@ -4027,8 +4027,13 @@ async def get_article(article_id: str):
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        article['id'] = str(article.get('id', article['_id']))
-        del article['_id']
+        original_internal_id = str(article.get('id') or '').strip()
+        public_article_id = str(article.get('_id') or original_internal_id or article_id)
+        if original_internal_id and original_internal_id != public_article_id:
+            article['internal_id'] = original_internal_id
+        article['id'] = public_article_id
+        if '_id' in article:
+            del article['_id']
         if 'created_at' in article:
             del article['created_at']
         
@@ -4050,14 +4055,28 @@ async def get_article_share_page(article_id: str, request: Request):
     Also searches archived_articles to ensure old shared links work.
     """
     from fastapi.responses import HTMLResponse
+    import json
     
     try:
-        # Search in main articles collection first
-        article = await db.articles.find_one({'_id': ObjectId(article_id)})
-        
-        # If not found, search in archived_articles collection
+        article = None
+        mongo_id = None
+
+        # Search in main articles collection first by Mongo _id, then by internal UUID.
+        try:
+            mongo_id = ObjectId(article_id)
+            article = await db.articles.find_one({'_id': mongo_id})
+        except Exception:
+            pass
+
         if not article:
-            article = await db.archived_articles.find_one({'_id': ObjectId(article_id)})
+            article = await db.articles.find_one({'id': article_id})
+
+        # If not found, search archived_articles by Mongo _id, then by internal UUID.
+        if not article and mongo_id:
+            article = await db.archived_articles.find_one({'_id': mongo_id})
+
+        if not article:
+            article = await db.archived_articles.find_one({'id': article_id})
         
         if not article:
             # Return default share page if article not found
@@ -4073,11 +4092,42 @@ async def get_article_share_page(article_id: str, request: Request):
             </html>
             """)
         
+        public_article_id = str(article.get('_id') or article.get('id') or article_id).strip()
+        article_slug = _article_slug_from_title(article.get('title') or 'article')
         title = article.get('title', 'Cheshire Today')
-        description = article.get('content', '')[:200].replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+        raw_description = article.get('content', '')[:200]
+        description = raw_description.replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
         image = article.get('image', '')
-        article_url = f"https://cheshiretoday.co.uk/article/{article_id}"
-        share_url = f"https://cheshiretoday.co.uk/api/share/{article_id}"
+        article_url = f"https://cheshiretoday.co.uk/article/{public_article_id}/{article_slug}"
+        share_url = f"https://cheshiretoday.co.uk/api/share/{public_article_id}"
+        app_url = article_url
+
+        raw_published = article.get('publishedDate') or article.get('published_at') or article.get('created_at') or ''
+        published_iso = raw_published.isoformat() if hasattr(raw_published, 'isoformat') else str(raw_published or '')
+
+        json_ld_script = '<script type="application/ld+json">' + json.dumps({
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "headline": title,
+            "description": raw_description or title,
+            "url": app_url,
+            "mainEntityOfPage": app_url,
+            "datePublished": published_iso or None,
+            "dateModified": published_iso or None,
+            "author": {
+                "@type": "Organization",
+                "name": article.get('author') or "Cheshire Today"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "Cheshire Today",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://cheshiretoday.co.uk/logo.png"
+                }
+            },
+            "image": image or "https://cheshiretoday.co.uk/social-share.jpg"
+        }, ensure_ascii=False) + '</script>'
         
         # Use default social share image if no article image
         if not image or len(image) < 10:
