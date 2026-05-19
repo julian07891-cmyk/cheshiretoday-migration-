@@ -10677,12 +10677,17 @@ async def generate_news_sitemap():
                     {"created_at": {"$gte": cutoff_iso}},
                 ],
             },
-            {"_id": 1, "id": 1, "title": 1, "publishedDate": 1, "created_at": 1, "category": 1}
+            {"_id": 1, "id": 1, "title": 1, "publishedDate": 1, "created_at": 1, "category": 1, "scope": 1, "source": 1, "source_url": 1}
         ).sort("created_at", -1).limit(1000).to_list(1000)
 
-        strategic_news_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI"}
+        strategic_news_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI", "AI & Tech"}
+
+        # Keep the Google News sitemap tightly aligned with Cheshire Today's positioning:
+        # Cheshire local + business/finance + practical AI/tech. This does not affect
+        # imports, homepage visibility, article pages, RSS, or archives.
         news_sitemap_excluded_title_patterns = [
-            r"\bsports quiz\b",
+            # Crime, courts, accidents, emergency filler
+            r"\bcrime\b",
             r"\bcrash\b",
             r"\bsmash\b",
             r"\bhit-and-run\b",
@@ -10694,8 +10699,25 @@ async def generate_news_sitemap():
             r"\bcharged\b",
             r"\bmurder\b",
             r"\bassault\b",
+            r"\bcocaine\b",
+            r"\bdrugs?\b",
+            r"\bgangs?\b",
+
+            # Personal tragedy / human-interest filler unsuitable for strategic sitemap
+            r"\bdevastating diagnosis\b",
+            r"\bstarted to ache\b",
+            r"\bcancer\b",
+            r"\btributes?\b",
+            r"\bfuneral\b",
+            r"\bdied\b",
+            r"\bdeath\b",
+            r"\blost everything\b",
+
+            # Celebrity/politics/lifestyle/entertainment filler
+            r"\bsports quiz\b",
             r"\bjohn fury\b",
             r"\bnigel farage\b",
+            r"\belon musk has lost\b",
             r"\bcameo\b",
             r"\bporn\b",
             r"\bstarwatch\b",
@@ -10705,33 +10727,98 @@ async def generate_news_sitemap():
             r"\bhair dryer\b",
             r"\bcruise ship\b",
             r"\bdoom soundtrack\b",
-            r"\bf-35\b",
-            r"\bnothing phone\b",
             r"\bpokemon\b",
             r"\balton towers\b",
-            r"\bfire ripped\b",
-            r"\blost everything\b",
+            r"\banimal park\b",
+            r"\bhedgehogs?\b",
+            r"\btiger cubs?\b",
+
+            # Weak/global tech or international filler not useful for Cheshire readers
+            r"\bx limits\b",
+            r"\bfreeloaders\b",
+            r"\bairbus gets hpc\b",
+            r"\bhpc-as-a-service\b",
+            r"\bzte showcases\b",
+            r"\bbrazil\b",
+            r"\btyphoon jets\b",
+            r"\bf-35\b",
+            r"\bmaga\b",
+            r"\bstarbucks korea\b",
+            r"\bswatch\b",
+            r"\btank day\b",
+            r"\bsubmarine cables\b",
+            r"\bstrait of hormuz\b",
+            r"\bnothing phone\b",
+            r"\bgps jamming\b",
+            r"\bcloud-managed earbuds\b",
             r"\bpandemic preparedness\b",
+            r"\binfection risk\b",
+
+            # Weak national/local filler that does not support authority positioning
             r"\blondoners\b",
             r"\bworking-class voices\b",
             r"\bdriving test\b",
-            r"\bgps jamming\b",
-            r"\bcloud-managed earbuds\b",
-            r"\binfection risk\b",
+            r"\bswinney\b",
+            r"\bfirst minister vote\b",
+            r"\|\s*letter\b",
+        ]
+
+        cheshire_terms = [
+            "cheshire", "chester", "crewe", "wilmslow", "warrington", "macclesfield",
+            "northwich", "nantwich", "knutsford", "congleton", "sandbach", "ellesmere port",
+            "middlewich", "winsford", "alderley edge", "hale", "runcorn", "widnes",
+            "leighton", "creamfields"
+        ]
+
+        business_impact_terms = [
+            "uk", "britain", "britons", "government", "supermarkets", "inflation",
+            "unemployment", "jobs", "roles", "workers", "wages", "costs", "prices",
+            "energy", "bills", "petrol", "pensions", "bank", "mortgage", "rent",
+            "tax", "hs2", "imf", "traders", "high street", "ombudsman", "savings",
+            "childcare", "insurance", "food prices", "growth forecast"
+        ]
+
+        practical_tech_terms = [
+            "ai", "artificial intelligence", "cyber", "security", "malware", "infected",
+            "npm", "software", "cloud", "aws", "google cloud", "coding", "code",
+            "developers", "devs", "database", "postgresql", "vpn", "privacy",
+            "age-check", "agent", "linux", "bug hunters", "automation", "layoffs",
+            "costs", "bills", "jobs", "workers", "bank", "business", "sap"
         ]
 
         def include_article_in_news_sitemap(article):
             title = str(article.get("title") or "").strip()
             category = str(article.get("category") or "").strip()
+            scope = str(article.get("scope") or "").strip().lower()
+            source = str(article.get("source") or "").strip().lower()
+
             if not title:
                 return False
             if category not in strategic_news_categories:
                 return False
+
             title_lower = title.lower()
+            combined = f"{title_lower} {source}"
+
             if any(re.search(pattern, title_lower) for pattern in news_sitemap_excluded_title_patterns):
                 return False
-            return True
-        
+
+            if category == "Local News":
+                return scope == "cheshire" or any(term in combined for term in cheshire_terms)
+
+            if category in {"Finance", "Tax", "Property"}:
+                return True
+
+            if category == "Business":
+                if scope == "cheshire" or any(term in combined for term in cheshire_terms):
+                    return True
+                return any(term in combined for term in business_impact_terms)
+
+            if category in {"Tech", "AI", "AI & Tech"}:
+                return any(term in combined for term in practical_tech_terms)
+
+            return False
+
         # Build Google News sitemap XML
         xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
         xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
