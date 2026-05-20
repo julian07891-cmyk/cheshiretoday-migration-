@@ -3471,6 +3471,7 @@ async def get_articles(
                     # from the homepage/API feed without affecting article URLs, imports, admin, newsletters, or archives.
                     if re.search(
                         r"\b(cocaine|drugs?|gangs?|devastating diagnosis|started to ache|lost everything|"
+                        r"hit-and-run|knocked off|smash between|train station crash|emergency services respond|"
                         r"pokemon|alton towers|period drama|free to watch|animal park|tiger cubs?|hedgehogs?|"
                         r"x limits|freeloaders|airbus gets hpc|hpc-as-a-service|zte showcases|brazil|"
                         r"typhoon jets|swinney|first minister vote|swatch|starbucks korea|tank day|"
