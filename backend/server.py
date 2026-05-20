@@ -10492,12 +10492,15 @@ async def generate_sitemap():
         # Sitemap should submit only index-worthy strategic pages, not every transient RSS item.
         articles = await db.articles.find(
             {"archived": {"$ne": True}},
-            {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1}
+            {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1, 'scope': 1, 'source': 1, 'source_url': 1}
         ).sort('publishedDate', -1).limit(500).to_list(500)
 
-        strategic_article_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI"}
+        strategic_article_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI", "AI & Tech"}
+
+        # Main sitemap should submit strategic, index-worthy article URLs only.
+        # This does not affect article visibility, imports, homepage, RSS, Facebook links, or archives.
         sitemap_excluded_title_patterns = [
-            r"\bsports quiz\b",
+            r"\bcrime\b",
             r"\bcrash\b",
             r"\bsmash\b",
             r"\bhit-and-run\b",
@@ -10509,8 +10512,21 @@ async def generate_sitemap():
             r"\bcharged\b",
             r"\bmurder\b",
             r"\bassault\b",
+            r"\bcocaine\b",
+            r"\bdrugs?\b",
+            r"\bgangs?\b",
+            r"\bdevastating diagnosis\b",
+            r"\bstarted to ache\b",
+            r"\bcancer\b",
+            r"\btributes?\b",
+            r"\bfuneral\b",
+            r"\bdied\b",
+            r"\bdeath\b",
+            r"\blost everything\b",
+            r"\bsports quiz\b",
             r"\bjohn fury\b",
             r"\bnigel farage\b",
+            r"\belon musk has lost\b",
             r"\bcameo\b",
             r"\bporn\b",
             r"\bstarwatch\b",
@@ -10520,34 +10536,95 @@ async def generate_sitemap():
             r"\bhair dryer\b",
             r"\bcruise ship\b",
             r"\bdoom soundtrack\b",
-            r"\bf-35\b",
-            r"\bnothing phone\b",
             r"\bpokemon\b",
             r"\balton towers\b",
-            r"\bfire ripped\b",
-            r"\blost everything\b",
+            r"\banimal park\b",
+            r"\bhedgehogs?\b",
+            r"\btiger cubs?\b",
+            r"\bx limits\b",
+            r"\bfreeloaders\b",
+            r"\bairbus gets hpc\b",
+            r"\bhpc-as-a-service\b",
+            r"\bzte showcases\b",
+            r"\bbrazil\b",
+            r"\btyphoon jets\b",
+            r"\bf-35\b",
+            r"\bmaga\b",
+            r"\bstarbucks korea\b",
+            r"\bswatch\b",
+            r"\btank day\b",
+            r"\bsubmarine cables\b",
+            r"\bstrait of hormuz\b",
+            r"\bnothing phone\b",
+            r"\bgps jamming\b",
+            r"\bcloud-managed earbuds\b",
             r"\bpandemic preparedness\b",
+            r"\binfection risk\b",
             r"\blondoners\b",
             r"\bworking-class voices\b",
             r"\bdriving test\b",
-            r"\bgps jamming\b",
-            r"\bcloud-managed earbuds\b",
-            r"\binfection risk\b",
+            r"\bswinney\b",
+            r"\bfirst minister vote\b",
+            r"\|\s*letter\b",
+        ]
+
+        cheshire_terms = [
+            "cheshire", "chester", "crewe", "wilmslow", "warrington", "macclesfield",
+            "northwich", "nantwich", "knutsford", "congleton", "sandbach", "ellesmere port",
+            "middlewich", "winsford", "alderley edge", "hale", "runcorn", "widnes",
+            "leighton", "creamfields"
+        ]
+
+        business_impact_terms = [
+            "uk", "britain", "britons", "government", "supermarkets", "inflation",
+            "unemployment", "jobs", "roles", "workers", "wages", "costs", "prices",
+            "energy", "bills", "petrol", "pensions", "bank", "mortgage", "rent",
+            "tax", "hs2", "imf", "traders", "high street", "ombudsman", "savings",
+            "childcare", "insurance", "food prices", "growth forecast"
+        ]
+
+        practical_tech_terms = [
+            "ai", "artificial intelligence", "cyber", "security", "malware", "infected",
+            "npm", "software", "cloud", "aws", "google cloud", "coding", "code",
+            "developers", "devs", "database", "postgresql", "vpn", "privacy",
+            "age-check", "agent", "linux", "bug hunters", "automation", "layoffs",
+            "costs", "bills", "jobs", "workers", "bank", "business", "sap"
         ]
 
         def include_article_in_sitemap(article):
             title = str(article.get("title") or "").strip()
             category = str(article.get("category") or "").strip()
             image = str(article.get("image") or "").strip()
+            scope = str(article.get("scope") or "").strip().lower()
+            source = str(article.get("source") or "").strip().lower()
+
             if not title or not image:
                 return False
             if category not in strategic_article_categories:
                 return False
+
             title_lower = title.lower()
+            combined = f"{title_lower} {source}"
+
             if any(re.search(pattern, title_lower) for pattern in sitemap_excluded_title_patterns):
                 return False
-            return True
-        
+
+            if category == "Local News":
+                return scope == "cheshire" or any(term in combined for term in cheshire_terms)
+
+            if category in {"Finance", "Tax", "Property"}:
+                return True
+
+            if category == "Business":
+                if scope == "cheshire" or any(term in combined for term in cheshire_terms):
+                    return True
+                return any(term in combined for term in business_impact_terms)
+
+            if category in {"Tech", "AI", "AI & Tech"}:
+                return any(term in combined for term in practical_tech_terms)
+
+            return False
+
         # Start building XML with image namespace
         xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
         xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
