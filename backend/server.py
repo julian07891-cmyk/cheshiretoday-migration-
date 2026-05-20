@@ -4055,6 +4055,11 @@ async def get_article(article_id: str):
         
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
+
+        # Manual-review articles are hidden from public article detail/API access
+        # until they are verified, rewritten, and explicitly restored.
+        if article.get("manual_review_hidden_from_public") is True:
+            raise HTTPException(status_code=404, detail="Article not found")
         
         original_internal_id = str(article.get('id') or '').strip()
         public_article_id = str(article.get('_id') or original_internal_id or article_id)
@@ -4065,6 +4070,19 @@ async def get_article(article_id: str):
             del article['_id']
         if 'created_at' in article:
             del article['created_at']
+
+        # Keep public JSON clean. Admin-only review/rewrite metadata should not
+        # be exposed through the public article endpoint.
+        for internal_field in [
+            "manual_review_hidden_from_public",
+            "manual_review_reason",
+            "manual_review_created_at",
+            "manual_review_resolved_at",
+            "manual_review_hits",
+            "verification_status",
+            "rewrite_status",
+        ]:
+            article.pop(internal_field, None)
         
         return article
     except HTTPException:
