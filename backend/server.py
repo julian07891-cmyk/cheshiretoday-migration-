@@ -3349,17 +3349,20 @@ async def get_articles(
         if (not category or category == 'all') and not source_type and not search:
             # Fetch local and UK articles separately
             # include_archived support (build-phase cap archives older items)
-            archived_clause = None
+            public_visibility_clauses = []
             if not include_archived:
-                archived_clause = {'$or': [{'archived': {'$exists': False}}, {'archived': False}]}
+                public_visibility_clauses = [
+                    {'$or': [{'archived': {'$exists': False}}, {'archived': False}]},
+                    {'manual_review_hidden_from_public': {'$ne': True}},
+                ]
 
             local_q = {'is_local_source': True}
             uk_q = {'is_local_source': {'$ne': True}}
             force_q = {'force_live': True}
-            if archived_clause:
-                local_q = {'$and': [local_q, archived_clause]}
-                uk_q = {'$and': [uk_q, archived_clause]}
-                force_q = {'$and': [force_q, archived_clause]}
+            if public_visibility_clauses:
+                local_q = {'$and': [local_q] + public_visibility_clauses}
+                uk_q = {'$and': [uk_q] + public_visibility_clauses}
+                force_q = {'$and': [force_q] + public_visibility_clauses}
 
             force_articles = await db.articles.find(force_q,
                 {
