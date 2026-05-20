@@ -3278,20 +3278,23 @@ async def get_articles(
         
         query = {}
         
-        # Exclude archived articles by default
+        # Exclude archived and manual-review-hidden articles by default
         if not include_archived:
-            query["$or"] = [{"archived": {"$exists": False}}, {"archived": False}]
+            query["$and"] = [
+                {"$or": [{"archived": {"$exists": False}}, {"archived": False}]},
+                {"manual_review_hidden_from_public": {"$ne": True}},
+            ]
         
         # Search functionality - search in title and content
         if search and len(search) >= 2:
             import re
             search_regex = {'$regex': re.escape(search), '$options': 'i'}
-            # Override the $or query to include search
-            if "$or" in query:
-                # Combine archived filter with search
+            # Override the query to include search while preserving public visibility filters
+            if not include_archived:
                 query = {
                     "$and": [
                         {"$or": [{"archived": {"$exists": False}}, {"archived": False}]},
+                        {"manual_review_hidden_from_public": {"$ne": True}},
                         {"$or": [{"title": search_regex}, {"content": search_regex}]}
                     ]
                 }
