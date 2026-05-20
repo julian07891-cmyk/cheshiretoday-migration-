@@ -3448,10 +3448,12 @@ async def get_articles(
                     summary = (a.get("summary") or "").lower()
                     text_meta = f"{title} {summary}"
 
-                    # Audio / podcasts / videos
+                    # Audio / podcasts / videos / galleries
                     if "/audio/" in url or "podcast" in title or "podcast" in summary:
                         return True
                     if "/video" in url or "/watch/" in url or "watch video" in title:
+                        return True
+                    if "/gallery/" in url:
                         return True
 
                     # Letters / cartoons / opinion-style filler
@@ -3472,6 +3474,7 @@ async def get_articles(
                     if re.search(
                         r"\b(cocaine|drugs?|gangs?|devastating diagnosis|started to ache|lost everything|"
                         r"hit-and-run|knocked off|smash between|train station crash|emergency services respond|"
+                        r"in pictures|pictures from|anniversary celebrations|"
                         r"pokemon|alton towers|period drama|free to watch|animal park|tiger cubs?|hedgehogs?|"
                         r"x limits|freeloaders|airbus gets hpc|hpc-as-a-service|zte showcases|brazil|"
                         r"typhoon jets|swinney|first minister vote|swatch|starbucks korea|tank day|"
@@ -10580,6 +10583,9 @@ async def generate_sitemap():
             r"\bworking-class voices\b",
             r"\bdriving test\b",
             r"\bswinney\b",
+            r"\bin pictures\b",
+            r"\bpictures from\b",
+            r"\banniversary celebrations\b",
             r"\bfirst minister vote\b",
             r"\|\s*letter\b",
         ]
@@ -10852,6 +10858,9 @@ async def generate_news_sitemap():
             r"\bworking-class voices\b",
             r"\bdriving test\b",
             r"\bswinney\b",
+            r"\bin pictures\b",
+            r"\bpictures from\b",
+            r"\banniversary celebrations\b",
             r"\bfirst minister vote\b",
             r"\|\s*letter\b",
         ]
