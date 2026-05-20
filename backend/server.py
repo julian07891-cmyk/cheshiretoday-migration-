@@ -3466,6 +3466,21 @@ async def get_articles(
                     ):
                         return True
 
+                    # Cheshire Today public-feed quality guard:
+                    # remove weak crime, tragedy, tourism/lifestyle filler, and random global tech/business items
+                    # from the homepage/API feed without affecting article URLs, imports, admin, newsletters, or archives.
+                    if re.search(
+                        r"\b(cocaine|drugs?|gangs?|devastating diagnosis|started to ache|lost everything|"
+                        r"pokemon|alton towers|period drama|free to watch|animal park|tiger cubs?|hedgehogs?|"
+                        r"x limits|freeloaders|airbus gets hpc|hpc-as-a-service|zte showcases|brazil|"
+                        r"typhoon jets|swinney|first minister vote|swatch|starbucks korea|tank day|"
+                        r"elon musk has lost|new high street crime unit|st brelade|iran hints it could interfere|"
+                        r"vmware quietly debuts|mace wants to make power bills)\b",
+                        text_meta,
+                        re.I,
+                    ):
+                        return True
+
                     # Off-brand science / tech / business filler
                     if cat in {"science", "tech", "business", "uk news"}:
                         if re.search(r"\b(letter|letters|cartoon|podcast)\b", text_meta, re.I):
