@@ -8607,6 +8607,16 @@ async def debug_facebook_analytics_edges(auth: bool = Depends(get_admin_auth)):
         return {"success": False, "error": str(e), "edges": []}
 
 
+@api_router.get("/facebook/analytics/insights-debug")
+async def debug_facebook_insights_metrics(auth: bool = Depends(get_admin_auth)):
+    """Admin-only diagnostic for available Meta post/video insights metrics."""
+    try:
+        return await facebook_service.debug_latest_post_insights()
+    except Exception as e:
+        logger.error(f"Error debugging Facebook insights metrics: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
 @api_router.get("/facebook/analytics")
 async def get_facebook_analytics(auth: bool = Depends(get_admin_auth)):
     """

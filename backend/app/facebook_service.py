@@ -509,6 +509,100 @@ class FacebookService:
             logger.error(f"Error fetching post engagement: {str(e)}")
             return {"success": False, "error": str(e)}
     
+    async def debug_latest_post_insights(self) -> Dict:
+        """Test which Meta Insights metrics are available for the newest Page item.
+
+        Returns safe diagnostic data only. Never exposes the Page token.
+        """
+        if not self.is_configured:
+            return {"success": False, "error": "Facebook not configured"}
+
+        page_token = await self.get_page_token()
+        if not page_token:
+            return {"success": False, "error": "Could not get page token"}
+
+        engagement = await self.fetch_recent_posts_engagement(limit=5)
+        posts = engagement.get("posts", []) if engagement.get("success") else []
+        if not posts:
+            return {
+                "success": False,
+                "error": engagement.get("error") or "No recent Facebook posts found",
+                "warnings": engagement.get("warnings", []),
+            }
+
+        target = posts[0]
+        post_id = target.get("post_id")
+
+        post_metrics = [
+            "post_impressions",
+            "post_impressions_unique",
+            "post_engaged_users",
+            "post_clicks",
+            "post_reactions_by_type_total",
+        ]
+
+        video_metrics = [
+            "total_video_views",
+            "total_video_impressions",
+            "total_video_impressions_unique",
+            "total_video_reactions_by_type_total",
+        ]
+
+        def compact_metric(item):
+            values = item.get("values") or []
+            value = values[-1].get("value") if values and isinstance(values[-1], dict) else None
+            return {
+                "name": item.get("name"),
+                "period": item.get("period"),
+                "value": value,
+            }
+
+        diagnostics = {
+            "success": True,
+            "target_post": {
+                "post_id": post_id,
+                "source_type": target.get("source_type"),
+                "title": target.get("title"),
+                "created_time": target.get("created_time"),
+                "permalink_url": target.get("permalink_url"),
+            },
+            "post_insights": {"success": False, "metrics": [], "error": ""},
+            "video_insights": {"success": False, "metrics": [], "error": ""},
+        }
+
+        async with httpx.AsyncClient() as client:
+            post_response = await client.get(
+                f"{self.base_url}/{post_id}/insights",
+                params={
+                    "metric": ",".join(post_metrics),
+                    "access_token": page_token,
+                },
+                timeout=30.0,
+            )
+            post_result = post_response.json()
+            if "error" in post_result:
+                diagnostics["post_insights"]["error"] = post_result["error"].get("message", "Unknown error")
+            else:
+                diagnostics["post_insights"]["success"] = True
+                diagnostics["post_insights"]["metrics"] = [compact_metric(item) for item in post_result.get("data", [])]
+
+            video_response = await client.get(
+                f"{self.base_url}/{post_id}/video_insights",
+                params={
+                    "metric": ",".join(video_metrics),
+                    "access_token": page_token,
+                },
+                timeout=30.0,
+            )
+            video_result = video_response.json()
+            if "error" in video_result:
+                diagnostics["video_insights"]["error"] = video_result["error"].get("message", "Unknown error")
+            else:
+                diagnostics["video_insights"]["success"] = True
+                diagnostics["video_insights"]["metrics"] = [compact_metric(item) for item in video_result.get("data", [])]
+
+        return diagnostics
+
     async def fetch_recent_posts_engagement(self, limit: int = 20) -> Dict:
         """
         Fetch recent Facebook Page content first, then enrich each item with engagement.
