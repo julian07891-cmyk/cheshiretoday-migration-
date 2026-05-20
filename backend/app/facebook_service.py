@@ -510,8 +510,9 @@ class FacebookService:
             return {"success": False, "error": str(e)}
     
     async def debug_latest_post_insights(self) -> Dict:
-        """Test which Meta Insights metrics are available for the newest Page item.
+        """Probe which Meta Insights metrics are available for recent Page content.
 
+        Tests metrics one-by-one so one invalid metric does not fail the whole diagnostic.
         Returns safe diagnostic data only. Never exposes the Page token.
         """
         if not self.is_configured:
@@ -521,7 +522,7 @@ class FacebookService:
         if not page_token:
             return {"success": False, "error": "Could not get page token"}
 
-        engagement = await self.fetch_recent_posts_engagement(limit=5)
+        engagement = await self.fetch_recent_posts_engagement(limit=15)
         posts = engagement.get("posts", []) if engagement.get("success") else []
         if not posts:
             return {
@@ -530,10 +531,12 @@ class FacebookService:
                 "warnings": engagement.get("warnings", []),
             }
 
-        target = posts[0]
-        post_id = target.get("post_id")
+        feed_target = next((p for p in posts if p.get("source_type") in {"feed", "posts", "published_posts"}), posts[0])
+        video_target = next((p for p in posts if p.get("source_type") in {"reel", "videos", "video_reels"}), None)
 
-        post_metrics = [
+        post_metric_candidates = [
+            "post_views",
+            "views",
             "post_impressions",
             "post_impressions_unique",
             "post_engaged_users",
@@ -541,65 +544,85 @@ class FacebookService:
             "post_reactions_by_type_total",
         ]
 
-        video_metrics = [
+        video_metric_candidates = [
             "total_video_views",
             "total_video_impressions",
             "total_video_impressions_unique",
             "total_video_reactions_by_type_total",
+            "total_video_view_total_time",
+            "total_video_avg_time_watched",
         ]
 
-        def compact_metric(item):
+        def compact_metric_result(metric, result):
+            data = result.get("data") or []
+            item = data[0] if data else {}
             values = item.get("values") or []
             value = values[-1].get("value") if values and isinstance(values[-1], dict) else None
             return {
-                "name": item.get("name"),
+                "metric": metric,
+                "accepted": True,
                 "period": item.get("period"),
                 "value": value,
             }
 
+        async def probe_metrics(client, object_id, edge_name, metrics):
+            accepted = []
+            rejected = []
+            for metric in metrics:
+                response = await client.get(
+                    f"{self.base_url}/{object_id}/{edge_name}",
+                    params={
+                        "metric": metric,
+                        "access_token": page_token,
+                    },
+                    timeout=20.0,
+                )
+                result = response.json()
+                if "error" in result:
+                    rejected.append({
+                        "metric": metric,
+                        "error": result["error"].get("message", "Unknown error"),
+                    })
+                else:
+                    accepted.append(compact_metric_result(metric, result))
+            return {"accepted": accepted, "rejected": rejected}
+
         diagnostics = {
             "success": True,
-            "target_post": {
-                "post_id": post_id,
-                "source_type": target.get("source_type"),
-                "title": target.get("title"),
-                "created_time": target.get("created_time"),
-                "permalink_url": target.get("permalink_url"),
+            "feed_target": {
+                "post_id": feed_target.get("post_id"),
+                "source_type": feed_target.get("source_type"),
+                "title": feed_target.get("title"),
+                "created_time": feed_target.get("created_time"),
+                "permalink_url": feed_target.get("permalink_url"),
             },
-            "post_insights": {"success": False, "metrics": [], "error": ""},
-            "video_insights": {"success": False, "metrics": [], "error": ""},
+            "video_target": None,
+            "post_insights": {"accepted": [], "rejected": []},
+            "video_insights": {"accepted": [], "rejected": []},
         }
 
         async with httpx.AsyncClient() as client:
-            post_response = await client.get(
-                f"{self.base_url}/{post_id}/insights",
-                params={
-                    "metric": ",".join(post_metrics),
-                    "access_token": page_token,
-                },
-                timeout=30.0,
+            diagnostics["post_insights"] = await probe_metrics(
+                client,
+                feed_target.get("post_id"),
+                "insights",
+                post_metric_candidates,
             )
-            post_result = post_response.json()
-            if "error" in post_result:
-                diagnostics["post_insights"]["error"] = post_result["error"].get("message", "Unknown error")
-            else:
-                diagnostics["post_insights"]["success"] = True
-                diagnostics["post_insights"]["metrics"] = [compact_metric(item) for item in post_result.get("data", [])]
 
-            video_response = await client.get(
-                f"{self.base_url}/{post_id}/video_insights",
-                params={
-                    "metric": ",".join(video_metrics),
-                    "access_token": page_token,
-                },
-                timeout=30.0,
-            )
-            video_result = video_response.json()
-            if "error" in video_result:
-                diagnostics["video_insights"]["error"] = video_result["error"].get("message", "Unknown error")
-            else:
-                diagnostics["video_insights"]["success"] = True
-                diagnostics["video_insights"]["metrics"] = [compact_metric(item) for item in video_result.get("data", [])]
+            if video_target:
+                diagnostics["video_target"] = {
+                    "post_id": video_target.get("post_id"),
+                    "source_type": video_target.get("source_type"),
+                    "title": video_target.get("title"),
+                    "created_time": video_target.get("created_time"),
+                    "permalink_url": video_target.get("permalink_url"),
+                }
+                diagnostics["video_insights"] = await probe_metrics(
+                    client,
+                    video_target.get("post_id"),
+                    "video_insights",
+                    video_metric_candidates,
+                )
 
         return diagnostics
 
