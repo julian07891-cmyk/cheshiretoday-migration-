@@ -13163,27 +13163,116 @@ def find_ai_manual_review_hits(content: str):
     return hits
 
 
+LOCAL_SPECIFIC_LOCATION_PATTERN = re.compile(
+    r"\b("
+    r"Chester|Crewe|Macclesfield|Warrington|Widnes|Runcorn|Knutsford|Wilmslow|Congleton|"
+    r"Nantwich|Sandbach|Middlewich|Poynton|Alsager|Northwich|Winsford|Ellesmere Port|"
+    r"Frodsham|Holmes Chapel|Alderley Edge|Tarporley|Audlem|Malpas|Prestbury|Handforth|"
+    r"Halton|Cheshire East|Cheshire West|Leighton Hospital|Chester Zoo|River Dee|M53|M56|M6|"
+    r"Booths Park|Crow Wood Park|Deva Stadium|Bumper'?s Lane|West Street|"
+    r"Storyhouse|Tatton Park|Delamere|Jodrell Bank|Oulton Park|Cholmondeley|"
+    r"Cheshire Oaks|Blue Planet Aquarium|Speke Hall|Neston|Lymm|Culcheth|"
+    r"Great Sankey|Birchwood|Appleton|Mobberley|Disley|Bollington|Haslington|"
+    r"Wistaston|Shavington|Willaston|Tarvin|Kelsall|Mickle Trafford|Hooton|"
+    r"Handbridge|Hoole|Boughton|Upton|Saltney|Blacon"
+    r")\b",
+    re.I,
+)
+
+
+VAGUE_CHESHIRE_LOCATION_PATTERN = re.compile(
+    r"\b(Cheshire woman|Cheshire man|Cheshire dad|Cheshire mum|Cheshire park|"
+    r"Cheshire football club|Cheshire village|Cheshire town|part of Cheshire|in Cheshire)\b",
+    re.I,
+)
+
+
+def is_local_article_for_location_review(article: dict) -> bool:
+    return (
+        (article.get("category") or "").lower() == "local news"
+        or (article.get("scope") or "").lower() == "cheshire"
+        or article.get("is_local_source") is True
+        or article.get("is_local_feed") is True
+    )
+
+
+def has_specific_local_location_detail(article: dict, content: str, title: str = "") -> bool:
+    """Require specific local detail in the article text itself.
+
+    Location fields are useful for filtering/navigation, but public local articles
+    must also say the actual town, village, site, venue, street, council area or
+    named local place in the title, summary or article body.
+    """
+    text = " ".join([
+        str(title or ""),
+        str(article.get("summary") or ""),
+        str(content or "")[:3500],
+    ])
+
+    known_place_found = bool(LOCAL_SPECIFIC_LOCATION_PATTERN.search(text))
+
+    stored_locations = [
+        str(article.get("location") or "").strip(),
+        str(article.get("priority_location") or "").strip(),
+    ]
+    stored_location_in_text = any(
+        loc and re.search(r"\b" + re.escape(loc) + r"\b", text, re.I)
+        for loc in stored_locations
+    )
+
+    return known_place_found or stored_location_in_text
+
+
+def find_local_location_review_reason(article: dict, content: str, title: str = "") -> str:
+    if not is_local_article_for_location_review(article):
+        return ""
+
+    if has_specific_local_location_detail(article, content, title):
+        return ""
+
+    vague_hit = VAGUE_CHESHIRE_LOCATION_PATTERN.search(
+        " ".join([str(title or ""), str(article.get("summary") or ""), str(content or "")[:1500]])
+    )
+
+    if vague_hit:
+        return "Local article uses vague Cheshire wording without a specific town, village, street, venue, council area or named site."
+
+    return "Local article is missing a specific town, village, street, venue, council area or named site."
+
+
 def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: bool = False, title: str = ""):
-    if not ai_rewrite_used:
-        return article
+    if ai_rewrite_used:
+        article["ai_rewritten"] = True
+        article["is_rewritten"] = True
 
-    article["ai_rewritten"] = True
-    article["is_rewritten"] = True
+    hits = find_ai_manual_review_hits(content) if ai_rewrite_used else []
+    local_location_reason = find_local_location_review_reason(article, content, title)
 
-    hits = find_ai_manual_review_hits(content)
+    review_reasons = []
     if hits:
+        review_reasons.append("AI rewrite contained risky invented-detail phrases; verify against source before promotion or social sharing.")
+    if local_location_reason:
+        review_reasons.append(local_location_reason)
+
+    if review_reasons:
         now_iso = datetime.now(timezone.utc).isoformat()
         article["verification_status"] = "needs_manual_review"
-        article["rewrite_status"] = "ai_rewrite_needs_review"
-        article["archived"] = True
-        article["archived_at"] = now_iso
-        article["archive_reason"] = "needs_manual_review"
+        article["rewrite_status"] = "ai_rewrite_needs_review" if hits else "manual_review_required"
         article["manual_review_hidden_from_public"] = True
-        article["manual_review_hits"] = hits
-        article["manual_review_reason"] = "AI rewrite contained risky invented-detail phrases; verify against source before promotion or social sharing."
+        article["manual_review_reason"] = " ".join(review_reasons)
         article["manual_review_created_at"] = now_iso
-        logger.warning(f"AI rewrite hidden for manual review: {title[:80]} | hits={hits}")
-    else:
+
+        if hits:
+            article["archived"] = True
+            article["archived_at"] = now_iso
+            article["archive_reason"] = "needs_manual_review"
+            article["manual_review_hits"] = hits
+
+        logger.warning(
+            f"Article hidden for manual review: {title[:80]} | "
+            f"ai_hits={hits} | local_location_missing={bool(local_location_reason)}"
+        )
+    elif ai_rewrite_used:
         article.setdefault("verification_status", "ai_rewrite_auto_screened")
         article.setdefault("rewrite_status", "ai_rewritten")
 
