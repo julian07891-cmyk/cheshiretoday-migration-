@@ -5900,6 +5900,61 @@ async def unarchive_article(article_id: str, auth: bool = Depends(get_admin_auth
         logger.error(f"Error unarchiving article: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/admin/articles/manual-review")
+async def get_manual_review_articles(
+    skip: int = 0,
+    limit: int = 100,
+    auth: bool = Depends(get_admin_auth)
+):
+    """Get live articles hidden from public feeds pending manual review."""
+    try:
+        safe_skip = max(0, int(skip or 0))
+        safe_limit = min(max(1, int(limit or 100)), 250)
+
+        query = {"manual_review_hidden_from_public": True}
+        projection = {
+            "_id": 1,
+            "id": 1,
+            "title": 1,
+            "content": 1,
+            "summary": 1,
+            "category": 1,
+            "publishedDate": 1,
+            "created_at": 1,
+            "image": 1,
+            "source": 1,
+            "source_url": 1,
+            "author": 1,
+            "tags": 1,
+            "scope": 1,
+            "location": 1,
+            "priority_location": 1,
+            "manual_review_reason": 1,
+            "manual_review_created_at": 1,
+            "verification_status": 1,
+            "rewrite_status": 1,
+        }
+
+        total = await db.articles.count_documents(query)
+        articles = await db.articles.find(query, projection).sort("publishedDate", -1).skip(safe_skip).limit(safe_limit).to_list(safe_limit)
+
+        for article in articles:
+            article["id"] = str(article.get("_id") or article.get("id") or "")
+            if "_id" in article:
+                del article["_id"]
+
+        return {
+            "success": True,
+            "articles": articles,
+            "total": total,
+            "skip": safe_skip,
+            "limit": safe_limit,
+        }
+    except Exception as e:
+        logger.error(f"Error getting manual review articles: {e}")
+        raise HTTPException(status_code=500, detail="Could not load manual review articles")
+
+
 @api_router.get("/admin/articles/archived")
 async def get_archived_articles(
     skip: int = 0,
