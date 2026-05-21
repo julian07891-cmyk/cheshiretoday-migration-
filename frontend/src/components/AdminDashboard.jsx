@@ -2311,6 +2311,9 @@ const handleDeleteArticle = async (articleId) => {
           description: "Article has been removed"
         });
         setArticles(articles.filter(a => a.id !== articleId));
+        setManualReviewArticles(prev => prev.filter(a => a.id !== articleId));
+        fetchManualReviewArticles();
+        fetchArchivedArticles();
         fetchAllData();
       } else {
         throw new Error('Delete failed');
@@ -4239,6 +4242,30 @@ const handleDeleteArticle = async (articleId) => {
                               onClick={() => handleArchiveArticle(article.id)}
                             >
                               Archive
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                const confirmed = await showConfirmation({
+                                  title: 'Delete Manual Review Article',
+                                  description: `Move "${article.title}" to archive as admin_delete? Shared links will still be preserved.`,
+                                  variant: 'destructive',
+                                  confirmText: 'Delete',
+                                  cancelText: 'Cancel'
+                                });
+                                if (confirmed) {
+                                  handleDeleteArticle(article.id);
+                                }
+                              }}
+                              disabled={actionLoading === `delete-article-${article.id}`}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            >
+                              {actionLoading === `delete-article-${article.id}` ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
                             </Button>
                           </div>
                         </div>

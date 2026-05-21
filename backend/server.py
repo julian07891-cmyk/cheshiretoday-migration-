@@ -4515,7 +4515,7 @@ async def get_article_meta(article_id: str):
         }
 
 @api_router.delete("/articles/{article_id}")
-async def delete_article(article_id: str):
+async def delete_article(article_id: str, auth: bool = Depends(get_admin_auth)):
     """Archive an article (moves to archived_articles collection instead of permanent deletion).
     
     This ensures that shared links (e.g., Facebook posts) continue to work even after
