@@ -138,6 +138,7 @@ const AdminDashboard = ({ onBack }) => {
   
   // Archive and article management state
   const [archivedArticles, setArchivedArticles] = useState([]);
+  const [manualReviewArticles, setManualReviewArticles] = useState([]);
   const [articleStats, setArticleStats] = useState(null);
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
   const [articlesPage, setArticlesPage] = useState(0);
@@ -1045,6 +1046,19 @@ const AdminDashboard = ({ onBack }) => {
       }
     } catch (error) {
       console.error('Error fetching archived articles:', error);
+    }
+  };
+
+  const fetchManualReviewArticles = async () => {
+    const authHeaders = getAuthHeaders();
+    try {
+      const response = await fetch(`${getApiUrl()}/api/admin/articles/manual-review?limit=100`, { headers: authHeaders });
+      if (response.ok) {
+        const data = await response.json();
+        setManualReviewArticles(data.articles || []);
+      }
+    } catch (error) {
+      console.error('Error fetching manual review articles:', error);
     }
   };
 
@@ -2797,6 +2811,7 @@ const handleDeleteArticle = async (articleId) => {
                 setActiveTab('archive');
                 // Always fetch fresh archive data when clicking the tab
                 fetchArchivedArticles();
+                fetchManualReviewArticles();
                 fetchArticleStats();
               }}
               size="sm"
@@ -4141,6 +4156,96 @@ const handleDeleteArticle = async (articleId) => {
                     Archive 30+ days old
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Manual Review Articles List */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Manual Review Articles</CardTitle>
+                    <CardDescription>
+                      {manualReviewArticles.length} live articles hidden from public feeds until reviewed
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchManualReviewArticles}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {manualReviewArticles.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-400" />
+                    <p>No live manual-review articles</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[360px] overflow-y-auto">
+                    {manualReviewArticles.map((article) => (
+                      <div
+                        key={article.id}
+                        className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+                      >
+                        {article.image && (
+                          <img
+                            src={article.image}
+                            alt=""
+                            className="w-16 h-12 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-foreground line-clamp-2">{article.title}</h4>
+                          <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
+                            <span>{article.category || 'Uncategorised'}</span>
+                            <span>•</span>
+                            <span>{article.source || 'Unknown source'}</span>
+                            {article.location && (
+                              <>
+                                <span>•</span>
+                                <span>{article.location}</span>
+                              </>
+                            )}
+                          </div>
+                          {article.manual_review_reason && (
+                            <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 line-clamp-2">
+                              {article.manual_review_reason}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {article.source_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.open(article.source_url, '_blank')}
+                              >
+                                Source
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditArticle(article)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleArchiveArticle(article.id)}
+                            >
+                              Archive
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
