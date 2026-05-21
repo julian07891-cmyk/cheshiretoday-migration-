@@ -4256,7 +4256,7 @@ const handleDeleteArticle = async (articleId) => {
                   <div>
                     <CardTitle>Archived Articles</CardTitle>
                     <CardDescription>
-                      {archivedArticles.length} articles in archive · {archivedArticles.filter(article => article.archive_reason === 'needs_manual_review').length} need AI manual review
+                      {archivedArticles.length} articles in archive · Manual review is shown above for live hidden articles
                     </CardDescription>
                   </div>
                   <Button
