@@ -5631,8 +5631,19 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
     try:
         from app.news_feed_service import get_article_priority_location
         
-        # Check if article exists
-        existing = await db.articles.find_one({"id": article_id})
+        # Check if article exists by custom id first, then MongoDB _id.
+        # Admin Manual Review uses MongoDB _id as article.id, so both must work.
+        match_query = {"id": article_id}
+        existing = await db.articles.find_one(match_query)
+
+        if not existing:
+            try:
+                mongo_id = ObjectId(article_id)
+                match_query = {"_id": mongo_id}
+                existing = await db.articles.find_one(match_query)
+            except Exception:
+                pass
+
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
         
@@ -5665,6 +5676,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         # Update location if detected (or clear if no longer matches any location)
         if detected_location:
             update_doc["location"] = detected_location
+            update_doc["priority_location"] = detected_location
             # Add location to tags if not already present
             location_tag = detected_location.capitalize()
             if location_tag not in update_doc["tags"]:
@@ -5673,27 +5685,59 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         else:
             # Clear location if article no longer matches any specific location
             update_doc["location"] = None
+            update_doc["priority_location"] = None
         
         unset_doc = {}
         restored_from_manual_review = False
 
-        if existing.get("verification_status") == "needs_manual_review" or existing.get("archive_reason") == "needs_manual_review":
-            restored_from_manual_review = True
-            update_doc.update({
-                "archived": False,
-                "verification_status": "manual_corrected_verified_limited",
-                "rewrite_status": "manual_corrected",
-                "ai_rewritten": False,
-                "manual_review_restored_at": datetime.now(timezone.utc).isoformat(),
-            })
-            unset_doc.update({
-                "archived_at": "",
-                "archive_reason": "",
-                "manual_review_hidden_from_public": "",
-                "manual_review_hits": "",
-                "manual_review_reason": "",
-                "manual_review_created_at": "",
-            })
+        was_manual_review = (
+            existing.get("manual_review_hidden_from_public") is True
+            or existing.get("verification_status") == "needs_manual_review"
+            or existing.get("archive_reason") == "needs_manual_review"
+        )
+
+        if was_manual_review:
+            review_check_article = {**existing, **update_doc}
+            remaining_review_reason = find_local_location_review_reason(
+                review_check_article,
+                update_doc.get("content", ""),
+                update_doc.get("title", ""),
+            )
+            remaining_ai_hits = find_ai_manual_review_hits(update_doc.get("content", ""))
+
+            remaining_reasons = []
+            if remaining_review_reason:
+                remaining_reasons.append(remaining_review_reason)
+            if remaining_ai_hits:
+                remaining_reasons.append("Edited article still contains risky invented-detail phrases; verify against source before restoring.")
+
+            if remaining_reasons:
+                update_doc.update({
+                    "manual_review_hidden_from_public": True,
+                    "manual_review_reason": " ".join(remaining_reasons),
+                    "manual_review_hits": remaining_ai_hits,
+                    "manual_review_created_at": existing.get("manual_review_created_at") or datetime.now(timezone.utc).isoformat(),
+                    "verification_status": "needs_manual_review",
+                    "rewrite_status": "manual_review_required",
+                })
+                restored_from_manual_review = False
+            else:
+                restored_from_manual_review = True
+                update_doc.update({
+                    "archived": False,
+                    "verification_status": "manual_corrected_verified_limited",
+                    "rewrite_status": "manual_corrected",
+                    "ai_rewritten": False,
+                    "manual_review_restored_at": datetime.now(timezone.utc).isoformat(),
+                })
+                unset_doc.update({
+                    "archived_at": "",
+                    "archive_reason": "",
+                    "manual_review_hidden_from_public": "",
+                    "manual_review_hits": "",
+                    "manual_review_reason": "",
+                    "manual_review_created_at": "",
+                })
 
         update_operation = {"$set": update_doc}
         if unset_doc:
@@ -5701,7 +5745,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
 
         # Update in database
         await db.articles.update_one(
-            {"id": article_id},
+            match_query,
             update_operation
         )
         

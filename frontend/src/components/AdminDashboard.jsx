@@ -1283,7 +1283,9 @@ const AdminDashboard = ({ onBack }) => {
           updated_at: new Date().toISOString()
         };
         setArticles(prev => [savedArticle, ...prev.filter(a => a.id !== savedArticle.id)]);
+        fetchManualReviewArticles();
         if (data.restored_from_manual_review) {
+          setManualReviewArticles(prev => prev.filter(a => a.id !== savedArticle.id));
           fetchArchivedArticles();
           fetchArticleStats();
           toast({
