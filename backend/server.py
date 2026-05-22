@@ -10657,7 +10657,10 @@ async def generate_sitemap():
         # Get recent active articles from database (limit to 500 for performance).
         # Sitemap should submit only index-worthy strategic pages, not every transient RSS item.
         articles = await db.articles.find(
-            {"archived": {"$ne": True}},
+            {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+            },
             {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1, 'scope': 1, 'source': 1, 'source_url': 1}
         ).sort('publishedDate', -1).limit(500).to_list(500)
 
@@ -10916,6 +10919,7 @@ async def generate_news_sitemap():
         articles = await db.articles.find(
             {
                 "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
                 "$or": [
                     {"publishedDate": {"$gte": cutoff_date}},
                     {"publishedDate": {"$gte": cutoff_iso}},
