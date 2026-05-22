@@ -13705,6 +13705,19 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             daily_send_cap
         )
         logger.info(f"Found {len(subscriber_emails)} rotating Daily Brief subscribers from {total_eligible} eligible unique subscribers (start={batch_start}, next={batch_next})")
+
+        # Persist planned cursor details before sending so an interrupted Render restart
+        # can be repaired without guessing which subscriber batch was being processed.
+        await db.digest_log.update_one(
+            {"digest_time": digest_time, "date_key": date_key, "instance_id": instance_id},
+            {"$set": {
+                "planned_batch_start": batch_start,
+                "planned_batch_next": batch_next,
+                "planned_batch_size": len(subscriber_emails),
+                "planned_total_eligible": total_eligible,
+                "planned_cursor_recorded_at": datetime.now(timezone.utc)
+            }}
+        )
         
         # Get latest articles from the last 24 hours, then choose quality-first.
         # This prevents weak newest stories from crowding out better money/business/local-impact articles.
