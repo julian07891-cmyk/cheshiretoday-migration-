@@ -10059,6 +10059,16 @@ async def track_email_open(tracking_id: str, request: Request):
     return Response(content=gif_data, media_type="image/gif")
 
 
+@api_router.head("/email/track/click/{tracking_id}")
+async def track_email_click_head(tracking_id: str, url: str, request: Request):
+    """
+    Accept HEAD checks from email security scanners without counting them as real clicks.
+    Prevents noisy 404s in Render logs and avoids inflating click analytics.
+    """
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+
 @api_router.get("/email/track/click/{tracking_id}")
 async def track_email_click(tracking_id: str, url: str, request: Request):
     """
