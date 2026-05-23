@@ -2078,8 +2078,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         # Use RSS content directly (faster, no AI)
                         detailed_content = original_content
                     
-                    # Strict quality gate: publish only full-length rewritten content
-                    if len((detailed_content or "").strip()) < 1000:
+                    perplexity_manual_review_reason = extract_perplexity_manual_review_reason(detailed_content)
+                    if perplexity_manual_review_reason:
+                        detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
+
+                    # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
+                    if not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000:
                         logger.info(f"Skipping short-content article after rewrite attempt: {title[:60]}...")
                         continue
 
@@ -2099,6 +2103,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         article,
                         article.get('content', ''),
                         ai_rewrite_used,
+                        title
+                    )
+                    article = apply_perplexity_manual_review_marker(
+                        article,
+                        perplexity_manual_review_reason,
                         title
                     )
                     
@@ -2245,8 +2254,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 # Use RSS content directly (faster, no AI)
                 detailed_content = original_content
 
-            # Strict quality gate: publish only full-length rewritten content
-            if len((detailed_content or "").strip()) < 1000:
+            perplexity_manual_review_reason = extract_perplexity_manual_review_reason(detailed_content)
+            if perplexity_manual_review_reason:
+                detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
+
+            # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
+            if not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000:
                 logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
                 continue
             
@@ -2267,6 +2280,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 article,
                 article.get('content', ''),
                 ai_rewrite_used,
+                title
+            )
+            article = apply_perplexity_manual_review_marker(
+                article,
+                perplexity_manual_review_reason,
                 title
             )
             
@@ -13338,6 +13356,34 @@ def find_local_location_review_reason(article: dict, content: str, title: str = 
         return "Local article uses vague Cheshire wording without a specific town, village, street, venue, council area or named site."
 
     return "Local article is missing a specific town, village, street, venue, council area or named site."
+
+
+def extract_perplexity_manual_review_reason(content: str) -> str:
+    """Return reason when Perplexity asks for manual review instead of publish."""
+    marker = "MANUAL_REVIEW_REQUIRED:"
+    raw = str(content or "").strip()
+    if raw.upper().startswith(marker):
+        return raw[len(marker):].strip() or "Perplexity could not verify the article safely."
+    return ""
+
+
+def apply_perplexity_manual_review_marker(article: dict, reason: str, title: str = ""):
+    """Hide Perplexity-rejected articles from public feeds and show them in Admin Manual Review."""
+    if not reason:
+        return article
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    article.update({
+        "verification_status": "needs_manual_review",
+        "rewrite_status": "ai_rewrite_needs_review",
+        "manual_review_hidden_from_public": True,
+        "manual_review_reason": f"Perplexity verification requested manual review: {reason}",
+        "manual_review_created_at": now_iso,
+        "ai_rewritten": True,
+        "is_rewritten": False,
+    })
+    logger.warning(f"Perplexity manual-review article hidden: {title[:80]} | reason={reason[:180]}")
+    return article
 
 
 def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: bool = False, title: str = ""):
