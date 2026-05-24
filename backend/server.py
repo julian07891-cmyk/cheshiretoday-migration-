@@ -5828,6 +5828,52 @@ async def toggle_force_live_article(article_id: str, authorized: bool = Depends(
         logger.error(f"Error toggling force_live: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/admin/articles/{article_id}/manual-review")
+async def send_article_to_manual_review(article_id: str, authorized: bool = Depends(get_admin_auth)):
+    # Hide a live article from public feeds and send it to Admin Manual Review.
+    try:
+        from bson import ObjectId
+
+        existing = await db.articles.find_one({"id": article_id})
+        match_query = {"id": article_id}
+
+        if not existing and len(article_id) == 24:
+            try:
+                mongo_id = ObjectId(article_id)
+                existing = await db.articles.find_one({"_id": mongo_id})
+                if existing:
+                    match_query = {"_id": mongo_id}
+            except Exception:
+                pass
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await db.articles.update_one(
+            match_query,
+            {"$set": {
+                "manual_review_hidden_from_public": True,
+                "manual_review_reason": "Sent to manual review by admin for fact/style cleanup before restoring.",
+                "manual_review_created_at": now_iso,
+                "verification_status": "needs_manual_review",
+                "rewrite_status": "manual_review_required",
+                "updated_at": now_iso
+            }}
+        )
+
+        return {
+            "success": True,
+            "article_id": str(existing.get("id") or article_id),
+            "message": "Article sent to Manual Review"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error sending article to manual review: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/check-smtp-config")
 async def check_smtp_config():
     """Check SMTP configuration (admin diagnostic endpoint)"""
