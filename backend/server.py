@@ -3756,7 +3756,7 @@ async def get_articles(
             # return the requested number of items.
             if len(articles) < limit:
                 seen_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
-                fallback_q = archived_clause or {}
+                fallback_q = {"$and": public_visibility_clauses} if public_visibility_clauses else {}
                 fallback_items = await db.articles.find(
                     fallback_q,
                     {
@@ -10637,12 +10637,13 @@ async def health_check():
 
 @api_router.get("/health")
 async def api_health_check():
-    """Alias for health check under /api"""
-    return {"status": "healthy", "service": "cheshire-news"}
-@api_router.get("/health")
-async def api_health_check():
     """Alias for Render/cron/probes that hit /api/health"""
     return await health_check()
+
+@api_router.head("/health")
+async def api_health_head_check():
+    """HEAD alias for Render/bot health probes that hit /api/health"""
+    return None
 
 @app.get("/ready")
 async def readiness_check():
