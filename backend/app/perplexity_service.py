@@ -494,74 +494,27 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
 
     def _expand_summary(self, title: str, summary: str, source: str) -> str:
         """
-        Create expanded content when Perplexity refuses to generate.
-        This is a fallback that creates readable content from the summary.
-        Uses category-aware templates to match the story type.
+        Create a neutral fallback when Perplexity cannot produce a verified rewrite.
+        This must never invent story type, location, officials, emergency services,
+        local reaction, or unsupported context. It is intentionally short so the
+        existing import quality floor can skip weak fallback content when needed.
         """
-        # Clean up summary
-        clean_summary = summary.strip()
+        clean_summary = (summary or "").strip()
+        clean_title = (title or "").strip()
+        clean_source = (source or "the original source").strip()
+
         if not clean_summary:
-            clean_summary = title
-        
-        # Determine category from title/summary for appropriate template
-        text_lower = f"{title} {clean_summary}".lower()
-        
-        # Sports/Entertainment templates
-        if any(word in text_lower for word in ['football', 'united', 'everton', 'liverpool', 'city', 'match', 'goal', 'player', 'manager', 'transfer', 'league', 'cup', 'sport']):
-            expanded = f"""{clean_summary}
+            clean_summary = clean_title or "The original source has reported this story."
 
-This sports story has been reported by {source}. Fans and supporters have been following developments closely as the situation unfolds.
+        expanded = f"""{clean_summary}
 
-Further details are expected to emerge in the coming hours. Stay tuned to {source} for the latest updates on this developing story.
+This story was reported by {clean_source}. Cheshire Today has kept this fallback version brief because the automated rewrite could not produce enough verified detail for a fuller article.
 
-For more sports news and updates from the region, continue following {source}."""
+Readers should refer to the original source for the latest available details."""
 
-        elif any(word in text_lower for word in ['show', 'tv', 'star', 'celebrity', 'film', 'movie', 'music', 'concert', 'theatre', 'entertainment', 'actor', 'actress', 'singer']):
-            expanded = f"""{clean_summary}
-
-This entertainment story has been covered by {source}. Fans have been eagerly following the latest developments.
-
-More details are expected to be announced soon. {source} will continue to bring you the latest updates as they become available.
-
-For more entertainment news from across the region, keep following {source}."""
-
-        elif any(word in text_lower for word in ['business', 'company', 'investment', 'jobs', 'economy', 'market', 'retail', 'shop', 'store', 'property', 'development']):
-            expanded = f"""{clean_summary}
-
-This business story has been reported by {source}. Industry observers and local stakeholders are monitoring the situation closely.
-
-Further details are expected as the story develops. {source} will continue to provide updates as more information becomes available.
-
-For more business and economic news from the region, follow {source}."""
-
-        elif any(word in text_lower for word in ['health', 'hospital', 'nhs', 'doctor', 'medical', 'patient', 'clinic', 'wellbeing', 'fitness']):
-            expanded = f"""{clean_summary}
-
-This health story has been reported by {source}. Health officials and medical professionals are involved in addressing the matter.
-
-Residents are encouraged to follow official guidance from health authorities. {source} will continue to provide updates as more information becomes available."""
-
-        elif any(word in text_lower for word in ['police', 'crime', 'arrest', 'court', 'trial', 'accident', 'crash', 'incident', 'emergency', 'fire']):
-            expanded = f"""{clean_summary}
-
-This developing story has been reported by {source}. Local authorities and emergency services are understood to be involved in the response.
-
-Residents in the affected area are advised to stay informed through official channels as more details emerge. The situation continues to develop and further updates are expected.
-
-Anyone with information related to this story is encouraged to contact the relevant authorities. {source} will continue to provide updates as more information becomes available."""
-
-        else:
-            # Generic local news template
-            expanded = f"""{clean_summary}
-
-This story has been reported by {source}. Local residents and community members have been following developments with interest.
-
-More details are expected to emerge soon. {source} will continue to bring you updates on this and other local news stories.
-
-For the latest news from across the region, keep following {source}."""
-
-        logger.info(f"Created fallback content ({len(expanded)} chars) for: {title[:40]}...")
+        logger.info(f"Created neutral fallback content ({len(expanded)} chars) for: {title[:40]}...")
         return expanded
+
 
     async def search_trending_cheshire_topics(self) -> List[str]:
         """
