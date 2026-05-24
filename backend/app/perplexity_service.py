@@ -296,8 +296,14 @@ STRICT FACT RULES:
 
 LOCAL NEWS RULES:
 - A Cheshire local article must clearly include the specific town, village, road, venue, school, hospital, park, development site, business name, council area or named local place.
-- Do not publish an article that only says “Cheshire” without a specific named local place.
-- If the exact location cannot be verified, return MANUAL_REVIEW_REQUIRED.
+- Do not publish a Cheshire local article that only says “Cheshire” without a specific named local place.
+- If the exact location cannot be verified for a local Cheshire story, return MANUAL_REVIEW_REQUIRED.
+
+NATIONAL BUSINESS / FINANCE / TECH / UK NEWS RULES:
+- National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire town or local place.
+- For these articles, focus on practical relevance for Cheshire readers, households, workers, small businesses, investors, taxpayers or technology users.
+- Do not reject a credible national article only because it is not Cheshire-specific.
+- Still return MANUAL_REVIEW_REQUIRED if the source is vague, the claim cannot be verified, the story is weak generic filler, or writing it would require invented facts.
 
 PROPERTY / PLANNING / HOUSING RULES:
 Cheshire Today can include property, planning and housing articles, but they must not be over-prioritised or allowed to dominate the site.
@@ -433,7 +439,7 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                         },
                         {
                             "role": "user",
-                            "content": f"Verify and rewrite this for Cheshire Today. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference and check reliable online sources. If key facts, exact location, planning status, dates, names or numbers cannot be verified, return MANUAL_REVIEW_REQUIRED: short reason. For property/planning/housing stories, include only if there is clear Cheshire public/economic impact; do not over-prioritise routine applications. Return plain text paragraphs only."
+                            "content": f"Verify and rewrite this for Cheshire Today. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference and check reliable online sources. If key facts, planning status, dates, names or numbers cannot be verified, return MANUAL_REVIEW_REQUIRED: short reason. Only require an exact town, village, road, venue or council area for Cheshire local stories; national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire location. For property/planning/housing stories, include only if there is clear Cheshire public/economic impact; do not over-prioritise routine applications. Return plain text paragraphs only."
                         }
                     ],
                     "max_tokens": 2400,
