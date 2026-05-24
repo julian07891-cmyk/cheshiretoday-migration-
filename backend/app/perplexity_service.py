@@ -474,8 +474,8 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
                         return retry_content
 
-                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Using expanded summary fallback.")
-                return self._expand_summary(title, summary, source)
+                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Sending to manual review.")
+                return "MANUAL_REVIEW_REQUIRED: Perplexity could not verify enough factual detail to produce a safe publish-ready article."
                     
         except httpx.TimeoutException:
             logger.error(f"Timeout generating content for: {title[:40]}...")
