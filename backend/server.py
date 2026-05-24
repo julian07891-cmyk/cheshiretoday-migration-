@@ -2111,6 +2111,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     )
                     
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+                    if await article_duplicate_exists_before_insert(article.get('title', ''), article.get('source_url', '')):
+                        logger.info(f"Duplicate skipped by final guard before insert: {title[:60]}...")
+                        continue
                     try:
                         await db.articles.insert_one(article)
                     except DuplicateKeyError:
@@ -2287,6 +2290,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             )
             
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+            if await article_duplicate_exists_before_insert(article.get('title', ''), article.get('source_url', '')):
+                logger.info(f"Duplicate skipped by final guard before local insert: {title[:60]}...")
+                continue
             try:
                 await db.articles.insert_one(article)
             except DuplicateKeyError:
@@ -2402,6 +2408,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
 
                 article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+                if await article_duplicate_exists_before_insert(article.get('title', ''), article.get('source_url', '')):
+                    logger.info(f"Duplicate skipped by final guard before Perplexity Cheshire insert: {title[:60]}...")
+                    continue
                 try:
                     await db.articles.insert_one(article)
                 except DuplicateKeyError:
@@ -13435,6 +13444,25 @@ def apply_perplexity_manual_review_marker(article: dict, reason: str, title: str
     logger.warning(f"Perplexity manual-review article hidden: {title[:80]} | reason={reason[:180]}")
     return article
 
+
+async def article_duplicate_exists_before_insert(title: str, source_url: str = "") -> bool:
+    """Final duplicate guard before insert, including Manual Review-hidden articles."""
+    import re
+
+    clauses = []
+    clean_title = (title or "").strip()
+    clean_source_url = (source_url or "").strip()
+
+    if clean_title:
+        clauses.append({"title": {"$regex": f"^{re.escape(clean_title)}$", "$options": "i"}})
+    if clean_source_url:
+        clauses.append({"source_url": {"$regex": f"^{re.escape(clean_source_url)}$", "$options": "i"}})
+
+    if not clauses:
+        return False
+
+    existing = await db.articles.find_one({"$or": clauses}, {"_id": 1, "id": 1, "title": 1})
+    return existing is not None
 
 def apply_short_content_manual_review_marker(article: dict, content: str, title: str = "", min_chars: int = 1000):
     """Hide selected articles when rewrite/fallback content is too short for safe public publishing."""
