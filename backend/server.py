@@ -2418,13 +2418,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 logger.info(f"✅ Imported Cheshire article (hybrid image logic): {title[:50]}...")
         
         total_cheshire = cheshire_from_rss + cheshire_from_perplexity
-        manual_review_imported = len([a for a in imported_articles if a.get('manual_review_hidden_from_public') is True])
-        public_imported = len(imported_articles) - manual_review_imported
         rss_images_used = len([a for a in imported_articles if a.get('image_source') == 'rss_feed'])
         smart_images_used = len([a for a in imported_articles if a.get('image_source') == 'smart_search'])
         
         logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {tech_imported} Tech + {sports_imported} Sports")
-        logger.info(f"Public imported: {public_imported}, manual review imported: {manual_review_imported}")
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
         await cap_visible_articles(keep=200)
@@ -2505,8 +2502,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         return {
             "success": True,
             "total_imported": len(imported_articles),
-            "public_imported": public_imported,
-            "manual_review_imported": manual_review_imported,
             "cheshire_articles": total_cheshire,
             "cheshire_from_perplexity": cheshire_from_perplexity,
             "cheshire_from_rss": cheshire_from_rss,
