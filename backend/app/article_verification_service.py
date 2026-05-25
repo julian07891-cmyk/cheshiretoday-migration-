@@ -417,10 +417,7 @@ Rules:
 - For Cheshire local stories, require a specific town, village, road, venue, site, business, council area, school, hospital, or named local place.
 - National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire location, named Cheshire source, local case study, or local quote. Clear practical relevance to Cheshire households, workers, small businesses, taxpayers, investors or technology users is enough.
 - Do not mark a verified national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide story as manual_review_required only because it lacks a specific Cheshire example.
-- For national Business/Finance/cost-of-living stories, verified facts from a reliable national source plus clear practical relevance to Cheshire households, workers, small businesses or taxpayers is sufficient for publishable=true.
-- Only require specific Cheshire evidence when the article makes a specific Cheshire/local claim.
-- If verified facts are strong and unsupported_claims is empty, produce a rewritten_article with a practical Cheshire reader framing, but do not invent local examples.
-- Do not leave rewritten_article empty unless reject=true or there are not enough verified facts to write safely.
+- If verified facts are strong and the story is useful to Cheshire readers, write the article with a practical Cheshire reader framing, but do not invent local examples.
 - Do not invent quotes, numbers, locations, officials, costs, dates, jobs, homes, reactions or local impact.
 """
 
