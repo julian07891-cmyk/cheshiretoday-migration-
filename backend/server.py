@@ -2082,7 +2082,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     if perplexity_manual_review_reason:
                         detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
 
-                    short_content_manual_review = (not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000)
+                    # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
+                    if not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000:
+                        logger.info(f"Skipping short-content article after rewrite attempt: {title[:60]}...")
+                        continue
 
                     # Use RSS image (guaranteed perfect match)
                     article['image'] = rss_image
@@ -2096,8 +2099,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
                     
                     article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
-                    if short_content_manual_review:
-                        article = apply_short_content_manual_review_marker(article, article.get('content', ''), title)
                     article = apply_ai_manual_review_guard(
                         article,
                         article.get('content', ''),
@@ -2257,7 +2258,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             if perplexity_manual_review_reason:
                 detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
 
-            short_content_manual_review = (not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000)
+            # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
+            if not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000:
+                logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
+                continue
             
             article['image'] = rss_image
             article['image_source'] = 'rss_feed'
@@ -2272,8 +2276,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
             
             article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
-            if short_content_manual_review:
-                article = apply_short_content_manual_review_marker(article, article.get('content', ''), title)
             article = apply_ai_manual_review_guard(
                 article,
                 article.get('content', ''),
@@ -13433,24 +13435,6 @@ def apply_perplexity_manual_review_marker(article: dict, reason: str, title: str
         "is_rewritten": False,
     })
     logger.warning(f"Perplexity manual-review article hidden: {title[:80]} | reason={reason[:180]}")
-    return article
-
-
-def apply_short_content_manual_review_marker(article: dict, content: str, title: str = "", min_chars: int = 1000):
-    """Hide selected articles when rewrite/fallback content is too short for safe public publishing."""
-    if len((content or "").strip()) >= min_chars:
-        return article
-
-    now_iso = datetime.now(timezone.utc).isoformat()
-    article.update({
-        "verification_status": "needs_manual_review",
-        "rewrite_status": "manual_review_required",
-        "manual_review_hidden_from_public": True,
-        "manual_review_reason": f"Automated rewrite/fallback content was below the {min_chars}-character quality floor and needs manual editing before publication.",
-        "manual_review_created_at": now_iso,
-        "is_rewritten": False,
-    })
-    logger.warning(f"Short-content article hidden for manual review: {title[:80]} | chars={len((content or "").strip())}")
     return article
 
 
