@@ -44,6 +44,7 @@ LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 from app.email_service import email_service
 from app.news_feed_service import news_feed_service
 from app.perplexity_service import perplexity_service
+from app.article_verification_service import article_verification_service
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
