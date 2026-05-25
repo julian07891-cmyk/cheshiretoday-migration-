@@ -2406,8 +2406,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
 
                 article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
-                article = apply_short_content_manual_review_marker(article, article.get('content', ''), title)
-                article = apply_ai_manual_review_guard(article, article.get('content', ''), True, title)
 
                 article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
                 if await article_duplicate_exists_before_insert(article.get('title', ''), article.get('source_url', '')):
