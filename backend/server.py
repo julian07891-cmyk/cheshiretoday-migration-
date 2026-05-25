@@ -1955,7 +1955,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             text = " ".join([cat, title, summary, content])
 
             low_utility_kw = re.compile(
-                r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|movie|film|album|concert|music\s*video|book\s*launch|novel|brit awards|baftas|royal fashion|gift guide|black friday|cyber monday|shopping deal|must-have buys?|restaurant review|afternoon tea|food\s+festival|arts\s+festival|music\s+festival|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|stunning\s+home|property\s+of\s+the\s+week|inside\s+this\s+home|listed\s+for\s+sale)\b",
+                r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|movie|film|album|concert|music\s*video|book\s*launch|novel|brit awards|baftas|royal fashion|fashion|wedding\s+dress(?:es)?|bridal|bride|outfit|style\s+guide|gift guide|black friday|cyber monday|shopping deal|must-have buys?|restaurant review|afternoon tea|food\s+festival|arts\s+festival|music\s+festival|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|stunning\s+home|property\s+of\s+the\s+week|inside\s+this\s+home|listed\s+for\s+sale|banknote|limited-edition\s+banknote|footballer|overhead\s+kick|starwatch|blue\s+moon|full\s+moon|fossil\s+site|tar\s+pits|ice\s+age\s+fossil)\b",
                 re.I,
             )
             return bool(low_utility_kw.search(text))
