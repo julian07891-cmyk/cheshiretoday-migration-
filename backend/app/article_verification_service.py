@@ -367,7 +367,7 @@ Return concise evidence notes only:
 - Key verified facts with dates, names, figures and source names.
 - Any unsupported or risky claims.
 - Whether it is suitable for Cheshire Today.
-- Whether a Cheshire reader angle is justified.
+- Whether a practical Cheshire reader framing is justified. For national Business/Finance/cost-of-living stories, do not require Cheshire-specific quotes, case studies, producers, retailers or local investigation.
 """
 
     def _build_gemini_json_prompt(self, article: Dict[str, Any], evidence_text: str, grounding_urls: List[str]) -> str:
@@ -419,7 +419,7 @@ Rules:
 - Do not mark a verified national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide story as manual_review_required only because it lacks a specific Cheshire example.
 - For national Business/Finance/cost-of-living stories, verified facts from a reliable national source plus clear practical relevance to Cheshire households, workers, small businesses or taxpayers is sufficient for publishable=true.
 - Only require specific Cheshire evidence when the article makes a specific Cheshire/local claim.
-- If verified facts are strong and unsupported_claims is empty, produce a rewritten_article with a practical Cheshire reader framing, but do not invent local examples.
+- If verified facts are strong and unsupported_claims is empty, produce a rewritten_article with a practical Cheshire reader framing. For national Business/Finance/cost-of-living stories, this means explaining what the issue means for Cheshire households, workers, small businesses or taxpayers, without inventing local examples.
 - Do not leave rewritten_article empty unless reject=true or there are not enough verified facts to write safely.
 - Do not invent quotes, numbers, locations, officials, costs, dates, jobs, homes, reactions or local impact.
 """
