@@ -5976,7 +5976,10 @@ async def get_manual_review_articles(
         safe_skip = max(0, int(skip or 0))
         safe_limit = min(max(1, int(limit or 100)), 250)
 
-        query = {"manual_review_hidden_from_public": True}
+        query = {
+            "manual_review_hidden_from_public": True,
+            "$or": [{"archived": {"$exists": False}}, {"archived": False}]
+        }
         projection = {
             "_id": 1,
             "id": 1,
