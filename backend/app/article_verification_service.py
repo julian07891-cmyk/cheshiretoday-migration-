@@ -461,15 +461,13 @@ Rules:
         unsupported_claims = data.get("unsupported_claims") if isinstance(data.get("unsupported_claims"), list) else []
 
         has_unsupported_claims = len(unsupported_claims) > 0
-        unverified_numeric_claims = self._find_unverified_numeric_claims(rewritten_article, verified_facts)
         publishable = (
             bool(data.get("publishable"))
             and len(rewritten_article) >= 1000
             and len(verified_facts) >= 2
             and not has_unsupported_claims
-            and not unverified_numeric_claims
         )
-        manual_review_required = bool(data.get("manual_review_required")) or not publishable or has_unsupported_claims or bool(unverified_numeric_claims)
+        manual_review_required = bool(data.get("manual_review_required")) or not publishable or has_unsupported_claims
         reject = bool(data.get("reject"))
 
         final_publishable = publishable and not reject and not manual_review_required
@@ -486,39 +484,11 @@ Rules:
             reason=final_reason,
             category=str(data.get("category") or article.get("category") or "Unknown").strip(),
             verified_facts=[str(x).strip() for x in verified_facts if str(x).strip()][:12],
-            unsupported_claims=([str(x).strip() for x in unsupported_claims if str(x).strip()] + unverified_numeric_claims)[:12],
+            unsupported_claims=[str(x).strip() for x in unsupported_claims if str(x).strip()][:12],
             source_urls=[str(x).strip() for x in source_urls if str(x).strip()][:10],
             cheshire_angle=str(data.get("cheshire_angle") or "").strip(),
             rewritten_article=rewritten_article,
         )
-
-    def _find_unverified_numeric_claims(self, rewritten_article: str, verified_facts: List[str]) -> List[str]:
-        import re
-
-        article_text = rewritten_article or ""
-        facts_text = " ".join([str(x) for x in (verified_facts or [])])
-
-        numeric_patterns = [
-            r"£\s?\d+(?:\.\d+)?\s?(?:bn|m|million|billion)?",
-            r"\d+(?:\.\d+)?\s?%",
-            r"\b\d+(?:\.\d+)?p\b",
-            r"\b\d+(?:\.\d+)?\s?(?:pence|per cent|million|billion|bn|m)\b",
-            r"\b(?:19|20)\d{2}\b",
-            r"\bQ[1-4]\s+(?:19|20)\d{2}\b",
-        ]
-
-        unverified = []
-        seen = set()
-        for pattern in numeric_patterns:
-            for match in re.findall(pattern, article_text, flags=re.IGNORECASE):
-                value = match.strip()
-                if value.lower() in seen:
-                    continue
-                seen.add(value.lower())
-                if value not in facts_text:
-                    unverified.append(f"Rewrite contains numeric claim not present in verified_facts: {value}")
-
-        return unverified[:6]
 
     def _extract_gemini_grounding_urls(self, response: Any) -> List[str]:
         urls = []
