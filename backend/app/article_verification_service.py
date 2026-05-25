@@ -460,8 +460,14 @@ Rules:
         verified_facts = data.get("verified_facts") if isinstance(data.get("verified_facts"), list) else []
         unsupported_claims = data.get("unsupported_claims") if isinstance(data.get("unsupported_claims"), list) else []
 
-        publishable = bool(data.get("publishable")) and len(rewritten_article) >= 1000 and len(verified_facts) >= 2
-        manual_review_required = bool(data.get("manual_review_required")) or not publishable
+        has_unsupported_claims = len(unsupported_claims) > 0
+        publishable = (
+            bool(data.get("publishable"))
+            and len(rewritten_article) >= 1000
+            and len(verified_facts) >= 2
+            and not has_unsupported_claims
+        )
+        manual_review_required = bool(data.get("manual_review_required")) or not publishable or has_unsupported_claims
         reject = bool(data.get("reject"))
 
         return VerificationResult(
