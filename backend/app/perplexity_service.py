@@ -350,10 +350,8 @@ Before writing, check online for factual support and identify:
 - verified numbers, dates, costs, jobs, homes, units or planning details
 - whether any council, business, police, parents, residents or customers are actually mentioned by the source
 
-If key facts, status, dates, names, numbers or key claims cannot be verified, return:
+If the exact location, status, dates, names, numbers or key claims cannot be verified, return:
 MANUAL_REVIEW_REQUIRED: short reason
-
-Only require an exact town, village, road, venue, site or council area for Cheshire local stories. National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire location.
 
 If this is a property, planning or housing story, only write it if it has clear Cheshire relevance and useful public/economic impact. Do not over-prioritise routine housing applications. If it is minor, vague or unsupported, return MANUAL_REVIEW_REQUIRED.
 
@@ -437,7 +435,7 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a senior verification editor for Cheshire Today. Write a publication-quality article in British English only if the facts are verified and strategically suitable. Do not invent details to reach length. If the source is thin, facts cannot be verified, or the story is weak/generic/routine, return exactly: MANUAL_REVIEW_REQUIRED: short reason. Only treat unclear location as a failure for Cheshire local stories; national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire location. Plain text only. No headings, bullets, markdown, citations list or meta commentary."
+                            "content": "You are a senior verification editor for Cheshire Today. Write a publication-quality article in British English only if the facts are verified and strategically suitable. Do not invent details to reach length. If the source is thin, location is unclear, facts cannot be verified, or the story is weak/generic/routine, return exactly: MANUAL_REVIEW_REQUIRED: short reason. Plain text only. No headings, bullets, markdown, citations list or meta commentary."
                         },
                         {
                             "role": "user",
