@@ -1855,6 +1855,7 @@ class HybridNewsRequest(BaseModel):
     business_articles: int = 5   # 5 Business articles (FREE from RSS)
     tech_articles: int = 5       # 5 Tech/AI articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
+    use_gemini_verification: bool = False  # Optional dry-run verified rewrite layer; default off for safety
     rewrite_delay_seconds: int = 900  # Wait before AI rewrite so sources can propagate/index
 
 
