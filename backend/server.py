@@ -2098,6 +2098,31 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
                     
                     article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+
+                    if getattr(request, "use_gemini_verification", False):
+                        gemini_result = await article_verification_service.verify_and_rewrite_candidate(article)
+                        article['verification_provider'] = 'gemini'
+                        article['verification_result'] = gemini_result.to_dict()
+                        article['verification_status'] = 'gemini_publishable' if gemini_result.publishable else 'needs_manual_review'
+                        article['rewrite_status'] = 'gemini_verified_rewrite' if gemini_result.publishable else 'gemini_manual_review_required'
+                        article['verified_facts'] = gemini_result.verified_facts
+                        article['unsupported_claims'] = gemini_result.unsupported_claims
+                        article['verification_source_urls'] = gemini_result.source_urls
+                        article['cheshire_angle'] = gemini_result.cheshire_angle
+
+                        if gemini_result.publishable and gemini_result.rewritten_article:
+                            article['content'] = gemini_result.rewritten_article
+                            article['ai_rewritten'] = True
+                            article['is_rewritten'] = True
+                            ai_rewrite_used = True
+                            short_content_manual_review = False
+                        else:
+                            article['manual_review_hidden_from_public'] = True
+                            article['manual_review_reason'] = f"Gemini verification did not approve automatic publishing: {gemini_result.reason}"
+                            article['manual_review_created_at'] = datetime.now(timezone.utc).isoformat()
+                            article['verification_status'] = 'needs_manual_review'
+                            article['rewrite_status'] = 'gemini_manual_review_required'
+
                     if short_content_manual_review:
                         article = apply_short_content_manual_review_marker(article, article.get('content', ''), title)
                     article = apply_ai_manual_review_guard(
