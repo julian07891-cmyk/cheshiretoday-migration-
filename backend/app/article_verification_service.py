@@ -218,7 +218,8 @@ class ArticleVerificationService:
             model = os.getenv("GEMINI_VERIFICATION_MODEL", "gemini-2.5-flash")
             client = genai.Client(api_key=api_key)
 
-            evidence_prompt = self._build_gemini_evidence_prompt(article)
+            source_text = await self._fetch_source_text(article.get("source_url", ""))
+            evidence_prompt = self._build_gemini_evidence_prompt(article, source_text)
 
             def run_evidence_call():
                 return client.models.generate_content(
@@ -293,7 +294,48 @@ class ArticleVerificationService:
                 estimated_cost_gbp=self.per_call_estimate_gbp,
             )
 
-    def _build_gemini_evidence_prompt(self, article: Dict[str, Any]) -> str:
+    async def _fetch_source_text(self, source_url: str) -> str:
+        """Fetch limited readable text from the original source URL for verification context."""
+        if not source_url:
+            return ""
+
+        try:
+            from bs4 import BeautifulSoup
+
+            async with httpx.AsyncClient(
+                timeout=min(self.timeout, 20.0),
+                follow_redirects=True,
+                headers={
+                    "User-Agent": "CheshireTodayBot/1.0 (+https://cheshiretoday.co.uk)",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                },
+            ) as client:
+                response = await client.get(source_url)
+
+            if response.status_code >= 400:
+                logger.warning(f"Source fetch failed {response.status_code}: {source_url[:120]}")
+                return ""
+
+            soup = BeautifulSoup(response.text or "", "html.parser")
+            for tag in soup(["script", "style", "noscript", "svg", "iframe"]):
+                tag.decompose()
+
+            title = soup.title.get_text(" ", strip=True) if soup.title else ""
+            meta_desc = ""
+            meta = soup.find("meta", attrs={"name": "description"}) or soup.find("meta", attrs={"property": "og:description"})
+            if meta and meta.get("content"):
+                meta_desc = meta.get("content", "").strip()
+
+            paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
+            body = " ".join([x for x in paragraphs if x])
+            text = "\n".join([x for x in [title, meta_desc, body] if x]).strip()
+            return text[:6000]
+
+        except Exception as e:
+            logger.warning(f"Source fetch exception for verification: {str(e)[:180]}")
+            return ""
+
+    def _build_gemini_evidence_prompt(self, article: Dict[str, Any], source_text: str = "") -> str:
         title = (article.get("title") or "").strip()
         summary = (article.get("summary") or article.get("content") or "").strip()
         source = (article.get("source") or "").strip()
@@ -316,6 +358,9 @@ Source: {source}
 Source URL: {source_url}
 Summary/content:
 {summary[:3000]}
+
+Fetched source text from source URL:
+{(source_text or "")[:6000]}
 
 Return concise evidence notes only:
 - Whether the source URL/source claim is verifiable.
