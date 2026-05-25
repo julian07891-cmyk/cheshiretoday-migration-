@@ -470,18 +470,11 @@ Rules:
         manual_review_required = bool(data.get("manual_review_required")) or not publishable or has_unsupported_claims
         reject = bool(data.get("reject"))
 
-        final_publishable = publishable and not reject and not manual_review_required
-        final_reason = str(data.get("reason") or "").strip()
-        if final_publishable and not final_reason:
-            final_reason = "Verified facts and rewrite passed automatic dry-run checks."
-        elif not final_reason:
-            final_reason = "Gemini response could not fully prove safe automatic publishing."
-
         return VerificationResult(
-            publishable=final_publishable,
+            publishable=publishable and not reject and not manual_review_required,
             manual_review_required=manual_review_required and not reject,
             reject=reject,
-            reason=final_reason,
+            reason=str(data.get("reason") or "Gemini response could not fully prove safe automatic publishing.").strip(),
             category=str(data.get("category") or article.get("category") or "Unknown").strip(),
             verified_facts=[str(x).strip() for x in verified_facts if str(x).strip()][:12],
             unsupported_claims=[str(x).strip() for x in unsupported_claims if str(x).strip()][:12],
