@@ -83,6 +83,29 @@ class ArticleVerificationService:
         self.hard_cap = os.getenv("ARTICLE_VERIFICATION_HARD_CAP", "1").strip().lower() in ("1", "true", "yes", "y")
         self.per_call_estimate_gbp = float(os.getenv("ARTICLE_VERIFICATION_COST_ESTIMATE_GBP", str(self.per_call_estimate_gbp)))
 
+    def get_budget_status(self) -> Dict[str, Any]:
+        self._refresh_budget_config()
+
+        today = date.today().isoformat()
+        if _verification_usage["date"] != today:
+            return {
+                "date": today,
+                "calls": 0,
+                "estimated_spend_gbp": 0.0,
+                "daily_budget_gbp": self.daily_budget_gbp,
+                "per_call_estimate_gbp": self.per_call_estimate_gbp,
+                "hard_cap": self.hard_cap,
+            }
+
+        return {
+            "date": _verification_usage["date"],
+            "calls": _verification_usage["calls"],
+            "estimated_spend_gbp": round(float(_verification_usage["estimated_spend_gbp"]), 4),
+            "daily_budget_gbp": self.daily_budget_gbp,
+            "per_call_estimate_gbp": self.per_call_estimate_gbp,
+            "hard_cap": self.hard_cap,
+        }
+
     def _budget_allows_call(self) -> bool:
         self._refresh_budget_config()
 
