@@ -5883,6 +5883,34 @@ async def send_article_to_manual_review(article_id: str, authorized: bool = Depe
         logger.error(f"Error sending article to manual review: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@api_router.get("/admin/article-verification/status")
+async def article_verification_status(auth: bool = Depends(get_admin_auth)):
+    """Read-only diagnostic for the structured article verification service."""
+    import os
+    from app.article_verification_service import article_verification_service
+
+    def key_status(name: str) -> str:
+        return "SET (hidden)" if os.getenv(name, "").strip() else "NOT SET"
+
+    provider = os.getenv("ARTICLE_VERIFICATION_PROVIDER", article_verification_service.provider).strip().lower()
+
+    return {
+        "enabled": os.getenv("ARTICLE_VERIFICATION_ENABLED", "false").strip().lower() in ("1", "true", "yes", "y"),
+        "provider": provider,
+        "daily_budget_gbp": os.getenv("ARTICLE_VERIFICATION_DAILY_BUDGET_GBP", str(article_verification_service.daily_budget_gbp)),
+        "hard_cap": os.getenv("ARTICLE_VERIFICATION_HARD_CAP", "1").strip().lower() in ("1", "true", "yes", "y"),
+        "timeout_seconds": os.getenv("ARTICLE_VERIFICATION_TIMEOUT_SECONDS", str(article_verification_service.timeout)),
+        "keys": {
+            "OPENAI_API_KEY": key_status("OPENAI_API_KEY"),
+            "GEMINI_API_KEY": key_status("GEMINI_API_KEY"),
+            "GOOGLE_API_KEY": key_status("GOOGLE_API_KEY"),
+            "TAVILY_API_KEY": key_status("TAVILY_API_KEY"),
+        },
+        "wired_to_import_pipeline": False,
+        "safe_default": "Disabled service sends candidates to Manual Review unless explicitly enabled and wired.",
+    }
+
 @api_router.get("/check-smtp-config")
 async def check_smtp_config():
     """Check SMTP configuration (admin diagnostic endpoint)"""
