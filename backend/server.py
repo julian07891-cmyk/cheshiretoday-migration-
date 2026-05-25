@@ -5901,7 +5901,6 @@ async def article_verification_status(auth: bool = Depends(get_admin_auth)):
         "daily_budget_gbp": os.getenv("ARTICLE_VERIFICATION_DAILY_BUDGET_GBP", str(article_verification_service.daily_budget_gbp)),
         "hard_cap": os.getenv("ARTICLE_VERIFICATION_HARD_CAP", "1").strip().lower() in ("1", "true", "yes", "y"),
         "timeout_seconds": os.getenv("ARTICLE_VERIFICATION_TIMEOUT_SECONDS", str(article_verification_service.timeout)),
-        "budget_status": article_verification_service.get_budget_status(),
         "keys": {
             "OPENAI_API_KEY": key_status("OPENAI_API_KEY"),
             "GEMINI_API_KEY": key_status("GEMINI_API_KEY"),
