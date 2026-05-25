@@ -15,19 +15,11 @@ import os
 import json
 import logging
 from dataclasses import dataclass
-from datetime import date
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 logger = logging.getLogger(__name__)
-
-_verification_usage = {
-    "date": date.today().isoformat(),
-    "calls": 0,
-    "estimated_spend_gbp": 0.0,
-}
-
 
 
 @dataclass
@@ -76,33 +68,6 @@ class ArticleVerificationService:
         self.daily_budget_gbp = float(os.getenv("ARTICLE_VERIFICATION_DAILY_BUDGET_GBP", "1.30"))
         self.hard_cap = os.getenv("ARTICLE_VERIFICATION_HARD_CAP", "1").strip().lower() in ("1", "true", "yes", "y")
         self.timeout = float(os.getenv("ARTICLE_VERIFICATION_TIMEOUT_SECONDS", "60"))
-        self.per_call_estimate_gbp = float(os.getenv("ARTICLE_VERIFICATION_COST_ESTIMATE_GBP", "0.04"))
-
-    def _refresh_budget_config(self):
-        self.daily_budget_gbp = float(os.getenv("ARTICLE_VERIFICATION_DAILY_BUDGET_GBP", str(self.daily_budget_gbp)))
-        self.hard_cap = os.getenv("ARTICLE_VERIFICATION_HARD_CAP", "1").strip().lower() in ("1", "true", "yes", "y")
-        self.per_call_estimate_gbp = float(os.getenv("ARTICLE_VERIFICATION_COST_ESTIMATE_GBP", str(self.per_call_estimate_gbp)))
-
-    def _budget_allows_call(self) -> bool:
-        self._refresh_budget_config()
-
-        today = date.today().isoformat()
-        if _verification_usage["date"] != today:
-            _verification_usage["date"] = today
-            _verification_usage["calls"] = 0
-            _verification_usage["estimated_spend_gbp"] = 0.0
-
-        projected = _verification_usage["estimated_spend_gbp"] + self.per_call_estimate_gbp
-        if projected > self.daily_budget_gbp:
-            logger.warning(
-                f"Article verification budget guard: projected £{projected:.2f} exceeds daily budget £{self.daily_budget_gbp:.2f}."
-            )
-            if self.hard_cap:
-                return False
-
-        _verification_usage["calls"] += 1
-        _verification_usage["estimated_spend_gbp"] = projected
-        return True
 
     async def verify_and_rewrite_candidate(self, article: Dict[str, Any]) -> VerificationResult:
         """
@@ -127,21 +92,6 @@ class ArticleVerificationService:
                 source_urls=[source_url] if source_url else [],
                 cheshire_angle="",
                 rewritten_article="",
-            )
-
-        if not self._budget_allows_call():
-            return VerificationResult(
-                publishable=False,
-                manual_review_required=True,
-                reject=False,
-                reason=f"Article verification daily budget reached. Daily budget £{self.daily_budget_gbp:.2f}; hard cap is enabled.",
-                category=category,
-                verified_facts=[],
-                unsupported_claims=[],
-                source_urls=[source_url] if source_url else [],
-                cheshire_angle="",
-                rewritten_article="",
-                estimated_cost_gbp=0.0,
             )
 
         if self.provider == "tavily":
