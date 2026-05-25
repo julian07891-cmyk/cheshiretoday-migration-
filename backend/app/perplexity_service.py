@@ -252,12 +252,12 @@ class PerplexityService:
         """
         if not self.api_key:
             logger.error("Perplexity API key not configured")
-            return summary  # Return original summary as fallback
+            return "MANUAL_REVIEW_REQUIRED: Perplexity API key is not configured."
 
         # Soft budget guard (optional hard cap via PERPLEXITY_HARD_CAP=1)
         if not ai_call_allowed(0.05):
             logger.warning("Perplexity budget guard: skipping generate_article_content() call")
-            return self._expand_summary(title, summary, source)
+            return "MANUAL_REVIEW_REQUIRED: Perplexity budget guard skipped article rewrite."
         
         try:
             async with httpx.AsyncClient() as client:
@@ -367,7 +367,7 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                 
                 if response.status_code != 200:
                     logger.error(f"Perplexity content generation error: {response.status_code}")
-                    return summary
+                    return f"MANUAL_REVIEW_REQUIRED: Perplexity content generation returned HTTP {response.status_code}."
                 
                 data = response.json()
                 content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
@@ -412,8 +412,8 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                 is_refusal = any(indicator.lower() in content_lower for indicator in refusal_indicators)
                 
                 if is_refusal:
-                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Using expanded summary fallback.")
-                    return self._expand_summary(title, summary, source)
+                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Sending to manual review.")
+                    return "MANUAL_REVIEW_REQUIRED: Perplexity refused to generate verified article content."
 
                 min_chars = int(os.getenv("PERPLEXITY_MIN_CHARS", "1500"))
                 target_chars = int(os.getenv("PERPLEXITY_TARGET_CHARS", "2000"))
@@ -474,15 +474,15 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
                         return retry_content
 
-                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Using expanded summary fallback.")
-                return self._expand_summary(title, summary, source)
+                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Sending to manual review.")
+                return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite was below the quality floor after retry."
                     
         except httpx.TimeoutException:
             logger.error(f"Timeout generating content for: {title[:40]}...")
-            return summary
+            return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite timed out."
         except Exception as e:
             logger.error(f"Error generating article content: {str(e)}")
-            return summary
+            return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite failed with an error."
 
     def _expand_summary(self, title: str, summary: str, source: str) -> str:
         """
