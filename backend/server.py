@@ -5911,6 +5911,32 @@ async def article_verification_status(auth: bool = Depends(get_admin_auth)):
         "safe_default": "Disabled service sends candidates to Manual Review unless explicitly enabled and wired.",
     }
 
+
+@api_router.post("/admin/article-verification/test")
+async def article_verification_test(payload: dict = Body(default={}), auth: bool = Depends(get_admin_auth)):
+    """Dry-run structured verification on a supplied or sample article. Does not publish."""
+    from app.article_verification_service import article_verification_service
+
+    article = payload.get("article") if isinstance(payload, dict) else None
+    if not isinstance(article, dict):
+        article = {
+            "title": "Test article for Cheshire Today verification",
+            "summary": "This is a dry-run diagnostic article. It should not be published.",
+            "content": "This is a dry-run diagnostic article. It should not be published.",
+            "category": "Business",
+            "source": "Diagnostic",
+            "source_url": "",
+        }
+
+    result = await article_verification_service.verify_and_rewrite_candidate(article)
+
+    return {
+        "success": True,
+        "dry_run": True,
+        "published": False,
+        "result": result.to_dict(),
+    }
+
 @api_router.get("/check-smtp-config")
 async def check_smtp_config():
     """Check SMTP configuration (admin diagnostic endpoint)"""
