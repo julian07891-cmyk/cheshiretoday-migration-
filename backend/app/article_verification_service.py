@@ -76,7 +76,7 @@ class ArticleVerificationService:
         self.daily_budget_gbp = float(os.getenv("ARTICLE_VERIFICATION_DAILY_BUDGET_GBP", "1.30"))
         self.hard_cap = os.getenv("ARTICLE_VERIFICATION_HARD_CAP", "1").strip().lower() in ("1", "true", "yes", "y")
         self.timeout = float(os.getenv("ARTICLE_VERIFICATION_TIMEOUT_SECONDS", "60"))
-        self.per_call_estimate_gbp = float(os.getenv("ARTICLE_VERIFICATION_COST_ESTIMATE_GBP", "0.08"))
+        self.per_call_estimate_gbp = float(os.getenv("ARTICLE_VERIFICATION_COST_ESTIMATE_GBP", "0.04"))
 
     def _refresh_budget_config(self):
         self.daily_budget_gbp = float(os.getenv("ARTICLE_VERIFICATION_DAILY_BUDGET_GBP", str(self.daily_budget_gbp)))
@@ -216,64 +216,28 @@ class ArticleVerificationService:
             from google.genai import types
 
             model = os.getenv("GEMINI_VERIFICATION_MODEL", "gemini-2.5-flash")
-            client = genai.Client(api_key=api_key)
+            prompt = self._build_gemini_verification_prompt(article)
 
-            evidence_prompt = self._build_gemini_evidence_prompt(article)
-
-            def run_evidence_call():
+            def run_gemini_call():
+                client = genai.Client(api_key=api_key)
                 return client.models.generate_content(
                     model=model,
-                    contents=evidence_prompt,
+                    contents=prompt,
                     config=types.GenerateContentConfig(
                         tools=[types.Tool(google_search=types.GoogleSearch())],
-                        temperature=0.1,
-                        max_output_tokens=2500,
-                    ),
-                )
-
-            evidence_response = await asyncio.wait_for(
-                asyncio.to_thread(run_evidence_call),
-                timeout=self.timeout,
-            )
-
-            evidence_text = (getattr(evidence_response, "text", "") or "").strip()
-            grounding_urls = self._extract_gemini_grounding_urls(evidence_response)
-
-            if not evidence_text:
-                return VerificationResult(
-                    publishable=False,
-                    manual_review_required=True,
-                    reject=False,
-                    reason="Gemini grounding returned no evidence text. Article needs Manual Review.",
-                    category=(article.get("category") or "Unknown"),
-                    verified_facts=[],
-                    unsupported_claims=[],
-                    source_urls=grounding_urls or ([article.get("source_url")] if article.get("source_url") else []),
-                    cheshire_angle="",
-                    rewritten_article="",
-                    estimated_cost_gbp=self.per_call_estimate_gbp,
-                )
-
-            json_prompt = self._build_gemini_json_prompt(article, evidence_text, grounding_urls)
-
-            def run_json_call():
-                return client.models.generate_content(
-                    model=model,
-                    contents=json_prompt,
-                    config=types.GenerateContentConfig(
-                        temperature=0.1,
+                        temperature=0.2,
                         max_output_tokens=3500,
-                        response_mime_type="application/json",
                     ),
                 )
 
-            json_response = await asyncio.wait_for(
-                asyncio.to_thread(run_json_call),
+            response = await asyncio.wait_for(
+                asyncio.to_thread(run_gemini_call),
                 timeout=self.timeout,
             )
 
-            raw_text = (getattr(json_response, "text", "") or "").strip()
-            result = self._parse_verification_json(raw_text, article, grounding_urls)
+            raw_text = (getattr(response, "text", "") or "").strip()
+            source_urls = self._extract_gemini_grounding_urls(response)
+            result = self._parse_verification_json(raw_text, article, source_urls)
             result.estimated_cost_gbp = self.per_call_estimate_gbp
             return result
 
@@ -293,21 +257,22 @@ class ArticleVerificationService:
                 estimated_cost_gbp=self.per_call_estimate_gbp,
             )
 
-    def _build_gemini_evidence_prompt(self, article: Dict[str, Any]) -> str:
+    def _build_gemini_verification_prompt(self, article: Dict[str, Any]) -> str:
         title = (article.get("title") or "").strip()
         summary = (article.get("summary") or article.get("content") or "").strip()
         source = (article.get("source") or "").strip()
         source_url = (article.get("source_url") or "").strip()
         category = (article.get("category") or "").strip()
 
-        return f"""You are researching facts for Cheshire Today.
-
-Check this article candidate using Google Search grounding. Do not write the article yet.
+        return f"""You are the verification editor for Cheshire Today.
 
 Cheshire Today strategy:
 - Hybrid Cheshire local + Business/Finance + AI/Tech authority platform.
+- Prioritise useful local/economic/financial/technology relevance.
 - Avoid weak generic filler, crime-heavy filler, celebrity filler, sports filler, and exaggerated claims.
-- Prioritise practical relevance to Cheshire readers, households, workers, small businesses, investors, taxpayers and technology users.
+- Publish only if facts are verified from the source URL and supporting reliable sources.
+- If not fully safe, set manual_review_required=true.
+- If clearly unsuitable for the project, set reject=true.
 
 Article candidate:
 Title: {title}
@@ -317,39 +282,14 @@ Source URL: {source_url}
 Summary/content:
 {summary[:3000]}
 
-Return concise evidence notes only:
-- Whether the source URL/source claim is verifiable.
-- Key verified facts with dates, names, figures and source names.
-- Any unsupported or risky claims.
-- Whether it is suitable for Cheshire Today.
-- Whether a Cheshire reader angle is justified.
-"""
-
-    def _build_gemini_json_prompt(self, article: Dict[str, Any], evidence_text: str, grounding_urls: List[str]) -> str:
-        title = (article.get("title") or "").strip()
-        summary = (article.get("summary") or article.get("content") or "").strip()
-        source = (article.get("source") or "").strip()
-        source_url = (article.get("source_url") or "").strip()
-        category = (article.get("category") or "").strip()
-        urls_text = "\n".join([str(u) for u in (grounding_urls or [])[:10]])
-
-        return f"""You are the verification editor for Cheshire Today.
-
-Use only the evidence notes below. Return only valid JSON. Do not include markdown.
-
-Article candidate:
-Title: {title}
-Category: {category}
-Source: {source}
-Source URL: {source_url}
-Original summary/content:
-{summary[:2500]}
-
-Grounded evidence notes:
-{evidence_text[:5000]}
-
-Grounding/source URLs:
-{urls_text}
+Tasks:
+1. Search/check the source URL and reliable supporting sources.
+2. Decide if this is strategically suitable for Cheshire Today.
+3. Extract only verified facts.
+4. Identify unsupported or risky claims.
+5. Rewrite only from verified facts in British English if safe enough.
+6. Add a practical Cheshire reader angle only if justified.
+7. Do not invent quotes, numbers, locations, officials, costs, dates, jobs, homes, or reactions.
 
 Return only valid JSON with this exact shape:
 {{
@@ -366,12 +306,11 @@ Return only valid JSON with this exact shape:
 }}
 
 Rules:
-- publishable=true only if rewritten_article is accurate, useful, and based only on verified facts.
+- publishable=true only if rewritten_article is accurate, useful, and based on verified facts.
 - manual_review_required=true if facts are thin, source access is weak, article is too opinion-led, rewrite is uncertain, or Cheshire Today suitability is borderline.
 - reject=true for crime-heavy filler, celebrity filler, sport, weak generic filler, unsupported viral/social claims, or stories with no useful reader/economic relevance.
 - For Cheshire local stories, require a specific town, village, road, venue, site, business, council area, school, hospital, or named local place.
-- National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire location, but must have practical relevance to Cheshire readers.
-- Do not invent quotes, numbers, locations, officials, costs, dates, jobs, homes, reactions or local impact.
+- National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire location, but must have practical relevance to Cheshire readers, households, workers, small businesses, investors, taxpayers or technology users.
 """
 
     def _parse_verification_json(self, raw_text: str, article: Dict[str, Any], grounding_urls: Optional[List[str]] = None) -> VerificationResult:
