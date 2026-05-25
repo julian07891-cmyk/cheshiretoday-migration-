@@ -3751,7 +3751,10 @@ async def get_articles(
             # return the requested number of items.
             if len(articles) < limit:
                 seen_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
-                fallback_q = archived_clause or {}
+                fallback_q = {
+                    "$or": [{"archived": {"$exists": False}}, {"archived": False}],
+                    "manual_review_hidden_from_public": {"$ne": True}
+                }
                 fallback_items = await db.articles.find(
                     fallback_q,
                     {
