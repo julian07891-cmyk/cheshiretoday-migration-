@@ -342,15 +342,18 @@ Source: {source}
 Source URL: {source_url}
 
 Before writing, check online for factual support and identify:
-- exact business, venue, site, road, town, village, council area or named local place
+- exact business, organisation, regulator, government body, venue, site, road, town, village, council area or named local place where relevant
 - what happened
 - when it happened
 - who is involved
 - current status
-- verified numbers, dates, costs, jobs, homes, units or planning details
-- whether any council, business, police, parents, residents or customers are actually mentioned by the source
+- verified numbers, dates, costs, jobs, homes, units or planning details where relevant
+- whether any council, business, police, parents, residents, customers, regulator, government department or company is actually mentioned by the source
 
-If the exact location, status, dates, names, numbers or key claims cannot be verified, return:
+For Cheshire local stories, if the exact local place cannot be verified, return:
+MANUAL_REVIEW_REQUIRED: short reason
+
+For national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories, do not require a Cheshire town or local place. If the source, status, dates, names, numbers or key claims cannot be verified, return:
 MANUAL_REVIEW_REQUIRED: short reason
 
 If this is a property, planning or housing story, only write it if it has clear Cheshire relevance and useful public/economic impact. Do not over-prioritise routine housing applications. If it is minor, vague or unsupported, return MANUAL_REVIEW_REQUIRED.
@@ -435,11 +438,11 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a senior verification editor for Cheshire Today. Write a publication-quality article in British English only if the facts are verified and strategically suitable. Do not invent details to reach length. If the source is thin, location is unclear, facts cannot be verified, or the story is weak/generic/routine, return exactly: MANUAL_REVIEW_REQUIRED: short reason. Plain text only. No headings, bullets, markdown, citations list or meta commentary."
+                            "content": "You are a senior verification editor for Cheshire Today. Write a publication-quality article in British English only if the facts are verified and strategically suitable. Do not invent details to reach length. Local Cheshire stories need a clear named local place. National Business, Finance, Tech, AI, Science, Tax, Property and UK-wide stories do not need a Cheshire town or local place. If the source is thin, facts cannot be verified, or the story is weak/generic/routine, return exactly: MANUAL_REVIEW_REQUIRED: short reason. Plain text only. No headings, bullets, markdown, citations list or meta commentary."
                         },
                         {
                             "role": "user",
-                            "content": f"Verify and rewrite this for Cheshire Today. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference and check reliable online sources. If key facts, exact location, planning status, dates, names or numbers cannot be verified, return MANUAL_REVIEW_REQUIRED: short reason. For property/planning/housing stories, include only if there is clear Cheshire public/economic impact; do not over-prioritise routine applications. Return plain text paragraphs only."
+                            "content": f"Verify and rewrite this for Cheshire Today. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference and check reliable online sources. For Cheshire local stories, require a clear named local place. For national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories, do not require a Cheshire town or local place. If key facts, planning status where relevant, dates, names, numbers or claims cannot be verified, return MANUAL_REVIEW_REQUIRED: short reason. For property/planning/housing stories, include only if there is clear Cheshire public/economic impact; do not over-prioritise routine applications. Return plain text paragraphs only."
                         }
                     ],
                     "max_tokens": 2400,
