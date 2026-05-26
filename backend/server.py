@@ -2602,6 +2602,55 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
 
 
 
+@api_router.post("/admin/perplexity-rewrite-test")
+async def admin_perplexity_rewrite_test(
+    title: str = Body(...),
+    summary: str = Body(""),
+    source: str = Body("BBC News"),
+    source_url: str = Body(""),
+    auth: bool = Depends(get_admin_auth)
+):
+    """
+    No-write Perplexity rewrite diagnostic.
+    Runs the current Perplexity rewrite prompt and returns length/preview only.
+    Does not insert, update, publish, archive, or modify any article.
+    """
+    try:
+        safe_title = str(title or "").strip()
+        if not safe_title:
+            raise HTTPException(status_code=400, detail="title is required")
+
+        detailed_content = await asyncio.wait_for(
+            perplexity_service.generate_article_content(
+                title=safe_title,
+                summary=str(summary or ""),
+                source=str(source or "BBC News"),
+                source_url=str(source_url or "")
+            ),
+            timeout=120
+        )
+
+        manual_reason = extract_perplexity_manual_review_reason(detailed_content)
+        content = str(detailed_content or "")
+
+        return {
+            "success": True,
+            "title": safe_title,
+            "source": source,
+            "source_url": source_url,
+            "content_len": len(content),
+            "is_manual_review": bool(manual_reason),
+            "manual_review_reason": manual_reason,
+            "preview": content[:1200]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error running Perplexity rewrite test: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/admin/regenerate-recent-content")
 async def regenerate_recent_article_content(authorized: bool = Depends(get_admin_auth)):
     """
