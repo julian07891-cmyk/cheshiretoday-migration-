@@ -2078,15 +2078,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         # Use RSS content directly (faster, no AI)
                         detailed_content = original_content
                     
-                    perplexity_manual_review_reason = extract_perplexity_manual_review_reason(detailed_content)
-                    if perplexity_manual_review_reason:
-                        if "budget guard skipped article rewrite" in perplexity_manual_review_reason.lower():
-                            logger.warning(f"Stopping {category_name} import because Perplexity budget guard was reached.")
-                            break
-                        detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
-
-                    # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
-                    if not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000:
+                    # Strict quality gate: publish only full-length rewritten content.
+                    if len((detailed_content or "").strip()) < 1000:
                         logger.info(f"Skipping short-content article after rewrite attempt: {title[:60]}...")
                         continue
 
@@ -2108,12 +2101,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         ai_rewrite_used,
                         title
                     )
-                    article = apply_perplexity_manual_review_marker(
-                        article,
-                        perplexity_manual_review_reason,
-                        title
-                    )
-                    
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
                     try:
                         await db.articles.insert_one(article)
@@ -2257,15 +2244,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 # Use RSS content directly (faster, no AI)
                 detailed_content = original_content
 
-            perplexity_manual_review_reason = extract_perplexity_manual_review_reason(detailed_content)
-            if perplexity_manual_review_reason:
-                if "budget guard skipped article rewrite" in perplexity_manual_review_reason.lower():
-                    logger.warning("Stopping local Cheshire RSS import because Perplexity budget guard was reached.")
-                    break
-                detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
-
-            # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
-            if not perplexity_manual_review_reason and len((detailed_content or "").strip()) < 1000:
+            # Strict quality gate: publish only full-length rewritten content.
+            if len((detailed_content or "").strip()) < 1000:
                 logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
                 continue
             
@@ -2288,12 +2268,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 ai_rewrite_used,
                 title
             )
-            article = apply_perplexity_manual_review_marker(
-                article,
-                perplexity_manual_review_reason,
-                title
-            )
-            
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
             try:
                 await db.articles.insert_one(article)
@@ -2630,7 +2604,6 @@ async def admin_perplexity_rewrite_test(
             timeout=120
         )
 
-        manual_reason = extract_perplexity_manual_review_reason(detailed_content)
         content = str(detailed_content or "")
 
         return {
@@ -2639,8 +2612,7 @@ async def admin_perplexity_rewrite_test(
             "source": source,
             "source_url": source_url,
             "content_len": len(content),
-            "is_manual_review": bool(manual_reason),
-            "manual_review_reason": manual_reason,
+            "passes_quality_floor": len(content.strip()) >= 1000,
             "preview": content[:1200]
         }
 
@@ -4128,28 +4100,8 @@ async def get_article(article_id: str):
     Also searches in archived_articles collection to ensure old shared links still work.
     """
     try:
-        article = None
-        
-        # First try to find by custom 'id' field (UUID format) in main collection
-        article = await db.articles.find_one({'id': article_id})
-        
-        # If not found, try MongoDB ObjectId in main collection
-        if not article:
-            try:
-                article = await db.articles.find_one({'_id': ObjectId(article_id)})
-            except:
-                pass  # Invalid ObjectId format, that's fine
-        
-        # If still not found, search in archived_articles collection
-        # This ensures old shared links (e.g., Facebook posts) continue to work
-        if not article:
-            article = await db.archived_articles.find_one({'id': article_id})
-            
-        if not article:
-            try:
-                article = await db.archived_articles.find_one({'_id': ObjectId(article_id)})
-            except:
-                pass  # Invalid ObjectId format, that's fine
+        # Use the shared lookup helper so the JSON endpoint matches article/share routes.
+        article = await _find_article_by_any_id(article_id)
         
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
@@ -13494,35 +13446,6 @@ def find_local_location_review_reason(article: dict, content: str, title: str = 
         return "Local article uses vague Cheshire wording without a specific town, village, street, venue, council area or named site."
 
     return "Local article is missing a specific town, village, street, venue, council area or named site."
-
-
-def extract_perplexity_manual_review_reason(content: str) -> str:
-    """Return reason when Perplexity asks for manual review instead of publish."""
-    marker = "MANUAL_REVIEW_REQUIRED:"
-    raw = str(content or "").strip()
-    if raw.upper().startswith(marker):
-        return raw[len(marker):].strip() or "Perplexity could not verify the article safely."
-    return ""
-
-
-def apply_perplexity_manual_review_marker(article: dict, reason: str, title: str = ""):
-    """Hide Perplexity-rejected articles from public feeds and show them in Admin Manual Review."""
-    if not reason:
-        return article
-
-    now_iso = datetime.now(timezone.utc).isoformat()
-    article.update({
-        "verification_status": "needs_manual_review",
-        "rewrite_status": "ai_rewrite_needs_review",
-        "manual_review_hidden_from_public": True,
-        "manual_review_reason": f"Perplexity verification requested manual review: {reason}",
-        "manual_review_created_at": now_iso,
-        "ai_rewritten": True,
-        "is_rewritten": False,
-    })
-    logger.warning(f"Perplexity manual-review article hidden: {title[:80]} | reason={reason[:180]}")
-    return article
-
 
 def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: bool = False, title: str = ""):
     if ai_rewrite_used:
