@@ -286,8 +286,8 @@ Use MANUAL_REVIEW_REQUIRED when:
 - You would need to invent or guess details to make the article complete
 
 STRICT FACT RULES:
-1. Use the Source URL as the primary reference when available.
-2. Check the web for reliable supporting information before rewriting.
+1. Use the Source URL and supplied RSS summary as the primary evidence when they come from an established source such as BBC, Guardian, MoneySavingExpert, Financial Times, Sky News, Reuters, government, regulator, company or council source.
+2. Check the web for reliable supporting information where available, but do not reject a credible national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide article only because independent sources repeat headline-level details or are limited.
 3. Prefer primary or high-authority sources: council planning portals, council statements, company websites, official press releases, Companies House, government pages, ONS, Bank of England, HMRC, established news sources, or the original source URL.
 4. Do not invent quotes, names, dates, figures, locations, job numbers, opening dates, council decisions, planning status, business claims, causes, reactions or background history.
 5. Do not use phrases such as “residents said”, “a spokesperson confirmed”, “insiders suggest”, “campaigners warned”, “local people are furious”, unless directly supported by a verified source.
@@ -379,7 +379,14 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                     return f"MANUAL_REVIEW_REQUIRED: Perplexity content generation returned HTTP {response.status_code}."
                 
                 data = response.json()
-                content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                raw_content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+
+                # Preserve strict manual-review marker before markdown cleanup strips underscores.
+                if raw_content.upper().startswith("MANUAL_REVIEW_REQUIRED:"):
+                    logger.warning(f"Perplexity requested manual review for: {title[:60]}... {raw_content[:180]}")
+                    return raw_content
+
+                content = raw_content
                 
                 # Clean up content - remove markdown formatting and word counts
                 import re
@@ -463,7 +470,14 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
 
                 if retry_response.status_code == 200:
                     retry_data = retry_response.json()
-                    retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                    raw_retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+
+                    # Preserve strict manual-review marker before markdown cleanup strips underscores.
+                    if raw_retry_content.upper().startswith("MANUAL_REVIEW_REQUIRED:"):
+                        logger.warning(f"Perplexity retry requested manual review for: {title[:60]}... {raw_retry_content[:180]}")
+                        return raw_retry_content
+
+                    retry_content = raw_retry_content
                     import re
                     retry_content = re.sub(r'\[\d+\]', '', retry_content)
                     retry_content = re.sub(r'\*+', '', retry_content)
