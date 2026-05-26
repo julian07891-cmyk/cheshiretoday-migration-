@@ -2430,7 +2430,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         logger.info(f"Hybrid import complete: {total_cheshire} Cheshire + {uk_imported} UK + {business_imported} Business + {tech_imported} Tech + {sports_imported} Sports")
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
-        await cap_visible_articles(keep=200)
+        await cap_visible_articles(keep=100)
 
         # === RATIO_REBALANCE_45 ===
         if os.getenv("ENABLE_RATIO_REBALANCE", "0").strip().lower() in ("1", "true", "yes", "on"):
