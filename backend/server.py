@@ -3395,7 +3395,7 @@ async def get_articles(
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1, 'force_live': 1
                 }
-            ).sort('publishedDate', -1).limit(limit*5).to_list(limit*5)
+            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*5).to_list(limit*5)
 
             local_articles = await db.articles.find(local_q,
                 {
@@ -3404,7 +3404,7 @@ async def get_articles(
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
-            ).sort('publishedDate', -1).limit(limit*6).to_list(limit*6)
+            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*6).to_list(limit*6)
             
             uk_articles = await db.articles.find(uk_q,
                 {
@@ -3413,7 +3413,7 @@ async def get_articles(
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
-            ).sort('publishedDate', -1).limit(limit*4).to_list(limit*4)
+            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*4).to_list(limit*4)
 
             # UK homepage noise filter (removes sport/video/tabloid-politics filler from 'all' feed)
             # Toggle: UK_FILTER_NOISE=0 to disable.
@@ -3769,7 +3769,7 @@ async def get_articles(
                         'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1,
                         'is_local_source': 1, 'location': 1, 'priority_location': 1
                     }
-                ).sort('publishedDate', -1).limit(limit * 6).to_list(limit * 6)
+                ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit * 6).to_list(limit * 6)
 
                 for a in fallback_items:
                     aid = str(a.get('_id'))
