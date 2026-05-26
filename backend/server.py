@@ -262,7 +262,7 @@ class Article(BaseModel):
 class GenerateArticlesRequest(BaseModel):
     count: int = 10
     include_uk_news: bool = True
-    rewrite_delay_seconds: int = 900
+    rewrite_delay_seconds: int = 0
 
 class GenerateArticlesResponse(BaseModel):
     success: bool
@@ -1684,7 +1684,7 @@ async def generate_articles(request: GenerateArticlesRequest):
             cheshire_articles=int(request.count * 0.6),  # 60% Cheshire
             uk_articles=int(request.count * 0.4) if request.include_uk_news else 0,
             use_perplexity=True,
-            rewrite_delay_seconds=max(0, int(900 if getattr(request, "rewrite_delay_seconds", None) is None else getattr(request, "rewrite_delay_seconds")))
+            rewrite_delay_seconds=max(0, int(0 if getattr(request, "rewrite_delay_seconds", None) is None else getattr(request, "rewrite_delay_seconds")))
         )
         
         result = await import_hybrid_news(hybrid_request)
@@ -1855,7 +1855,7 @@ class HybridNewsRequest(BaseModel):
     business_articles: int = 5   # 5 Business articles (FREE from RSS)
     tech_articles: int = 5       # 5 Tech/AI articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
-    rewrite_delay_seconds: int = 900  # Wait before AI rewrite so sources can propagate/index
+    rewrite_delay_seconds: int = 0  # No artificial delay before AI rewrite/import
 
 
 @api_router.post("/import-hybrid-news")
