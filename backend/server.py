@@ -1936,7 +1936,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
             # Strict keywords: violence / prosecution / sentencing (NO generic 'police' / 'incident')
             crime_kw = re.compile(
-                r"(cops?|police|officer|mugshot|murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|rape(?:d)?|sexual assault|sex(?:ual)? offence|indecent|pervert|predator|groom(?:ed|ing)?|paedophile|pedophile|child\s+sex|online\s+predator|\bassault(?:ed|s)?\b|\battack(?:ed|s)?\b|robber(?:y|ies)|burglar(?:y|ies)|arson|charged|arrest(?:ed)?|raid|drug raid|cannabis plants?|prosecut(?:ed|ion)|trial|guilty|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)", re.I, )
+                r"(cops?|police|officer|mugshot|murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|rape(?:d)?|sexual assault|sex(?:ual)? offence|indecent|pervert|predator|groom(?:ed|ing)?|paedophile|pedophile|child\s+sex|online\s+predator|cctv\s+appeal|stolen|theft|shoplift(?:ing|ed)?|\bassault(?:ed|s)?\b|\battack(?:ed|s)?\b|robber(?:y|ies)|burglar(?:y|ies)|arson|charged|arrest(?:ed)?|raid|drug raid|cannabis plants?|prosecut(?:ed|ion)|trial|guilty|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)", re.I, )
             return bool(crime_kw.search(text))
 
         def is_obituary_like(article: dict) -> bool:
