@@ -3982,7 +3982,7 @@ async def get_articles(
 
             # Normalize misleading category labels:
             # Some national feeds use 'Local News' even when not local to Cheshire.
-            if article.get('is_local_source') is not True and article.get('category') == 'Local News':
+            if article.get('is_local_source') is not True and article.get('category') == 'Local News' and article.get('scope') != 'cheshire':
                 article['category'] = 'UK News'
             
             # Skip duplicate articles by ID
