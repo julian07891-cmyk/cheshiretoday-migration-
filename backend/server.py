@@ -2080,6 +2080,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     
                     perplexity_manual_review_reason = extract_perplexity_manual_review_reason(detailed_content)
                     if perplexity_manual_review_reason:
+                        if "budget guard skipped article rewrite" in perplexity_manual_review_reason.lower():
+                            logger.warning(f"Stopping {category_name} import because Perplexity budget guard was reached.")
+                            break
                         detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
 
                     # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
@@ -2256,6 +2259,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
             perplexity_manual_review_reason = extract_perplexity_manual_review_reason(detailed_content)
             if perplexity_manual_review_reason:
+                if "budget guard skipped article rewrite" in perplexity_manual_review_reason.lower():
+                    logger.warning("Stopping local Cheshire RSS import because Perplexity budget guard was reached.")
+                    break
                 detailed_content = original_content or article.get('summary', '') or perplexity_manual_review_reason
 
             # Strict quality gate: publish only full-length rewritten content unless Perplexity requested manual review.
