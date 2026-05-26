@@ -9666,8 +9666,12 @@ async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_pre
     try:
         logger.info(f"TEST DIGEST: Sending test to {test_email}, preview_links={use_preview_links}")
         
-        # Get latest articles
+        # Get latest public articles only — never include archived or Manual Review-hidden articles
         pipeline = [
+            {"$match": {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True}
+            }},
             {"$sort": {"publishedDate": -1}},
             {"$group": {
                 "_id": "$title",
@@ -9763,15 +9767,25 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
         one_week_ago = now - timedelta(days=7)
 
         big_read = await db.articles.find_one(
-            {"$or": [
-                {"publishedDate": {"$gte": one_week_ago}},
-                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
-            ]},
+            {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+                "$or": [
+                    {"publishedDate": {"$gte": one_week_ago}},
+                    {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+                ]
+            },
             sort=[("view_count", -1)]
         )
 
         if not big_read:
-            big_read = await db.articles.find_one({}, sort=[("publishedDate", -1)])
+            big_read = await db.articles.find_one(
+                {
+                    "archived": {"$ne": True},
+                    "manual_review_hidden_from_public": {"$ne": True}
+                },
+                sort=[("publishedDate", -1)]
+            )
 
         if not big_read:
             return {"success": False, "message": "No articles available for Weekly Roundup test"}
@@ -9780,10 +9794,14 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
             big_read["id"] = str(big_read["_id"])
 
         icymi_cursor = db.articles.find(
-            {"$or": [
-                {"publishedDate": {"$gte": one_week_ago}},
-                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
-            ]},
+            {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+                "$or": [
+                    {"publishedDate": {"$gte": one_week_ago}},
+                    {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+                ]
+            },
             sort=[("view_count", -1)]
         ).limit(6)
 
@@ -13232,6 +13250,11 @@ def is_sports(article):
     return any(k in title for k in sports)
 
 def is_digest_excluded(article):
+    if article.get("archived") is True:
+        return True
+    if article.get("manual_review_hidden_from_public") is True:
+        return True
+
     title = (article.get("title") or "").lower()
     category = (article.get("category") or "").lower()
     text = f"{title} {(article.get('summary') or '').lower()} {(article.get('content') or '').lower()[:400]}"
@@ -13865,10 +13888,14 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         cutoff_time_iso = cutoff_time.isoformat()
 
         pipeline = [
-            {"$match": {"$or": [
-                {"publishedDate": {"$gte": cutoff_time}},
-                {"publishedDate": {"$gte": cutoff_time_iso}}
-            ]}},
+            {"$match": {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+                "$or": [
+                    {"publishedDate": {"$gte": cutoff_time}},
+                    {"publishedDate": {"$gte": cutoff_time_iso}}
+                ]
+            }},
             {"$sort": {"publishedDate": -1}},
             {"$group": {
                 "_id": "$title",
@@ -13893,6 +13920,10 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         if not recent_articles:
             logger.warning("No 24h articles found for Daily Brief; falling back to latest unique articles")
             fallback_pipeline = [
+                {"$match": {
+                    "archived": {"$ne": True},
+                    "manual_review_hidden_from_public": {"$ne": True}
+                }},
                 {"$sort": {"publishedDate": -1}},
                 {"$group": {
                     "_id": "$title",
@@ -14281,16 +14312,26 @@ async def send_weekly_roundup_email():
         
         # Get big read (most viewed article)
         big_read = await db.articles.find_one(
-            {"$or": [
-                {"publishedDate": {"$gte": one_week_ago}},
-                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
-            ]},
+            {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+                "$or": [
+                    {"publishedDate": {"$gte": one_week_ago}},
+                    {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+                ]
+            },
             sort=[("view_count", -1)]
         )
         
         if not big_read:
-            # Fallback to most recent
-            big_read = await db.articles.find_one({}, sort=[("publishedDate", -1)])
+            # Fallback to most recent public article
+            big_read = await db.articles.find_one(
+                {
+                    "archived": {"$ne": True},
+                    "manual_review_hidden_from_public": {"$ne": True}
+                },
+                sort=[("publishedDate", -1)]
+            )
         
         if not big_read:
             logger.warning("No articles found for Weekly Roundup")
@@ -14301,12 +14342,16 @@ async def send_weekly_roundup_email():
         if big_read.get('_id'):
             big_read['id'] = str(big_read['_id'])
         
-        # Get top 5 trending articles (excluding big read)
+        # Get top 5 trending public articles (excluding big read)
         icymi_cursor = db.articles.find(
-            {"$or": [
-                {"publishedDate": {"$gte": one_week_ago}},
-                {"publishedDate": {"$gte": one_week_ago.isoformat()}}
-            ]},
+            {
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+                "$or": [
+                    {"publishedDate": {"$gte": one_week_ago}},
+                    {"publishedDate": {"$gte": one_week_ago.isoformat()}}
+                ]
+            },
             sort=[("view_count", -1)]
         ).limit(6)
         
