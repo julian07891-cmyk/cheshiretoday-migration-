@@ -3799,13 +3799,35 @@ async def get_articles(
                         break
 
             
-            # Prepend force_live articles so admin-picked stories bypass normal homepage filtering.
+            # Prepend recent force_live articles so admin-picked stories can lead briefly,
+            # but older manual/promoted articles do not permanently make the homepage look stale.
             if force_articles:
                 existing_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
                 forced_front = []
+                force_pin_hours = int(os.getenv("FORCE_LIVE_PIN_HOURS", "72") or "72")
+                force_pin_cutoff = datetime.now(timezone.utc) - timedelta(hours=force_pin_hours)
+
+                def is_recent_force_live(a: dict) -> bool:
+                    raw_dt = a.get("publishedDate") or a.get("created_at")
+                    if isinstance(raw_dt, datetime):
+                        article_dt = raw_dt
+                    elif isinstance(raw_dt, str):
+                        try:
+                            article_dt = datetime.fromisoformat(raw_dt.replace("Z", "+00:00"))
+                        except Exception:
+                            return False
+                    else:
+                        return False
+
+                    if article_dt.tzinfo is None:
+                        article_dt = article_dt.replace(tzinfo=timezone.utc)
+                    return article_dt >= force_pin_cutoff
+
                 for a in force_articles:
                     aid = str(a.get('_id'))
                     if not aid or aid in existing_ids:
+                        continue
+                    if not is_recent_force_live(a):
                         continue
                     forced_front.append(a)
                     existing_ids.add(aid)
