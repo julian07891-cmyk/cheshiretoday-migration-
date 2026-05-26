@@ -252,12 +252,12 @@ class PerplexityService:
         """
         if not self.api_key:
             logger.error("Perplexity API key not configured")
-            return "MANUAL_REVIEW_REQUIRED: Perplexity API key is not configured."
+            return summary  # Return original summary as fallback
 
         # Soft budget guard (optional hard cap via PERPLEXITY_HARD_CAP=1)
         if not ai_call_allowed(0.05):
             logger.warning("Perplexity budget guard: skipping generate_article_content() call")
-            return "MANUAL_REVIEW_REQUIRED: Perplexity budget guard skipped article rewrite."
+            return self._expand_summary(title, summary, source)
         
         try:
             async with httpx.AsyncClient() as client:
@@ -266,99 +266,46 @@ class PerplexityService:
                     "messages": [
                         {
                             "role": "system",
-                            "content": """You are a strict verification and rewrite editor for Cheshire Today, a Cheshire-focused local, business, finance and AI/technology publication.
+                            "content": """You are a careful UK local news rewrite editor for Cheshire Today.
 
-Your job is NOT to invent, expand or dramatise the story. Your job is to verify the facts, rewrite clearly, and decide whether the article is safe to publish.
+Your task is to research the story using the provided Source URL as the primary reference, then rewrite it as a clean, original Cheshire Today article without inventing facts.
 
-PRIMARY GOAL:
-Produce a clean, factual Cheshire Today article only when the story is verified and strategically suitable. If key facts are unclear, unsupported, unavailable, too thin, too generic, or unsuitable, return a manual-review marker instead of an article.
-
-MANUAL REVIEW MARKER:
-If the article is not safe to publish, return exactly this format and do not write the article:
-MANUAL_REVIEW_REQUIRED: short reason
-
-Use MANUAL_REVIEW_REQUIRED when:
-- The source URL is unavailable, paywalled, too thin, or cannot verify the story
-- For Cheshire local stories, the exact local place is missing or unclear
-- The headline uses vague Cheshire wording such as “a Cheshire park”, “a Cheshire woman”, “a Cheshire village”, “a Cheshire football club”, “a Cheshire business” without naming the place
-- Key facts such as local location where relevant, dates, numbers, council status, business name or quoted claims cannot be verified
-- The story is mostly crime, celebrity, generic lifestyle, generic national filler, weak entertainment, sport, speculation, or not useful to Cheshire Today readers
-- You would need to invent or guess details to make the article complete
-
-STRICT FACT RULES:
-1. Use the Source URL and supplied RSS summary as the primary evidence when they come from an established source such as BBC, Guardian, MoneySavingExpert, Financial Times, Sky News, Reuters, government, regulator, company or council source.
-2. Check the web for reliable supporting information where available, but do not reject a credible national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide article only because independent sources repeat headline-level details or are limited.
-3. Prefer primary or high-authority sources: council planning portals, council statements, company websites, official press releases, Companies House, government pages, ONS, Bank of England, HMRC, established news sources, or the original source URL.
-4. Do not invent quotes, names, dates, figures, locations, job numbers, opening dates, council decisions, planning status, business claims, causes, reactions or background history.
-5. Do not use phrases such as “residents said”, “a spokesperson confirmed”, “insiders suggest”, “campaigners warned”, “local people are furious”, unless directly supported by a verified source.
-6. If a fact is unclear, omit it or return MANUAL_REVIEW_REQUIRED.
-7. Accuracy is more important than length.
-
-LOCAL NEWS RULES:
-- A Cheshire local article must clearly include the specific town, village, road, venue, school, hospital, park, development site, business name, council area or named local place.
-- Do not publish an article that only says “Cheshire” without a specific named local place.
-- If the exact location cannot be verified, return MANUAL_REVIEW_REQUIRED.
-
-NATIONAL BUSINESS / FINANCE / TECH / UK NEWS RULES:
-- National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire town or local place.
-- For these articles, focus on practical relevance for Cheshire readers, households, workers, small businesses, investors, taxpayers or technology users.
-- Do not reject a credible national article only because it is not Cheshire-specific.
-- Still return MANUAL_REVIEW_REQUIRED if the source is vague, the claim cannot be verified, the story is weak generic filler, or writing it would require invented facts.
-
-PROPERTY / PLANNING / HOUSING RULES:
-Cheshire Today can include property, planning and housing articles, but they must not be over-prioritised or allowed to dominate the site.
-Only write a publish-ready planning/housing article if it has clear Cheshire relevance and useful public/economic impact, such as:
-- a named site, road, town, village or council area
-- a meaningful number of homes or units
-- affordable housing, care home, school, infrastructure, road, town-centre, employment or council decision impact
-- a clear planning status, such as submitted, recommended for approval, approved, refused, appeal, or inspector decision
-
-For planning/housing stories:
-- Identify the site, town/village, council, proposal, number of homes/units if known, applicant/developer if verified, and current planning status.
-- Do not exaggerate impact.
-- Do not make every housing application sound like a major story.
-- If the story is a minor routine application with weak public interest, return MANUAL_REVIEW_REQUIRED.
-- If the source does not confirm the exact site or planning status, return MANUAL_REVIEW_REQUIRED.
-
-CHESHIRE TODAY STYLE:
-- Clear, professional, practical and locally relevant.
-- Explain what the story means for Cheshire readers, households, workers, businesses or communities.
-- Avoid sensationalism, exaggerated headlines, crime-heavy filler, weak generic national filler and clickbait.
-- Use British English.
-- Do not copy the original wording.
-- Plain text only: no markdown, no asterisks, no headings, no bullet points.
-- Do not include word counts, character counts, citations list, or meta information at the end.
+CRITICAL ACCURACY RULES:
+1. The Source URL is the primary reference. Do not override it with guesses from the headline.
+2. Verify the exact venue, business name, road, village, town, council area and county before naming them.
+3. If the exact location is not confirmed by the source URL or another reliable source, use only a broad phrase such as "in Cheshire" or "in the local area".
+4. Never invent street names, town centres, quotes, anonymous residents, repair bills, smashed windows, police involvement, social media reaction, business history or previous incidents unless they are clearly supported by the source material.
+5. Do not pad thin stories with generic background. Accuracy is more important than length.
+6. If source material is limited, write a shorter accurate article rather than adding unsupported details.
+7. Attribute claims carefully, using wording such as "according to the source report" or "the business said" only where supported.
+8. Use British English and short paragraphs for mobile reading.
+9. Add local context only when it is directly relevant and does not introduce unsupported claims.
+10. Plain text only: no markdown, no asterisks, no headings, no bullet points.
+11. Do not include word counts, character counts, citations list, or meta information at the end.
 
 NEVER fabricate details to make the article longer.
 NEVER include a claim unless it is supported by the source URL, the supplied summary, or reputable corroborating sources."""
                         },
                         {
                             "role": "user",
-                            "content": f"""Rewrite and verify this article for Cheshire Today.
+                            "content": f"""Rewrite this as a Cheshire Today news article using verified facts only.
 
 Headline: {title}
 Summary: {summary}
 Source: {source}
 Source URL: {source_url}
 
-Before writing, check online for factual support and identify:
-- exact business, organisation, regulator, government body, venue, site, road, town, village, council area or named local place where relevant
+Before writing, identify the verified facts from the source URL, especially:
+- exact business or venue name
+- exact location
+- who said what
 - what happened
 - when it happened
-- who is involved
-- current status
-- verified numbers, dates, costs, jobs, homes, units or planning details where relevant
-- whether any council, business, police, parents, residents, customers, regulator, government department or company is actually mentioned by the source
+- whether any police, council, parents, residents or customers are actually mentioned
 
-For Cheshire local stories, if the exact local place cannot be verified, return:
-MANUAL_REVIEW_REQUIRED: short reason
+Use only verified details in the finished article. If the source URL is unavailable, paywalled or too thin, rely only on the headline and summary and avoid all unsupported specifics.
 
-For national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories, do not require a Cheshire town or local place. If the source, status, dates, names, numbers or key claims cannot be verified, return:
-MANUAL_REVIEW_REQUIRED: short reason
-
-If this is a property, planning or housing story, only write it if it has clear Cheshire relevance and useful public/economic impact. Do not over-prioritise routine housing applications. If it is minor, vague or unsupported, return MANUAL_REVIEW_REQUIRED.
-
-Use only verified details in the finished article. Do not guess. Do not invent. Do not force length by adding unsupported context. A shorter accurate article is better than a longer inaccurate one. Return clean plain text paragraphs only."""
+Write clean plain text paragraphs. Aim for a useful article, but do not force 2000+ characters by inventing details. A shorter accurate article is better than a longer inaccurate one. Do not add word count at the end:"""
                         }
                     ],
                     "max_tokens": 2000,
@@ -376,17 +323,10 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                 
                 if response.status_code != 200:
                     logger.error(f"Perplexity content generation error: {response.status_code}")
-                    return f"MANUAL_REVIEW_REQUIRED: Perplexity content generation returned HTTP {response.status_code}."
+                    return summary
                 
                 data = response.json()
-                raw_content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-
-                # Preserve strict manual-review marker before markdown cleanup strips underscores.
-                if raw_content.upper().startswith("MANUAL_REVIEW_REQUIRED:"):
-                    logger.warning(f"Perplexity requested manual review for: {title[:60]}... {raw_content[:180]}")
-                    return raw_content
-
-                content = raw_content
+                content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
                 
                 # Clean up content - remove markdown formatting and word counts
                 import re
@@ -398,12 +338,6 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                 content = re.sub(r'\s*\(Character count:?\s*\d+\)', '', content, flags=re.IGNORECASE)  # Remove character count
                 content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', content, flags=re.IGNORECASE)  # Remove trailing word count
                 content = re.sub(r'[ \t]+', ' ', content).strip()  # Clean up extra spaces
-
-                # Preserve strict manual-review marker so the import flow can hide the article
-                # instead of treating it as a short failed rewrite.
-                if content.upper().startswith("MANUAL_REVIEW_REQUIRED:"):
-                    logger.warning(f"Perplexity requested manual review for: {title[:60]}... {content[:180]}")
-                    return content
                 
                 # CRITICAL: Detect and reject refusal messages from Perplexity
                 refusal_indicators = [
@@ -428,8 +362,8 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                 is_refusal = any(indicator.lower() in content_lower for indicator in refusal_indicators)
                 
                 if is_refusal:
-                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Sending to manual review.")
-                    return "MANUAL_REVIEW_REQUIRED: Perplexity refused to generate verified article content."
+                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Using expanded summary fallback.")
+                    return self._expand_summary(title, summary, source)
 
                 min_chars = int(os.getenv("PERPLEXITY_MIN_CHARS", "1500"))
                 target_chars = int(os.getenv("PERPLEXITY_TARGET_CHARS", "2000"))
@@ -438,21 +372,18 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                     logger.info(f"Generated {len(content)} chars of content for: {title[:40]}...")
                     return content
 
-                logger.warning(
-                    f"Content below target ({len(content)} chars) for: {title[:40]}... "
-                    f"Preview: {content[:500]!r}. Retrying with stronger long-form prompt."
-                )
+                logger.warning(f"Content below target ({len(content)} chars) for: {title[:40]}... Retrying with stronger long-form prompt.")
 
                 retry_payload = {
                     "model": "sonar",
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a senior verification editor for Cheshire Today. Write a publication-quality article in British English only if the facts are verified and strategically suitable. Do not invent details to reach length. Local Cheshire stories need a clear named local place. National Business, Finance, Tech, AI, Science, Tax, Property and UK-wide stories do not need a Cheshire town or local place. If the source is thin, facts cannot be verified, or the story is weak/generic/routine, return exactly: MANUAL_REVIEW_REQUIRED: short reason. Plain text only. No headings, bullets, markdown, citations list or meta commentary."
+                            "content": "You are a senior news writer for Cheshire Today. Write a strong, detailed, publication-quality article in British English using plain text only. Produce flowing paragraphs with context, implications, and useful detail. Aim for 700-900 words and at least 2000 characters. Minimum acceptable output is 1500 characters. Do not refuse, do not explain limitations, do not include headings, bullet points, markdown, or meta commentary."
                         },
                         {
                             "role": "user",
-                            "content": f"Verify and rewrite this for Cheshire Today. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference and check reliable online sources. For Cheshire local stories, require a clear named local place. For national Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories, do not require a Cheshire town or local place. If key facts, planning status where relevant, dates, names, numbers or claims cannot be verified, return MANUAL_REVIEW_REQUIRED: short reason. For property/planning/housing stories, include only if there is clear Cheshire public/economic impact; do not over-prioritise routine applications. Return plain text paragraphs only."
+                            "content": f"Write a detailed Cheshire Today article based on this story. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference when available. Enrich the story with relevant context and explain why it matters. Return plain text paragraphs only."
                         }
                     ],
                     "max_tokens": 2400,
@@ -470,14 +401,7 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
 
                 if retry_response.status_code == 200:
                     retry_data = retry_response.json()
-                    raw_retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-
-                    # Preserve strict manual-review marker before markdown cleanup strips underscores.
-                    if raw_retry_content.upper().startswith("MANUAL_REVIEW_REQUIRED:"):
-                        logger.warning(f"Perplexity retry requested manual review for: {title[:60]}... {raw_retry_content[:180]}")
-                        return raw_retry_content
-
-                    retry_content = raw_retry_content
+                    retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
                     import re
                     retry_content = re.sub(r'\[\d+\]', '', retry_content)
                     retry_content = re.sub(r'\*+', '', retry_content)
@@ -488,11 +412,6 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                     retry_content = re.sub(r'\s*Word count:?\s*\d+\.?\s*$', '', retry_content, flags=re.IGNORECASE)
                     retry_content = re.sub(r'[ \t]+', ' ', retry_content).strip()
 
-                    # Preserve strict manual-review marker from retry response.
-                    if retry_content.upper().startswith("MANUAL_REVIEW_REQUIRED:"):
-                        logger.warning(f"Perplexity retry requested manual review for: {title[:60]}... {retry_content[:180]}")
-                        return retry_content
-
                     retry_lower = retry_content.lower()
                     retry_refusal = any(indicator.lower() in retry_lower for indicator in refusal_indicators)
 
@@ -500,22 +419,15 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
                         return retry_content
 
-                try:
-                    retry_preview = retry_content[:500] if 'retry_content' in locals() else ''
-                except Exception:
-                    retry_preview = ''
-                logger.warning(
-                    f"Retry still below acceptable quality for: {title[:40]}... "
-                    f"Retry preview: {retry_preview!r}. Sending to manual review."
-                )
-                return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite was below the quality floor after retry."
+                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Using expanded summary fallback.")
+                return self._expand_summary(title, summary, source)
                     
         except httpx.TimeoutException:
             logger.error(f"Timeout generating content for: {title[:40]}...")
-            return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite timed out."
+            return summary
         except Exception as e:
             logger.error(f"Error generating article content: {str(e)}")
-            return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite failed with an error."
+            return summary
 
     def _expand_summary(self, title: str, summary: str, source: str) -> str:
         """
