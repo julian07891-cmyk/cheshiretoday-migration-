@@ -299,6 +299,12 @@ LOCAL NEWS RULES:
 - Do not publish an article that only says “Cheshire” without a specific named local place.
 - If the exact location cannot be verified, return MANUAL_REVIEW_REQUIRED.
 
+NATIONAL BUSINESS / FINANCE / TECH / UK NEWS RULES:
+- National Business, Finance, Tech, AI, Science, Tax, Property or UK-wide stories do not need a Cheshire town or local place.
+- For these articles, focus on practical relevance for Cheshire readers, households, workers, small businesses, investors, taxpayers or technology users.
+- Do not reject a credible national article only because it is not Cheshire-specific.
+- Still return MANUAL_REVIEW_REQUIRED if the source is vague, the claim cannot be verified, the story is weak generic filler, or writing it would require invented facts.
+
 PROPERTY / PLANNING / HOUSING RULES:
 Cheshire Today can include property, planning and housing articles, but they must not be over-prioritised or allowed to dominate the site.
 Only write a publish-ready planning/housing article if it has clear Cheshire relevance and useful public/economic impact, such as:
