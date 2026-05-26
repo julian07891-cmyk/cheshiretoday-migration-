@@ -1097,6 +1097,41 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
+  const handleAIReviewArticle = async (articleId) => {
+    setActionLoading(`ai-review-${articleId}`);
+    try {
+      const response = await fetch(`${getApiUrl()}/api/admin/articles/${articleId}/ai-review`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const risk = data.review?.risk_level || 'unknown';
+        const action = data.review?.recommended_action || 'reviewed';
+        toast({
+          title: "✅ ChatGPT review complete",
+          description: `Risk: ${risk} · Action: ${action}`
+        });
+        fetchAllData();
+      } else {
+        toast({
+          title: "❌ ChatGPT review failed",
+          description: data.detail || "Failed to review article",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ ChatGPT review failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleUnarchiveArticle = async (articleId) => {
     setActionLoading(`unarchive-${articleId}`);
     try {
@@ -3033,19 +3068,38 @@ const handleDeleteArticle = async (articleId) => {
                       />
                       <div className="flex-1 min-w-0">
                         <h4 className="font-medium text-foreground dark:text-white truncate">{article.title}</h4>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <Badge variant="secondary" className="text-xs">
                             {article.category}
                           </Badge>
                           <span className="text-xs text-muted-foreground dark:text-gray-400">
                             {formatDate(article.publishedDate)}
                           </span>
+                          {article.ai_review_risk_level && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs ${
+                                article.ai_review_risk_level === 'high'
+                                  ? 'border-red-300 text-red-700 bg-red-50'
+                                  : article.ai_review_risk_level === 'medium'
+                                    ? 'border-amber-300 text-amber-700 bg-amber-50'
+                                    : 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                              }`}
+                            >
+                              AI: {article.ai_review_risk_level} · {article.ai_review_recommended_action || 'reviewed'}
+                            </Badge>
+                          )}
                           {article.view_count > 0 && (
                             <span className="text-xs text-muted-foreground dark:text-gray-400 flex items-center gap-1">
                               <Eye className="h-3 w-3" /> {article.view_count}
                             </span>
                           )}
                         </div>
+                        {article.ai_review_result?.editor_notes && (
+                          <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1 line-clamp-2">
+                            ChatGPT: {article.ai_review_result.editor_notes}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -3057,6 +3111,20 @@ const handleDeleteArticle = async (articleId) => {
                           title="Edit article"
                         >
                           <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAIReviewArticle(article._id || article.id)}
+                          disabled={actionLoading === `ai-review-${article.id}`}
+                          className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+                          title="Check with ChatGPT"
+                        >
+                          {actionLoading === `ai-review-${article.id}` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           variant="outline"
