@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import DuplicateKeyError
 import os
 import re
+import json
 import logging
 import httpx
 import secrets
@@ -5601,6 +5602,145 @@ def resolve_manual_article_image(image_url: str, source_url: str) -> str:
             pass
 
     return "" if is_blocked(chosen) else chosen
+
+
+async def run_openai_article_review(article: dict) -> dict:
+    """Run a low-cost editorial safety review for one article. Does not edit or publish/unpublish."""
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="OPENAI_API_KEY is not configured")
+
+    model = os.environ.get("OPENAI_REVIEW_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini"
+
+    title = str(article.get("title") or "").strip()
+    summary = str(article.get("summary") or "").strip()
+    content = str(article.get("content") or "").strip()
+    category = str(article.get("category") or "").strip()
+    source = str(article.get("source") or "").strip()
+    source_url = str(article.get("source_url") or "").strip()
+    scope = str(article.get("scope") or "").strip()
+    location = str(article.get("location") or article.get("priority_location") or "").strip()
+
+    review_payload = {
+        "title": title,
+        "summary": summary[:1200],
+        "content": content[:9000],
+        "category": category,
+        "source": source,
+        "source_url": source_url,
+        "scope": scope,
+        "location": location,
+    }
+
+    system_prompt = """You are an editorial safety and quality reviewer for Cheshire Today.
+
+Cheshire Today strategy:
+- Local Cheshire public-interest stories
+- Business, finance, money, property, tax and AI/technology authority
+- Clean reader experience
+- Avoid crime-heavy filler, live traffic filler, weak lifestyle filler, generic national filler, exaggerated headlines and unsupported claims
+
+You are NOT rewriting the article.
+You are NOT deciding final publication automatically.
+You are only reviewing and flagging issues for a human editor.
+
+Return valid JSON only with this exact shape:
+{
+  "safe_to_keep_live": true or false,
+  "risk_level": "low" or "medium" or "high",
+  "recommended_action": "keep_live" or "manual_review" or "archive",
+  "category_fit": "good" or "questionable" or "poor",
+  "local_place_confirmed": true or false,
+  "strategy_fit": "strong" or "acceptable" or "weak",
+  "crime_or_safeguarding_risk": true or false,
+  "traffic_or_incident_filler": true or false,
+  "weak_lifestyle_or_clickbait": true or false,
+  "unsupported_claims": ["short issue", "..."],
+  "factual_concerns": ["short issue", "..."],
+  "editor_notes": "short practical note for the admin editor"
+}
+
+Be strict. If the story is mainly crime, court, theft, CCTV appeal, live traffic, crash, breakdown, celebrity, weak shopping/gift guide, thin filler, or not useful for Cheshire Today readers, recommend manual_review or archive.
+For Local News, require a clear Cheshire town, village, road, venue, school, council area, named site or local organisation.
+"""
+
+    user_prompt = "Review this article for Cheshire Today admin:\n" + json.dumps(review_payload, ensure_ascii=False)
+
+    def _call_openai():
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model=model,
+            temperature=0.1,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        return response.choices[0].message.content
+
+    raw = await asyncio.to_thread(_call_openai)
+
+    try:
+        review = json.loads(raw or "{}")
+    except Exception:
+        review = {
+            "safe_to_keep_live": False,
+            "risk_level": "medium",
+            "recommended_action": "manual_review",
+            "category_fit": "questionable",
+            "local_place_confirmed": bool(location),
+            "strategy_fit": "weak",
+            "crime_or_safeguarding_risk": False,
+            "traffic_or_incident_filler": False,
+            "weak_lifestyle_or_clickbait": False,
+            "unsupported_claims": [],
+            "factual_concerns": ["AI review returned non-JSON output."],
+            "editor_notes": str(raw or "")[:500],
+        }
+
+    return review
+
+
+@api_router.post("/admin/articles/{article_id}/ai-review")
+async def admin_ai_review_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
+    """Admin-only ChatGPT/OpenAI article review. Flags risk; does not auto-edit/archive/hide."""
+    try:
+        article = await _find_article_by_any_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        review = await run_openai_article_review(article)
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        review_doc = {
+            "ai_review_status": "reviewed",
+            "ai_review_checked_at": now_iso,
+            "ai_review_model": os.environ.get("OPENAI_REVIEW_MODEL", "gpt-4o-mini").strip() or "gpt-4o-mini",
+            "ai_review_result": review,
+            "ai_review_risk_level": review.get("risk_level"),
+            "ai_review_recommended_action": review.get("recommended_action"),
+            "ai_review_safe_to_keep_live": review.get("safe_to_keep_live"),
+        }
+
+        if article.get("_id"):
+            await db.articles.update_one({"_id": article["_id"]}, {"$set": review_doc})
+        elif article.get("id"):
+            await db.articles.update_one({"id": article["id"]}, {"$set": review_doc})
+
+        return {
+            "success": True,
+            "article_id": str(article.get("_id") or article.get("id") or article_id),
+            "title": article.get("title"),
+            "review": review,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error running AI article review: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @api_router.post("/admin/articles")
 async def create_manual_article(article: ManualArticleCreate, authorized: bool = Depends(get_admin_auth)):
