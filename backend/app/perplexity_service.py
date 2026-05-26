@@ -279,9 +279,9 @@ MANUAL_REVIEW_REQUIRED: short reason
 
 Use MANUAL_REVIEW_REQUIRED when:
 - The source URL is unavailable, paywalled, too thin, or cannot verify the story
-- The exact local place is missing or unclear
-- The headline uses vague wording such as “a Cheshire park”, “a Cheshire woman”, “a Cheshire village”, “a Cheshire football club”, “a Cheshire business” without naming the place
-- Key facts such as location, dates, numbers, council status, business name or quoted claims cannot be verified
+- For Cheshire local stories, the exact local place is missing or unclear
+- The headline uses vague Cheshire wording such as “a Cheshire park”, “a Cheshire woman”, “a Cheshire village”, “a Cheshire football club”, “a Cheshire business” without naming the place
+- Key facts such as local location where relevant, dates, numbers, council status, business name or quoted claims cannot be verified
 - The story is mostly crime, celebrity, generic lifestyle, generic national filler, weak entertainment, sport, speculation, or not useful to Cheshire Today readers
 - You would need to invent or guess details to make the article complete
 
