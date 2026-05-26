@@ -11474,24 +11474,50 @@ async def get_related_articles(article_id: str, limit: int = 4):
         category = article.get('category', '')
         tags = article.get('tags', [])
         
+        visibility_filter = {
+            "$or": [{"archived": {"$exists": False}}, {"archived": False}],
+            "manual_review_hidden_from_public": {"$ne": True},
+        }
+
+        def normalise_related(items):
+            normalised = []
+            seen = set()
+            for item in items:
+                public_id = str(item.get("_id") or item.get("id") or "").strip()
+                if not public_id or public_id == str(article_id):
+                    continue
+                if public_id in seen:
+                    continue
+                seen.add(public_id)
+                item["id"] = public_id
+                item.pop("_id", None)
+                normalised.append(item)
+            return normalised
+
         # Find related articles by category, excluding current article
         query = {
+            **visibility_filter,
             "category": category,
-            "id": {"$ne": article_id}
+            "$and": [{"id": {"$ne": article_id}}],
         }
         
         related = await db.articles.find(
             query,
-            {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1}
-        ).sort("publishedDate", -1).limit(limit).to_list(limit)
+            {"_id": 1, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1}
+        ).sort("publishedDate", -1).limit(limit * 2).to_list(limit * 2)
+        related = normalise_related(related)[:limit]
         
         # If not enough related articles, get more from other categories
         if len(related) < limit:
             more = await db.articles.find(
-                {"id": {"$ne": article_id}, "category": {"$ne": category}},
-                {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1}
-            ).sort("publishedDate", -1).limit(limit - len(related)).to_list(limit - len(related))
-            related.extend(more)
+                {
+                    **visibility_filter,
+                    "id": {"$ne": article_id},
+                    "category": {"$ne": category},
+                },
+                {"_id": 1, "id": 1, "title": 1, "image": 1, "category": 1, "publishedDate": 1}
+            ).sort("publishedDate", -1).limit((limit - len(related)) * 2).to_list((limit - len(related)) * 2)
+            related.extend(normalise_related(more)[:limit - len(related)])
         
         return related
         
