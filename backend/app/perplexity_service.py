@@ -431,7 +431,10 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                     logger.info(f"Generated {len(content)} chars of content for: {title[:40]}...")
                     return content
 
-                logger.warning(f"Content below target ({len(content)} chars) for: {title[:40]}... Retrying with stronger long-form prompt.")
+                logger.warning(
+                    f"Content below target ({len(content)} chars) for: {title[:40]}... "
+                    f"Preview: {content[:500]!r}. Retrying with stronger long-form prompt."
+                )
 
                 retry_payload = {
                     "model": "sonar",
@@ -483,7 +486,14 @@ Use only verified details in the finished article. Do not guess. Do not invent. 
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
                         return retry_content
 
-                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Sending to manual review.")
+                try:
+                    retry_preview = retry_content[:500] if 'retry_content' in locals() else ''
+                except Exception:
+                    retry_preview = ''
+                logger.warning(
+                    f"Retry still below acceptable quality for: {title[:40]}... "
+                    f"Retry preview: {retry_preview!r}. Sending to manual review."
+                )
                 return "MANUAL_REVIEW_REQUIRED: Perplexity rewrite was below the quality floor after retry."
                     
         except httpx.TimeoutException:
