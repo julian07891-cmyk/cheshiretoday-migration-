@@ -10045,9 +10045,41 @@ async def get_digest_log(limit: int = 50, auth: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/admin/email-config/status")
+async def get_email_config_status(auth: bool = Depends(get_admin_auth)):
+    """Safe email configuration diagnostics. Does not expose secrets."""
+    try:
+        return {
+            "success": True,
+            "smtp": {
+                "enabled": bool(getattr(email_service, "smtp_enabled", False)),
+                "host_set": bool(getattr(email_service, "smtp_host", None)),
+                "user_set": bool(getattr(email_service, "smtp_user", None)),
+                "password_set": bool(getattr(email_service, "smtp_password", None)),
+                "from_email_set": bool(getattr(email_service, "from_email", None)),
+                "from_name": getattr(email_service, "from_name", None),
+            },
+            "resend": {
+                "enabled": bool(getattr(email_service, "resend_enabled", False)),
+                "api_key_set": bool(getattr(email_service, "resend_api_key", None)),
+                "from_email_set": bool(getattr(email_service, "resend_from_email", None)),
+                "from_name": getattr(email_service, "resend_from_name", None),
+                "reply_to_set": bool(getattr(email_service, "reply_to", None)),
+            },
+            "links": {
+                "base_url": getattr(email_service, "base_url", None),
+                "api_url": getattr(email_service, "api_url", None),
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error checking email config status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # =====================================================================================
 # EMAIL ANALYTICS TRACKING
 # =====================================================================================
+
 
 @api_router.get("/email/track/open/{tracking_id}")
 async def track_email_open(tracking_id: str, request: Request):
