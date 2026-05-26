@@ -3867,7 +3867,7 @@ async def get_articles(
 
                 # Keep the first N items fixed to preserve Cheshire-first lead ordering.
                 # Only re-rank the remainder of the head slice.
-                keep_prefix = int(os.getenv("BOOST_KEEP_PREFIX", "1") or "1")
+                keep_prefix = int(os.getenv("BOOST_KEEP_PREFIX", "0") or "0")
                 keep_prefix = max(0, min(keep_prefix, len(head)))
 
                 fixed = head[:keep_prefix]
