@@ -11078,6 +11078,18 @@ async def generate_sitemap():
             r"\banniversary celebrations\b",
             r"\bfirst minister vote\b",
             r"\|\s*letter\b",
+            r"\bletters\b",
+            r"\breview\b",
+            r"\bsearch history\b",
+            r"\bwhat we ask google\b",
+            r"\bspoil heaps\b",
+            r"\blead mining\b",
+            r"\bbanks of pansies\b",
+            r"\bnature itself\b",
+            r"\bhantavirus\b",
+            r"\bgroup project\b",
+            r"\bpodcaster\b",
+            r"\bdaughter a millionaire\b",
         ]
 
         cheshire_terms = [
@@ -11375,6 +11387,18 @@ async def generate_news_sitemap():
             r"\banniversary celebrations\b",
             r"\bfirst minister vote\b",
             r"\|\s*letter\b",
+            r"\bletters\b",
+            r"\breview\b",
+            r"\bsearch history\b",
+            r"\bwhat we ask google\b",
+            r"\bspoil heaps\b",
+            r"\blead mining\b",
+            r"\bbanks of pansies\b",
+            r"\bnature itself\b",
+            r"\bhantavirus\b",
+            r"\bgroup project\b",
+            r"\bpodcaster\b",
+            r"\bdaughter a millionaire\b",
         ]
 
         cheshire_terms = [
