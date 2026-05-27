@@ -932,16 +932,10 @@ const isMoney = (a) => {
 
 
 
-// 5) Latest feed (12) — balanced mix for Cheshire Today strategy (dedupe-safe)
-    // Target: 4 Local, 4 Business/Finance, 3 AI/Tech, 1 UK (newest-first within each bucket)
+// 5) Latest feed (12) — true newest-first for reader trust
+    // Keep the wider homepage strategy untouched. Latest alone uses the full eligible basePool.
     const latestCards = [];
     const latestSeen = new Set();
-
-    const isUkishLatest = (a) => {
-      const cat = String(a?.category || "").toLowerCase();
-      const scope = String(a?.scope || "").toLowerCase();
-      return cat.includes("uk") || scope === "uk";
-    };
 
     const pushLatest = (a, overrideCategory = null) => {
       if (latestCards.length >= 12) return;
@@ -957,41 +951,11 @@ const isMoney = (a) => {
       );
     };
 
-    // Pass 1: Business/Finance (4) — lead Latest with high-intent money/business value first
-    const latestBusinessCandidates = poolAll
-      .filter((a) => !isAiTech(a) && (isBusiness(a) || isMoney(a)))
-      .sort((a, b) => rankScore(b) - rankScore(a));
+    const latestNewestFirst = [...basePool].sort(
+      (a, b) => safeDateMs(b?.publishedDate || b?.created_at || b?.date) - safeDateMs(a?.publishedDate || a?.created_at || a?.date)
+    );
 
-    for (const a of latestBusinessCandidates) {
-      if (latestCards.length >= 4) break;
-      pushLatest(a, "Business");
-    }
-
-    // Pass 2: Local (4) — still included, but no longer dominates the first row
-    for (const a of poolAll) {
-      if (latestCards.length >= 8) break;
-      if (!isLocal(a)) continue;
-      if (isAiTech(a)) continue;
-      pushLatest(a, "Local News");
-    }
-
-    // Pass 3: AI/Tech (3)
-    for (const a of poolAll) {
-      if (latestCards.length >= 11) break;
-      if (!isAiTech(a)) continue;
-      pushLatest(a, "AI & Tech");
-    }
-
-    // Pass 4: UK (1)
-    for (const a of poolAll) {
-      if (latestCards.length >= 12) break;
-      if (!isUkishLatest(a)) continue;
-      if (isLocal(a)) continue;
-      pushLatest(a, "UK News");
-    }
-
-    // Safety fill
-    for (const a of poolAll) {
+    for (const a of latestNewestFirst) {
       if (latestCards.length >= 12) break;
       pushLatest(a);
     }
