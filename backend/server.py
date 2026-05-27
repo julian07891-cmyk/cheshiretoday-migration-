@@ -2167,14 +2167,6 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     "uk_imported"
                 )
             
-            # Import Business articles (FREE from RSS)
-            business_imported = await import_category_articles(business_articles, "Business", request.business_articles, "business_imported")
-            
-            # Import Tech articles (FREE from RSS)
-            tech_imported = await import_category_articles(tech_articles, "Tech", request.tech_articles, "tech_imported")
-            
-            # Sports import removed per editorial policy
-            sports_imported = 0
         
         # ==========================================
         # STEP 2: Check LOCAL Cheshire newspaper feeds (FREE + Full Content via Perplexity)
@@ -2315,6 +2307,20 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             imported_articles.append(article)
             cheshire_from_rss += 1
             logger.info(f"✅ Imported local Cheshire article: {title[:50]}...")
+        
+        # ==========================================
+        # STEP 2B: Import Business and Tech articles after Local RSS
+        # This preserves Perplexity budget priority for useful Cheshire local stories.
+        # ==========================================
+        if request.uk_articles > 0:
+            # Import Business articles (FREE from RSS)
+            business_imported = await import_category_articles(business_articles, "Business", request.business_articles, "business_imported")
+            
+            # Import Tech articles (FREE from RSS)
+            tech_imported = await import_category_articles(tech_articles, "Tech", request.tech_articles, "tech_imported")
+            
+            # Sports import removed per editorial policy
+            sports_imported = 0
         
         # ==========================================
         # STEP 3: Import Cheshire news via Perplexity (ONLY if local feeds don't have enough)
