@@ -5668,8 +5668,9 @@ async def run_openai_article_review(article: dict) -> dict:
     system_prompt = """You are an editorial safety and quality reviewer for Cheshire Today.
 
 Cheshire Today strategy:
-- Local Cheshire public-interest stories
-- Business, finance, money, property, tax and AI/technology authority
+- Hybrid local + business/finance + AI/technology authority publication
+- Local News should focus on Cheshire public-interest stories with a clear local place or organisation
+- Business, Finance, Tech and AI stories may be UK-wide or international if they have practical relevance for Cheshire readers, small businesses, workers, households, investors, technology users or the wider economy
 - Clean reader experience
 - Avoid crime-heavy filler, live traffic filler, weak lifestyle filler, generic national filler, exaggerated headlines and unsupported claims
 
@@ -5693,8 +5694,10 @@ Return valid JSON only with this exact shape:
   "editor_notes": "short practical note for the admin editor"
 }
 
-Be strict. If the story is mainly crime, court, theft, CCTV appeal, live traffic, crash, breakdown, celebrity, weak shopping/gift guide, thin filler, or not useful for Cheshire Today readers, recommend manual_review or archive.
+Be strict, but do not reject strong Business, Finance, Tech or AI stories only because they are not Cheshire-local.
 For Local News, require a clear Cheshire town, village, road, venue, school, council area, named site or local organisation.
+For Business, Finance, Tech and AI, judge practical relevance and factual risk rather than local place. Use manual_review for high-stakes or sensitive national/international claims that may need checking, and use archive only for weak, sensational, irrelevant or strategy-poor stories.
+If the story is mainly crime, court, theft, CCTV appeal, live traffic, crash, breakdown, celebrity, weak shopping/gift guide, thin filler, or genuinely not useful for the hybrid strategy, recommend manual_review or archive.
 """
 
     user_prompt = "Review this article for Cheshire Today admin:\n" + json.dumps(review_payload, ensure_ascii=False)
