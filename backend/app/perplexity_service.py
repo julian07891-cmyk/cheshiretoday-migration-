@@ -280,8 +280,11 @@ CRITICAL ACCURACY RULES:
 7. Attribute claims carefully, using wording such as "according to the source report" or "the business said" only where supported.
 8. Use British English and short paragraphs for mobile reading.
 9. Add local context only when it is directly relevant and does not introduce unsupported claims.
-10. Plain text only: no markdown, no asterisks, no headings, no bullet points.
-11. Do not include word counts, character counts, citations list, or meta information at the end.
+10. Write like a human UK local/business editor, not an AI explainer. Lead with the concrete fact first.
+11. Avoid generic explainer phrases such as "this matters because", "fresh attention", "a notable step", "underlines", "on the face of it", "the episode is a striking example", and "continues to shape".
+12. Do not repeat the same point in consecutive paragraphs. Vary sentence openings and keep the tone calm, direct and natural.
+13. Plain text only: no markdown, no asterisks, no headings, no bullet points.
+14. Do not include word counts, character counts, citations list, or meta information at the end.
 
 NEVER fabricate details to make the article longer.
 NEVER include a claim unless it is supported by the source URL, the supplied summary, or reputable corroborating sources."""
@@ -379,11 +382,11 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a senior news writer for Cheshire Today. Write a strong, detailed, publication-quality article in British English using plain text only. Produce flowing paragraphs with context, implications, and useful detail. Aim for 700-900 words and at least 2000 characters. Minimum acceptable output is 1500 characters. Do not refuse, do not explain limitations, do not include headings, bullet points, markdown, or meta commentary."
+                            "content": "You are a senior UK local and business news writer for Cheshire Today. Write a clear, natural, publication-quality article in British English using plain text only. Lead with the concrete fact, use short paragraphs, avoid generic AI-explainer phrases, avoid repetition, and keep the tone calm, human and practical. Aim for 700-900 words and at least 2000 characters, but never pad with unsupported context. Minimum acceptable output is 1500 characters. Do not refuse, do not explain limitations, do not include headings, bullet points, markdown, or meta commentary."
                         },
                         {
                             "role": "user",
-                            "content": f"Write a detailed Cheshire Today article based on this story. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference when available. Enrich the story with relevant context and explain why it matters. Return plain text paragraphs only."
+                            "content": f"Write a detailed Cheshire Today article based on this story. Headline: {title}\nSummary: {summary}\nSource: {source}\nSource URL: {source_url}\nUse the source URL as the primary reference when available. Add only relevant, supported context. Avoid generic AI-style phrases including this matters because, a notable step, fresh attention, underlines and on the face of it. Return plain text paragraphs only."
                         }
                     ],
                     "max_tokens": 2400,
