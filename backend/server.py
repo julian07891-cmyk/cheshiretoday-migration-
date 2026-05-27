@@ -2197,6 +2197,10 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         
         logger.info(f"Found {len(cheshire_with_images)} local articles with images")
         
+        # Per-run local diversity caps so Local News does not become dominated
+        # by one topic type such as planning/housing applications.
+        local_topic_counts = {}
+        
         for article in cheshire_with_images:
             if cheshire_from_rss >= request.cheshire_articles:
                 break
@@ -2239,6 +2243,35 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # health, energy, infrastructure and other public/economic impact stories.
             if not is_useful_local_article(article):
                 logger.info(f"Skipping low-impact local RSS article before Perplexity: {title[:60]}...")
+                continue
+
+            local_text = " ".join([
+                str(article.get("title") or ""),
+                str(article.get("summary") or ""),
+                str(article.get("content") or ""),
+            ]).lower()
+
+            local_topic = "other"
+            if re.search(r"\b(planning|application|approved|refused|development|homes?|housing|green\s+belt|brownfield|affordable\s+homes?)\b", local_text, re.I):
+                local_topic = "planning_housing"
+            elif re.search(r"\b(school|academy|college|ofsted|education|pupils?|students?)\b", local_text, re.I):
+                local_topic = "education"
+            elif re.search(r"\b(nhs|hospital|gp|health|care\s+home|social\s+care)\b", local_text, re.I):
+                local_topic = "health_care"
+            elif re.search(r"\b(business|jobs?|employer|investment|funding|grant|factory|warehouse|retail|startup|expansion|relocat(?:e|es|ed|ion))\b", local_text, re.I):
+                local_topic = "local_business_economy"
+            elif re.search(r"\b(council|councillors?|committee|consultation|public\s+meeting|local\s+plan|regeneration|town\s+centre|high\s+street)\b", local_text, re.I):
+                local_topic = "council_public_services"
+
+            local_topic_caps = {
+                "planning_housing": 1,
+                "education": 1,
+                "health_care": 1,
+            }
+
+            local_topic_cap = local_topic_caps.get(local_topic)
+            if local_topic_cap is not None and local_topic_counts.get(local_topic, 0) >= local_topic_cap:
+                logger.info(f"Skipping local RSS article due to per-run topic cap ({local_topic}): {title[:60]}...")
                 continue
 
             if rss_image in used_image_urls:
@@ -2304,6 +2337,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             if source_url:
                 existing_source_urls.add(source_url)
             used_image_urls.add(rss_image)
+            local_topic_counts[local_topic] = local_topic_counts.get(local_topic, 0) + 1
             imported_articles.append(article)
             cheshire_from_rss += 1
             logger.info(f"✅ Imported local Cheshire article: {title[:50]}...")
