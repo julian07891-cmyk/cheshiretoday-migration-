@@ -1976,6 +1976,31 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             )
             return bool(useful_property_kw.search(text))
 
+        def is_useful_local_article(article: dict) -> bool:
+            """Positive gate before spending Perplexity budget on local RSS articles."""
+            title = (article.get("title") or "").lower()
+            summary = (article.get("summary") or "").lower()
+            content = (article.get("content") or "").lower()
+            text = " ".join([title, summary, content])
+
+            if is_low_utility_article(article) or is_crime_like(article) or is_obituary_like(article):
+                return False
+
+            useful_local_kw = re.compile(
+                r"\b("
+                r"planning|application|approved|refused|development|homes?|housing|green\s+belt|brownfield|affordable\s+homes?|"
+                r"council|councillors?|committee|consultation|public\s+meeting|local\s+plan|regeneration|town\s+centre|high\s+street|"
+                r"business|jobs?|employer|investment|funding|grant|factory|warehouse|retail|startup|expansion|relocat(?:e|es|ed|ion)|"
+                r"school|academy|college|ofsted|education|pupils?|students?|"
+                r"nhs|hospital|gp|health|care\s+home|social\s+care|"
+                r"energy|bills?|water|transport|rail|bus|roadworks?|infrastructure|"
+                r"tax|rent|mortgage|landlord|tenant|cost\s+of\s+living|economy|economic|"
+                r"charity|community\s+fund|inequality|public\s+interest"
+                r")\b",
+                re.I,
+            )
+            return bool(useful_local_kw.search(text))
+
         if request.uk_articles > 0:
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
             
@@ -2216,6 +2241,14 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             if is_crime_like(article):
                 logger.info(f"Skipping crime-like local RSS article: {title[:40]}...")
                 continue
+
+            # Positive usefulness gate before spending Perplexity budget.
+            # This keeps budget focused on planning, housing, council, business, schools,
+            # health, energy, infrastructure and other public/economic impact stories.
+            if not is_useful_local_article(article):
+                logger.info(f"Skipping low-impact local RSS article before Perplexity: {title[:60]}...")
+                continue
+
             if rss_image in used_image_urls:
                 continue
             
