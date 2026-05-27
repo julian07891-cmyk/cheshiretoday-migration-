@@ -9687,7 +9687,7 @@ async def send_digest_now():
                 seen_emails.add(email)
                 unique_emails.append(s.get('email'))  # Keep original case
         
-        daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "2000"))
+        daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "1000"))
         subscriber_emails = unique_emails[:daily_send_cap]
         logger.info(f"DIGEST: Using Resend Pro Daily Brief cap of {len(subscriber_emails)} subscriber emails from {len(unique_emails)} active subscribers")
         
@@ -14103,7 +14103,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         if invalid_emails:
             logger.warning(f"Skipping {len(invalid_emails)} invalid emails: {invalid_emails[:5]}...")
         
-        daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "2000"))
+        daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "1000"))
         subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
             "DailyBrief",
             unique_emails,
@@ -14541,7 +14541,7 @@ async def send_weekly_roundup_email():
                 seen_emails.add(email)
                 unique_emails.append(s.get('email'))
 
-        weekly_send_cap = int(os.environ.get("WEEKLY_ROUNDUP_SEND_CAP", os.environ.get("DAILY_BRIEF_SEND_CAP", "2000")))
+        weekly_send_cap = int(os.environ.get("WEEKLY_ROUNDUP_SEND_CAP", os.environ.get("DAILY_BRIEF_SEND_CAP", "1000")))
         subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
             "WeeklyRoundup",
             unique_emails,
