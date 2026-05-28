@@ -11847,27 +11847,11 @@ async def serve_article_html(article_id: str, request=None):
     import urllib.parse
     import html as _html
 
-    article = None
+    # Use the shared lookup helper so crawler/social HTML can serve both
+    # active articles and archived/duplicate-preserved articles.
+    article = await _find_article_by_any_id(article_id)
 
-    # 1) Try Mongo ObjectId if it looks like 24-hex
-    try:
-        if isinstance(article_id, str) and re.fullmatch(r"[0-9a-fA-F]{24}", article_id):
-            try:
-                from bson import ObjectId
-                article = await db.articles.find_one({"_id": ObjectId(article_id)})
-            except Exception:
-                article = None
-    except Exception:
-        article = None
-
-    # 2) Fallback: try our public UUID field
-    if not article:
-        try:
-            article = await db.articles.find_one({"id": article_id})
-        except Exception:
-            article = None
-
-    # 3) If still missing, return 404 (never 500)
+    # If still missing, return 404 (never 500)
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
