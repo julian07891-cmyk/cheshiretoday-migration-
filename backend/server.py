@@ -2001,6 +2001,66 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             )
             return bool(useful_local_kw.search(text))
 
+        def is_useful_category_article(article: dict, target_category: str) -> bool:
+            """Positive category gate for UK RSS imports before publish."""
+            title = (article.get("title") or "").lower()
+            summary = (article.get("summary") or "").lower()
+            content = (article.get("content") or "").lower()
+            source = (article.get("source") or "").lower()
+            text = " ".join([title, summary, content, source])
+            category = (target_category or article.get("category") or "").lower()
+
+            # Hard block off-strategy review/shopping/science/lifestyle leakage.
+            blocked_kw = re.compile(
+                r"\b("
+                r"product\s+review|gadget\s+review|display\s+review|tried\s+and\s+tested|best\s+fans?|keep\s+you\s+cool|hot\s+tubs?|air\s+conditioning\s+units?|"
+                r"studio\s+display|apple'?s\s+pro\s+display|"
+                r"water\s+safety|outdoor\s+swimming|spoil\s+heaps?|lead\s+mining|banks\s+of\s+pansies|pennycress|"
+                r"nature\s+itself|climate\s+change|hantavirus|"
+                r"tipping\s+culture|forever\s+chemicals|firefighting\s+foam"
+                r")\b",
+                re.I,
+            )
+            if blocked_kw.search(text):
+                return False
+
+            if category == "finance":
+                useful_finance_kw = re.compile(
+                    r"\b("
+                    r"mortgage|remortgage|interest\s+rates?|savings?|isa|pension|retirement|student\s+loans?|"
+                    r"tax|hmrc|vat|stamp\s+duty|council\s+tax|energy\s+bills?|price\s+cap|"
+                    r"inflation|cost\s+of\s+living|household\s+bills?|rent|insurance|wages?|pay"
+                    r")\b",
+                    re.I,
+                )
+                return bool(useful_finance_kw.search(text))
+
+            if category == "tech":
+                useful_tech_kw = re.compile(
+                    r"\b("
+                    r"ai|artificial\s+intelligence|chatgpt|openai|anthropic|gemini|deepmind|automation|"
+                    r"cyber|security|malware|data\s+breach|privacy|software|cloud|servers?|database|"
+                    r"aws|microsoft|google|nvidia|semiconductor|chips?|startup|enterprise|developers?|coding|"
+                    r"costs?|jobs?|workers?|business|productivity"
+                    r")\b",
+                    re.I,
+                )
+                return bool(useful_tech_kw.search(text))
+
+            if category == "business":
+                useful_business_kw = re.compile(
+                    r"\b("
+                    r"uk|britain|cheshire|business|company|companies|jobs?|workers?|training|apprentice|"
+                    r"investment|factory|manufacturing|retail|supply\s+chain|exports?|imports?|"
+                    r"market|growth|inflation|costs?|prices?|energy|wages?|redundanc|startup|funding|"
+                    r"carmakers?|automotive|china"
+                    r")\b",
+                    re.I,
+                )
+                return bool(useful_business_kw.search(text))
+
+            return True
+
         if request.uk_articles > 0:
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
             
@@ -2059,6 +2119,13 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Keep original Property articles tightly aligned to housing/planning/public-impact utility,
                     # even when they are being folded into Finance.
                     if article.get('category') == "Property" and not is_useful_property_article(article):
+                        continue
+
+                    # Positive category gate for UK RSS buckets.
+                    # Prevents weak category leakage such as product reviews in Finance,
+                    # science/nature filler in Tech, and broad overseas soft-business stories.
+                    if not is_useful_category_article(article, category_name):
+                        logger.info(f"Skipping weak {category_name} RSS article by category gate: {title[:60]}...")
                         continue
 
                     # Hard block crime / police / court / mugshot-style content from going live.
