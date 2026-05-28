@@ -210,7 +210,7 @@ const RSSPanel = ({ onArticlesImported }) => {
               <div>
                 <p className="text-sm font-medium text-blue-900">Automatic Content Generation</p>
                 <p className="text-xs text-blue-700 mt-1">
-                  Fresh articles imported daily. The Daily Brief email sent at 7:30 AM
+                  Fresh articles imported daily. The Daily Brief is sent on newsletter mornings
                 </p>
               </div>
             </div>

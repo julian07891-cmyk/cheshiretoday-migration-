@@ -114,7 +114,7 @@ const NewsletterPopup = () => {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
                 <p className="text-sm text-gray-600">
-                  The Daily Brief — Top Cheshire stories at 7:30 AM
+                  The Daily Brief — Top Cheshire stories on newsletter mornings
                 </p>
                 <div className="flex gap-2">
                   <Input

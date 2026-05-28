@@ -121,7 +121,7 @@ export const SubscribeInlineBanner = () => {
                   The Daily Brief
                 </h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Top Cheshire stories at 7:30 AM every morning
+                  Top Cheshire stories on newsletter mornings
                 </p>
               </div>
 

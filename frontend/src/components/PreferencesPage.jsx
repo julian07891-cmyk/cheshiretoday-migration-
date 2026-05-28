@@ -15,7 +15,7 @@ const SUBSCRIPTION_TYPES = [
     id: 'daily_brief', 
     name: 'The Daily Brief', 
     description: 'Top Cheshire stories every morning',
-    time: '7:30 AM daily',
+    time: 'Newsletter mornings',
     icon: Sun,
     color: 'emerald'
   },
@@ -23,7 +23,7 @@ const SUBSCRIPTION_TYPES = [
     id: 'weekly_roundup', 
     name: 'The Weekly Roundup', 
     description: 'Curated digest of the week\'s best content',
-    time: 'Sunday 9:00 AM',
+    time: 'Sunday morning',
     icon: Calendar,
     color: 'purple'
   },

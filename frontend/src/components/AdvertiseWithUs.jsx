@@ -25,7 +25,7 @@ const AdvertiseWithUs = () => {
           <div className="bg-white p-6 rounded-lg shadow-md text-center">
             <TrendingUp className="w-12 h-12 text-green-600 mx-auto mb-3" />
             <h3 className="text-3xl font-bold text-gray-900">Daily</h3>
-            <p className="text-gray-600">Morning Brief at 7:30 AM</p>
+            <p className="text-gray-600">Morning Brief newsletter</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-md text-center">
             <Award className="w-12 h-12 text-green-600 mx-auto mb-3" />

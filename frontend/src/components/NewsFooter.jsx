@@ -81,7 +81,7 @@ const NewsFooter = () => {
               The Daily Brief
             </h3>
             <p className="text-neutral-600 dark:text-slate-300 mb-4 text-base">
-              Top Cheshire stories delivered to your inbox every morning at 7:30 AM
+              Top Cheshire stories delivered to your inbox on newsletter mornings
             </p>
             
             {!subscribed ? (

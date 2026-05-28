@@ -4752,6 +4752,8 @@ async def subscribe_newsletter(request: SubscribeRequest):
             "site_update_part2_sent_at": None,
             "active": True,
             "preferences": request.preferences if request.preferences else default_preferences,
+            "signup_source": "website",
+            "subscriber_origin": "organic_website",
             # New tiered email preferences - daily_brief enabled by default
             "daily_brief": True,
             "weekly_roundup": False,
@@ -4772,7 +4774,7 @@ async def subscribe_newsletter(request: SubscribeRequest):
         
         return SubscribeResponse(
             success=True,
-            message="Thank you for subscribing! You'll receive The Daily Brief every morning at 7:30 AM."
+            message="Thank you for subscribing! You'll receive The Daily Brief on newsletter mornings."
         )
         
     except Exception as e:
@@ -4922,7 +4924,7 @@ async def get_available_categories():
             {
                 "id": "daily_brief",
                 "name": "The Daily Brief",
-                "description": "Top Cheshire stories every morning at 7:30 AM",
+                "description": "Top Cheshire stories on newsletter mornings",
                 "frequency": "Daily",
                 "default": True
             },
@@ -4930,7 +4932,7 @@ async def get_available_categories():
                 "id": "weekly_roundup",
                 "name": "The Weekly Roundup",
                 "description": "Curated digest of the week's best content",
-                "frequency": "Every Sunday at 9:00 AM",
+                "frequency": "Every Sunday morning",
                 "default": False
             },
             {
@@ -13986,7 +13988,7 @@ async def _save_email_batch_cursor(digest_key: str, next_index: int, start_index
 async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
     """
     Send The Daily Brief to all subscribers with daily_brief preference.
-    Called by scheduler at 07:30 AM daily.
+    Called by scheduler for the Daily Brief newsletter.
     
     CRITICAL: Uses MongoDB unique index for atomic duplicate prevention.
     Only ONE server instance will successfully send the digest.
@@ -14101,17 +14103,24 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                     {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]}
                 ]
             },
-            {"_id": 0, "email": 1}
+            {
+                "_id": 0,
+                "email": 1,
+                "priority_daily_brief": 1,
+                "signup_source": 1,
+                "subscriber_origin": 1
+            }
         ).to_list(15000)
         if not subscribers:
             logger.info("No subscribers found with daily_brief preference - skipping")
             return
         
-        # Deduplicate emails (case-insensitive) and validate
+        # Deduplicate emails (case-insensitive), validate, and prioritise genuine website subscribers.
         import re
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         seen_emails = set()
-        unique_emails = []
+        priority_emails = []
+        rotating_emails = []
         invalid_emails = []
         
         for s in subscribers:
@@ -14120,7 +14129,16 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 # Validate email format
                 if is_deliverable_newsletter_email(email):
                     seen_emails.add(email)
-                    unique_emails.append(s.get('email'))  # Keep original case
+                    original_email = s.get('email')  # Keep original case
+                    is_priority = (
+                        s.get("priority_daily_brief") is True
+                        or s.get("signup_source") == "website"
+                        or s.get("subscriber_origin") == "organic_website"
+                    )
+                    if is_priority:
+                        priority_emails.append(original_email)
+                    else:
+                        rotating_emails.append(original_email)
                 else:
                     invalid_emails.append(email)
         
@@ -14128,12 +14146,24 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             logger.warning(f"Skipping {len(invalid_emails)} invalid emails: {invalid_emails[:5]}...")
         
         daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "1000"))
-        subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
+        priority_emails = sorted(priority_emails, key=lambda value: str(value).lower())
+        remaining_cap = max(0, daily_send_cap - len(priority_emails))
+
+        rotating_batch, batch_start, batch_next, rotating_total = await _select_rotating_email_batch(
             "DailyBrief",
-            unique_emails,
-            daily_send_cap
+            rotating_emails,
+            remaining_cap
         )
-        logger.info(f"Found {len(subscriber_emails)} rotating Daily Brief subscribers from {total_eligible} eligible unique subscribers (start={batch_start}, next={batch_next})")
+
+        subscriber_emails = (priority_emails + rotating_batch)[:daily_send_cap]
+        total_eligible = len(priority_emails) + rotating_total
+
+        logger.info(
+            f"Found {len(subscriber_emails)} Daily Brief subscribers "
+            f"({len(priority_emails)} priority organic + {len(rotating_batch)} rotating imported) "
+            f"from {total_eligible} eligible unique subscribers "
+            f"(rotating_start={batch_start}, rotating_next={batch_next})"
+        )
 
         # Persist planned cursor details before sending so an interrupted Render restart
         # can be repaired without guessing which subscriber batch was being processed.
@@ -14481,28 +14511,31 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             pass
 
 
-async def send_weekly_roundup_email():
+async def send_weekly_roundup_email(batch_slot: int = 1):
     """
     Send The Weekly Roundup to all subscribers with weekly_roundup preference.
-    Called by scheduler every Sunday at 09:00 AM.
+    Called by scheduler in safe Sunday morning batches.
     """
     from datetime import timedelta
     
     try:
         now = datetime.now(timezone.utc)
+        date_key = now.strftime('%Y%m%d')
+        roundup_batch_slot = max(1, int(batch_slot or 1))
         
-        # DISTRIBUTED LOCK - Same pattern as daily brief
-        lock_key = f"weekly_roundup_{now.strftime('%Y%m%d')}"
+        # DISTRIBUTED LOCK - Same pattern as daily brief, but per Sunday batch slot.
+        lock_key = f"weekly_roundup_{date_key}_batch_{roundup_batch_slot}"
         lock_id = str(uuid4())
         
-        # Check if already sent
+        # Check if this specific Sunday batch slot was already sent.
         recent_digest = await db.digest_log.find_one({
-            "sent_at": {"$gte": now - timedelta(hours=12)},
-            "digest_time": "WeeklyRoundup"
+            "date_key": date_key,
+            "digest_time": "WeeklyRoundup",
+            "weekly_roundup_batch_slot": roundup_batch_slot
         })
         
         if recent_digest:
-            logger.info(f"⏭️ Weekly Roundup already sent at {recent_digest.get('sent_at')}, skipping...")
+            logger.info(f"⏭️ Weekly Roundup batch {roundup_batch_slot} already sent at {recent_digest.get('sent_at')}, skipping...")
             return
         
         # Acquire lock
@@ -14546,7 +14579,13 @@ async def send_weekly_roundup_email():
                     ]}
                 ]
             },
-            {"_id": 0, "email": 1}
+            {
+                "_id": 0,
+                "email": 1,
+                "priority_daily_brief": 1,
+                "signup_source": 1,
+                "subscriber_origin": 1
+            }
         ).to_list(15000)
         
         if not subscribers:
@@ -14557,21 +14596,87 @@ async def send_weekly_roundup_email():
         import re
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         seen_emails = set()
-        unique_emails = []
+        priority_emails = []
+        rotating_emails = []
 
         for s in subscribers:
             email = (s.get('email') or '').lower().strip()
             if email and email not in seen_emails and is_deliverable_newsletter_email(email):
                 seen_emails.add(email)
-                unique_emails.append(s.get('email'))
+                original_email = s.get('email')
+                is_priority = (
+                    s.get("priority_daily_brief") is True
+                    or s.get("signup_source") == "website"
+                    or s.get("subscriber_origin") == "organic_website"
+                )
+                if is_priority:
+                    priority_emails.append(original_email)
+                else:
+                    rotating_emails.append(original_email)
 
         weekly_send_cap = int(os.environ.get("WEEKLY_ROUNDUP_SEND_CAP", os.environ.get("DAILY_BRIEF_SEND_CAP", "1000")))
-        subscriber_emails, batch_start, batch_next, total_eligible = await _select_rotating_email_batch(
-            "WeeklyRoundup",
-            unique_emails,
-            weekly_send_cap
+        priority_emails = sorted(priority_emails, key=lambda value: str(value).lower())
+        remaining_cap = max(0, weekly_send_cap - len(priority_emails))
+
+        # Weekly Roundup should go to organic subscribers plus recently engaged readers only.
+        # Engagement is based on per-recipient tracking hash from Daily Brief / Weekly Roundup opens or clicks.
+        import hashlib
+        engagement_cutoff = datetime.now(timezone.utc) - timedelta(days=60)
+        analytics_rows = await db.email_analytics.find(
+            {"$or": [
+                {"last_opened": {"$gte": engagement_cutoff}},
+                {"last_clicked": {"$gte": engagement_cutoff}}
+            ]},
+            {"_id": 0, "tracking_id": 1, "opens": 1, "clicks": 1}
+        ).to_list(50000)
+
+        engaged_hashes = set()
+        for row in analytics_rows:
+            tracking_value = str(row.get("tracking_id") or "")
+            suffix = tracking_value.rsplit("_", 1)[-1]
+            if len(suffix) == 8 and ((row.get("opens") or 0) > 0 or (row.get("clicks") or 0) > 0):
+                engaged_hashes.add(suffix)
+
+        engaged_rotating_emails = []
+        for email_value in rotating_emails:
+            email_norm = str(email_value or "").lower().strip()
+            email_hash = hashlib.sha256(email_norm.encode()).hexdigest()[:8]
+            if email_hash in engaged_hashes:
+                engaged_rotating_emails.append(email_value)
+
+        # Multi-batch Sunday delivery: send engaged readers once per Sunday without wraparound.
+        # Batch 1 includes organic subscribers; later batches continue the engaged list only.
+        engaged_rotating_emails = sorted(engaged_rotating_emails, key=lambda value: str(value).lower())
+
+        priority_for_this_batch = priority_emails if roundup_batch_slot == 1 else []
+        priority_slots_used = len(priority_emails) if roundup_batch_slot > 1 else 0
+
+        engaged_start = max(0, ((roundup_batch_slot - 1) * weekly_send_cap) - priority_slots_used)
+        engaged_cap = max(0, weekly_send_cap - len(priority_for_this_batch))
+        engaged_end = min(len(engaged_rotating_emails), engaged_start + engaged_cap)
+
+        rotating_batch = engaged_rotating_emails[engaged_start:engaged_end]
+        batch_start = engaged_start
+        batch_next = engaged_end
+        rotating_total = len(engaged_rotating_emails)
+
+        subscriber_emails = (priority_for_this_batch + rotating_batch)[:weekly_send_cap]
+        total_eligible = len(priority_emails) + rotating_total
+
+        if not subscriber_emails:
+            logger.info(
+                f"⏭️ Weekly Roundup batch {roundup_batch_slot} has no remaining priority/engaged recipients "
+                f"(engaged_pool={rotating_total}, engaged_start={engaged_start})"
+            )
+            await db.scheduler_locks.delete_one({"job": lock_key})
+            return
+
+        logger.info(
+            f"Found {len(subscriber_emails)} Weekly Roundup subscribers for batch {roundup_batch_slot} "
+            f"({len(priority_for_this_batch)} priority organic + {len(rotating_batch)} engaged) "
+            f"from {total_eligible} priority/engaged eligible subscribers "
+            f"(engaged_pool={len(engaged_rotating_emails)}, engaged_start={batch_start}, engaged_next={batch_next})"
         )
-        logger.info(f"Found {len(subscriber_emails)} rotating Weekly Roundup subscribers from {total_eligible} eligible unique subscribers (start={batch_start}, next={batch_next})")
         
         # Get top performing articles from the past week (by view_count)
         one_week_ago = now - timedelta(days=7)
@@ -14654,8 +14759,10 @@ async def send_weekly_roundup_email():
             await db.digest_log.insert_one({
                 "sent_at": datetime.now(timezone.utc),
                 "digest_time": "WeeklyRoundup",
-                "date_key": now.strftime('%Y%m%d'),
+                "date_key": date_key,
                 "type": "WeeklyRoundup",
+                "weekly_roundup_batch_slot": roundup_batch_slot,
+                "weekly_roundup_batch_label": f"batch_{roundup_batch_slot}",
                 "articles_count": 1 + len(icymi_articles),
                 "subscribers_count": len(subscriber_emails),
                 "success_count": success_count,
@@ -15106,7 +15213,7 @@ async def startup_event():
         
         # ============================================
         # EMAIL DIGEST SCHEDULE (Updated January 2026)
-        # New tiered email strategy: Daily Brief (07:30), Weekly Roundup (Sunday 09:00)
+        # New tiered email strategy: Daily Brief plus Sunday morning Weekly Roundup batches
         # Breaking News Alerts are manual only
         # ============================================
         
@@ -15120,21 +15227,25 @@ async def startup_event():
             kwargs={'digest_time': 'DailyBrief'}
         )
         
-        # The Weekly Roundup - Every Sunday at 09:00 AM
-        scheduler.add_job(
-            send_weekly_roundup_email,
-            CronTrigger(day_of_week='sun', hour=9, minute=0, timezone=ZoneInfo("Europe/London")),
-            id='weekly_roundup',
-            name='Send The Weekly Roundup (Sunday 09:00 AM)',
-            replace_existing=True
-        )
+        # The Weekly Roundup - Every Sunday in safe engaged-recipient batches.
+        # Batch 1 includes organic website subscribers, then engaged readers.
+        # Later batches continue the engaged reader list without wraparound.
+        for roundup_hour, roundup_batch_slot in [(9, 1), (10, 2), (11, 3), (12, 4)]:
+            scheduler.add_job(
+                send_weekly_roundup_email,
+                CronTrigger(day_of_week='sun', hour=roundup_hour, minute=0, timezone=ZoneInfo("Europe/London")),
+                id=f'weekly_roundup_batch_{roundup_batch_slot}',
+                name=f'Send The Weekly Roundup batch {roundup_batch_slot} (Sunday {roundup_hour:02d}:00)',
+                replace_existing=True,
+                kwargs={'batch_slot': roundup_batch_slot}
+            )
         
         # OLD SCHEDULE DISABLED - Keeping commented for reference
         # scheduler.add_job(send_scheduled_news_digest, CronTrigger(hour=6, minute=15), id='morning_news_digest', ...)
         # scheduler.add_job(send_scheduled_news_digest, CronTrigger(hour=12, minute=15), id='midday_news_digest', ...)
         # scheduler.add_job(send_scheduled_news_digest, CronTrigger(hour=18, minute=15), id='evening_news_digest', ...)
         
-        logger.info("📬 Email schedule: Daily Brief at 07:30, Weekly Roundup Sunday 09:00")
+        logger.info("📬 Email schedule: Daily Brief at 07:30, Weekly Roundup Sunday batches at 09:00, 10:00, 11:00, 12:00")
         
         # ============================================
         # FACEBOOK AUTO-POSTING JOBS (UK Peak Times)
@@ -15521,7 +15632,7 @@ async def startup_event():
             logger.info("AUTO_GENERATION_ENABLED=true → Scheduler started")
         else:
             logger.info("AUTO_GENERATION_ENABLED is false → Scheduler NOT started")
-        logger.info("Scheduler started. Articles: 6AM, 12PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday 9AM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
+        logger.info("Scheduler started. Articles: 6AM, 12PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday batches 9AM-12PM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
         
     except Exception as e:
         logger.error(f"Error during startup: {str(e)}")

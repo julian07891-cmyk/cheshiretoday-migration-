@@ -3430,7 +3430,7 @@ const handleDeleteArticle = async (articleId) => {
                     <div className="h-10 w-10 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mx-auto mb-2">
                       <Sun className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <p className="font-bold text-blue-700 dark:text-blue-300">7:30 AM</p>
+                    <p className="font-bold text-blue-700 dark:text-blue-300">Morning</p>
                     <p className="text-sm text-blue-600 dark:text-blue-400">The Daily Brief</p>
                     <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">Every morning</p>
                   </div>
@@ -3438,7 +3438,7 @@ const handleDeleteArticle = async (articleId) => {
                     <div className="h-10 w-10 bg-purple-100 dark:bg-purple-800 rounded-full flex items-center justify-center mx-auto mb-2">
                       <CalendarIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     </div>
-                    <p className="font-bold text-purple-700 dark:text-purple-300">9:00 AM</p>
+                    <p className="font-bold text-purple-700 dark:text-purple-300">Sunday morning</p>
                     <p className="text-sm text-purple-600 dark:text-purple-400">Weekly Roundup</p>
                     <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1">Every Sunday</p>
                   </div>
@@ -3596,7 +3596,7 @@ const handleDeleteArticle = async (articleId) => {
                     <strong>Subject:</strong> We&apos;ve made some changes to Cheshire Today 📩
                   </p>
                   <p className="text-sm text-muted-foreground dark:text-gray-400">
-                    This will inform all subscribers about the new Daily Brief (7:30 AM), Weekly Roundup (Sunday), 
+                    This will inform all subscribers about the Daily Brief, Weekly Roundup, 
                     and Breaking News options. All subscribers will be automatically migrated to The Daily Brief.
                   </p>
                 </div>

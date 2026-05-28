@@ -50,7 +50,7 @@ const SubscribeSection = ({ compact = false }) => {
             <div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white">The Daily Brief</h3>
               <p className="text-sm text-slate-600 dark:text-gray-400">
-                Top Cheshire stories at 7:30 AM — including weekend briefings
+                Top Cheshire stories on newsletter mornings — including weekend briefings
               </p>
             </div>
           </div>
@@ -116,7 +116,7 @@ const SubscribeSection = ({ compact = false }) => {
               <Mail className="h-6 w-6 text-white flex-shrink-0" />
               <div className="text-center md:text-left">
                 <h3 className="text-lg font-bold text-white">Never Miss a Story</h3>
-                <p className="text-white/80 text-xs hidden sm:block">The Daily Brief — Top stories at 7:30 AM</p>
+                <p className="text-white/80 text-xs hidden sm:block">The Daily Brief — top stories on newsletter mornings</p>
               </div>
             </div>
             

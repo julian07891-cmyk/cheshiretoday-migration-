@@ -80,7 +80,7 @@ const TrendingSidebar = ({ articles, onArticleClick, onSearch }) => {
       <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-lg shadow-md p-6 text-white">
         <h3 className="text-xl font-bold mb-2">Stay Informed</h3>
         <p className="text-sm text-emerald-100 mb-4">
-          Get The Daily Brief — Top Cheshire stories at 7:30 AM
+          Get The Daily Brief — Top Cheshire stories on newsletter mornings
         </p>
         <button 
           onClick={() => {

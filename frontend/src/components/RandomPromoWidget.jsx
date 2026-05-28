@@ -52,7 +52,7 @@ const SubscribePromo = () => {
           </div>
           <div>
             <h4 className="font-semibold text-white">The Daily Brief</h4>
-            <p className="text-blue-100 text-sm">Top stories at 7:30 AM</p>
+            <p className="text-blue-100 text-sm">Top stories on newsletter mornings</p>
           </div>
         </div>
         <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50 gap-1 pointer-events-none">
