@@ -264,6 +264,7 @@ class GenerateArticlesRequest(BaseModel):
     count: int = 10
     include_uk_news: bool = True
     rewrite_delay_seconds: int = 0
+    public_import_limit: Optional[int] = None
 
 class GenerateArticlesResponse(BaseModel):
     success: bool
@@ -1685,7 +1686,8 @@ async def generate_articles(request: GenerateArticlesRequest):
             cheshire_articles=int(request.count * 0.6),  # 60% Cheshire
             uk_articles=int(request.count * 0.4) if request.include_uk_news else 0,
             use_perplexity=True,
-            rewrite_delay_seconds=max(0, int(0 if getattr(request, "rewrite_delay_seconds", None) is None else getattr(request, "rewrite_delay_seconds")))
+            rewrite_delay_seconds=max(0, int(0 if getattr(request, "rewrite_delay_seconds", None) is None else getattr(request, "rewrite_delay_seconds"))),
+            public_import_limit=getattr(request, "public_import_limit", None)
         )
         
         result = await import_hybrid_news(hybrid_request)
@@ -1857,6 +1859,7 @@ class HybridNewsRequest(BaseModel):
     tech_articles: int = 5       # 5 Tech/AI articles (FREE from RSS)
     use_perplexity: bool = True  # ENABLED - Hybrid model with AI content generation
     rewrite_delay_seconds: int = 0  # No artificial delay before AI rewrite/import
+    public_import_limit: Optional[int] = None  # Optional cap for public articles per import run
 
 
 @api_router.post("/import-hybrid-news")
@@ -1872,6 +1875,39 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         imported_articles = []
         perplexity_cost_estimate = 0
         used_image_urls = set()  # Track ALL image URLs to prevent duplicates
+        public_import_limit = getattr(request, "public_import_limit", None)
+        public_import_limit = int(public_import_limit) if public_import_limit is not None else None
+        public_imported = 0
+        manual_review_imported = 0
+
+        def apply_public_import_cap(article: dict, title: str = "") -> dict:
+            nonlocal public_imported
+            if public_import_limit is None:
+                return article
+
+            already_manual_review = article.get("manual_review_hidden_from_public") is True
+            if already_manual_review:
+                return article
+
+            if public_imported >= public_import_limit:
+                now_iso = datetime.now(timezone.utc).isoformat()
+                article["manual_review_hidden_from_public"] = True
+                article["manual_review_reason"] = (
+                    "Public import cap reached for scheduled run; queued for manual review"
+                )
+                article["manual_review_created_at"] = now_iso
+                article["verification_status"] = "needs_manual_review"
+                article["rewrite_status"] = "manual_review_required"
+                article["archive_reason"] = "needs_manual_review"
+                logger.info(f"Queued extra imported article for manual review after public cap: {title[:80]}")
+            return article
+
+        def count_inserted_article_visibility(article: dict) -> None:
+            nonlocal public_imported, manual_review_imported
+            if article.get("manual_review_hidden_from_public") is True:
+                manual_review_imported += 1
+            else:
+                public_imported += 1
 
         rewrite_delay_seconds = max(0, int(getattr(request, "rewrite_delay_seconds", 0) or 0))
         if request.use_perplexity and rewrite_delay_seconds > 0:
@@ -2194,6 +2230,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         ai_rewrite_used,
                         title
                     )
+                    article = apply_public_import_cap(article, title)
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
                     try:
                         await db.articles.insert_one(article)
@@ -2205,6 +2242,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         existing_source_urls.add(source_url)
                     used_image_urls.add(rss_image)
                     imported_articles.append(article)
+                    count_inserted_article_visibility(article)
                     imported_count += 1
                     logger.info(f"✅ Imported {category_name} article: {title[:50]}...")
             
@@ -2394,6 +2432,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 ai_rewrite_used,
                 title
             )
+            article = apply_public_import_cap(article, title)
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
             try:
                 await db.articles.insert_one(article)
@@ -2406,6 +2445,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             used_image_urls.add(rss_image)
             local_topic_counts[local_topic] = local_topic_counts.get(local_topic, 0) + 1
             imported_articles.append(article)
+            count_inserted_article_visibility(article)
             cheshire_from_rss += 1
             logger.info(f"✅ Imported local Cheshire article: {title[:50]}...")
         
@@ -2525,6 +2565,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
 
                 article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+                article = apply_public_import_cap(article, title)
                 try:
                     await db.articles.insert_one(article)
                 except DuplicateKeyError:
@@ -2535,6 +2576,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     existing_source_urls.add(source_url)
                 used_image_urls.add(article['image'])
                 imported_articles.append(article)
+                count_inserted_article_visibility(article)
                 cheshire_from_perplexity += 1
                 logger.info(f"✅ Imported Cheshire article (hybrid image logic): {title[:50]}...")
         
@@ -2623,6 +2665,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         return {
             "success": True,
             "total_imported": len(imported_articles),
+            "public_imported": public_imported,
+            "manual_review_imported": manual_review_imported,
             "cheshire_articles": total_cheshire,
             "cheshire_from_perplexity": cheshire_from_perplexity,
             "cheshire_from_rss": cheshire_from_rss,
@@ -13859,8 +13903,8 @@ async def daily_article_generation(count: int = 12):
         
         # Generate new articles (5+ Cheshire, 3+ UK) with error handling
         try:
-            # Request higher count to ensure net 5+ articles after image filtering
-            await generate_articles(GenerateArticlesRequest(count=count, include_uk_news=True))
+            # Request up to 12 candidates, but keep only 4 public; extras go to manual review
+            await generate_articles(GenerateArticlesRequest(count=count, include_uk_news=True, public_import_limit=4))
         except Exception as gen_error:
             logger.error(f"Error during article generation (will retry): {str(gen_error)}")
             # Don't fail the entire job, just log and continue
