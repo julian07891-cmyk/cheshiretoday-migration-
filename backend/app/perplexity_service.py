@@ -252,12 +252,12 @@ class PerplexityService:
         """
         if not self.api_key:
             logger.error("Perplexity API key not configured")
-            return summary  # Return original summary as fallback
+            return ""  # No fallback articles: caller must skip weak/failed rewrites
 
         # Soft budget guard (optional hard cap via PERPLEXITY_HARD_CAP=1)
         if not ai_call_allowed(0.05):
             logger.warning("Perplexity budget guard: skipping generate_article_content() call")
-            return self._expand_summary(title, summary, source)
+            return ""  # No fallback articles: caller must skip weak/failed rewrites
         
         try:
             async with httpx.AsyncClient() as client:
@@ -326,7 +326,7 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                 
                 if response.status_code != 200:
                     logger.error(f"Perplexity content generation error: {response.status_code}")
-                    return summary
+                    return ""  # No fallback articles: caller must skip failed rewrites
                 
                 data = response.json()
                 content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
@@ -365,8 +365,8 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                 is_refusal = any(indicator.lower() in content_lower for indicator in refusal_indicators)
                 
                 if is_refusal:
-                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Using expanded summary fallback.")
-                    return self._expand_summary(title, summary, source)
+                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Returning empty skip signal.")
+                    return ""  # No fallback articles: caller must skip weak/failed rewrites
 
                 min_chars = int(os.getenv("PERPLEXITY_MIN_CHARS", "1500"))
                 target_chars = int(os.getenv("PERPLEXITY_TARGET_CHARS", "2000"))
@@ -422,86 +422,15 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
                         return retry_content
 
-                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Using expanded summary fallback.")
-                return self._expand_summary(title, summary, source)
+                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Returning empty skip signal.")
+                return ""  # No fallback articles: caller must skip weak/failed rewrites
                     
         except httpx.TimeoutException:
             logger.error(f"Timeout generating content for: {title[:40]}...")
-            return summary
+            return ""
         except Exception as e:
             logger.error(f"Error generating article content: {str(e)}")
-            return summary
-
-    def _expand_summary(self, title: str, summary: str, source: str) -> str:
-        """
-        Create expanded content when Perplexity refuses to generate.
-        This is a fallback that creates readable content from the summary.
-        Uses category-aware templates to match the story type.
-        """
-        # Clean up summary
-        clean_summary = summary.strip()
-        if not clean_summary:
-            clean_summary = title
-        
-        # Determine category from title/summary for appropriate template
-        text_lower = f"{title} {clean_summary}".lower()
-        
-        # Sports/Entertainment templates
-        if any(word in text_lower for word in ['football', 'united', 'everton', 'liverpool', 'city', 'match', 'goal', 'player', 'manager', 'transfer', 'league', 'cup', 'sport']):
-            expanded = f"""{clean_summary}
-
-This sports story has been reported by {source}. Fans and supporters have been following developments closely as the situation unfolds.
-
-Further details are expected to emerge in the coming hours. Stay tuned to {source} for the latest updates on this developing story.
-
-For more sports news and updates from the region, continue following {source}."""
-
-        elif any(word in text_lower for word in ['show', 'tv', 'star', 'celebrity', 'film', 'movie', 'music', 'concert', 'theatre', 'entertainment', 'actor', 'actress', 'singer']):
-            expanded = f"""{clean_summary}
-
-This entertainment story has been covered by {source}. Fans have been eagerly following the latest developments.
-
-More details are expected to be announced soon. {source} will continue to bring you the latest updates as they become available.
-
-For more entertainment news from across the region, keep following {source}."""
-
-        elif any(word in text_lower for word in ['business', 'company', 'investment', 'jobs', 'economy', 'market', 'retail', 'shop', 'store', 'property', 'development']):
-            expanded = f"""{clean_summary}
-
-This business story has been reported by {source}. Industry observers and local stakeholders are monitoring the situation closely.
-
-Further details are expected as the story develops. {source} will continue to provide updates as more information becomes available.
-
-For more business and economic news from the region, follow {source}."""
-
-        elif any(word in text_lower for word in ['health', 'hospital', 'nhs', 'doctor', 'medical', 'patient', 'clinic', 'wellbeing', 'fitness']):
-            expanded = f"""{clean_summary}
-
-This health story has been reported by {source}. Health officials and medical professionals are involved in addressing the matter.
-
-Residents are encouraged to follow official guidance from health authorities. {source} will continue to provide updates as more information becomes available."""
-
-        elif any(word in text_lower for word in ['police', 'crime', 'arrest', 'court', 'trial', 'accident', 'crash', 'incident', 'emergency', 'fire']):
-            expanded = f"""{clean_summary}
-
-This developing story has been reported by {source}. Local authorities and emergency services are understood to be involved in the response.
-
-Residents in the affected area are advised to stay informed through official channels as more details emerge. The situation continues to develop and further updates are expected.
-
-Anyone with information related to this story is encouraged to contact the relevant authorities. {source} will continue to provide updates as more information becomes available."""
-
-        else:
-            # Generic local news template
-            expanded = f"""{clean_summary}
-
-This story has been reported by {source}. Local residents and community members have been following developments with interest.
-
-More details are expected to emerge soon. {source} will continue to bring you updates on this and other local news stories.
-
-For the latest news from across the region, keep following {source}."""
-
-        logger.info(f"Created fallback content ({len(expanded)} chars) for: {title[:40]}...")
-        return expanded
+            return ""
 
     async def search_trending_cheshire_topics(self) -> List[str]:
         """

@@ -12665,13 +12665,12 @@ async def admin_cleanup_old_articles(authorized: bool = Depends(get_admin_auth))
 @api_router.post("/admin/fix-bad-content")
 async def fix_bad_content(authorized: bool = Depends(get_admin_auth)):
     """
-    Find and fix articles with Perplexity refusal messages in content.
-    Replaces bad content with proper fallback text.
+    Archive articles with AI refusal text or old fallback/template filler.
+    No fallback articles should be rewritten or kept live.
     Requires admin authentication.
     """
     try:
-        # Refusal indicators to detect
-        refusal_indicators = [
+        bad_content_indicators = [
             "I cannot write",
             "I can't write",
             "cannot fabricate",
@@ -12686,207 +12685,110 @@ async def fix_bad_content(authorized: bool = Depends(get_admin_auth)):
             "maintain strict accuracy",
             "ground every claim",
             "These are real, documented events",
-            "Alternatively, if you have"
+            "Alternatively, if you have",
+            "This developing story has been reported by",
+            "Local authorities and emergency services are understood to be involved",
+            "Residents in the affected area are advised to stay informed through official channels",
+            "Anyone with information related to this story is encouraged to contact the relevant authorities",
+            "This story has been reported by",
+            "Local residents and community members have been following developments with interest",
+            "This business story has been reported by",
+            "Industry observers and local stakeholders are monitoring the situation closely",
+            "This health story has been reported by",
+            "This entertainment story has been covered by",
+            "This sports story has been reported by"
         ]
-        
-        # Get all articles
-        articles = await db.articles.find({}, {"_id": 0}).to_list(1000)
-        
-        fixed_count = 0
-        fixed_articles = []
-        
+
+        active_filter = {"$or": [{"archived": {"$exists": False}}, {"archived": False}]}
+        articles = await db.articles.find(active_filter, {"_id": 0}).to_list(2000)
+
+        archived_count = 0
+        archived_articles = []
+        now_iso = datetime.now(timezone.utc).isoformat()
+
         for article in articles:
-            content = article.get('content', '')
+            content = str(article.get("content", "") or "")
             content_lower = content.lower()
-            
-            # Check if content contains refusal messages
-            is_bad = any(indicator.lower() in content_lower for indicator in refusal_indicators)
-            
-            if is_bad:
-                title = article.get('title', '')
-                source = article.get('source', 'News Source')
-                summary = article.get('original_summary', title)
-                category = article.get('category', '')
-                
-                # Determine appropriate template based on title/category
-                text_lower = f"{title} {summary} {category}".lower()
-                
-                # Sports/Entertainment templates
-                if any(word in text_lower for word in ['football', 'united', 'everton', 'liverpool', 'city', 'match', 'goal', 'player', 'manager', 'transfer', 'league', 'cup', 'sport']):
-                    new_content = f"""{summary}
+            is_bad = any(indicator.lower() in content_lower for indicator in bad_content_indicators)
 
-This sports story has been reported by {source}. Fans and supporters have been following developments closely as the situation unfolds.
+            if not is_bad:
+                continue
 
-Further details are expected to emerge in the coming hours. Stay tuned to {source} for the latest updates on this developing story.
+            title = article.get("title", "")
+            await db.articles.update_one(
+                {"id": article.get("id")},
+                {"$set": {
+                    "archived": True,
+                    "archived_at": now_iso,
+                    "archive_reason": "bad_ai_or_fallback_content",
+                    "manual_review_hidden_from_public": True,
+                    "manual_review_reason": "AI refusal/fallback/template filler detected; archived instead of rewritten"
+                }}
+            )
 
-For more sports news and updates from the region, continue following {source}."""
+            archived_count += 1
+            archived_articles.append(title[:80] + "...")
+            logger.info(f"Archived bad/fallback content article: {title[:60]}...")
 
-                elif any(word in text_lower for word in ['show', 'tv', 'star', 'celebrity', 'film', 'movie', 'music', 'concert', 'theatre', 'entertainment', 'actor', 'actress', 'singer']):
-                    new_content = f"""{summary}
-
-This entertainment story has been covered by {source}. Fans have been eagerly following the latest developments.
-
-More details are expected to be announced soon. {source} will continue to bring you the latest updates as they become available.
-
-For more entertainment news from across the region, keep following {source}."""
-
-                elif any(word in text_lower for word in ['business', 'company', 'investment', 'jobs', 'economy', 'market', 'retail', 'shop', 'store', 'property', 'development']):
-                    new_content = f"""{summary}
-
-This business story has been reported by {source}. Industry observers and local stakeholders are monitoring the situation closely.
-
-Further details are expected as the story develops. {source} will continue to provide updates as more information becomes available.
-
-For more business and economic news from the region, follow {source}."""
-
-                elif any(word in text_lower for word in ['health', 'hospital', 'nhs', 'doctor', 'medical', 'patient', 'clinic', 'wellbeing', 'fitness']):
-                    new_content = f"""{summary}
-
-This health story has been reported by {source}. Health officials and medical professionals are involved in addressing the matter.
-
-Residents are encouraged to follow official guidance from health authorities. {source} will continue to provide updates as more information becomes available."""
-
-                elif any(word in text_lower for word in ['police', 'crime', 'arrest', 'court', 'trial', 'accident', 'crash', 'incident', 'emergency', 'fire']):
-                    new_content = f"""{summary}
-
-This developing story has been reported by {source}. Local authorities and emergency services are understood to be involved in the response.
-
-Residents in the affected area are advised to stay informed through official channels as more details emerge. The situation continues to develop and further updates are expected.
-
-Anyone with information related to this story is encouraged to contact the relevant authorities. {source} will continue to provide updates as more information becomes available."""
-
-                else:
-                    # Generic local news template
-                    new_content = f"""{summary}
-
-This story has been reported by {source}. Local residents and community members have been following developments with interest.
-
-More details are expected to emerge soon. {source} will continue to bring you updates on this and other local news stories.
-
-For the latest news from across the region, keep following {source}."""
-                
-                # Update the article
-                await db.articles.update_one(
-                    {'id': article.get('id')},
-                    {'$set': {'content': new_content}}
-                )
-                
-                fixed_count += 1
-                fixed_articles.append(title[:50] + "...")
-                logger.info(f"Fixed bad content for: {title[:40]}...")
-        
         return {
             "success": True,
             "articles_checked": len(articles),
-            "articles_fixed": fixed_count,
-            "fixed_titles": fixed_articles,
+            "articles_archived": archived_count,
+            "archived_titles": archived_articles,
             "cost": "$0 (FREE - no API calls)"
         }
-        
+
     except Exception as e:
-        logger.error(f"Error fixing bad content: {str(e)}")
+        logger.error(f"Error archiving bad content: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/fix-mismatched-content")
 async def fix_mismatched_content():
     """
-    Fix articles where the template content doesn't match the article category/topic.
-    This re-applies the correct category-aware template.
+    Legacy cleanup endpoint.
+    Archive articles containing old emergency/fallback template filler.
+    No fallback/template articles should be rewritten or kept live.
     """
     try:
-        # Get all articles with the generic emergency template
-        articles = await db.articles.find({
-            'content': {'$regex': 'emergency services.*affected area', '$options': 'i'}
-        }).to_list(500)
-        
-        fixed_count = 0
-        fixed_articles = []
-        
+        active_filter = {
+            "$and": [
+                {"$or": [{"archived": {"$exists": False}}, {"archived": False}]},
+                {"content": {"$regex": "emergency services.*affected area", "$options": "i"}}
+            ]
+        }
+        articles = await db.articles.find(active_filter).to_list(500)
+
+        archived_count = 0
+        archived_articles = []
+        now_iso = datetime.now(timezone.utc).isoformat()
+
         for article in articles:
-            title = article.get('title', '')
-            source = article.get('source', 'News Source')
-            summary = article.get('original_summary', '') or title
-            category = article.get('category', '')
-            text_lower = f"{title} {summary} {category}".lower()
-            
-            # Check if the current template is appropriate
-            is_incident_related = any(word in text_lower for word in [
-                'police', 'crime', 'arrest', 'court', 'trial', 'accident', 'crash', 
-                'incident', 'emergency', 'fire', 'death', 'dies', 'killed', 'tragedy',
-                'investigation', 'appeal', 'missing'
-            ])
-            
-            # If it's NOT incident-related but has the incident template, fix it
-            if not is_incident_related:
-                # Sports template
-                if any(word in text_lower for word in ['football', 'united', 'everton', 'liverpool', 'city', 'match', 'goal', 'player', 'manager', 'transfer', 'league', 'cup', 'sport']):
-                    new_content = f"""{summary}
+            title = article.get("title", "")
+            await db.articles.update_one(
+                {"_id": article["_id"]},
+                {"$set": {
+                    "archived": True,
+                    "archived_at": now_iso,
+                    "archive_reason": "old_mismatched_fallback_template",
+                    "manual_review_hidden_from_public": True,
+                    "manual_review_reason": "Old emergency/fallback template detected; archived instead of rewritten"
+                }}
+            )
+            archived_count += 1
+            archived_articles.append(title[:80] + "...")
+            logger.info(f"Archived mismatched fallback/template article: {title[:60]}...")
 
-This sports story has been reported by {source}. Fans and supporters have been following developments closely as the situation unfolds.
-
-Further details are expected to emerge in the coming hours. Stay tuned to {source} for the latest updates on this developing story.
-
-For more sports news and updates from the region, continue following {source}."""
-
-                # Entertainment template
-                elif any(word in text_lower for word in ['show', 'tv', 'star', 'celebrity', 'film', 'movie', 'music', 'concert', 'theatre', 'entertainment', 'actor', 'actress', 'singer']):
-                    new_content = f"""{summary}
-
-This entertainment story has been covered by {source}. Fans have been eagerly following the latest developments.
-
-More details are expected to be announced soon. {source} will continue to bring you the latest updates as they become available.
-
-For more entertainment news from across the region, keep following {source}."""
-
-                # Business template
-                elif any(word in text_lower for word in ['business', 'company', 'investment', 'jobs', 'economy', 'market', 'retail', 'shop', 'store', 'property', 'development']):
-                    new_content = f"""{summary}
-
-This business story has been reported by {source}. Industry observers and local stakeholders are monitoring the situation closely.
-
-Further details are expected as the story develops. {source} will continue to provide updates as more information becomes available.
-
-For more business and economic news from the region, follow {source}."""
-
-                # Health template
-                elif any(word in text_lower for word in ['health', 'hospital', 'nhs', 'doctor', 'medical', 'patient', 'clinic', 'wellbeing', 'fitness']):
-                    new_content = f"""{summary}
-
-This health story has been reported by {source}. Health officials and medical professionals are involved in addressing the matter.
-
-Residents are encouraged to follow official guidance from health authorities. {source} will continue to provide updates as more information becomes available."""
-
-                else:
-                    # Generic local news template
-                    new_content = f"""{summary}
-
-This story has been reported by {source}. Local residents and community members have been following developments with interest.
-
-More details are expected to emerge soon. {source} will continue to bring you updates on this and other local news stories.
-
-For the latest news from across the region, keep following {source}."""
-                
-                # Update the article
-                await db.articles.update_one(
-                    {'_id': article['_id']},
-                    {'$set': {'content': new_content}}
-                )
-                
-                fixed_count += 1
-                fixed_articles.append(f"{title[:50]}... -> {category or 'Generic'}")
-                logger.info(f"Fixed mismatched content for: {title[:40]}...")
-        
         return {
             "success": True,
             "articles_checked": len(articles),
-            "articles_fixed": fixed_count,
-            "fixed_titles": fixed_articles,
-            "message": f"Fixed {fixed_count} articles with mismatched templates"
+            "articles_archived": archived_count,
+            "archived_titles": archived_articles,
+            "message": f"Archived {archived_count} articles with old mismatched fallback templates"
         }
-        
+
     except Exception as e:
-        logger.error(f"Error fixing mismatched content: {str(e)}")
+        logger.error(f"Error archiving mismatched fallback content: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
