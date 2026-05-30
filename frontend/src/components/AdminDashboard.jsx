@@ -4284,6 +4284,25 @@ const handleDeleteArticle = async (articleId) => {
                               </>
                             )}
                           </div>
+                          {article.ai_review_risk_level && (
+                            <Badge
+                              variant="outline"
+                              className={`text-xs mt-2 ${
+                                article.ai_review_risk_level === 'high'
+                                  ? 'border-red-300 text-red-700 bg-red-50'
+                                  : article.ai_review_risk_level === 'medium'
+                                    ? 'border-amber-300 text-amber-700 bg-amber-50'
+                                    : 'border-emerald-300 text-emerald-700 bg-emerald-50'
+                              }`}
+                            >
+                              AI: {article.ai_review_risk_level} · {article.ai_review_recommended_action || 'reviewed'}
+                            </Badge>
+                          )}
+                          {article.ai_review_result?.editor_notes && (
+                            <p className="text-xs text-muted-foreground dark:text-gray-400 mt-1 line-clamp-2">
+                              ChatGPT: {article.ai_review_result.editor_notes}
+                            </p>
+                          )}
                           {article.manual_review_reason && (
                             <p className="text-xs text-amber-700 dark:text-amber-300 mt-2 line-clamp-2">
                               {article.manual_review_reason}
