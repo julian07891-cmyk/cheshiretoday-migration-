@@ -6100,7 +6100,9 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
             if remaining_ai_hits:
                 remaining_reasons.append("Edited article still contains risky invented-detail phrases; verify against source before restoring.")
 
-            if remaining_reasons:
+            force_live_override = bool(update_doc.get("force_live"))
+
+            if remaining_reasons and not force_live_override:
                 update_doc.update({
                     "manual_review_hidden_from_public": True,
                     "manual_review_reason": " ".join(remaining_reasons),
@@ -6176,10 +6178,29 @@ async def toggle_force_live_article(article_id: str, authorized: bool = Depends(
 
         new_value = not bool(existing.get("force_live", False))
 
-        await db.articles.update_one(
-            match_query,
-            {"$set": {"force_live": new_value, "updated_at": datetime.now(timezone.utc).isoformat()}}
-        )
+        update_doc = {"force_live": new_value, "updated_at": datetime.now(timezone.utc).isoformat()}
+        unset_doc = {}
+        if new_value:
+            update_doc.update({
+                "archived": False,
+                "verification_status": "manual_force_live",
+                "rewrite_status": "manual_force_live",
+                "manual_review_restored_at": datetime.now(timezone.utc).isoformat(),
+            })
+            unset_doc.update({
+                "archived_at": "",
+                "archive_reason": "",
+                "manual_review_hidden_from_public": "",
+                "manual_review_hits": "",
+                "manual_review_reason": "",
+                "manual_review_created_at": "",
+            })
+
+        update_operation = {"$set": update_doc}
+        if unset_doc:
+            update_operation["$unset"] = unset_doc
+
+        await db.articles.update_one(match_query, update_operation)
 
         return {
             "success": True,
