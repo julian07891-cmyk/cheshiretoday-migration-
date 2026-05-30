@@ -4309,6 +4309,21 @@ const handleDeleteArticle = async (articleId) => {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => handleAIReviewArticle(article._id || article.id)}
+                              disabled={actionLoading === "ai-review-" + (article._id || article.id)}
+                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+                              title="Check with ChatGPT"
+                            >
+                              {actionLoading === "ai-review-" + (article._id || article.id) ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <AlertCircle className="h-4 w-4" />
+                              )}
+                              <span className="ml-1">Open AI</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => handleArchiveArticle(article.id)}
                             >
                               Archive
@@ -4417,6 +4432,20 @@ const handleDeleteArticle = async (articleId) => {
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => { e.stopPropagation(); handleAIReviewArticle(article._id || article.id); }}
+                          disabled={actionLoading === "ai-review-" + (article._id || article.id)}
+                          className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                          title="Check with ChatGPT"
+                        >
+                          {actionLoading === "ai-review-" + (article._id || article.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
