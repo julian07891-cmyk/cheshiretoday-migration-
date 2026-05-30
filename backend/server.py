@@ -6369,6 +6369,9 @@ async def get_manual_review_articles(
             "manual_review_created_at": 1,
             "verification_status": 1,
             "rewrite_status": 1,
+            "ai_review_risk_level": 1,
+            "ai_review_recommended_action": 1,
+            "ai_review_result": 1,
         }
 
         total = await db.articles.count_documents(query)
