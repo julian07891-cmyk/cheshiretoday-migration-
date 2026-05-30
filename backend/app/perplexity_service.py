@@ -25,6 +25,14 @@ DAILY_AI_SPEND_GBP = float(os.getenv("PERPLEXITY_DAILY_BUDGET_GBP", "0.70"))  # 
 PERPLEXITY_HARD_CAP = os.getenv("PERPLEXITY_HARD_CAP", "0").strip().lower() in ("1","true","yes","y")
 _ai_usage = {"date": date.today().isoformat(), "calls": 0}
 
+def ai_budget_available(cost_estimate_gbp: float = 0.05) -> bool:
+    today = date.today().isoformat()
+    if _ai_usage["date"] != today:
+        return True
+    projected = (_ai_usage["calls"] + 1) * cost_estimate_gbp
+    return projected <= DAILY_AI_SPEND_GBP
+
+
 def ai_call_allowed(cost_estimate_gbp: float = 0.05) -> bool:
     today = date.today().isoformat()
     if _ai_usage["date"] != today:

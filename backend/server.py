@@ -44,7 +44,7 @@ LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
 from app.news_feed_service import news_feed_service
-from app.perplexity_service import perplexity_service
+from app.perplexity_service import perplexity_service, ai_budget_available
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
@@ -2184,7 +2184,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
                     ai_rewrite_used = False
-                    manual_review_without_ai = public_import_limit is not None and public_imported >= public_import_limit
+                    manual_review_without_ai = (public_import_limit is not None and public_imported >= public_import_limit) or not ai_budget_available(0.05)
                     
                     if manual_review_without_ai:
                         logger.info(f"Public import cap reached before AI rewrite; queueing RSS candidate for manual review: {title[:60]}...")
@@ -2389,7 +2389,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             ai_rewrite_used = False
-            manual_review_without_ai = public_import_limit is not None and public_imported >= public_import_limit
+            manual_review_without_ai = (public_import_limit is not None and public_imported >= public_import_limit) or not ai_budget_available(0.05)
             
             if manual_review_without_ai:
                 logger.info(f"Public import cap reached before AI rewrite; queueing local RSS candidate for manual review: {title[:60]}...")
