@@ -6081,7 +6081,6 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
 
         was_manual_review = (
             existing.get("manual_review_hidden_from_public") is True
-            or existing.get("verification_status") == "needs_manual_review"
             or existing.get("archive_reason") == "needs_manual_review"
         )
 
