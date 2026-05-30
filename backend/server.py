@@ -1909,6 +1909,21 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             else:
                 public_imported += 1
 
+        def is_source_fresh_enough(article: dict, max_age_days: int) -> bool:
+            raw_date = article.get("publishedDate") or article.get("published_date")
+            if not raw_date:
+                return True
+            try:
+                if isinstance(raw_date, datetime):
+                    published_dt = raw_date
+                else:
+                    published_dt = datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
+                if published_dt.tzinfo is None:
+                    published_dt = published_dt.replace(tzinfo=timezone.utc)
+                return published_dt >= datetime.now(timezone.utc) - timedelta(days=max_age_days)
+            except Exception:
+                return True
+
         rewrite_delay_seconds = max(0, int(getattr(request, "rewrite_delay_seconds", 0) or 0))
         if request.use_perplexity and rewrite_delay_seconds > 0:
             logger.info(f"Delaying AI rewrite stage for {rewrite_delay_seconds}s to allow source coverage/indexing...")
@@ -2181,6 +2196,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         logger.info(f"Skipping duplicate RSS image: {title[:40]}...")
                         continue
                     
+                    # Freshness gate: do not spend AI budget or publish stale national/business/tech items.
+                    if not is_source_fresh_enough(article, 3):
+                        logger.info(f"Skipping stale RSS article before Perplexity/public import: {title[:60]}...")
+                        continue
+
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
                     ai_rewrite_used = False
@@ -2386,6 +2406,11 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             if rss_image in used_image_urls:
                 continue
             
+            # Freshness gate: allow slower-moving local planning/council stories, but block stale local filler.
+            if not is_source_fresh_enough(article, 7):
+                logger.info(f"Skipping stale local RSS article before Perplexity/public import: {title[:60]}...")
+                continue
+
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             ai_rewrite_used = False
