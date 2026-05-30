@@ -2184,8 +2184,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
                     ai_rewrite_used = False
+                    manual_review_without_ai = public_import_limit is not None and public_imported >= public_import_limit
                     
-                    if request.use_perplexity:
+                    if manual_review_without_ai:
+                        logger.info(f"Public import cap reached before AI rewrite; queueing RSS candidate for manual review: {title[:60]}...")
+                        detailed_content = original_content
+                    elif request.use_perplexity:
                         # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                         logger.info(f"Generating content for {category_name} article: {title[:40]}...")
                         try:
@@ -2208,7 +2212,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         detailed_content = original_content
                     
                     # Strict quality gate: publish only full-length rewritten content.
-                    if len((detailed_content or "").strip()) < 1000:
+                    if not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
                         logger.info(f"Skipping short-content article after rewrite attempt: {title[:60]}...")
                         continue
 
@@ -2385,8 +2389,12 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             ai_rewrite_used = False
+            manual_review_without_ai = public_import_limit is not None and public_imported >= public_import_limit
             
-            if request.use_perplexity:
+            if manual_review_without_ai:
+                logger.info(f"Public import cap reached before AI rewrite; queueing local RSS candidate for manual review: {title[:60]}...")
+                detailed_content = original_content
+            elif request.use_perplexity:
                 # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                 logger.info(f"Generating full content for local article: {title[:40]}...")
                 try:
@@ -2409,7 +2417,7 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                 detailed_content = original_content
 
             # Strict quality gate: publish only full-length rewritten content.
-            if len((detailed_content or "").strip()) < 1000:
+            if not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
                 logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
                 continue
             
@@ -3043,6 +3051,8 @@ async def _remove_duplicates_internal():
         ]
 
         for article in remaining:
+            if article.get("manual_review_hidden_from_public") is True:
+                continue
             content = (article.get('content') or '').strip()
             summary = (article.get('summary') or '').strip()
             text_blob = ((content + " " + summary).strip())
