@@ -1932,8 +1932,9 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         # Get existing article titles/source URLs to avoid duplicates
         existing_titles = set()
         existing_source_urls = set()
-        existing_articles = await db.articles.find({}, {'title': 1, 'image': 1, 'source_url': 1}).to_list(1000)
-        for a in existing_articles:
+        existing_articles = await db.articles.find({}, {'title': 1, 'image': 1, 'source_url': 1}).to_list(10000)
+        archived_existing_articles = await db.archived_articles.find({}, {'title': 1, 'image': 1, 'source_url': 1}).to_list(10000)
+        for a in existing_articles + archived_existing_articles:
             existing_titles.add(a.get('title', '').lower().strip())
             source_url = (a.get('source_url') or '').strip().lower()
             if source_url:
