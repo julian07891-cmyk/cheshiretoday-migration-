@@ -4217,6 +4217,10 @@ async def get_articles(
                     article['category'] = 'Tech'
 
             unique_articles.append(article)
+
+        # Enforce requested API limit after force-live prepending, boosting, skip, and dedupe.
+        # This keeps /api/articles?limit=N predictable for homepage, admin QA, feeds, and consumers.
+        unique_articles = unique_articles[:limit]
         
         # Cache the result for homepage requests
         if not search and skip == 0 and limit == 20 and not category:
