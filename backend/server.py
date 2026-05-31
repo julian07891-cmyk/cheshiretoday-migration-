@@ -6180,6 +6180,54 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         logger.error(f"Error updating article: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@api_router.post("/admin/articles/{article_id}/move-to-manual-review")
+async def move_article_to_manual_review(article_id: str, authorized: bool = Depends(get_admin_auth)):
+    # Admin-only: hide a live article from public feeds and place it back into Manual Review for editing.
+    try:
+        from bson import ObjectId
+
+        existing = await db.articles.find_one({"id": article_id})
+        match_query = {"id": article_id}
+
+        if not existing and len(article_id) == 24:
+            try:
+                mongo_id = ObjectId(article_id)
+                existing = await db.articles.find_one({"_id": mongo_id})
+                if existing:
+                    match_query = {"_id": mongo_id}
+            except Exception:
+                pass
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        update_doc = {
+            "manual_review_hidden_from_public": True,
+            "manual_review_reason": "Moved back to Manual Review for editor rewrite before publication",
+            "manual_review_created_at": now_iso,
+            "verification_status": "needs_manual_review",
+            "rewrite_status": "manual_review_required",
+            "force_live": False,
+            "updated_at": now_iso,
+        }
+
+        await db.articles.update_one(match_query, {"$set": update_doc})
+
+        return {
+            "success": True,
+            "article_id": str(existing.get("id") or article_id),
+            "title": existing.get("title"),
+            "message": "Article moved to Manual Review"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error moving article to Manual Review: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/admin/articles/{article_id}/force-live")
 async def toggle_force_live_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
     """Toggle force_live for an article so it can bypass homepage/public feed filters."""
