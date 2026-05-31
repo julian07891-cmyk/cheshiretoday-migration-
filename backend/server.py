@@ -11522,8 +11522,6 @@ async def generate_news_sitemap():
                 "$or": [
                     {"publishedDate": {"$gte": cutoff_date}},
                     {"publishedDate": {"$gte": cutoff_iso}},
-                    {"created_at": {"$gte": cutoff_date}},
-                    {"created_at": {"$gte": cutoff_iso}},
                 ],
             },
             {"_id": 1, "id": 1, "title": 1, "publishedDate": 1, "created_at": 1, "category": 1, "scope": 1, "source": 1, "source_url": 1}
