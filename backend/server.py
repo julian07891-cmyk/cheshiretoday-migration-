@@ -6203,6 +6203,15 @@ async def toggle_force_live_article(article_id: str, authorized: bool = Depends(
 
         new_value = not bool(existing.get("force_live", False))
 
+        if new_value and existing.get("manual_review_hidden_from_public") is True:
+            ai_safe = existing.get("ai_review_safe_to_keep_live") is True
+            ai_action = str(existing.get("ai_review_recommended_action") or "").lower()
+            content_len = len(str(existing.get("content") or "").strip())
+            if not ai_safe and ai_action not in ("keep_live", "publish"):
+                raise HTTPException(status_code=400, detail="Force Live blocked: run AI Review first and only force live articles marked safe to keep live, or edit the article manually before publishing.")
+            if content_len < 1000:
+                raise HTTPException(status_code=400, detail="Force Live blocked: article content is too short. Edit/rewrite before publishing.")
+
         update_doc = {"force_live": new_value, "updated_at": datetime.now(timezone.utc).isoformat()}
         unset_doc = {}
         if new_value:
