@@ -5883,10 +5883,19 @@ Return valid JSON only with this exact shape:
   "editor_notes": "short practical note for the admin editor"
 }
 
-Be strict, but do not reject strong Business, Finance, Tech or AI stories only because they are not Cheshire-local.
-For Local News, require a clear Cheshire town, village, road, venue, school, council area, named site or local organisation.
-For Business, Finance, Tech and AI, judge practical relevance and factual risk rather than local place. Use manual_review for high-stakes or sensitive national/international claims that may need checking, and use archive only for weak, sensational, irrelevant or strategy-poor stories.
-If the story is mainly crime, court, theft, CCTV appeal, live traffic, crash, breakdown, celebrity, weak shopping/gift guide, thin filler, or genuinely not useful for the hybrid strategy, recommend manual_review or archive.
+Be strict, but apply category rules correctly.
+
+LOCAL NEWS RULE:
+For Local News, require a clear Cheshire town, village, road, venue, school, council area, named site or local organisation. If Local News has no clear local place or organisation, use manual_review or archive.
+
+BUSINESS / FINANCE / TECH / AI RULE:
+Do NOT reject, downgrade to poor, or recommend archive for a Business, Finance, Tech or AI article merely because it is not Cheshire-local or because local_place_confirmed is false.
+For Business, Finance, Tech and AI, local_place_confirmed=false is acceptable when the article has practical UK-wide or wider economic relevance for Cheshire readers, households, workers, small businesses, savers, borrowers, landlords, tenants, taxpayers, investors, drivers, employers, technology users, AI users or the wider local economy.
+A strong Business/Finance/Tech/AI article can be safe_to_keep_live=true even with no Cheshire place if it is useful, factual, practical and aligned with money, jobs, tax, mortgages, rent, bills, energy, business costs, investment, productivity, AI, cybersecurity, software, cloud, automation, or the UK economy.
+
+Use manual_review for high-stakes or sensitive national/international claims that may need checking.
+Use archive only for weak, sensational, irrelevant, celebrity/entertainment, crime-heavy, live traffic, thin filler, shopping/gift-guide, or strategy-poor stories.
+If recommending archive for Business, Finance, Tech or AI, editor_notes must explain the real weakness beyond lack of Cheshire locality.
 """
 
     user_prompt = "Review this article for Cheshire Today admin:\n" + json.dumps(review_payload, ensure_ascii=False)
