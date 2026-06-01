@@ -11768,11 +11768,17 @@ async def generate_rss_feed():
         # ALWAYS use production domain for RSS feed - this is for Google News and feed readers
         base_url = 'https://cheshiretoday.co.uk'
         
-        # Get latest 50 articles
+        # Get latest strategic public articles only.
+        # RSS must match Cheshire Today public positioning and avoid exposing weak/off-strategy DB items.
+        rss_query = {
+            "$or": [{"archived": {"$exists": False}}, {"archived": False}],
+            "manual_review_hidden_from_public": {"$ne": True},
+            "category": {"$in": ["Local News", "Business", "Finance", "Tech", "AI", "AI & Tech", "Tax", "Property"]}
+        }
         articles = await db.articles.find(
-            {}, 
-            {'_id': 0, 'id': 1, 'title': 1, 'content': 1, 'publishedDate': 1, 'category': 1, 'author': 1, 'image': 1}
-        ).sort('publishedDate', -1).limit(50).to_list(50)
+            rss_query,
+            {"_id": 0, "id": 1, "title": 1, "content": 1, "publishedDate": 1, "category": 1, "author": 1, "image": 1}
+        ).sort("publishedDate", -1).limit(50).to_list(50)
         
         # Build RSS XML
         rss = '<?xml version="1.0" encoding="UTF-8"?>\n'
