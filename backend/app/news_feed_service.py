@@ -1494,7 +1494,20 @@ class NewsFeedService:
         # PRIORITY 1: Fetch from dedicated LOCAL Cheshire feeds
         local_feed_keys = [
             'cheshire_live',
-            'cheshire_live_chester', 
+            'cheshire_live_chester',
+            'cheshire_live_crewe',
+            'cheshire_live_nantwich',
+            'cheshire_live_macclesfield',
+            'cheshire_live_congleton',
+            'cheshire_live_northwich',
+            'cheshire_live_winsford',
+            'cheshire_live_middlewich',
+            'cheshire_live_wilmslow',
+            'cheshire_live_alderley_edge',
+            'cheshire_live_knutsford',
+            'cheshire_live_ellesmere_port',
+            'cheshire_live_runcorn',
+            'cheshire_live_widnes',
             'warrington_guardian',
             'chester_standard',
         ]
@@ -1548,7 +1561,23 @@ class NewsFeedService:
         other_local_articles = []
         
         # Fetch Cheshire Live feeds first (highest priority)
-        for feed_key in ['cheshire_live', 'cheshire_live_chester']:
+        for feed_key in [
+            'cheshire_live',
+            'cheshire_live_chester',
+            'cheshire_live_crewe',
+            'cheshire_live_nantwich',
+            'cheshire_live_macclesfield',
+            'cheshire_live_congleton',
+            'cheshire_live_northwich',
+            'cheshire_live_winsford',
+            'cheshire_live_middlewich',
+            'cheshire_live_wilmslow',
+            'cheshire_live_alderley_edge',
+            'cheshire_live_knutsford',
+            'cheshire_live_ellesmere_port',
+            'cheshire_live_runcorn',
+            'cheshire_live_widnes',
+        ]:
             if feed_key in self.feeds:
                 articles = await self.fetch_feed(feed_key)
                 for article in articles:
