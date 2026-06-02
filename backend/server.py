@@ -2330,6 +2330,53 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         # Per-run local diversity caps so Local News does not become dominated
         # by one topic type such as planning/housing applications.
         local_topic_counts = {}
+
+        priority_town_review_locations = {
+            "crewe", "nantwich", "macclesfield", "congleton", "northwich",
+            "winsford", "middlewich", "wilmslow", "alderley edge", "knutsford",
+            "ellesmere port", "runcorn", "widnes"
+        }
+
+        async def queue_town_rss_manual_review(article: dict, title: str, reason: str, detailed_content: str = "") -> bool:
+            """Queue non-public town-feed RSS candidates for human review instead of silently dropping them."""
+            location = str(article.get("location") or article.get("priority_location") or "").strip().lower()
+            if location not in priority_town_review_locations:
+                return False
+
+            source_url_local = (article.get("source_url") or "").strip().lower()
+            if not title or title.lower() in existing_titles or (source_url_local and source_url_local in existing_source_urls):
+                return False
+
+            review_doc = dict(article)
+            review_doc["id"] = str(uuid4())
+            review_doc["image"] = review_doc.get("image") or article.get("image") or ""
+            review_doc["image_source"] = "rss_feed"
+            review_doc["content"] = sanitize_rss_text(detailed_content or review_doc.get("content", ""), review_doc.get("source_url", ""))
+            review_doc["summary"] = sanitize_rss_text(review_doc.get("summary", ""), review_doc.get("source_url", ""))
+            review_doc["scope"] = "cheshire"
+            review_doc["category"] = "Local News"
+            review_doc["is_local_source"] = True
+            review_doc["is_local_newspaper"] = review_doc.get("is_local_feed", False)
+            review_doc["manual_review_hidden_from_public"] = True
+            review_doc["manual_review_reason"] = reason
+            review_doc["manual_review_created_at"] = datetime.now(timezone.utc).isoformat()
+            review_doc["verification_status"] = "needs_manual_review"
+            review_doc["rewrite_status"] = "manual_review_required"
+            review_doc["archive_reason"] = "needs_manual_review"
+
+            try:
+                await db.articles.insert_one(review_doc)
+            except DuplicateKeyError:
+                logger.info(f"⏭️ Duplicate skipped (town RSS manual review): {title[:60]}...")
+                return False
+
+            existing_titles.add(title.lower())
+            if source_url_local:
+                existing_source_urls.add(source_url_local)
+            imported_articles.append(review_doc)
+            count_inserted_article_visibility(review_doc)
+            logger.info(f"📝 Queued town RSS article for manual review: {title[:60]}... | {reason}")
+            return True
         
         for article in cheshire_with_images:
             if cheshire_from_rss >= request.cheshire_articles:
@@ -2372,6 +2419,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             # This keeps budget focused on planning, housing, council, business, schools,
             # health, energy, infrastructure and other public/economic impact stories.
             if not is_useful_local_article(article):
+                if await queue_town_rss_manual_review(article, title, "Town RSS article needs manual review: failed useful-local relevance gate before AI rewrite"):
+                    continue
                 logger.info(f"Skipping low-impact local RSS article before Perplexity: {title[:60]}...")
                 continue
 
@@ -2401,6 +2450,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
             local_topic_cap = local_topic_caps.get(local_topic)
             if local_topic_cap is not None and local_topic_counts.get(local_topic, 0) >= local_topic_cap:
+                if await queue_town_rss_manual_review(article, title, f"Town RSS article needs manual review: per-run topic cap reached ({local_topic})"):
+                    continue
                 logger.info(f"Skipping local RSS article due to per-run topic cap ({local_topic}): {title[:60]}...")
                 continue
 
@@ -2409,6 +2460,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
             
             # Freshness gate: allow slower-moving local planning/council stories, but block stale local filler.
             if not is_source_fresh_enough(article, 7):
+                if await queue_town_rss_manual_review(article, title, "Town RSS article needs manual review: older than automatic local RSS freshness gate"):
+                    continue
                 logger.info(f"Skipping stale local RSS article before Perplexity/public import: {title[:60]}...")
                 continue
 
@@ -2444,6 +2497,8 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
 
             # Strict quality gate: publish only full-length rewritten content.
             if not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
+                if await queue_town_rss_manual_review(article, title, "Town RSS article needs manual review: AI/RSS content remained below public length threshold", detailed_content):
+                    continue
                 logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
                 continue
             
