@@ -11467,6 +11467,14 @@ async def generate_sitemap():
         xml_content += '    <priority>1.0</priority>\n'
         xml_content += '  </url>\n'
         
+        # Add plain HTML latest-articles crawl path for search engines
+        xml_content += '  <url>\n'
+        xml_content += f'    <loc>{base_url}/latest-articles</loc>\n'
+        xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
+        xml_content += '    <changefreq>daily</changefreq>\n'
+        xml_content += '    <priority>0.9</priority>\n'
+        xml_content += '  </url>\n'
+
         # Add location pages for Local SEO
         locations = ['chester', 'warrington', 'crewe', 'wirral', 'macclesfield', 'stockport', 'runcorn', 'northwich']
         for loc in locations:
@@ -11812,6 +11820,87 @@ async def generate_news_sitemap():
 @app.get("/api/rss.xml")
 async def api_rss_xml_alias():
     return RedirectResponse(url="/rss.xml", status_code=301)
+
+
+@app.get("/latest-articles")
+async def latest_articles_html():
+    """Plain HTML latest-articles index for search engines and non-JS crawlers."""
+    from fastapi.responses import HTMLResponse
+    import html as _html
+
+    base_url = "https://cheshiretoday.co.uk"
+    allowed_categories = ["Local News", "Business", "Finance", "Tech", "AI", "AI & Tech", "Tax", "Property"]
+
+    articles = await db.articles.find(
+        {
+            "archived": {"$ne": True},
+            "manual_review_hidden_from_public": {"$ne": True},
+            "category": {"$in": allowed_categories},
+            "image": {"$exists": True, "$ne": ""},
+            "title": {"$exists": True, "$ne": ""},
+        },
+        {
+            "_id": 1,
+            "id": 1,
+            "title": 1,
+            "category": 1,
+            "summary": 1,
+            "content": 1,
+            "publishedDate": 1,
+        }
+    ).sort("publishedDate", -1).limit(120).to_list(120)
+
+    grouped = {}
+    for article in articles:
+        category = str(article.get("category") or "News").strip()
+        grouped.setdefault(category, []).append(article)
+
+    def article_url(article):
+        article_id = str(article.get("_id") or article.get("id") or "").strip()
+        title = str(article.get("title") or "article")
+        slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+        slug = slug[:80] if slug else "article"
+        return f"{base_url}/article/{article_id}/{slug}"
+
+    sections = []
+    for category in allowed_categories:
+        items = grouped.get(category, [])
+        if not items:
+            continue
+
+        links = []
+        for article in items:
+            title = _html.escape(str(article.get("title") or "Untitled article"))
+            url = _html.escape(article_url(article))
+            desc_source = str(article.get("summary") or article.get("content") or "")
+            desc = _html.escape(re.sub(r"\s+", " ", desc_source).strip()[:160])
+            links.append(f'<li><a href="{url}">{title}</a><p>{desc}</p></li>')
+
+        sections.append(f"<section><h2>{_html.escape(category)}</h2><ul>{''.join(links)}</ul></section>")
+
+    html_content = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Latest articles | Cheshire Today</title>
+  <meta name="description" content="Latest public articles from Cheshire Today across local news, business, finance and technology.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="{base_url}/latest-articles">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+  <header>
+    <h1>Latest articles</h1>
+    <p>Latest public articles from Cheshire Today.</p>
+    <p><a href="{base_url}/">Back to Cheshire Today</a></p>
+  </header>
+  <main>
+    {''.join(sections)}
+  </main>
+</body>
+</html>"""
+
+    return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=1800"})
 
 @app.get("/rss.xml")
 async def generate_rss_feed():
