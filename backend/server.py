@@ -11467,9 +11467,9 @@ async def generate_sitemap():
         xml_content += '    <priority>1.0</priority>\n'
         xml_content += '  </url>\n'
         
-        # Add plain HTML latest-articles crawl path for search engines
+        # Add plain HTML article-index crawl path for search engines
         xml_content += '  <url>\n'
-        xml_content += f'    <loc>{base_url}/latest-articles</loc>\n'
+        xml_content += f'    <loc>{base_url}/article-index</loc>\n'
         xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
         xml_content += '    <changefreq>daily</changefreq>\n'
         xml_content += '    <priority>0.9</priority>\n'
@@ -11822,6 +11822,7 @@ async def api_rss_xml_alias():
     return RedirectResponse(url="/rss.xml", status_code=301)
 
 
+@app.get("/article-index")
 @app.get("/latest-articles")
 async def latest_articles_html():
     """Plain HTML latest-articles index for search engines and non-JS crawlers."""
@@ -11885,7 +11886,7 @@ async def latest_articles_html():
   <title>Latest articles | Cheshire Today</title>
   <meta name="description" content="Latest public articles from Cheshire Today across local news, business, finance and technology.">
   <meta name="robots" content="index,follow">
-  <link rel="canonical" href="{base_url}/latest-articles">
+  <link rel="canonical" href="{base_url}/article-index">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
