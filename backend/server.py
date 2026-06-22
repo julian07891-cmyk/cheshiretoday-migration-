@@ -3823,7 +3823,29 @@ async def get_articles(
 
                     return False
 
-                local_articles = [a for a in local_articles if not is_editorial_noise(a)]
+                def is_local_editorial_noise(a: dict) -> bool:
+                    """Light local-only homepage filter.
+
+                    Keep normal Cheshire soft/local news visible while still removing
+                    obvious media-format filler that should not lead the homepage.
+                    """
+                    url = (a.get("source_url") or "").lower()
+                    title = (a.get("title") or "").lower()
+                    summary = (a.get("summary") or "").lower()
+                    text_meta = f"{title} {summary}"
+
+                    if "/audio/" in url or "podcast" in text_meta:
+                        return True
+                    if "/video" in url or "/watch/" in url or "watch video" in title:
+                        return True
+                    if "/gallery/" in url or "in pictures" in title or "pictures from" in title:
+                        return True
+                    if re.search(r"\b(letter|letters|cartoon|opinion|editorial)\b", title, re.I):
+                        return True
+
+                    return False
+
+                local_articles = [a for a in local_articles if not is_local_editorial_noise(a)]
                 uk_articles = [a for a in uk_articles if not is_editorial_noise(a)]
 
             # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
