@@ -14212,8 +14212,9 @@ async def daily_article_generation(count: int = 12):
         
         # Generate new articles (5+ Cheshire, 3+ UK) with error handling
         try:
-            # Request up to 12 candidates, but keep only 4 public; extras go to manual review
-            await generate_articles(GenerateArticlesRequest(count=count, include_uk_news=True, public_import_limit=4))
+            # Request up to 12 candidates, but keep only 6 public; extras go to manual review.
+            # Keeps quality/cost controlled while reducing homepage starvation from an overly thin public pool.
+            await generate_articles(GenerateArticlesRequest(count=count, include_uk_news=True, public_import_limit=6))
         except Exception as gen_error:
             logger.error(f"Error during article generation (will retry): {str(gen_error)}")
             # Don't fail the entire job, just log and continue
