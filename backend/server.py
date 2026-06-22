@@ -4290,7 +4290,7 @@ async def get_articles(
                 if title_keywords and prev_keywords:
                     overlap = len(title_keywords & prev_keywords)
                     similarity = overlap / min(len(title_keywords), len(prev_keywords))
-                    if similarity > 0.55:
+                    if similarity >= 0.50:
                         is_similar_title = True
                         break
 
