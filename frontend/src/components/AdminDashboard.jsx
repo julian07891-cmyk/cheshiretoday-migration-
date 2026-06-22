@@ -1132,6 +1132,64 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
+  const handleOpenAIRewriteDraft = async (article) => {
+    const articleId = article?._id || article?.id;
+    if (!articleId) {
+      toast({
+        title: "❌ OpenAI rewrite failed",
+        description: "Article ID missing",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setActionLoading(`openai-rewrite-${articleId}`);
+    try {
+      const response = await fetch(`${getApiUrl()}/api/admin/articles/${articleId}/openai-rewrite-draft`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await response.json();
+
+      if (response.ok && data.success && data.draft) {
+        const draft = data.draft;
+        setArticleForm({
+          title: draft.title || article.title || '',
+          content: draft.content || article.content || '',
+          category: draft.category || article.category || 'Local News',
+          image: article.image || '',
+          author: article.author || 'Cheshire Today',
+          source: article.source === 'Manual Entry' ? '' : (article.source || ''),
+          source_url: article.source_url || article.sourceUrl || '',
+          tags: Array.isArray(article.tags) ? article.tags.join(', ') : '',
+          featured: article.featured || false,
+          scope: article.scope || 'cheshire'
+        });
+        setEditingArticle(article);
+        setShowAddArticle(true);
+        toast({
+          title: "✅ OpenAI draft ready",
+          description: draft.editor_notes || "Review the draft, edit if needed, then press Update Article."
+        });
+      } else {
+        toast({
+          title: "❌ OpenAI rewrite failed",
+          description: data.detail || "Failed to create rewrite draft",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ OpenAI rewrite failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+
   const handleUnarchiveArticle = async (articleId) => {
     setActionLoading(`unarchive-${articleId}`);
     try {
@@ -4328,12 +4386,12 @@ const handleDeleteArticle = async (articleId) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleAIReviewArticle(article._id || article.id)}
-                              disabled={actionLoading === "ai-review-" + (article._id || article.id)}
+                              onClick={() => handleOpenAIRewriteDraft(article)}
+                              disabled={actionLoading === "openai-rewrite-" + (article._id || article.id)}
                               className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
-                              title="Check with ChatGPT"
+                              title="Rewrite with OpenAI and open draft editor"
                             >
-                              {actionLoading === "ai-review-" + (article._id || article.id) ? (
+                              {actionLoading === "openai-rewrite-" + (article._id || article.id) ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <AlertCircle className="h-4 w-4" />

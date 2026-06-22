@@ -6059,6 +6059,106 @@ If recommending archive for Business, Finance, Tech or AI, editor_notes must exp
     return review
 
 
+async def run_openai_article_rewrite_draft(article: dict) -> dict:
+    """Create an OpenAI rewrite draft for admin review. Does not save, publish, unhide or update the DB."""
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="OPENAI_API_KEY is not configured")
+
+    model = os.environ.get("OPENAI_REWRITE_MODEL", os.environ.get("OPENAI_REVIEW_MODEL", "gpt-4o-mini")).strip() or "gpt-4o-mini"
+
+    title = str(article.get("title") or "").strip()
+    summary = str(article.get("summary") or "").strip()
+    content = str(article.get("content") or "").strip()
+    category = str(article.get("category") or "Local News").strip()
+    source = str(article.get("source") or "").strip()
+    source_url = str(article.get("source_url") or "").strip()
+    location = str(article.get("location") or article.get("priority_location") or "").strip()
+
+    rewrite_payload = {
+        "title": title,
+        "summary": summary[:1800],
+        "content": content[:12000],
+        "category": category,
+        "source": source,
+        "source_url": source_url,
+        "location": location,
+    }
+
+    system_prompt = """You are a careful local news editor writing for Cheshire Today.
+
+Task:
+Rewrite the supplied article into a clean Cheshire Today draft for a human admin editor to review.
+
+Important rules:
+- Return valid JSON only.
+- Do not publish anything.
+- Do not say you are an AI.
+- Do not copy the source wording. Rewrite fully in original wording.
+- Do not invent facts, names, quotes, locations, dates, prices or figures.
+- If the source material is thin, write only what can be supported and explain the limitation in editor_notes.
+- Keep a professional, human local-news tone.
+- Use a clear factual lead.
+- Avoid exaggerated headlines, clickbait, filler, generic explainer wording and council-press-release style.
+- For Local News, preserve any Cheshire town, village, venue, road, council area, school, hospital, business or named local organisation if supplied.
+- For Business, Finance, AI & Tech or UK stories, make the practical relevance clear without forcing a fake Cheshire angle.
+- Use natural paragraphs.
+- No markdown headings in the content body.
+
+Return this exact JSON shape:
+{
+  "title": "rewritten headline",
+  "summary": "one or two sentence summary",
+  "content": "full rewritten article body in plain text paragraphs",
+  "category": "same or corrected category",
+  "editor_notes": "short note for the admin editor, including any limitations or checks needed"
+}
+"""
+
+    user_prompt = "Rewrite this article into an admin-review draft for Cheshire Today:\n" + json.dumps(rewrite_payload, ensure_ascii=False)
+
+    def _call_openai():
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model=model,
+            temperature=0.25,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        return response.choices[0].message.content
+
+    raw = await asyncio.to_thread(_call_openai)
+
+    try:
+        draft = json.loads(raw or "{}")
+    except Exception:
+        draft = {
+            "title": title,
+            "summary": summary,
+            "content": content,
+            "category": category,
+            "editor_notes": "OpenAI returned non-JSON output. Original article has been left unchanged."
+        }
+
+    draft_title = str(draft.get("title") or title).strip()
+    draft_summary = str(draft.get("summary") or summary).strip()
+    draft_content = str(draft.get("content") or content).strip()
+    draft_category = str(draft.get("category") or category or "Local News").strip()
+    draft_notes = str(draft.get("editor_notes") or "").strip()
+
+    return {
+        "title": draft_title,
+        "summary": draft_summary,
+        "content": draft_content,
+        "category": draft_category,
+        "editor_notes": draft_notes,
+        "model": model,
+    }
+
+
 @api_router.post("/admin/articles/{article_id}/ai-review")
 async def admin_ai_review_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
     """Admin-only ChatGPT/OpenAI article review. Flags risk; does not auto-edit/archive/hide."""
@@ -6096,6 +6196,30 @@ async def admin_ai_review_article(article_id: str, authorized: bool = Depends(ge
         raise
     except Exception as e:
         logger.error(f"Error running AI article review: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/admin/articles/{article_id}/openai-rewrite-draft")
+async def admin_openai_rewrite_draft(article_id: str, authorized: bool = Depends(get_admin_auth)):
+    """Admin-only OpenAI rewrite draft. Returns draft text only; does not save, publish, unhide or update."""
+    try:
+        article = await _find_article_by_any_id(article_id)
+        if not article:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        draft = await run_openai_article_rewrite_draft(article)
+
+        return {
+            "success": True,
+            "article_id": str(article.get("_id") or article.get("id") or article_id),
+            "original_title": article.get("title"),
+            "draft": draft,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating OpenAI rewrite draft: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
