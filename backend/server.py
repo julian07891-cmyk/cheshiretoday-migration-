@@ -4239,7 +4239,25 @@ async def get_articles(
         
         # Convert ObjectId to string and clean content
         seen_ids = set()
+        seen_title_keys = set()
+        seen_title_keywords = []
         unique_articles = []
+
+        def get_public_feed_title_keywords(title):
+            """Extract title keywords for lightweight public-feed near-duplicate detection."""
+            import re
+            stop_words = {
+                'the', 'a', 'an', 'is', 'are', 'was', 'were', 'for', 'to', 'of', 'in',
+                'on', 'at', 'with', 'as', 'by', 'and', 'from', 'this', 'that', 'will',
+                'after', 'before', 'over', 'into', 'about', 'expected', 'announce'
+            }
+            words = str(title or "").lower().split()
+            return set(
+                w.strip(".,:;!?()[]'\"")
+                for w in words
+                if len(w.strip(".,:;!?()[]'\"")) > 3 and w.strip(".,:;!?()[]'\"") not in stop_words
+            )
+
         for article in articles:
             article['id'] = str(article['_id'])
             del article['_id']
@@ -4259,6 +4277,30 @@ async def get_articles(
             if article['id'] in seen_ids:
                 continue
             seen_ids.add(article['id'])
+
+            # Skip near-duplicate titles in the public feed.
+            # This catches same-topic articles from multiple feeds without changing imports/admin.
+            title_key = (article.get('title') or '').lower().strip()[:55]
+            title_keywords = get_public_feed_title_keywords(article.get('title') or '')
+            if title_key and title_key in seen_title_keys:
+                continue
+
+            is_similar_title = False
+            for prev_keywords in seen_title_keywords:
+                if title_keywords and prev_keywords:
+                    overlap = len(title_keywords & prev_keywords)
+                    similarity = overlap / min(len(title_keywords), len(prev_keywords))
+                    if similarity > 0.55:
+                        is_similar_title = True
+                        break
+
+            if is_similar_title:
+                continue
+
+            if title_key:
+                seen_title_keys.add(title_key)
+            if title_keywords:
+                seen_title_keywords.append(title_keywords)
             
             # Clean word count from content
             if 'content' in article:
