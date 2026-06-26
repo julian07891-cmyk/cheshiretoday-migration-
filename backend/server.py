@@ -12608,10 +12608,83 @@ async def serve_article_html(article_id: str, request=None):
     canonical = f"https://cheshiretoday.co.uk/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
 
     # Escape to avoid breaking HTML
+    import json as _json
+
     esc_title = _html.escape(title)
     esc_desc = _html.escape(desc)
     esc_img = _html.escape(img)
     esc_canon = _html.escape(canonical)
+
+    author = str(article.get("author") or "Cheshire Today").strip() or "Cheshire Today"
+    section = str(article.get("category") or "News").strip() or "News"
+    published = str(article.get("publishedDate") or article.get("published_at") or article.get("created_at") or "").strip()
+    modified = str(article.get("updated_at") or article.get("modified_at") or article.get("publishedDate") or article.get("created_at") or "").strip()
+
+    # Build a crawlable text version of the article body.
+    # Keep it plain and safe: remove scripts/styles/tags, normalise whitespace, then paragraphise.
+    body_src = content or summary or ""
+    body_src = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", body_src)
+    body_src = re.sub(r"(?is)<br\s*/?>", "\n", body_src)
+    body_src = re.sub(r"(?is)</p\s*>", "\n\n", body_src)
+    body_text = re.sub(r"(?is)<[^>]+>", " ", body_src)
+    body_text = _html.unescape(body_text)
+    body_text = re.sub(r"\r", "\n", body_text)
+    body_text = re.sub(r"[ \t]+", " ", body_text)
+    body_text = re.sub(r"\n{3,}", "\n\n", body_text).strip()
+
+    if not body_text:
+        body_text = desc
+
+    paragraphs = [x.strip() for x in re.split(r"\n\s*\n", body_text) if x.strip()]
+    if len(paragraphs) == 1 and len(paragraphs[0]) > 700:
+        sentences = re.split(r"(?<=[.!?])\s+", paragraphs[0])
+        chunks = []
+        buf = []
+        for sentence in sentences:
+            buf.append(sentence)
+            if len(" ".join(buf)) >= 450:
+                chunks.append(" ".join(buf).strip())
+                buf = []
+        if buf:
+            chunks.append(" ".join(buf).strip())
+        paragraphs = chunks or paragraphs
+
+    article_body_html = "\n".join(f"  <p>{_html.escape(x)}</p>" for x in paragraphs[:80])
+    esc_author = _html.escape(author)
+    esc_section = _html.escape(section)
+    esc_published = _html.escape(published)
+    esc_modified = _html.escape(modified or published)
+
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": canonical,
+        },
+        "headline": title,
+        "description": desc,
+        "image": [img],
+        "datePublished": published or None,
+        "dateModified": modified or published or None,
+        "author": {
+            "@type": "Organization" if author == "Cheshire Today" else "Person",
+            "name": author,
+        },
+        "publisher": {
+            "@type": "NewsMediaOrganization",
+            "name": "Cheshire Today",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://cheshiretoday.co.uk/logo.png",
+            },
+        },
+        "articleSection": section,
+        "articleBody": body_text[:20000],
+    }
+    schema = {k: v for k, v in schema.items() if v is not None}
+    schema_json = _json.dumps(schema, ensure_ascii=False)
+    schema_json = schema_json.replace("</", "<\\/")
 
     html_content = f"""<!doctype html>
 <html lang="en">
@@ -12620,6 +12693,8 @@ async def serve_article_html(article_id: str, request=None):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{esc_title}</title>
   <link rel="canonical" href="{esc_canon}">
+  <meta name="description" content="{esc_desc}">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Cheshire Today">
   <meta property="og:locale" content="en_GB">
@@ -12628,15 +12703,26 @@ async def serve_article_html(article_id: str, request=None):
   <meta property="og:description" content="{esc_desc}">
   <meta property="og:image" content="{esc_img}">
   <meta property="og:image:secure_url" content="{esc_img}">
+  <meta property="article:published_time" content="{esc_published}">
+  <meta property="article:modified_time" content="{esc_modified}">
+  <meta property="article:section" content="{esc_section}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{esc_title}">
   <meta name="twitter:description" content="{esc_desc}">
   <meta name="twitter:image" content="{esc_img}">
+  <script type="application/ld+json">{schema_json}</script>
 </head>
 <body>
-  <h1>{esc_title}</h1>
-  <p>{esc_desc}</p>
-  <p><a href="{esc_canon}">Open article</a></p>
+  <article>
+    <header>
+      <h1>{esc_title}</h1>
+      <p>{esc_desc}</p>
+      <p><strong>By {esc_author}</strong></p>
+      <time datetime="{esc_published}">{esc_published}</time>
+    </header>
+{article_body_html}
+    <p><a href="{esc_canon}">Open article on Cheshire Today</a></p>
+  </article>
 </body>
 </html>"""
 
