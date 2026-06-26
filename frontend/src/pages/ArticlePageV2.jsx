@@ -559,6 +559,13 @@ function getGuideSectionHeading(contextToolType, pillarLabel) {
   return "Related guides";
 }
 
+function getPrimaryGuideHref(guides, pillarLabel, contextToolType) {
+  const picked = pickGuidesForPillar(guides, pillarLabel, contextToolType);
+  const first = picked.find((g) => safeText(g?.slug).trim());
+
+  return first ? `/guides/${encodeURIComponent(safeText(first.slug).trim())}` : "";
+}
+
 const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, slot = 0, compact = false }) => {
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) return null;
   const list = Array.isArray(guides) ? guides : [];
@@ -926,6 +933,11 @@ export default function ArticlePageV2({ categories }) {
     return "";
   }, [article]);
 
+  const primaryGuideHref = useMemo(
+    () => getPrimaryGuideHref(guides, pillarLabel, contextToolType),
+    [guides, pillarLabel, contextToolType]
+  );
+
   const shouldShowArticleGuidePromo = useMemo(() => {
     const picked = pickGuidesForPillar(guides, pillarLabel, contextToolType);
     return picked.some((item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire");
@@ -1249,18 +1261,26 @@ export default function ArticlePageV2({ categories }) {
                     {getGuideSectionHeading(contextToolType, pillarLabel)}
                   </div>
                   <div className="mt-1 flex items-center justify-between gap-3">
-                    <a
-                      href="/guides"
-                      className="text-lg font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
-                    >
-                      Useful guides
-                    </a>
-                    <a
-                      href="/guides"
-                      className="shrink-0 text-xs font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
-                    >
-                      View all →
-                    </a>
+                    {primaryGuideHref ? (
+                      <a
+                        href={primaryGuideHref}
+                        className="text-lg font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
+                      >
+                        Useful guides
+                      </a>
+                    ) : (
+                      <h2 className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
+                        Useful guides
+                      </h2>
+                    )}
+                    {primaryGuideHref && (
+                      <a
+                        href={primaryGuideHref}
+                        className="shrink-0 text-xs font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
+                      >
+                        Open guide →
+                      </a>
+                    )}
                   </div>
                   <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-gray-300">
                     Further reading and practical resources linked to this topic.
@@ -1383,18 +1403,26 @@ export default function ArticlePageV2({ categories }) {
                       {getGuideSectionHeading(contextToolType, pillarLabel)}
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-3">
-                      <a
-                        href="/guides"
-                        className="text-sm font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
-                      >
-                        Useful guides
-                      </a>
-                      <a
-                        href="/guides"
-                        className="shrink-0 text-[11px] font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
-                      >
-                        View all →
-                      </a>
+                      {primaryGuideHref ? (
+                        <a
+                          href={primaryGuideHref}
+                          className="text-sm font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
+                        >
+                          Useful guides
+                        </a>
+                      ) : (
+                        <h3 className="text-sm font-black tracking-tight text-slate-950 dark:text-white">
+                          Useful guides
+                        </h3>
+                      )}
+                      {primaryGuideHref && (
+                        <a
+                          href={primaryGuideHref}
+                          className="shrink-0 text-[11px] font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
+                        >
+                          Open guide →
+                        </a>
+                      )}
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
                       Further reading and practical resources linked to this topic.
