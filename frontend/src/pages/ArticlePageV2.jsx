@@ -544,19 +544,19 @@ function getGuideSectionHeading(contextToolType, pillarLabel) {
   const p = String(pillarLabel || "").toLowerCase();
 
   if (t.includes("business") || p.includes("business")) {
-    return "Starting or running a business?";
+    return "Related business guides";
   }
   if (t.includes("finance") || p.includes("finance")) {
-    return "Looking to improve your finances?";
+    return "Related money guides";
   }
   if (p.includes("local")) {
-    return "What this means for your household";
+    return "Related reader guides";
   }
   if (t.includes("ai") || t.includes("tech") || p.includes("ai")) {
-    return "Tools and platforms to consider";
+    return "Related technology guides";
   }
 
-  return "What to do next";
+  return "Related guides";
 }
 
 const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, slot = 0, compact = false }) => {
@@ -1151,12 +1151,16 @@ export default function ArticlePageV2({ categories }) {
                     type="button"
                     onClick={() => {
                       window.setTimeout(() => {
-                        articleBodyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        const target = articleBodyRef.current;
+                        if (!target) return;
+
+                        const y = target.getBoundingClientRect().top + window.scrollY - 96;
+                        window.scrollTo({ top: Math.max(y, 0), behavior: "smooth" });
                       }, 80);
                     }}
-                    className="mt-3 inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                    className="mt-2 inline-flex items-center text-sm font-semibold text-slate-800 underline underline-offset-4 hover:text-sky-800 dark:text-slate-100 dark:hover:text-sky-300"
                   >
-                    Read full article ↓
+                    Continue reading ↓
                   </button>
                 </div>
               )}
@@ -1245,10 +1249,10 @@ export default function ArticlePageV2({ categories }) {
                     {getGuideSectionHeading(contextToolType, pillarLabel)}
                   </div>
                   <h2 className="mt-1 text-lg font-black tracking-tight text-slate-950 dark:text-white">
-                    Best options based on this story
+                    Useful guides
                   </h2>
                   <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-gray-300">
-                    Practical next steps, comparisons and tools for readers who want to act on the issue covered above.
+                    Further reading and practical resources linked to this topic.
                   </p>
                 </div>
                 <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
@@ -1368,10 +1372,10 @@ export default function ArticlePageV2({ categories }) {
                       {getGuideSectionHeading(contextToolType, pillarLabel)}
                     </div>
                     <h3 className="mt-1 text-sm font-black tracking-tight text-slate-950 dark:text-white">
-                      Best options based on this story
+                      Useful guides
                     </h3>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
-                      Practical next steps, comparisons and tools linked to the issue covered in this article.
+                      Further reading and practical resources linked to this topic.
                     </p>
                   </div>
                   <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
