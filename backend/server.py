@@ -12617,8 +12617,24 @@ async def serve_article_html(article_id: str, request=None):
 
     author = str(article.get("author") or "Cheshire Today").strip() or "Cheshire Today"
     section = str(article.get("category") or "News").strip() or "News"
-    published = str(article.get("publishedDate") or article.get("published_at") or article.get("created_at") or "").strip()
-    modified = str(article.get("updated_at") or article.get("modified_at") or article.get("publishedDate") or article.get("created_at") or "").strip()
+
+    def _seo_datetime(value) -> str:
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+        # Convert common DB/date string formats to ISO-style datetime for structured data.
+        if "T" not in raw and re.fullmatch(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?", raw):
+            raw = raw.replace(" ", "T", 1)
+        if raw.endswith("Z"):
+            return raw
+        if re.search(r"[+-]\d{2}:?\d{2}$", raw):
+            return raw
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?", raw):
+            return raw + "+00:00"
+        return raw
+
+    published = _seo_datetime(article.get("publishedDate") or article.get("published_at") or article.get("created_at"))
+    modified = _seo_datetime(article.get("updated_at") or article.get("modified_at") or article.get("publishedDate") or article.get("created_at"))
 
     # Build a crawlable text version of the article body.
     # Keep it plain and safe: remove scripts/styles/tags, normalise whitespace, then paragraphise.
