@@ -1248,9 +1248,20 @@ export default function ArticlePageV2({ categories }) {
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
                     {getGuideSectionHeading(contextToolType, pillarLabel)}
                   </div>
-                  <h2 className="mt-1 text-lg font-black tracking-tight text-slate-950 dark:text-white">
-                    Useful guides
-                  </h2>
+                  <div className="mt-1 flex items-center justify-between gap-3">
+                    <a
+                      href="/guides"
+                      className="text-lg font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
+                    >
+                      Useful guides
+                    </a>
+                    <a
+                      href="/guides"
+                      className="shrink-0 text-xs font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
+                    >
+                      View all →
+                    </a>
+                  </div>
                   <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-gray-300">
                     Further reading and practical resources linked to this topic.
                   </p>
@@ -1371,9 +1382,20 @@ export default function ArticlePageV2({ categories }) {
                     <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-sky-800 dark:text-sky-300">
                       {getGuideSectionHeading(contextToolType, pillarLabel)}
                     </div>
-                    <h3 className="mt-1 text-sm font-black tracking-tight text-slate-950 dark:text-white">
-                      Useful guides
-                    </h3>
+                    <div className="mt-1 flex items-center justify-between gap-3">
+                      <a
+                        href="/guides"
+                        className="text-sm font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
+                      >
+                        Useful guides
+                      </a>
+                      <a
+                        href="/guides"
+                        className="shrink-0 text-[11px] font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
+                      >
+                        View all →
+                      </a>
+                    </div>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
                       Further reading and practical resources linked to this topic.
                     </p>
