@@ -229,6 +229,26 @@ function buildDescription(article) {
   return `${clipped || compact.slice(0, 197).trim()}...`;
 }
 
+function buildVisibleIntro(article) {
+  const summary = safeText(article?.summary).trim();
+  const source = summary.length >= 40 ? summary : safeText(article?.content).trim();
+  const compact = source.replace(/\s+/g, " ").trim();
+
+  if (!compact) return "";
+
+  const firstSentence = compact.match(/^(.+?[.!?])(?:\s|$)/);
+  if (firstSentence && firstSentence[1].length >= 60 && firstSentence[1].length <= 260) {
+    return firstSentence[1].trim();
+  }
+
+  if (compact.length <= 190) {
+    return /[.!?]$/.test(compact) ? compact : `${compact.replace(/[,.…\s]+$/, "")}…`;
+  }
+
+  const clipped = compact.slice(0, 187).replace(/\s+\S*$/, "").replace(/[,.…\s]+$/, "").trim();
+  return `${clipped || compact.slice(0, 187).trim()}…`;
+}
+
 
 function slugifyArticleTitle(title) {
   const raw = safeText(title).toLowerCase();
@@ -788,6 +808,7 @@ export default function ArticlePageV2({ categories }) {
     process.env.REACT_APP_PUBLIC_URL || (typeof window !== "undefined" ? window.location.origin : "");
 
   const description = useMemo(() => buildDescription(article), [article]);
+  const visibleIntro = useMemo(() => buildVisibleIntro(article), [article]);
   const safeTitle = useMemo(() => safeText(article?.title), [article]);
   const displayTitle = useMemo(() => {
     return safeText(article?.title).trim();
@@ -1121,10 +1142,23 @@ export default function ArticlePageV2({ categories }) {
                 </button>
               </div>
 
-              {description && (
-                <p className="hidden sm:block mt-4 text-[1.02rem] leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
-                  {description}
-                </p>
+              {visibleIntro && (
+                <div className="hidden sm:block mt-4">
+                  <p className="text-[1.02rem] leading-7 text-slate-700 dark:text-slate-200 sm:text-lg">
+                    {visibleIntro}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.setTimeout(() => {
+                        articleBodyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 80);
+                    }}
+                    className="mt-3 inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Read full article ↓
+                  </button>
+                </div>
               )}
 
               {article.image && (
