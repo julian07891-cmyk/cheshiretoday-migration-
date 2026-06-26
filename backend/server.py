@@ -5864,6 +5864,176 @@ async def get_subscribers(authorized: bool = Depends(get_admin_auth)):
         logger.error(f"Error getting subscribers: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.get("/admin/subscribers/cold-report")
+async def get_cold_subscriber_report(
+    days: int = 30,
+    recent_days: int = 21,
+    sample_limit: int = 50,
+    authorized: bool = Depends(get_admin_auth)
+):
+    """
+    Dry-run cold subscriber report.
+
+    Read-only. Does not deactivate or delete anyone.
+
+    A cold candidate is:
+    - active or active missing
+    - Daily Brief enabled or missing
+    - deliverable email format
+    - not organic/website priority
+    - not recently subscribed
+    - has no recorded opens/clicks in the tracking window
+    """
+    try:
+        safe_days = max(7, min(int(days), 180))
+        safe_recent_days = max(1, min(int(recent_days), 90))
+        safe_sample_limit = max(0, min(int(sample_limit), 250))
+
+        now = datetime.now(timezone.utc)
+        engagement_cutoff = now - timedelta(days=safe_days)
+        recent_cutoff = now - timedelta(days=safe_recent_days)
+
+        subscribers = await db.subscribers.find(
+            {
+                "$and": [
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]},
+                ]
+            },
+            {
+                "_id": 0,
+                "email": 1,
+                "active": 1,
+                "daily_brief": 1,
+                "weekly_roundup": 1,
+                "subscribed_at": 1,
+                "created_at": 1,
+                "signup_source": 1,
+                "subscriber_origin": 1,
+                "priority_daily_brief": 1,
+            }
+        ).to_list(50000)
+
+        analytics_rows = await db.email_analytics.find(
+            {"$or": [
+                {"last_opened": {"$gte": engagement_cutoff}},
+                {"last_clicked": {"$gte": engagement_cutoff}},
+                {"created_at": {"$gte": engagement_cutoff}},
+            ]},
+            {"_id": 0, "tracking_id": 1, "opens": 1, "clicks": 1, "last_opened": 1, "last_clicked": 1}
+        ).to_list(100000)
+
+        engaged_hashes = set()
+        tracked_hashes = set()
+
+        for row in analytics_rows:
+            tracking_value = str(row.get("tracking_id") or "")
+            suffix = tracking_value.rsplit("_", 1)[-1]
+            if len(suffix) == 8:
+                tracked_hashes.add(suffix)
+                if ((row.get("opens") or 0) > 0) or ((row.get("clicks") or 0) > 0):
+                    engaged_hashes.add(suffix)
+
+        seen_emails = set()
+        total_active_daily = 0
+        invalid_excluded = 0
+        protected_excluded = 0
+        recent_excluded = 0
+        tracked_no_engagement = 0
+        no_tracking_seen = 0
+        cold_candidates = []
+
+        protected_domains = {
+            "cheshiretoday.co.uk",
+        }
+
+        def parse_dt(value):
+            if not value:
+                return None
+            if isinstance(value, datetime):
+                if value.tzinfo is None:
+                    return value.replace(tzinfo=timezone.utc)
+                return value
+            try:
+                return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            except Exception:
+                return None
+
+        for sub in subscribers:
+            raw_email = sub.get("email") or ""
+            email_norm = raw_email.strip().lower()
+            if not email_norm or email_norm in seen_emails:
+                continue
+            seen_emails.add(email_norm)
+            total_active_daily += 1
+
+            if not is_deliverable_newsletter_email(email_norm):
+                invalid_excluded += 1
+                continue
+
+            domain = email_norm.rsplit("@", 1)[-1] if "@" in email_norm else ""
+            is_protected = (
+                sub.get("priority_daily_brief") is True
+                or sub.get("signup_source") == "website"
+                or sub.get("subscriber_origin") == "organic_website"
+                or domain in protected_domains
+            )
+            if is_protected:
+                protected_excluded += 1
+                continue
+
+            sub_dt = parse_dt(sub.get("subscribed_at") or sub.get("created_at"))
+            if sub_dt and sub_dt >= recent_cutoff:
+                recent_excluded += 1
+                continue
+
+            email_hash = hashlib.sha256(email_norm.encode()).hexdigest()[:8]
+
+            if email_hash in engaged_hashes:
+                continue
+
+            if email_hash in tracked_hashes:
+                tracked_no_engagement += 1
+                reason = f"No opens or clicks recorded in last {safe_days} days"
+            else:
+                no_tracking_seen += 1
+                reason = f"No tracking record seen in last {safe_days} days"
+
+            if len(cold_candidates) < safe_sample_limit:
+                cold_candidates.append({
+                    "email": raw_email,
+                    "reason": reason,
+                    "subscribed_at": sub.get("subscribed_at"),
+                    "signup_source": sub.get("signup_source"),
+                    "subscriber_origin": sub.get("subscriber_origin"),
+                    "weekly_roundup": sub.get("weekly_roundup"),
+                })
+
+        return {
+            "success": True,
+            "dry_run": True,
+            "period_days": safe_days,
+            "recent_subscriber_exclusion_days": safe_recent_days,
+            "summary": {
+                "active_daily_unique": total_active_daily,
+                "invalid_excluded": invalid_excluded,
+                "protected_or_organic_excluded": protected_excluded,
+                "recent_subscribers_excluded": recent_excluded,
+                "engaged_hashes": len(engaged_hashes),
+                "tracked_hashes": len(tracked_hashes),
+                "cold_candidates_total": tracked_no_engagement + no_tracking_seen,
+                "cold_candidates_with_tracking_but_no_engagement": tracked_no_engagement,
+                "cold_candidates_with_no_recent_tracking_seen": no_tracking_seen,
+            },
+            "sample": cold_candidates,
+            "next_step": "Review this dry-run report before adding any deactivate endpoint. Do not hard-delete subscribers."
+        }
+
+    except Exception as e:
+        logger.error(f"Error building cold subscriber report: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.delete("/admin/subscribers/{email}")
 async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_auth)):
     """Delete a subscriber by email. Requires admin authentication."""
