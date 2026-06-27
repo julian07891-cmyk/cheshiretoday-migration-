@@ -867,6 +867,31 @@ export default function ArticlePageV2({ categories }) {
   }, [mainContent]);
 
 
+  const articleBodyContent = useMemo(() => {
+    const intro = safeText(visibleIntro).trim();
+    const body = String(mainContent || "").trim();
+
+    if (!intro) return body;
+    if (!body) return intro;
+
+    const normalise = (value) =>
+      String(value || "")
+        .replace(/\s+/g, " ")
+        .replace(/[.…]+$/g, "")
+        .trim()
+        .toLowerCase();
+
+    const introNorm = normalise(intro);
+    const bodyStartNorm = normalise(body.slice(0, Math.max(intro.length + 120, 260)));
+
+    if (bodyStartNorm.startsWith(introNorm) || bodyStartNorm.includes(introNorm)) {
+      return body;
+    }
+
+    return `${intro}\n\n${body}`;
+  }, [visibleIntro, mainContent]);
+
+
   // Contextual monetisation mapping: convert article metadata -> tool category
   // Hybrid approach: section-first (if present), then category, then keywords.
   const contextToolType = useMemo(() => {
@@ -1213,7 +1238,7 @@ export default function ArticlePageV2({ categories }) {
 <div ref={articleBodyRef} className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
                 <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
-                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(mainContent, pillarLabel) }} />
+                <div dangerouslySetInnerHTML={{ __html: autoLinkContent(articleBodyContent, pillarLabel) }} />
               </div>
 
 
