@@ -14371,6 +14371,13 @@ AI_MANUAL_REVIEW_RISK_TERMS = [
     "millions of views",
     "insiders suggest",
     "analysts in recent reports",
+    "source material",
+    "not mentioned in the source",
+    "not mentioned in source",
+    "no police involvement",
+    "resident complaints",
+    "specific venue damage",
+    "business closures",
 ]
 
 
