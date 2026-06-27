@@ -12898,6 +12898,180 @@ async def _redirect_stale_article_slug_if_needed(article_id: str, slug: str):
     return RedirectResponse(url=f"https://cheshiretoday.co.uk/article/{target_id}/{target_slug}", status_code=301)
 
 
+
+async def serve_guide_html(slug: str, request=None):
+    """Crawler/static HTML for authority guide pages in /guides/{slug}."""
+    from fastapi.responses import HTMLResponse
+    import html as _html
+    import json as _json
+    import urllib.parse
+
+    clean_slug = str(slug or "").strip()
+    if not clean_slug:
+        raise HTTPException(status_code=404, detail="Guide not found")
+
+    doc = await db.authority_pages.find_one({
+        "slug": clean_slug,
+        "status": {"$in": ["published", "live"]},
+    })
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Guide not found")
+
+    guide = _ap_serialize(doc)
+
+    title = str(guide.get("title") or clean_slug.replace("-", " ").title()).strip()
+    category = str(guide.get("category") or "Guides").strip()
+    updated = str(guide.get("updatedAt") or guide.get("updated_at") or "").strip()
+    sections = guide.get("sections") if isinstance(guide.get("sections"), list) else []
+
+    canonical = f"https://cheshiretoday.co.uk/guides/{urllib.parse.quote(clean_slug)}"
+
+    # Build readable guide sections from existing authority_pages data.
+    body_parts = []
+    plain_parts = []
+
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+
+        section_type = str(section.get("type") or "").strip().lower()
+        heading = str(section.get("title") or section.get("name") or "").strip()
+        content = str(section.get("content") or "").strip()
+        rating = section.get("rating")
+        affiliate_link = str(section.get("affiliate_link") or "").strip()
+
+        if heading:
+            body_parts.append(f"<h2>{_html.escape(heading)}</h2>")
+            plain_parts.append(heading)
+
+        if rating not in (None, ""):
+            body_parts.append(f"<p><strong>Rating:</strong> {_html.escape(str(rating))}</p>")
+            plain_parts.append(f"Rating: {rating}")
+
+        if content:
+            safe_content = _html.escape(content)
+            # Keep paragraphs readable without trusting stored HTML.
+            paragraphs = [x.strip() for x in re.split(r"\n\s*\n", safe_content) if x.strip()]
+            if not paragraphs:
+                paragraphs = [safe_content]
+            for para in paragraphs[:12]:
+                body_parts.append(f"<p>{para}</p>")
+            plain_parts.append(content)
+
+        if affiliate_link:
+            safe_link = _html.escape(affiliate_link)
+            link_label = _html.escape(heading or "Visit provider")
+            body_parts.append(
+                f'<p><a href="{safe_link}" rel="nofollow sponsored noopener" target="_blank">{link_label}</a></p>'
+            )
+
+        # Avoid very thin empty tool rows looking completely blank.
+        if section_type == "tool" and heading and not content:
+            body_parts.append("<p>Listed as one of the options covered in this guide.</p>")
+            plain_parts.append("Listed as one of the options covered in this guide.")
+
+    body_text = re.sub(r"\s+", " ", " ".join(plain_parts)).strip()
+    desc_source = body_text or title
+    desc = desc_source[:180]
+
+    if not body_parts:
+        body_parts.append(f"<p>{_html.escape(desc)}</p>")
+
+    esc_title = _html.escape(title)
+    esc_desc = _html.escape(desc)
+    esc_category = _html.escape(category)
+    esc_canonical = _html.escape(canonical)
+    esc_updated = _html.escape(updated)
+
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": title,
+        "description": desc,
+        "url": canonical,
+        "dateModified": updated or None,
+        "publisher": {
+            "@type": "Organization",
+            "name": "Cheshire Today",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://cheshiretoday.co.uk/logo.png",
+            },
+        },
+        "about": category,
+    }
+    schema = {k: v for k, v in schema.items() if v is not None}
+    schema_json = _json.dumps(schema, ensure_ascii=False).replace("</", "<\\/")
+
+    html_content = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{esc_title}</title>
+  <link rel="canonical" href="{esc_canonical}">
+  <meta name="description" content="{esc_desc}">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Cheshire Today">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:url" content="{esc_canonical}">
+  <meta property="og:title" content="{esc_title}">
+  <meta property="og:description" content="{esc_desc}">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{esc_title}">
+  <meta name="twitter:description" content="{esc_desc}">
+  <script type="application/ld+json">{schema_json}</script>
+</head>
+<body>
+  <article>
+    <header>
+      <p><a href="https://cheshiretoday.co.uk/">Cheshire Today</a> / {esc_category}</p>
+      <h1>{esc_title}</h1>
+      <p>{esc_desc}</p>
+      <p><strong>Category:</strong> {esc_category}</p>
+      <time datetime="{esc_updated}">{esc_updated}</time>
+    </header>
+    {''.join(body_parts)}
+    <p><a href="{esc_canonical}">Open this guide on Cheshire Today</a></p>
+  </article>
+</body>
+</html>"""
+
+    return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/guides/{slug}")
+async def serve_guide_for_production(slug: str, request: Request):
+    """Public guide URL serves crawler HTML for bots/social previews and SPA for browsers."""
+    user_agent = request.headers.get("user-agent", "").lower()
+    is_crawler = any(bot in user_agent for bot in [
+        "facebookexternalhit",
+        "twitterbot",
+        "linkedinbot",
+        "whatsapp",
+        "telegrambot",
+        "slackbot",
+        "discordbot",
+        "googlebot",
+        "bingbot",
+        "crawler",
+        "bot",
+    ])
+
+    if is_crawler:
+        return await serve_guide_html(slug, request)
+
+    return _spa_index_or_500()
+
+
+@api_router.get("/guides/{slug}")
+async def serve_guide_for_api_route(slug: str):
+    """Guide HTML variant for API/crawler access."""
+    return await serve_guide_html(slug)
+
+
 @app.get("/article/{article_id}/{slug}")
 async def serve_article_for_production_slug(article_id: str, slug: str, request: Request):
     """Public slug URL serves crawler HTML for bots/social previews and SPA for browsers."""
