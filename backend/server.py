@@ -11859,12 +11859,24 @@ async def generate_sitemap():
         # Add published authority guide pages
         authority_pages = await db.authority_pages.find(
             {"status": {"$in": ["published", "live"]}},
-            {"_id": 0, "slug": 1, "updatedAt": 1}
+            {"_id": 0, "slug": 1, "updatedAt": 1, "sections": 1}
         ).sort("updatedAt", -1).limit(250).to_list(250)
 
         for page in authority_pages:
             guide_slug = str(page.get("slug") or "").strip()
             if not guide_slug:
+                continue
+
+            # Keep thin/stub authority pages out of the sitemap until they have
+            # enough useful guide content. Pages remain live, but are not
+            # submitted for indexing while under the quality threshold.
+            guide_sections = page.get("sections") if isinstance(page.get("sections"), list) else []
+            guide_content_len = sum(
+                len(str(section.get("content") or "").strip())
+                for section in guide_sections
+                if isinstance(section, dict)
+            )
+            if guide_content_len < 700:
                 continue
 
             updated_at = page.get("updatedAt")
@@ -12930,6 +12942,7 @@ async def serve_guide_html(slug: str, request=None):
     # Build readable guide sections from existing authority_pages data.
     body_parts = []
     plain_parts = []
+    useful_content_len = 0
 
     for section in sections:
         if not isinstance(section, dict):
@@ -12950,6 +12963,7 @@ async def serve_guide_html(slug: str, request=None):
             plain_parts.append(f"Rating: {rating}")
 
         if content:
+            useful_content_len += len(content)
             safe_content = _html.escape(content)
             # Keep paragraphs readable without trusting stored HTML.
             paragraphs = [x.strip() for x in re.split(r"\n\s*\n", safe_content) if x.strip()]
@@ -12984,6 +12998,10 @@ async def serve_guide_html(slug: str, request=None):
     esc_canonical = _html.escape(canonical)
     esc_updated = _html.escape(updated)
 
+    robots_directive = "index, follow, max-image-preview:large"
+    if useful_content_len < 700:
+        robots_directive = "noindex, follow, max-image-preview:large"
+
     schema = {
         "@context": "https://schema.org",
         "@type": "WebPage",
@@ -13012,7 +13030,7 @@ async def serve_guide_html(slug: str, request=None):
   <title>{esc_title}</title>
   <link rel="canonical" href="{esc_canonical}">
   <meta name="description" content="{esc_desc}">
-  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="robots" content="{robots_directive}">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Cheshire Today">
   <meta property="og:locale" content="en_GB">
