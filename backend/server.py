@@ -11768,7 +11768,9 @@ async def generate_sitemap():
             "unemployment", "jobs", "roles", "workers", "wages", "costs", "prices",
             "energy", "bills", "petrol", "pensions", "bank", "mortgage", "rent",
             "tax", "hs2", "imf", "traders", "high street", "ombudsman", "savings",
-            "childcare", "insurance", "food prices", "growth forecast"
+            "childcare", "insurance", "food prices", "growth forecast", "job",
+            "recruitment", "sales", "air conditioning", "geothermal", "start-ups",
+            "startups", "startup"
         ]
 
         practical_tech_terms = [
@@ -11776,7 +11778,8 @@ async def generate_sitemap():
             "npm", "software", "cloud", "aws", "google cloud", "coding", "code",
             "developers", "devs", "database", "postgresql", "vpn", "privacy",
             "age-check", "agent", "linux", "bug hunters", "automation", "layoffs",
-            "costs", "bills", "jobs", "workers", "bank", "business", "sap"
+            "costs", "bills", "jobs", "workers", "bank", "business", "sap",
+            "ransomware"
         ]
 
         def include_article_in_sitemap(article):
@@ -12083,7 +12086,9 @@ async def generate_news_sitemap():
             "unemployment", "jobs", "roles", "workers", "wages", "costs", "prices",
             "energy", "bills", "petrol", "pensions", "bank", "mortgage", "rent",
             "tax", "hs2", "imf", "traders", "high street", "ombudsman", "savings",
-            "childcare", "insurance", "food prices", "growth forecast"
+            "childcare", "insurance", "food prices", "growth forecast", "job",
+            "recruitment", "sales", "air conditioning", "geothermal", "start-ups",
+            "startups", "startup"
         ]
 
         practical_tech_terms = [
@@ -12091,7 +12096,8 @@ async def generate_news_sitemap():
             "npm", "software", "cloud", "aws", "google cloud", "coding", "code",
             "developers", "devs", "database", "postgresql", "vpn", "privacy",
             "age-check", "agent", "linux", "bug hunters", "automation", "layoffs",
-            "costs", "bills", "jobs", "workers", "bank", "business", "sap"
+            "costs", "bills", "jobs", "workers", "bank", "business", "sap",
+            "ransomware"
         ]
 
         def include_article_in_news_sitemap(article):
