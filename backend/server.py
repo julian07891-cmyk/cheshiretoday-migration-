@@ -15423,14 +15423,33 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             tracking_id = None
         
         logger.info(f"✅ Daily Brief sent to {success_count}/{len(subscriber_emails)} subscribers")
+
+        provider_name = "resend" if getattr(email_service, "resend_enabled", False) else "smtp"
+        provider_error = None
+        final_status = "sent"
+
+        if int(success_count or 0) <= 0:
+            final_status = "failed"
+            provider_error = (
+                getattr(email_service, "resend_last_error", None)
+                or "Daily Brief email service returned zero successful sends"
+            )
+            logger.error(
+                f"❌ Daily Brief provider failure: selected={len(subscriber_emails)} "
+                f"success_count=0 provider={provider_name} error={provider_error}"
+            )
         
-        # Update our digest log record to "sent" status
+        # Update our digest log record with final provider result
         await db.digest_log.update_one(
             {"digest_time": digest_time, "date_key": date_key, "instance_id": instance_id},
             {"$set": {
                 "success_count": success_count,
                 "tracking_id": tracking_id,
-                "status": "sent",
+                "status": final_status,
+                "provider": provider_name,
+                "provider_error": provider_error,
+                "resend_successful_chunks": getattr(email_service, "resend_last_successful_chunks", None),
+                "resend_failed_chunks": getattr(email_service, "resend_last_failed_chunks", None),
                 "completed_at": datetime.now(timezone.utc)
             }}
         )

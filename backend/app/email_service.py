@@ -155,6 +155,7 @@ class EmailService:
                     )
                 response.raise_for_status()
                 success_count += len(chunk)
+                self.resend_last_successful_chunks = getattr(self, "resend_last_successful_chunks", 0) + 1
             except Exception as e:
                 status_code = getattr(response, "status_code", "no_response")
                 detail = ""
@@ -162,6 +163,12 @@ class EmailService:
                     detail = response.text[:1000] if response is not None else ""
                 except Exception:
                     pass
+                self.resend_last_failed_chunks = getattr(self, "resend_last_failed_chunks", 0) + 1
+                self.resend_last_error = (
+                    f"chunk={chunk_number} size={len(chunk)} status={status_code} "
+                    f"subject={subject!r} first_domain={first_domain} "
+                    f"error={type(e).__name__}: {str(e)} response={detail[:500]}"
+                )
                 logger.error(
                     "Resend batch send failed: "
                     f"chunk={chunk_number} size={len(chunk)} status={status_code} "
@@ -628,6 +635,11 @@ Cheshire Today Jobs Team
         if not articles:
             logger.warning("No articles for Daily Brief")
             return 0, None
+
+        # Reset provider diagnostics for this send attempt.
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
         
         # Generate tracking ID for this send
         tracking_id = self._generate_tracking_id("daily_brief")
