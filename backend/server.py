@@ -14400,6 +14400,257 @@ from fastapi.responses import FileResponse, Response
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"
 _INDEX_HTML = _FRONTEND_DIR / "index.html"
 
+
+def _is_crawler_request(request: Request) -> bool:
+    user_agent = request.headers.get("user-agent", "").lower()
+    return any(bot in user_agent for bot in [
+        "facebookexternalhit",
+        "twitterbot",
+        "linkedinbot",
+        "whatsapp",
+        "telegrambot",
+        "slackbot",
+        "discordbot",
+        "googlebot",
+        "bingbot",
+        "crawler",
+        "bot",
+    ])
+
+
+async def serve_public_hub_html(full_path: str = ""):
+    """Crawler/static HTML for public homepage, category and location hub pages."""
+    from fastapi.responses import HTMLResponse
+    import html as _html
+    import json as _json
+    import urllib.parse
+
+    base_url = "https://cheshiretoday.co.uk"
+    clean_path = str(full_path or "").strip().strip("/")
+    path_parts = [p for p in clean_path.split("/") if p]
+
+    category_slug_map = {
+        "local-news": "Local News",
+        "uk-news": "UK News",
+        "business": "Business",
+        "finance": "Finance",
+        "tech": "Tech",
+        "ai": "AI",
+        "ai-tech": "AI & Tech",
+        "tax": "Tax",
+        "property": "Property",
+    }
+
+    locations = {
+        "chester", "warrington", "crewe", "wirral", "macclesfield",
+        "stockport", "runcorn", "northwich"
+    }
+
+    page_kind = "home"
+    page_title = "Cheshire Today | Local News, Business, AI & Tech, Finance"
+    page_desc = "Latest Cheshire news, business updates, finance guides and practical AI and technology coverage from Cheshire Today."
+    canonical_path = "/"
+
+    article_query = {
+        "$or": [{"archived": {"$exists": False}}, {"archived": False}],
+        "manual_review_hidden_from_public": {"$ne": True},
+        "title": {"$exists": True, "$ne": ""},
+        "image": {"$exists": True, "$ne": ""},
+    }
+
+    if len(path_parts) >= 2 and path_parts[0] == "category":
+        category_slug = path_parts[1]
+        category = category_slug_map.get(category_slug)
+        if not category:
+            raise HTTPException(status_code=404, detail="Not Found")
+
+        page_kind = "category"
+        canonical_path = f"/category/{category_slug}"
+        page_title = f"{category} news and updates | Cheshire Today"
+        page_desc = f"Latest {category.lower()} stories, updates and guides from Cheshire Today."
+        if category == "UK News":
+            article_query["category"] = {"$in": ["UK News", "Finance", "Tax", "Property", "Tech", "AI", "AI & Tech"]}
+        else:
+            article_query["category"] = category
+
+    elif len(path_parts) == 1 and path_parts[0] in locations:
+        location = path_parts[0]
+        location_label = location.replace("-", " ").title()
+        page_kind = "location"
+        canonical_path = f"/{location}"
+        page_title = f"{location_label} news | Cheshire Today"
+        page_desc = f"Latest news and updates for {location_label} and the wider Cheshire area."
+        article_query["$and"] = article_query.get("$and", []) + [
+            {"$or": [
+                {"location": {"$regex": location, "$options": "i"}},
+                {"priority_location": {"$regex": location, "$options": "i"}},
+                {"title": {"$regex": location_label, "$options": "i"}},
+                {"summary": {"$regex": location_label, "$options": "i"}},
+            ]}
+        ]
+
+    elif clean_path in ("", "latest-articles", "article-index"):
+        page_kind = "home"
+        canonical_path = "/" if clean_path == "" else f"/{clean_path}"
+        if clean_path in ("latest-articles", "article-index"):
+            page_title = "Latest articles | Cheshire Today"
+            page_desc = "Latest public articles from Cheshire Today across local news, business, finance and technology."
+    else:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    articles = await db.articles.find(
+        article_query,
+        {
+            "_id": 1,
+            "id": 1,
+            "title": 1,
+            "summary": 1,
+            "category": 1,
+            "publishedDate": 1,
+            "created_at": 1,
+        }
+    ).sort([("created_at", -1), ("publishedDate", -1)]).limit(40).to_list(40)
+
+    # Strong/indexable guides only: keep thin/stub guides out of crawler hub links.
+    guide_docs = await db.authority_pages.find(
+        {"status": {"$in": ["published", "live"]}},
+        {"_id": 0, "slug": 1, "title": 1, "category": 1, "sections": 1, "updatedAt": 1}
+    ).sort("updatedAt", -1).limit(80).to_list(80)
+
+    guides = []
+    for guide in guide_docs:
+        sections = guide.get("sections") if isinstance(guide.get("sections"), list) else []
+        content_len = sum(
+            len(str(section.get("content") or "").strip())
+            for section in sections
+            if isinstance(section, dict)
+        )
+        if content_len < 700:
+            continue
+        guides.append(guide)
+
+    if page_kind == "category":
+        wanted = page_title.split(" news and updates", 1)[0]
+        category_guides = [
+            g for g in guides
+            if str(g.get("category") or "").lower() == wanted.lower()
+        ]
+        if not category_guides:
+            category_guides = guides[:12]
+    else:
+        category_guides = guides[:16]
+
+    def article_url(article):
+        public_id = str(article.get("_id") or article.get("id") or "").strip()
+        raw_title = str(article.get("title") or "article")
+        slug = re.sub(r"[^a-z0-9]+", "-", raw_title.lower()).strip("-")
+        slug = slug[:80] if slug else "article"
+        return f"{base_url}/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
+
+    article_items = []
+    for article in articles:
+        title = _html.escape(str(article.get("title") or "Untitled article"))
+        url = _html.escape(article_url(article))
+        category = _html.escape(str(article.get("category") or "News"))
+        desc = _html.escape(re.sub(r"\s+", " ", str(article.get("summary") or "")).strip()[:180])
+        article_items.append(f'<li><a href="{url}">{title}</a><p>{category}</p><p>{desc}</p></li>')
+
+    guide_items = []
+    for guide in category_guides:
+        slug = str(guide.get("slug") or "").strip()
+        if not slug:
+            continue
+        title = _html.escape(str(guide.get("title") or slug.replace("-", " ").title()))
+        category = _html.escape(str(guide.get("category") or "Guides"))
+        url = _html.escape(f"{base_url}/guides/{slug}")
+        guide_items.append(f'<li><a href="{url}">{title}</a><p>{category}</p></li>')
+
+    category_links = []
+    for slug, label in category_slug_map.items():
+        if label in {"Tech", "AI"}:
+            continue
+        category_links.append(f'<li><a href="{base_url}/category/{slug}">{_html.escape(label)}</a></li>')
+
+    location_links = []
+    for loc in sorted(locations):
+        label = loc.replace("-", " ").title()
+        location_links.append(f'<li><a href="{base_url}/{loc}">{_html.escape(label)}</a></li>')
+
+    canonical = f"{base_url}{canonical_path}"
+    esc_title = _html.escape(page_title)
+    esc_desc = _html.escape(page_desc)
+    esc_canon = _html.escape(canonical)
+
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": page_title,
+        "description": page_desc,
+        "url": canonical,
+        "publisher": {
+            "@type": "Organization",
+            "name": "Cheshire Today",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://cheshiretoday.co.uk/logo.png",
+            },
+        },
+    }
+    schema_json = _json.dumps(schema, ensure_ascii=False).replace("</", "<\\/")
+
+    html_content = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{esc_title}</title>
+  <link rel="canonical" href="{esc_canon}">
+  <meta name="description" content="{esc_desc}">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Cheshire Today">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:url" content="{esc_canon}">
+  <meta property="og:title" content="{esc_title}">
+  <meta property="og:description" content="{esc_desc}">
+  <script type="application/ld+json">{schema_json}</script>
+</head>
+<body>
+  <header>
+    <h1>{esc_title}</h1>
+    <p>{esc_desc}</p>
+    <nav>
+      <a href="{base_url}/">Home</a> |
+      <a href="{base_url}/article-index">Article index</a> |
+      <a href="{base_url}/category/local-news">Local News</a> |
+      <a href="{base_url}/category/business">Business</a> |
+      <a href="{base_url}/category/finance">Finance</a>
+    </nav>
+  </header>
+  <main>
+    <section>
+      <h2>Latest articles</h2>
+      <ul>{''.join(article_items)}</ul>
+    </section>
+    <section>
+      <h2>Useful guides</h2>
+      <ul>{''.join(guide_items)}</ul>
+    </section>
+    <section>
+      <h2>Categories</h2>
+      <ul>{''.join(category_links)}</ul>
+    </section>
+    <section>
+      <h2>Locations</h2>
+      <ul>{''.join(location_links)}</ul>
+    </section>
+  </main>
+</body>
+</html>"""
+
+    return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=1800"})
+
+
 def _spa_file_response(path: Path):
     rel = path.relative_to(_FRONTEND_DIR).as_posix()
     headers = {}
@@ -14423,7 +14674,9 @@ def _spa_index_or_500():
     raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
 
 @app.get("/")
-async def serve_spa_root():
+async def serve_spa_root(request: Request):
+    if _is_crawler_request(request):
+        return await serve_public_hub_html("")
     return _spa_index_or_500()
 
 @app.head("/")
@@ -14431,12 +14684,18 @@ async def head_spa_root():
     return _spa_index_or_500()
 
 @app.get("/{full_path:path}")
-async def serve_react_spa(full_path: str):
+async def serve_react_spa(full_path: str, request: Request):
     if full_path.startswith("api/") or full_path == "api":
         raise HTTPException(status_code=404, detail="Not Found")
     candidate = (_FRONTEND_DIR / full_path)
     if candidate.is_file():
         return _spa_file_response(candidate)
+    if _is_crawler_request(request):
+        hub_paths = {"article-index", "latest-articles"}
+        if full_path in hub_paths or full_path.startswith("category/") or full_path in {
+            "chester", "warrington", "crewe", "wirral", "macclesfield", "stockport", "runcorn", "northwich"
+        }:
+            return await serve_public_hub_html(full_path)
     return _spa_index_or_500()
 
 @app.head("/{full_path:path}")
