@@ -11003,6 +11003,59 @@ async def get_email_config_status(auth: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/admin/email-config/validate-resend")
+async def validate_resend_config(auth: bool = Depends(get_admin_auth)):
+    """Validate current Resend API key with Resend without sending email. Does not expose secrets."""
+    try:
+        import hashlib
+        import urllib.error
+        import urllib.request
+
+        key = getattr(email_service, "resend_api_key", None) or ""
+        key = str(key)
+
+        result = {
+            "success": True,
+            "resend_enabled": bool(getattr(email_service, "resend_enabled", False)),
+            "key_exists": bool(key),
+            "key_length": len(key),
+            "key_starts_with": key[:3] if key else "",
+            "key_ends_with": key[-4:] if key else "",
+            "key_fingerprint": hashlib.sha256(key.encode("utf-8")).hexdigest()[:12] if key else "",
+            "valid": False,
+            "resend_status": None,
+            "resend_response": None,
+        }
+
+        if not key:
+            result["resend_response"] = "RESEND_API_KEY is missing"
+            return result
+
+        req = urllib.request.Request(
+            "https://api.resend.com/domains",
+            headers={"Authorization": f"Bearer {key}"},
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=20) as response:
+                body = response.read().decode("utf-8", errors="replace")
+                result["resend_status"] = response.status
+                result["resend_response"] = body[:800]
+                result["valid"] = 200 <= int(response.status) < 300
+                return result
+
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            result["resend_status"] = e.code
+            result["resend_response"] = body[:800]
+            result["valid"] = False
+            return result
+
+    except Exception as e:
+        logger.error(f"Error validating Resend config: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # =====================================================================================
 # EMAIL ANALYTICS TRACKING
 # =====================================================================================
