@@ -12689,6 +12689,12 @@ async def serve_article_html(article_id: str, request=None):
     esc_published = _html.escape(published)
     esc_modified = _html.escape(modified or published)
 
+    robots_directive = "index, follow, max-image-preview:large"
+    # Archived/manual-review-hidden articles are kept reachable for old links,
+    # but should not be submitted as indexable pages.
+    if article.get("archived") is True or article.get("manual_review_hidden_from_public") is True:
+        robots_directive = "noindex, follow, max-image-preview:large"
+
     schema = {
         "@context": "https://schema.org",
         "@type": "NewsArticle",
@@ -12728,7 +12734,7 @@ async def serve_article_html(article_id: str, request=None):
   <title>{esc_title}</title>
   <link rel="canonical" href="{esc_canon}">
   <meta name="description" content="{esc_desc}">
-  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="robots" content="{robots_directive}">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Cheshire Today">
   <meta property="og:locale" content="en_GB">
