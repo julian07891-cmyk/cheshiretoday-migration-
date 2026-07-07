@@ -85,6 +85,11 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   }, [placement]);
 
   const isPaidPlacement = Boolean(ad);
+  const isHouseGuide = isPaidPlacement && (
+    String(ad?.package_tier || "").toLowerCase().includes("house") ||
+    String(ad?.campaign_id || "").toLowerCase().includes("ct_house")
+  );
+  const placementLabel = isPaidPlacement ? (isHouseGuide ? "Affiliate guide" : "Sponsored") : fallbackCopy.eyebrow;
   const targetUrl = isPaidPlacement ? ad.target_url : "/advertise";
   const title = isPaidPlacement ? ad.title : fallbackCopy.title;
   const description = isPaidPlacement ? ad.description : fallbackCopy.description;
@@ -129,7 +134,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const inner = (
     <>
       <div className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-        {isPaidPlacement ? "Sponsored" : fallbackCopy.eyebrow}
+        {placementLabel}
       </div>
 
       {isPaidPlacement && sponsor && (
@@ -178,7 +183,7 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
         <a
           href={targetUrl}
           target="_blank"
-          rel="noopener noreferrer sponsored"
+          rel={isHouseGuide ? "noopener noreferrer" : "noopener noreferrer sponsored"}
           onClick={handleClick}
           className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 transition"
         >
