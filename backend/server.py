@@ -14897,6 +14897,51 @@ AI_MANUAL_REVIEW_RISK_TERMS = [
 ]
 
 
+RSS_WEAK_PUBLIC_REVIEW_MARKERS = [
+    "this story has been reported by",
+    "more details are expected to emerge soon",
+    "for the latest news from across the region, keep following",
+]
+
+
+def find_weak_rss_public_review_reason(article: dict, content: str, ai_rewrite_used: bool = False) -> str:
+    """Keep weak RSS/fallback items out of public view unless a real AI rewrite succeeded."""
+    if ai_rewrite_used:
+        return ""
+
+    image_source = str(article.get("image_source") or "").lower()
+    source_flags = " ".join([
+        str(article.get("source") or ""),
+        str(article.get("source_url") or ""),
+        str(article.get("source_type") or ""),
+    ]).lower()
+
+    is_rss_or_fallback = (
+        "rss" in image_source
+        or "fallback" in image_source
+        or article.get("is_local_feed") is True
+        or article.get("is_local_source") is True
+        or "rss" in source_flags
+    )
+
+    if not is_rss_or_fallback:
+        return ""
+
+    text_blob = " ".join([
+        str(content or "").strip(),
+        str(article.get("summary") or "").strip(),
+    ]).strip()
+    text_l = text_blob.lower()
+
+    if len(text_blob) < 1000:
+        return "RSS/fallback article is below the public quality floor and needs manual review before publication."
+
+    if any(marker in text_l for marker in RSS_WEAK_PUBLIC_REVIEW_MARKERS):
+        return "RSS/fallback article contains boilerplate or placeholder wording and needs manual review before publication."
+
+    return ""
+
+
 def find_ai_manual_review_hits(content: str):
     text = (content or "").lower()
     hits = []
@@ -14988,11 +15033,14 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
         article["is_rewritten"] = True
 
     hits = find_ai_manual_review_hits(content) if ai_rewrite_used else []
+    weak_rss_reason = find_weak_rss_public_review_reason(article, content, ai_rewrite_used)
     local_location_reason = find_local_location_review_reason(article, content, title)
 
     review_reasons = []
     if hits:
         review_reasons.append("AI rewrite contained risky invented-detail phrases; verify against source before promotion or social sharing.")
+    if weak_rss_reason:
+        review_reasons.append(weak_rss_reason)
     if local_location_reason:
         review_reasons.append(local_location_reason)
 
