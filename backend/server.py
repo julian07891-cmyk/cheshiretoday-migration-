@@ -3532,9 +3532,16 @@ async def get_articles_by_location(
         if location_lower not in LOCATION_KEYWORDS:
             raise HTTPException(status_code=404, detail=f"Location '{location}' not found")
         
-        # STRICT: Only match articles with location field set to this location
-        # This prevents articles that merely mention a town from appearing on that town's page
-        query = {'location': location_lower}
+        # STRICT: Only match articles with location field set to this location,
+        # while applying the same public visibility guard used by the main articles feed.
+        # This prevents town pages listing articles that later 404 on the article detail page.
+        query = {
+            "$and": [
+                {"location": location_lower},
+                {"$or": [{"archived": {"$exists": False}}, {"archived": False}]},
+                {"manual_review_hidden_from_public": {"$ne": True}},
+            ]
+        }
         
         articles = await db.articles.find(
             query,
