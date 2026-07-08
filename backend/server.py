@@ -409,6 +409,34 @@ class ManualArticleCreate(BaseModel):
     featured: Optional[bool] = False
     scope: Optional[str] = "cheshire"
     force_live: Optional[bool] = False
+    location: Optional[str] = None
+
+SUPPORTED_ARTICLE_LOCATIONS = {
+    "chester",
+    "warrington",
+    "crewe",
+    "wirral",
+    "macclesfield",
+    "wilmslow",
+    "knutsford",
+    "stockport",
+    "northwich",
+    "cheshire-general",
+}
+
+def normalise_manual_article_location(location: Optional[str]) -> Optional[str]:
+    """Return a safe location slug for manual article town assignment."""
+    if location is None:
+        return None
+
+    location_slug = str(location).strip().lower().replace("_", "-")
+    if not location_slug:
+        return None
+
+    if location_slug not in SUPPORTED_ARTICLE_LOCATIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported article location: {location}")
+
+    return location_slug
 
 # Store for email verification codes (in production, use Redis with TTL)
 email_verification_codes = {}
@@ -6415,8 +6443,9 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
         # Use default image if not provided
         default_image = ""
         
-        # Auto-detect location from title and content
-        detected_location = get_article_priority_location(article.title, article.content)
+        # Use explicit admin-selected location when provided; otherwise auto-detect from title/content.
+        manual_location = normalise_manual_article_location(article.location)
+        detected_location = manual_location or get_article_priority_location(article.title, article.content)
         
         # Build tags list
         tags = article.tags or []
@@ -6495,8 +6524,9 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         if not existing:
             raise HTTPException(status_code=404, detail="Article not found")
         
-        # Auto-detect location from updated title and content
-        detected_location = get_article_priority_location(article.title, article.content)
+        # Use explicit admin-selected location when provided; otherwise auto-detect from updated title/content.
+        manual_location = normalise_manual_article_location(article.location)
+        detected_location = manual_location or get_article_priority_location(article.title, article.content)
         
         resolved_source_url = article.source_url if article.source_url is not None else existing.get("source_url", "")
         candidate_image = article.image if article.image is not None else existing.get("image")
