@@ -174,10 +174,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                   <option value="macclesfield">Macclesfield</option>
                   <option value="wilmslow">Wilmslow</option>
                   <option value="knutsford">Knutsford</option>
-                  <option value="nantwich">Nantwich</option>
                   <option value="northwich">Northwich</option>
-                  <option value="ellesmere-port">Ellesmere Port</option>
-                  <option value="winsford">Winsford</option>
                 </select>
 </div>
               <div className="relative" ref={searchRef}>
@@ -305,10 +302,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                   <option value="macclesfield">Macclesfield</option>
                   <option value="wilmslow">Wilmslow</option>
                   <option value="knutsford">Knutsford</option>
-                  <option value="nantwich">Nantwich</option>
                   <option value="northwich">Northwich</option>
-                  <option value="ellesmere-port">Ellesmere Port</option>
-                  <option value="winsford">Winsford</option>
                 </select>
               </div>
 
