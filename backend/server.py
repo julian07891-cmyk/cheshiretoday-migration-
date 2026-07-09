@@ -15404,7 +15404,12 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         # ============================================
         # Step 2: Try atomic insert - MongoDB unique index ensures only ONE wins
         # ============================================
-        instance_id = f"{os.environ.get('HOSTNAME', 'unknown')}_{uuid4().hex[:8]}"
+        hostname = os.environ.get("HOSTNAME", "").strip()
+        if not hostname or hostname.lower() == "unknown":
+            logger.error(f"Refusing to claim {digest_time} digest lock for {date_key}: HOSTNAME is missing/unknown")
+            return
+
+        instance_id = f"{hostname}_{uuid4().hex[:8]}"
         
         try:
             result = await db.digest_log.insert_one({
@@ -17002,12 +17007,21 @@ async def startup_event():
         # Scheduled Facebook queue processor disabled to remove unused background polling.
         
         auto_enabled = os.getenv("AUTO_GENERATION_ENABLED", "false").strip().lower() in ("1","true","yes","on")
-        if auto_enabled:
+        scheduler_hostname = os.environ.get("HOSTNAME", "").strip()
+
+        # Safety guard: only a real Render/runtime hostname may run scheduled jobs.
+        # This prevents local/unknown duplicate processes from winning digest locks
+        # and attempting Resend sends with stale or invalid environment variables.
+        scheduler_host_valid = bool(scheduler_hostname) and scheduler_hostname.lower() != "unknown"
+
+        if auto_enabled and scheduler_host_valid:
             scheduler.start()
-            logger.info("AUTO_GENERATION_ENABLED=true → Scheduler started")
+            logger.info(f"AUTO_GENERATION_ENABLED=true and HOSTNAME={scheduler_hostname} → Scheduler started")
+        elif auto_enabled:
+            logger.warning("AUTO_GENERATION_ENABLED=true but HOSTNAME is missing/unknown → Scheduler NOT started")
         else:
             logger.info("AUTO_GENERATION_ENABLED is false → Scheduler NOT started")
-        logger.info("Scheduler started. Articles: 6AM, 12PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday batches 9AM-12PM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
+        logger.info("Scheduler configured. Articles: 6AM, 12PM, 6PM. Digests: Daily Brief 7:30AM, Weekly Roundup Sunday batches 9AM-12PM. Facebook: MANUAL ONLY. Twitter: MANUAL ONLY.")
         
     except Exception as e:
         logger.error(f"Error during startup: {str(e)}")
