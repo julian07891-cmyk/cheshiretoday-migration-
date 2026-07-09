@@ -168,6 +168,7 @@ const AdminDashboard = ({ onBack }) => {
   const [editingArticle, setEditingArticle] = useState(null);
   const [articleForm, setArticleForm] = useState({
     title: '',
+    summary: '',
     content: '',
     category: 'Local News',
     image: '',
@@ -1155,6 +1156,7 @@ const AdminDashboard = ({ onBack }) => {
         const draft = data.draft;
         setArticleForm({
           title: draft.title || article.title || '',
+          summary: draft.summary || article.summary || '',
           content: draft.content || article.content || '',
           category: draft.category || article.category || 'Local News',
           image: article.image || '',
@@ -1297,6 +1299,7 @@ const AdminDashboard = ({ onBack }) => {
   const resetArticleForm = () => {
     setArticleForm({
       title: '',
+      summary: '',
       content: '',
       category: 'Local News',
       image: '',
@@ -1318,6 +1321,7 @@ const AdminDashboard = ({ onBack }) => {
   const handleEditArticle = (article) => {
     setArticleForm({
       title: article.title || '',
+      summary: article.summary || '',
       content: article.content || '',
       category: article.category || 'Local News',
       image: article.image || '',
@@ -5934,6 +5938,22 @@ const handleDeleteArticle = async (articleId) => {
                 required
                 data-testid="article-title-input"
               />
+            </div>
+
+            {/* Summary / short preview */}
+            <div className="space-y-2">
+              <Label htmlFor="summary">Short preview / intro</Label>
+              <Textarea
+                id="summary"
+                value={articleForm.summary}
+                onChange={(e) => setArticleForm({...articleForm, summary: e.target.value})}
+                placeholder="This controls the short intro shown above Continue reading..."
+                rows={3}
+                data-testid="article-summary-input"
+              />
+              <p className="text-xs text-muted-foreground">
+                Used as the visible intro below the headline and for article previews. Keep it around 1 sentence.
+              </p>
             </div>
 
             {/* Content */}

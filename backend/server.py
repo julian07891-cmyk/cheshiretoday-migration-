@@ -399,6 +399,7 @@ class JobResponse(BaseModel):
 # Manual Article Creation
 class ManualArticleCreate(BaseModel):
     title: str
+    summary: Optional[str] = None
     content: str
     category: str
     image: Optional[str] = None
@@ -6461,6 +6462,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
         article_doc = {
             "id": article_id,
             "title": article.title,
+            "summary": (article.summary or "").strip(),
             "content": article.content,
             "category": article.category,
             "author": article.author or "Cheshire Today",
@@ -6535,6 +6537,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         # Build update document
         update_doc = {
             "title": article.title,
+            "summary": (article.summary or "").strip(),
             "content": article.content,
             "category": article.category,
             "author": article.author or existing.get("author", "Cheshire Today"),
