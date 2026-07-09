@@ -11734,10 +11734,13 @@ async def generate_sitemap():
         # Sitemap should submit only index-worthy strategic pages, not every transient RSS item.
         articles = await db.articles.find(
             {
-                "archived": {"$ne": True},
                 "manual_review_hidden_from_public": {"$ne": True},
+                "$or": [
+                    {"archived": {"$ne": True}},
+                    {"force_live": True},
+                ],
             },
-            {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1, 'scope': 1, 'source': 1, 'source_url': 1}
+            {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1, 'scope': 1, 'source': 1, 'source_url': 1, 'force_live': 1, 'archived': 1}
         ).sort('publishedDate', -1).limit(500).to_list(500)
 
         strategic_article_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI", "AI & Tech"}
@@ -12783,9 +12786,11 @@ async def serve_article_html(article_id: str, request=None):
     esc_modified = _html.escape(modified or published)
 
     robots_directive = "index, follow, max-image-preview:large"
-    # Archived/manual-review-hidden articles are kept reachable for old links,
-    # but should not be submitted as indexable pages.
-    if article.get("archived") is True or article.get("manual_review_hidden_from_public") is True:
+    # Archived/manual-review-hidden articles are kept reachable for old links.
+    # Manually force-live articles are intentional public picks and can remain indexable.
+    is_manual_review_hidden = article.get("manual_review_hidden_from_public") is True
+    is_archived_without_force_live = article.get("archived") is True and article.get("force_live") is not True
+    if is_manual_review_hidden or is_archived_without_force_live:
         robots_directive = "noindex, follow, max-image-preview:large"
 
     schema = {
