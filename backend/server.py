@@ -13266,6 +13266,13 @@ async def serve_article_for_production(article_id: str):
             article = None
 
     if not article:
+        # Backward compatibility for historical Facebook links that used
+        # /article/{slug} without an article ID. Reuse the existing safe
+        # title/slug recovery helper and redirect to the canonical ID URL.
+        slug_only_redirect = await _redirect_stale_article_slug_if_needed(article_id, article_id)
+        if slug_only_redirect:
+            return slug_only_redirect
+
         facebook_redirect = await _redirect_facebook_logged_article_if_needed(article_id)
         if facebook_redirect:
             return facebook_redirect
