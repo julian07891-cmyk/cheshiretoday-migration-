@@ -6312,6 +6312,38 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
     source_url = str(article.get("source_url") or "").strip()
     location = str(article.get("location") or article.get("priority_location") or "").strip()
 
+    # Admin-only source retrieval for the Open AI rewrite button.
+    # This does not affect automatic imports and fails open to the existing
+    # title/summary/content when the publisher blocks extraction.
+    source_page_content = ""
+    source_fetch_status = "not_attempted"
+
+    if source_url.startswith(("http://", "https://")):
+        try:
+            from backend.app.simple_scraper import scrape_article
+
+            scrape_result = await asyncio.to_thread(
+                scrape_article,
+                source_url,
+                20
+            )
+
+            source_fetch_status = (
+                "ok" if scrape_result.get("ok")
+                else str(scrape_result.get("error") or "failed")
+            )
+
+            extracted_content = str(scrape_result.get("content") or "").strip()
+            if extracted_content:
+                source_page_content = extracted_content[:18000]
+
+        except Exception as scrape_error:
+            source_fetch_status = f"failed: {str(scrape_error)[:160]}"
+            logger.warning(
+                f"OpenAI rewrite source extraction failed for {title[:60]}: "
+                f"{source_fetch_status}"
+            )
+
     rewrite_payload = {
         "title": title,
         "summary": summary[:1800],
@@ -6320,6 +6352,8 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
         "source": source,
         "source_url": source_url,
         "location": location,
+        "source_page_content": source_page_content,
+        "source_fetch_status": source_fetch_status,
     }
 
     system_prompt = """You are a careful local news editor writing for Cheshire Today.
@@ -6329,18 +6363,25 @@ Rewrite the supplied article into a clean Cheshire Today draft for a human admin
 
 Important rules:
 - Return valid JSON only.
-- Do not publish anything.
+- Do not publish or save anything.
 - Do not say you are an AI.
+- Treat source_page_content as the primary factual material when it is present.
+- Use the existing summary and content only as supporting material.
 - Do not copy the source wording. Rewrite fully in original wording.
-- Do not invent facts, names, quotes, locations, dates, prices or figures.
-- If the source material is thin, write only what can be supported and explain the limitation in editor_notes.
-- Keep a professional, human local-news tone.
-- Use a clear factual lead.
-- Avoid exaggerated headlines, clickbait, filler, generic explainer wording and council-press-release style.
-- For Local News, preserve any Cheshire town, village, venue, road, council area, school, hospital, business or named local organisation if supplied.
-- For Business, Finance, AI & Tech or UK stories, make the practical relevance clear without forcing a fake Cheshire angle.
-- Use natural paragraphs.
-- No markdown headings in the content body.
+- Do not invent facts, names, quotations, locations, dates, prices, figures, reactions, history or context.
+- Preserve supported names, dates, locations, figures, organisations and quotations accurately.
+- If the retrieved source is unavailable or thin, write only what the supplied material supports and explain the limitation in editor_notes.
+- Produce a complete news article rather than a brief summary when enough factual material is available.
+- Let the available facts determine length. Do not pad a thin story to reach a word target.
+- Every paragraph must introduce a new fact or necessary context.
+- Remove repetition, generic commentary, speculation and essay-style conclusions.
+- Never include bracketed source labels such as [Source: ...], citation lists or meta commentary in the article.
+- Keep a professional, natural British local-news tone with a clear factual lead and short readable paragraphs.
+- Avoid exaggerated headlines, clickbait, generic AI wording and council-press-release language.
+- For Local News, preserve supported Cheshire towns, villages, venues, roads, council areas, schools, hospitals, businesses and named organisations.
+- For Business, Finance, AI & Tech or UK stories, explain practical relevance only when supported, without forcing a false Cheshire angle.
+- End on the final known fact, confirmed next step, deadline or practical information.
+- No markdown headings, bullet points or formatting in the content body.
 
 Return this exact JSON shape:
 {
