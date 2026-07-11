@@ -2261,10 +2261,19 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         # Use RSS content directly (faster, no AI)
                         detailed_content = original_content
                     
-                    # Strict quality gate: publish only full-length rewritten content.
+                    # Strict public quality gate.
+                    # Any non-empty rewrite below 1000 characters is retained for
+                    # editable Manual Review rather than silently discarded.
+                    short_nonlocal_review_reason = ""
                     if not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
-                        logger.info(f"Skipping short-content article after rewrite attempt: {title[:60]}...")
-                        continue
+                        if (detailed_content or "").strip():
+                            short_nonlocal_review_reason = (
+                                "UK RSS article needs manual review: "
+                                "AI content remained below the 1000-character public threshold."
+                            )
+                        else:
+                            logger.info(f"Skipping empty-content article after rewrite attempt: {title[:60]}...")
+                            continue
 
                     # Use RSS image (guaranteed perfect match)
                     article['image'] = rss_image
@@ -2284,6 +2293,28 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
                         ai_rewrite_used,
                         title
                     )
+
+                    if short_nonlocal_review_reason:
+                        now_iso = datetime.now(timezone.utc).isoformat()
+
+                        # Preserve any stronger archive decision already made by
+                        # the editorial/invention-risk guard.
+                        if article.get("archived") is not True:
+                            article["archived"] = False
+                            article["manual_review_hidden_from_public"] = True
+                            existing_reason = str(article.get("manual_review_reason") or "").strip()
+                            article["manual_review_reason"] = " ".join(
+                                value for value in [
+                                    existing_reason,
+                                    short_nonlocal_review_reason
+                                ]
+                                if value
+                            )
+                            article["manual_review_created_at"] = now_iso
+                            article["verification_status"] = "needs_manual_review"
+                            article["rewrite_status"] = "manual_review_required"
+                            article["archive_reason"] = "needs_manual_review"
+
                     article = apply_public_import_cap(article, title)
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
                     try:

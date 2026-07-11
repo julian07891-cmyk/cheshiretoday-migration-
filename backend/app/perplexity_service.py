@@ -377,17 +377,16 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                 is_refusal = any(indicator.lower() in content_lower for indicator in refusal_indicators)
                 
                 if is_refusal:
-                    logger.warning(f"Perplexity refused to generate content for: {title[:40]}... Returning empty skip signal.")
-                    return ""  # No fallback articles: caller must skip weak/failed rewrites
+                    logger.warning(f"Perplexity refused the first rewrite for: {title[:40]}... Retrying once.")
+                    content = ""
 
-                min_chars = int(os.getenv("PERPLEXITY_MIN_CHARS", "1500"))
-                target_chars = int(os.getenv("PERPLEXITY_TARGET_CHARS", "2000"))
-
-                if content and len(content) >= min_chars:
+                # Perplexity's responsibility is to return any usable factual rewrite.
+                # Publication length and editorial quality decisions belong in server.py.
+                if content:
                     logger.info(f"Generated {len(content)} chars of content for: {title[:40]}...")
                     return content
 
-                logger.warning(f"Content below target ({len(content)} chars) for: {title[:40]}... Retrying with stronger long-form prompt.")
+                logger.warning(f"Perplexity returned empty content for: {title[:40]}... Retrying once.")
 
                 retry_payload = {
                     "model": "sonar",
@@ -431,11 +430,11 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                     retry_lower = retry_content.lower()
                     retry_refusal = any(indicator.lower() in retry_lower for indicator in refusal_indicators)
 
-                    if not retry_refusal and len(retry_content) >= min_chars:
+                    if not retry_refusal and retry_content:
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
                         return retry_content
 
-                logger.warning(f"Retry still below acceptable quality for: {title[:40]}... Returning empty skip signal.")
+                logger.warning(f"Retry returned no usable content for: {title[:40]}... Returning empty skip signal.")
                 return ""  # No fallback articles: caller must skip weak/failed rewrites
                     
         except httpx.TimeoutException:
