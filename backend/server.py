@@ -6434,6 +6434,8 @@ Return this exact JSON shape:
         "category": draft_category,
         "editor_notes": draft_notes,
         "model": model,
+        "source_fetch_status": source_fetch_status,
+        "source_page_content_length": len(source_page_content),
     }
 
 
