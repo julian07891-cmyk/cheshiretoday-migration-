@@ -6344,6 +6344,46 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
                 f"{source_fetch_status}"
             )
 
+    # Admin-only fallback for publishers that block the Render server.
+    # Perplexity can research the supplied source URL externally and provide
+    # factual material for the final OpenAI draft. Nothing is saved or published.
+    if not source_page_content and source_url.startswith(("http://", "https://")):
+        try:
+            perplexity_fallback = await asyncio.wait_for(
+                perplexity_service.generate_article_content(
+                    title=title,
+                    summary=content or summary,
+                    source=source,
+                    source_url=source_url,
+                ),
+                timeout=120,
+            )
+
+            perplexity_fallback = str(perplexity_fallback or "").strip()
+            if perplexity_fallback:
+                source_page_content = perplexity_fallback[:18000]
+                source_fetch_status = (
+                    f"{source_fetch_status}; perplexity_fallback_ok"
+                    if source_fetch_status not in ("", "not_attempted")
+                    else "perplexity_fallback_ok"
+                )
+            else:
+                source_fetch_status = (
+                    f"{source_fetch_status}; perplexity_fallback_empty"
+                    if source_fetch_status not in ("", "not_attempted")
+                    else "perplexity_fallback_empty"
+                )
+
+        except Exception as perplexity_error:
+            source_fetch_status = (
+                f"{source_fetch_status}; perplexity_fallback_failed: "
+                f"{str(perplexity_error)[:120]}"
+            )
+            logger.warning(
+                f"OpenAI rewrite Perplexity fallback failed for {title[:60]}: "
+                f"{str(perplexity_error)[:160]}"
+            )
+
     rewrite_payload = {
         "title": title,
         "summary": summary[:1800],
