@@ -292,7 +292,10 @@ CRITICAL ACCURACY RULES:
 11. Avoid generic explainer phrases such as "this matters because", "fresh attention", "a notable step", "underlines", "on the face of it", "the episode is a striking example", and "continues to shape".
 12. Do not repeat the same point in consecutive paragraphs. Vary sentence openings and keep the tone calm, direct and natural.
 13. Plain text only: no markdown, no asterisks, no headings, no bullet points.
-14. Do not include word counts, character counts, citations list, or meta information at the end.
+14. Do not include word counts, character counts, citations lists, inline citation labels, or meta information at the end.
+15. Never write bracketed source labels such as [Source: Chester Standard], [Source: BBC], or similar.
+16. Every paragraph must introduce a new verified fact. Remove paragraphs that merely repeat, generalise, speculate, praise, inspire or conclude.
+17. End with the final known fact or practical next step. Do not add an essay-style summary, moral or inspirational conclusion.
 
 NEVER fabricate details to make the article longer.
 NEVER include a claim unless it is supported by the source URL, the supplied summary, or reputable corroborating sources."""
@@ -341,7 +344,8 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                 
                 # Clean up content - remove markdown formatting and word counts
                 import re
-                content = re.sub(r'\[\d+\]', '', content)  # Remove citation brackets [1], [2]
+                content = re.sub(r'\[\d+\]', '', content)
+                content = re.sub(r'\[\s*Source\s*:[^\]]+\]', '', content, flags=re.IGNORECASE)  # Remove citation brackets [1], [2]
                 content = re.sub(r'\*+', '', content)  # Remove asterisks
                 content = re.sub(r'#+\s*', '', content)  # Remove markdown headers
                 content = re.sub(r'_+', '', content)  # Remove underscores (italic markdown)
@@ -390,7 +394,7 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are a senior UK local and business news writer for Cheshire Today. Write a clear, natural, publication-quality article in British English using plain text only. Lead with the concrete fact, use short paragraphs, avoid generic AI-explainer phrases, avoid repetition, and keep the tone calm, human and practical. Aim for 700-900 words and at least 2000 characters, but never pad with unsupported context. Minimum acceptable output is 1500 characters. Do not refuse, do not explain limitations, do not include headings, bullet points, markdown, or meta commentary."
+                            "content": "You are a senior UK local and business news writer for Cheshire Today. Write a clear, natural, publication-quality article in British English using plain text only. Lead with the concrete fact, use short paragraphs, avoid generic AI-explainer phrases, avoid repetition, and keep the tone calm, human and practical. Use only verified facts supported by the source material. Write to the natural length supported by the available facts; a concise accurate article is better than a padded one. Every paragraph must add new information. Never include bracketed source labels such as [Source: ...]. Do not add an essay-style conclusion. Do not refuse, do not explain limitations, and do not include headings, bullet points, markdown, or meta commentary."
                         },
                         {
                             "role": "user",
@@ -415,6 +419,7 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                     retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
                     import re
                     retry_content = re.sub(r'\[\d+\]', '', retry_content)
+                    retry_content = re.sub(r'\[\s*Source\s*:[^\]]+\]', '', retry_content, flags=re.IGNORECASE)
                     retry_content = re.sub(r'\*+', '', retry_content)
                     retry_content = re.sub(r'#+\s*', '', retry_content)
                     retry_content = re.sub(r'_+', '', retry_content)

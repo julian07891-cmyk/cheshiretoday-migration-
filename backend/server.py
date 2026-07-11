@@ -15003,6 +15003,90 @@ def find_ai_manual_review_hits(content: str):
     return hits
 
 
+AI_EDITORIAL_PADDING_PHRASES = [
+    "serves as a reminder",
+    "serves as an inspiration",
+    "is a testament to",
+    "underscores the importance",
+    "highlights the importance",
+    "demonstrates that",
+    "this reinforces",
+    "this reflects",
+    "this illustrates",
+    "this showcases",
+    "the anticipation is likely",
+    "is likely driving",
+    "the wider community",
+    "charity fundraising often",
+    "participants often",
+    "friends who have previously",
+    "local media coverage",
+]
+
+
+def find_ai_editorial_quality_reasons(content: str, title: str = "") -> list:
+    """Detect obvious repetitive, padded or citation-heavy AI rewrites."""
+    text = str(content or "").strip()
+    if not text:
+        return ["AI rewrite returned empty article content."]
+
+    text_lower = text.lower()
+    reasons = []
+
+    source_labels = re.findall(r"\[\s*source\s*:[^\]]+\]", text, flags=re.I)
+    if len(source_labels) >= 2:
+        reasons.append("AI rewrite repeats inline source labels throughout the article.")
+
+    padding_hits = sorted({
+        phrase for phrase in AI_EDITORIAL_PADDING_PHRASES
+        if phrase in text_lower
+    })
+    if len(padding_hits) >= 2:
+        reasons.append("AI rewrite contains repeated generic AI-style padding or commentary.")
+
+    paragraphs = [
+        re.sub(r"\s+", " ", part).strip()
+        for part in re.split(r"\n\s*\n+", text)
+        if part.strip()
+    ]
+
+    normalised_paragraphs = [
+        re.sub(r"[^a-z0-9 ]+", "", paragraph.lower()).strip()
+        for paragraph in paragraphs
+    ]
+    if len(normalised_paragraphs) != len(set(normalised_paragraphs)):
+        reasons.append("AI rewrite contains duplicated paragraphs.")
+
+    if len(paragraphs) >= 6:
+        openings = []
+        for paragraph in normalised_paragraphs:
+            words = paragraph.split()
+            openings.append(" ".join(words[:7]))
+
+        repeated_openings = {
+            opening for opening in openings
+            if opening and openings.count(opening) >= 2
+        }
+        if repeated_openings:
+            reasons.append("AI rewrite repeats the same paragraph openings or sentence structure.")
+
+    if title and paragraphs:
+        normalised_title = re.sub(r"[^a-z0-9 ]+", "", str(title).lower()).strip()
+        normalised_lead = normalised_paragraphs[0]
+        title_words = {word for word in normalised_title.split() if len(word) > 3}
+        lead_words = {word for word in normalised_lead.split() if len(word) > 3}
+        if len(title_words) >= 4 and len(title_words & lead_words) / len(title_words) >= 0.9:
+            if len(paragraphs) > 1:
+                second_words = {
+                    word for word in normalised_paragraphs[1].split()
+                    if len(word) > 3
+                }
+                if len(title_words & second_words) / len(title_words) >= 0.75:
+                    reasons.append("AI rewrite repeats the headline and lead information.")
+
+    return reasons
+
+
 LOCAL_SPECIFIC_LOCATION_PATTERN = re.compile(
     r"\b("
     r"Chester|Crewe|Macclesfield|Warrington|Widnes|Runcorn|Knutsford|Wilmslow|Congleton|"
@@ -15085,12 +15169,14 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
         article["is_rewritten"] = True
 
     hits = find_ai_manual_review_hits(content) if ai_rewrite_used else []
+    editorial_quality_reasons = find_ai_editorial_quality_reasons(content, title) if ai_rewrite_used else []
     weak_rss_reason = find_weak_rss_public_review_reason(article, content, ai_rewrite_used)
     local_location_reason = find_local_location_review_reason(article, content, title)
 
     review_reasons = []
     if hits:
         review_reasons.append("AI rewrite contained risky invented-detail phrases; verify against source before promotion or social sharing.")
+    review_reasons.extend(editorial_quality_reasons)
     if weak_rss_reason:
         review_reasons.append(weak_rss_reason)
     if local_location_reason:
@@ -15104,7 +15190,7 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
         article["manual_review_reason"] = " ".join(review_reasons)
         article["manual_review_created_at"] = now_iso
 
-        if hits:
+        if hits or editorial_quality_reasons:
             article["archived"] = True
             article["archived_at"] = now_iso
             article["archive_reason"] = "needs_manual_review"
