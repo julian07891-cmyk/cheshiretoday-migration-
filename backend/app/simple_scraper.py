@@ -10,12 +10,12 @@ import html as html_lib
 # Returns clean text + basic metadata.
 def _strip_tags(html_text: str) -> str:
     # Remove scripts/styles/noscript + some heavy non-text elements
-    html_text = re.sub(r"(?is)<(script|style|noscript|svg|canvas).*?>.*?</\\1>", " ", html_text)
+    html_text = re.sub(r"(?is)<(script|style|noscript|svg|canvas).*?>.*?</\1>", " ", html_text)
     # Remove common junk blocks (best-effort)
-    html_text = re.sub(r"(?is)<(nav|footer|header|aside).*?>.*?</\\1>", " ", html_text)
+    html_text = re.sub(r"(?is)<(nav|footer|header|aside).*?>.*?</\1>", " ", html_text)
     # Convert <br> and </p> to newlines
-    html_text = re.sub(r"(?i)<br\\s*/?>", "\\n", html_text)
-    html_text = re.sub(r"(?i)</p\\s*>", "\\n\\n", html_text)
+    html_text = re.sub(r"(?i)<br\s*/?>", "\\n", html_text)
+    html_text = re.sub(r"(?i)</p\s*>", "\\n\\n", html_text)
     # Drop all remaining tags
     text = re.sub(r"(?s)<.*?>", " ", html_text)
 
@@ -34,9 +34,9 @@ def _strip_tags(html_text: str) -> str:
     text = text.replace("\\u200c", "").replace("\\u200b", "").replace("\\ufeff", "")
 
     # Collapse whitespace
-    text = re.sub(r"[ \\t\\r\\f\\v]+", " ", text)
-    text = re.sub(r"\\n\\s+\\n", "\\n\\n", text)
-    text = re.sub(r"\\n{3,}", "\\n\\n", text)
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    text = re.sub(r"\n\s+\n", "\\n\\n", text)
+    text = re.sub(r"\n{3,}", "\\n\\n", text)
     return text.strip()
 
 
