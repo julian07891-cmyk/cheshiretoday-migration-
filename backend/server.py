@@ -6320,7 +6320,7 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
 
     if source_url.startswith(("http://", "https://")):
         try:
-            from backend.app.simple_scraper import scrape_article
+            from app.simple_scraper import scrape_article
 
             scrape_result = await asyncio.to_thread(
                 scrape_article,
