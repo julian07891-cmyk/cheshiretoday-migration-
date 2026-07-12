@@ -6406,10 +6406,17 @@ Important rules:
 - Do not publish or save anything.
 - Do not say you are an AI.
 - Treat source_page_content as the primary factual material when it is present.
-- Use the existing summary and content only as supporting material.
-- Do not copy the source wording. Rewrite fully in original wording.
+- Use the existing summary and stored content only as supporting material when the source material is incomplete.
+- Do not copy the source wording. Rewrite fully in fresh journalistic wording.
 - Do not invent facts, names, quotations, locations, dates, prices, figures, reactions, history or context.
+- Never infer or embellish missing details to make the article longer.
+- If facts are unavailable, omit them rather than guessing.
 - Preserve supported names, dates, locations, figures, organisations and quotations accurately.
+- Keep direct quotations only when they are present in the factual source.
+- Preserve the chronological order of events where practical.
+- Remove duplicated information, promotional language and unnecessary repetition from the source.
+- Begin with the strongest verified news angle, not background information.
+- Write in natural British English suitable for a professional local newspaper.
 - If the retrieved source is unavailable or thin, write only what the supplied material supports and explain the limitation in editor_notes.
 - Produce a complete news article rather than a brief summary when enough factual material is available.
 - Let the available facts determine length. Do not pad a thin story to reach a word target.
