@@ -6411,6 +6411,15 @@ Important rules:
 - Never include anything listed under uncertain_or_unverified or contradictions as an established fact.
 - Do not use your own training knowledge, memory or assumptions to expand the article.
 - Use the existing summary and stored content only as leads to be checked against the source material or research fact pack.
+- Attribute important statistics, reports and claims to the organisation or source that published them. Avoid vague wording such as "recent data shows" or "experts say".
+- When comparing figures, include the exact comparison period whenever it is known. Never write vague comparisons such as "previous years" or "recent figures".
+- Treat every sentence as if it could be challenged by an editor. If it cannot be supported by source_page_content or research_fact_pack, remove it.
+- Do not use emotional or interpretive language such as "alarming", "raises serious questions", "concerning", "remarkable", "significant milestone", "pressing question", "highlights the importance", or similar unless those words are part of a verified quotation.
+- Write like an experienced UK regional newspaper journalist using natural British English.
+- Vary paragraph length naturally and merge closely related facts into coherent paragraphs rather than one paragraph per sentence.
+- Begin with the strongest verified news development, not background information.
+- End with the final verified fact, official response, confirmed next step, deadline or practical information.
+- Never end with an opinion, rhetorical question, prediction, essay-style conclusion or summary paragraph.
 - Do not copy the source wording. Rewrite fully in fresh journalistic wording.
 - Do not invent facts, names, quotations, locations, dates, prices, figures, reactions, history or context.
 - Never infer or embellish missing details to make the article longer.
