@@ -6499,11 +6499,150 @@ Return this exact JSON shape:
             "editor_notes": "OpenAI returned non-JSON output. Original article has been left unchanged."
         }
 
+    def _find_editorial_violations(article_content: str):
+        body = str(article_content or "").strip()
+        if not body:
+            return []
+
+        paragraphs = [
+            paragraph.strip()
+            for paragraph in re.split(r"\n\s*\n", body)
+            if paragraph.strip()
+        ]
+        first_paragraph = paragraphs[0] if paragraphs else body
+        last_paragraph = paragraphs[-1] if paragraphs else body
+        violations = []
+
+        lead_patterns = (
+            r"\braising (?:questions|concerns)\b",
+            r"\bprompting scrutiny\b",
+            r"\bunderscoring concerns\b",
+            r"\bhighlighting the importance\b",
+            r"\bsparking debate\b",
+        )
+        if any(re.search(pattern, first_paragraph, re.IGNORECASE) for pattern in lead_patterns):
+            violations.append("interpretive wording in the opening paragraph")
+
+        vague_attribution_patterns = (
+            r"\brecent data (?:shows|indicates|suggests|reveals)\b",
+            r"\bexperts (?:say|suggest|believe|warn|argue)\b",
+            r"\bcritics (?:say|suggest|believe|argue|claim)\b",
+            r"\bit is (?:thought|believed|understood|reported)\b",
+        )
+        if any(re.search(pattern, body, re.IGNORECASE) for pattern in vague_attribution_patterns):
+            violations.append("vague or unnamed attribution")
+
+        ending_patterns = (
+            r"^\s*(?:the|a)\s+debate\b.*\bcontinues\b",
+            r"^\s*as\b.*\b(?:grapples|evolves|continues)\b",
+            r"\bthe question remains\b",
+            r"\bthe focus remains\b",
+            r"\burgent need for reform\b",
+            r"^\s*(?:overall|ultimately|looking ahead)\b",
+        )
+        if (
+            last_paragraph.rstrip().endswith("?")
+            or any(re.search(pattern, last_paragraph, re.IGNORECASE) for pattern in ending_patterns)
+        ):
+            violations.append("generic, rhetorical or essay-style ending")
+
+        british_english_patterns = (
+            r"\baging\b",
+            r"\bmarginalized\b",
+        )
+        if any(re.search(pattern, body, re.IGNORECASE) for pattern in british_english_patterns):
+            violations.append("non-British spelling")
+
+        return violations
+
     draft_title = str(draft.get("title") or title).strip()
     draft_summary = str(draft.get("summary") or summary).strip()
     draft_content = str(draft.get("content") or content).strip()
     draft_category = str(draft.get("category") or category or "Local News").strip()
     draft_notes = str(draft.get("editor_notes") or "").strip()
+
+    editorial_guard_violations = _find_editorial_violations(draft_content)
+
+    if editorial_guard_violations:
+        correction_system_prompt = """You are a strict UK newspaper copy editor.
+
+Return valid JSON only, using exactly these fields:
+title, summary, content, category, editor_notes.
+
+Revise the supplied draft only enough to correct the listed editorial violations.
+
+Rules:
+- Use only facts already present in the draft or supported by source_page_content or research_fact_pack.
+- Do not add new names, figures, claims, quotations, context or conclusions.
+- Remove unsupported or vaguely attributed claims when no named source supports them.
+- Make the opening factual and remove interpretation such as "raising concerns" or "prompting scrutiny".
+- Attribute opinions and interpretations directly to the named person or organisation responsible.
+- Remove a generic or rhetorical final paragraph entirely when necessary.
+- End on the final substantive verified fact, attributed response, action, date or practical information.
+- Never replace one generic conclusion with another.
+- Use natural British English and British spellings.
+- Preserve the article's strongest verified facts and overall meaning.
+- Preserve relevant limitations in editor_notes.
+"""
+
+        correction_payload = {
+            "editorial_violations": editorial_guard_violations,
+            "draft": {
+                "title": draft_title,
+                "summary": draft_summary,
+                "content": draft_content,
+                "category": draft_category,
+                "editor_notes": draft_notes,
+            },
+            "source_page_content": source_page_content,
+            "research_fact_pack": research_fact_pack,
+        }
+
+        def _call_openai_correction():
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model=model,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": correction_system_prompt},
+                    {
+                        "role": "user",
+                        "content": json.dumps(correction_payload, ensure_ascii=False),
+                    },
+                ],
+            )
+            return response.choices[0].message.content
+
+        try:
+            corrected_raw = await asyncio.to_thread(_call_openai_correction)
+            corrected = json.loads(corrected_raw or "{}")
+
+            draft_title = str(corrected.get("title") or draft_title).strip()
+            draft_summary = str(corrected.get("summary") or draft_summary).strip()
+            draft_content = str(corrected.get("content") or draft_content).strip()
+            draft_category = str(corrected.get("category") or draft_category).strip()
+            draft_notes = str(corrected.get("editor_notes") or draft_notes).strip()
+        except Exception:
+            guard_failure_note = (
+                "The automatic editorial correction pass could not be applied. "
+                "Review the detected issues before publishing."
+            )
+            draft_notes = " ".join(
+                part for part in (draft_notes, guard_failure_note) if part
+            )
+
+    editorial_guard_remaining_violations = _find_editorial_violations(draft_content)
+
+    if editorial_guard_remaining_violations:
+        remaining_note = (
+            "Editorial guard still detected: "
+            + ", ".join(editorial_guard_remaining_violations)
+            + ". Review before publishing."
+        )
+        draft_notes = " ".join(
+            part for part in (draft_notes, remaining_note) if part
+        )
 
     return {
         "title": draft_title,
@@ -6517,6 +6656,13 @@ Return this exact JSON shape:
         "research_fact_pack_available": bool(research_fact_pack),
         "research_source_count": len(research_fact_pack.get("source_urls", [])) if isinstance(research_fact_pack, dict) else 0,
         "research_fact_pack": research_fact_pack,
+        "editorial_guard_triggered": bool(editorial_guard_violations),
+        "editorial_guard_violations": editorial_guard_violations,
+        "editorial_guard_corrected": bool(
+            editorial_guard_violations
+            and not editorial_guard_remaining_violations
+        ),
+        "editorial_guard_remaining_violations": editorial_guard_remaining_violations,
     }
 
 
