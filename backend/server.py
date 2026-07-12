@@ -6489,6 +6489,7 @@ Return this exact JSON shape:
         "source_page_content_length": len(source_page_content),
         "research_fact_pack_available": bool(research_fact_pack),
         "research_source_count": len(research_fact_pack.get("source_urls", [])) if isinstance(research_fact_pack, dict) else 0,
+        "research_fact_pack": research_fact_pack,
     }
 
 
