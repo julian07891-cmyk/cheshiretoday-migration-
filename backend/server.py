@@ -12057,7 +12057,17 @@ async def generate_sitemap():
             {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1, 'scope': 1, 'source': 1, 'source_url': 1, 'force_live': 1, 'archived': 1}
         ).sort('publishedDate', -1).limit(500).to_list(500)
 
-        strategic_article_categories = {"Local News", "Business", "Finance", "Tax", "Property", "Tech", "AI", "AI & Tech"}
+        strategic_article_categories = {
+            "Local News",
+            "UK News",
+            "Business",
+            "Finance",
+            "Tax",
+            "Property",
+            "Tech",
+            "AI",
+            "AI & Tech",
+        }
 
         # Main sitemap should submit strategic, index-worthy article URLs only.
         # This does not affect article visibility, imports, homepage, RSS, Facebook links, or archives.
@@ -12153,7 +12163,7 @@ async def generate_sitemap():
             r"\bfirst minister vote\b",
             r"\|\s*letter\b",
             r"\bletters\b",
-            r"\breview\b",
+            r"\bpeople fixing the world\b",
             r"\bsearch history\b",
             r"\bwhat we ask google\b",
             r"\bspoil heaps\b",
@@ -12171,25 +12181,6 @@ async def generate_sitemap():
             "northwich", "nantwich", "knutsford", "congleton", "sandbach", "ellesmere port",
             "middlewich", "winsford", "alderley edge", "hale", "runcorn", "widnes",
             "leighton", "creamfields"
-        ]
-
-        business_impact_terms = [
-            "uk", "britain", "britons", "government", "supermarkets", "inflation",
-            "unemployment", "jobs", "roles", "workers", "wages", "costs", "prices",
-            "energy", "bills", "petrol", "pensions", "bank", "mortgage", "rent",
-            "tax", "hs2", "imf", "traders", "high street", "ombudsman", "savings",
-            "childcare", "insurance", "food prices", "growth forecast", "job",
-            "recruitment", "sales", "air conditioning", "geothermal", "start-ups",
-            "startups", "startup"
-        ]
-
-        practical_tech_terms = [
-            "ai", "artificial intelligence", "cyber", "security", "malware", "infected",
-            "npm", "software", "cloud", "aws", "google cloud", "coding", "code",
-            "developers", "devs", "database", "postgresql", "vpn", "privacy",
-            "age-check", "agent", "linux", "bug hunters", "automation", "layoffs",
-            "costs", "bills", "jobs", "workers", "bank", "business", "sap",
-            "ransomware"
         ]
 
         def include_article_in_sitemap(article):
@@ -12213,16 +12204,17 @@ async def generate_sitemap():
             if category == "Local News":
                 return scope == "cheshire" or any(term in combined for term in cheshire_terms)
 
-            if category in {"Finance", "Tax", "Property"}:
+            if category in {
+                "UK News",
+                "Business",
+                "Finance",
+                "Tax",
+                "Property",
+                "Tech",
+                "AI",
+                "AI & Tech",
+            }:
                 return True
-
-            if category == "Business":
-                if scope == "cheshire" or any(term in combined for term in cheshire_terms):
-                    return True
-                return any(term in combined for term in business_impact_terms)
-
-            if category in {"Tech", "AI", "AI & Tech"}:
-                return any(term in combined for term in practical_tech_terms)
 
             return False
 
