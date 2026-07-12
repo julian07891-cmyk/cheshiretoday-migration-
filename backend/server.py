@@ -6416,10 +6416,17 @@ Important rules:
 - Treat every sentence as if it could be challenged by an editor. If it cannot be supported by source_page_content or research_fact_pack, remove it.
 - Do not use emotional or interpretive language such as "alarming", "raises serious questions", "concerning", "remarkable", "significant milestone", "pressing question", "highlights the importance", or similar unless those words are part of a verified quotation.
 - Write like an experienced UK regional newspaper journalist using natural British English.
-- Vary paragraph length naturally and merge closely related facts into coherent paragraphs rather than one paragraph per sentence.
+- Report facts rather than arguing a position. Separate verified facts from opinion, analysis and political viewpoints.
+- Clearly attribute opinions, criticism, interpretations and forecasts to the person or organisation making them. Never present opinion as established fact.
+- Select the strongest verified facts rather than trying to include every fact available. Remove secondary details that interrupt the flow even if they are correct.
+- Organise the article into a logical news structure: what happened, why it matters, relevant context, responses, then confirmed next steps where applicable.
+- Merge related facts naturally into well-developed paragraphs rather than creating many short paragraphs.
+- Vary sentence length and paragraph length to resemble professional UK newspaper writing.
+- Introduce background information only when it genuinely helps explain the current story.
+- Avoid repeating statistics, names or organisations unless necessary for clarity.
 - Begin with the strongest verified news development, not background information.
-- End with the final verified fact, official response, confirmed next step, deadline or practical information.
-- Never end with an opinion, rhetorical question, prediction, essay-style conclusion or summary paragraph.
+- Finish with the strongest confirmed closing fact, official response, confirmed future action, deadline, consultation date or practical information.
+- Never finish with an opinion, prediction, rhetorical question, essay-style conclusion or generic summary.
 - Do not copy the source wording. Rewrite fully in fresh journalistic wording.
 - Do not invent facts, names, quotations, locations, dates, prices, figures, reactions, history or context.
 - Never infer or embellish missing details to make the article longer.
