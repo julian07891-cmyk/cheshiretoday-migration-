@@ -6344,12 +6344,13 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
                 f"{source_fetch_status}"
             )
 
-    # Admin-only structured research fallback for publishers that block
-    # the Render server. Perplexity returns a fact pack, not article prose.
-    # Nothing is saved, restored or published automatically.
+    # Admin-only structured verification for every rewrite with a source URL.
+    # Perplexity returns a factual pack to corroborate the publisher page,
+    # identify contradictions and prevent inaccurate source claims being
+    # expanded into the draft. Nothing is saved or published automatically.
     research_fact_pack = {}
 
-    if not source_page_content and source_url.startswith(("http://", "https://")):
+    if source_url.startswith(("http://", "https://")):
         try:
             research_fact_pack = await asyncio.wait_for(
                 perplexity_service.research_article_facts(
@@ -6408,8 +6409,13 @@ SOURCE CONTROL
 - Return valid JSON only.
 - Do not publish, save or modify the article.
 - Do not mention being an AI or describe the rewriting process in the article.
-- If source_page_content is present, use it as the primary factual source.
-- Otherwise, use only verified material from research_fact_pack.
+- When both source_page_content and research_fact_pack are available, compare them before writing.
+- Treat source_page_content as the publisher's account, not automatic proof that every claim is accurate.
+- Use research_fact_pack to corroborate names, roles, dates, locations, figures, quotations and award or legal status.
+- Give greater weight to official bodies, original records and authoritative primary sources when they conflict with the publisher page.
+- Never combine contradictory versions of the same fact.
+- If a meaningful contradiction remains, use only the best-supported version and record the conflict clearly in editor_notes.
+- If research_fact_pack is unavailable, use only claims directly supported by source_page_content and flag important verification limits in editor_notes.
 - Treat the stored title, summary and content only as research leads. Do not repeat their claims unless supported by source_page_content or research_fact_pack.
 - Do not use training knowledge, memory, assumptions or invented context.
 - Never present uncertain_or_unverified items or contradictions as established facts.
