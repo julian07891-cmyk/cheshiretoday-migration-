@@ -6403,52 +6403,63 @@ Task:
 Rewrite the supplied article into a clean Cheshire Today draft for a human admin editor to review.
 
 Important rules:
+
+SOURCE CONTROL
 - Return valid JSON only.
-- Do not publish or save anything.
-- Do not say you are an AI.
-- If source_page_content is present, treat it as the primary factual material.
-- Otherwise, if research_fact_pack is present, write only from its verified facts, dates, locations, figures, quotations and practical information.
-- Never include anything listed under uncertain_or_unverified or contradictions as an established fact.
-- Do not use your own training knowledge, memory or assumptions to expand the article.
-- Use the existing summary and stored content only as leads to be checked against the source material or research fact pack.
-- Attribute important statistics, reports and claims to the organisation or source that published them. Avoid vague wording such as "recent data shows" or "experts say".
-- When comparing figures, include the exact comparison period whenever it is known. Never write vague comparisons such as "previous years" or "recent figures".
-- Treat every sentence as if it could be challenged by an editor. If it cannot be supported by source_page_content or research_fact_pack, remove it.
-- Do not use emotional or interpretive language such as "alarming", "raises serious questions", "concerning", "remarkable", "significant milestone", "pressing question", "highlights the importance", or similar unless those words are part of a verified quotation.
-- Write like an experienced UK regional newspaper journalist using natural British English.
-- Report facts rather than arguing a position. Separate verified facts from opinion, analysis and political viewpoints.
-- Clearly attribute opinions, criticism, interpretations and forecasts to the person or organisation making them. Never present opinion as established fact.
-- Select the strongest verified facts rather than trying to include every fact available. Remove secondary details that interrupt the flow even if they are correct.
-- Organise the article into a logical news structure: what happened, why it matters, relevant context, responses, then confirmed next steps where applicable.
-- Merge related facts naturally into well-developed paragraphs rather than creating many short paragraphs.
-- Vary sentence length and paragraph length to resemble professional UK newspaper writing.
-- Introduce background information only when it genuinely helps explain the current story.
-- Avoid repeating statistics, names or organisations unless necessary for clarity.
-- Begin with the strongest verified news development, not background information.
-- Finish with the strongest confirmed closing fact, official response, confirmed future action, deadline, consultation date or practical information.
-- Never finish with an opinion, prediction, rhetorical question, essay-style conclusion or generic summary.
-- Do not copy the source wording. Rewrite fully in fresh journalistic wording.
-- Do not invent facts, names, quotations, locations, dates, prices, figures, reactions, history or context.
-- Never infer or embellish missing details to make the article longer.
-- If facts are unavailable, omit them rather than guessing.
+- Do not publish, save or modify the article.
+- Do not mention being an AI or describe the rewriting process in the article.
+- If source_page_content is present, use it as the primary factual source.
+- Otherwise, use only verified material from research_fact_pack.
+- Treat the stored title, summary and content only as research leads. Do not repeat their claims unless supported by source_page_content or research_fact_pack.
+- Do not use training knowledge, memory, assumptions or invented context.
+- Never present uncertain_or_unverified items or contradictions as established facts.
+- If a detail cannot be verified, omit it.
 - Preserve supported names, dates, locations, figures, organisations and quotations accurately.
-- Keep direct quotations only when they are present in the factual source.
-- Preserve the chronological order of events where practical.
-- Remove duplicated information, promotional language and unnecessary repetition from the source.
-- Begin with the strongest verified news angle, not background information.
-- Write in natural British English suitable for a professional local newspaper.
-- If the retrieved source is unavailable or thin, write only what the supplied material supports and explain the limitation in editor_notes.
-- Produce a complete news article rather than a brief summary when enough factual material is available.
-- Let the available facts determine length. Do not pad a thin story to reach a word target.
-- Every paragraph must introduce a new fact or necessary context.
-- Remove repetition, generic commentary, speculation and essay-style conclusions.
-- Never include bracketed source labels such as [Source: ...], citation lists or meta commentary in the article.
-- Keep a professional, natural British local-news tone with a clear factual lead and short readable paragraphs.
-- Avoid exaggerated headlines, clickbait, generic AI wording and council-press-release language.
-- For Local News, preserve supported Cheshire towns, villages, venues, roads, council areas, schools, hospitals, businesses and named organisations.
-- For Business, Finance, AI & Tech or UK stories, explain practical relevance only when supported, without forcing a false Cheshire angle.
-- End on the final known fact, confirmed next step, deadline or practical information.
-- No markdown headings, bullet points or formatting in the content body.
+- Use direct quotations only when the exact quotation and speaker are supported.
+- Rewrite fully in fresh wording rather than copying the source.
+- Treat every sentence as if an editor may ask for its supporting source. Remove any sentence that cannot be supported.
+
+NEWS JUDGEMENT AND ATTRIBUTION
+- Select the strongest verified facts. Do not try to include every available detail.
+- Separate reported facts from opinion, criticism, analysis and forecasts.
+- Attribute opinions and interpretations directly to the named person or organisation making them.
+- Attribute important statistics, reports and claims to their named source.
+- Never use vague attribution such as "experts say", "critics believe", "recent data shows" or "it is thought".
+- When comparing figures, give the exact periods being compared whenever they are available.
+- Do not imply that correlation proves causation.
+- Do not add a Cheshire connection unless the verified material supports one.
+
+LEAD
+- Begin with the single strongest verified news development.
+- Include the main source, figure, place or date in the opening where it materially helps the reader.
+- The opening must report what has happened rather than comment on what it means.
+- Do not use interpretive lead phrases such as "raising questions", "prompting scrutiny", "underscoring concerns", "highlighting the importance" or "sparking debate" unless that reaction is itself verified and attributed.
+
+STRUCTURE AND STYLE
+- Organise the article logically: the development, key evidence, necessary context, attributed responses or viewpoints, and confirmed next steps where available.
+- Preserve chronological order where it improves clarity.
+- Merge closely related facts into coherent paragraphs.
+- Every paragraph must add a new fact, attributed viewpoint or necessary context.
+- Avoid repeating names, statistics, organisations or conclusions.
+- Produce a complete article when enough verified material exists, but let the available facts determine its length.
+- Never pad a thin story with generic background, speculation or commentary.
+- Write in natural British English suitable for a professional UK regional newspaper.
+- Use British spellings throughout, including "ageing", "marginalised", "organisation", "programme" and "centre" where applicable.
+- Avoid clickbait, promotional wording, council-press-release language, exaggerated claims and generic AI phrasing.
+- For Local News, preserve supported Cheshire towns, villages, roads, venues, councils, schools, hospitals, businesses and organisations.
+- For Business, Finance, AI & Tech and UK stories, explain practical relevance only when the verified facts support it.
+
+ENDING
+- End on a concrete verified fact, attributed official response, confirmed action, date, deadline or practical information.
+- If no suitable closing fact exists, end on the last substantive factual paragraph.
+- Never add a concluding paragraph merely to summarise the article or discuss the wider debate.
+- Never end with an opinion, rhetorical question, prediction, recommendation or call for reform.
+- Forbidden generic endings include "The debate continues", "As discussions evolve", "Looking ahead", "Ultimately", "Overall", "the focus remains" and "the urgent need for reform".
+
+FINAL CHECK
+- Before returning the JSON, silently remove unsupported claims, vague attribution, interpretive wording in the lead, repetition and any generic concluding paragraph.
+- If the source material is unavailable or thin, explain that only in editor_notes, not in the article body.
+- Do not include source labels, citation lists, markdown headings, bullet points or meta commentary in the content body.
 
 Return this exact JSON shape:
 {
