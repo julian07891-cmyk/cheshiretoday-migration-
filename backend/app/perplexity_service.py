@@ -478,10 +478,18 @@ Accuracy rules:
 - Do not invent or infer missing details.
 - Do not treat the supplied summary as automatically accurate.
 - Verify names, roles, dates, locations, organisations, figures and quotations.
-- Include a factual claim only when it is supported by a source.
-- Keep direct quotations only when their wording is verified.
+- For awards, legal decisions, regulatory action, appointments and similar staged processes, determine the exact current status from the responsible official body.
+- Treat entered, nominated, commended, shortlisted, finalist and winner as distinct statuses. Never substitute one status for another.
+- Use the exact terminology published by the official organiser or responsible authority.
+- If the official organiser says finalists will be announced later, do not describe the current status as shortlisted or finalist unless the organiser explicitly does so.
+- Never use slash-separated or combined alternatives such as commended/shortlisted or nominated/finalist in verified fields.
+- If the precise status cannot be resolved, place the claim only in uncertain_or_unverified and explain the conflict in contradictions.
+- Include a factual claim only when it is supported by a directly relevant source.
+- Keep direct quotations only when their exact wording and speaker are verified.
 - Identify contradictions, uncertainty or details that could not be verified.
-- Prefer the original source, official bodies, public records and established news organisations.
+- For award, legal, regulatory or official status, give priority to the responsible official body over publisher headlines, social posts or promotional wording.
+- Exclude sources concerning a different year, country, organisation, institution or unrelated event.
+- Include only source URLs that directly support or contradict the story being researched.
 - Do not include generic background merely to make the fact pack longer.
 - Do not include markdown, citation brackets or commentary outside the JSON.
 
@@ -513,7 +521,7 @@ Existing summary: {summary}
 Named source: {source}
 Primary source URL: {source_url}
 
-Check the primary source first. Use corroborating sources only to verify or clarify the same story. Return the structured fact pack and nothing else."""
+Check the primary source first, then locate the responsible official organiser, authority or original record where one exists. Resolve the exact current status using the official terminology. Use only sources directly relevant to this specific story, organisation and year. Return the structured fact pack and nothing else."""
 
         payload = {
             "model": "sonar",
@@ -562,6 +570,55 @@ Check the primary source first. Use corroborating sources only to verify or clar
 
             if not isinstance(fact_pack, dict):
                 return {}
+
+            status_terms = (
+                "entered",
+                "nominated",
+                "commended",
+                "shortlisted",
+                "finalist",
+                "winner",
+            )
+            ambiguous_status_pattern = re.compile(
+                r"\b(" + "|".join(status_terms) + r")\b"
+                r"\s*(?:/|or)\s*"
+                r"\b(" + "|".join(status_terms) + r")\b",
+                flags=re.IGNORECASE,
+            )
+
+            uncertain = fact_pack.get("uncertain_or_unverified")
+            if not isinstance(uncertain, list):
+                uncertain = []
+
+            contradictions = fact_pack.get("contradictions")
+            if not isinstance(contradictions, list):
+                contradictions = []
+
+            for field in ("verified_headline_facts", "verified_facts"):
+                values = fact_pack.get(field)
+                if not isinstance(values, list):
+                    fact_pack[field] = []
+                    continue
+
+                verified_values = []
+                for value in values:
+                    value_text = str(value or "").strip()
+                    if ambiguous_status_pattern.search(value_text):
+                        uncertain.append(
+                            "Ambiguous status wording returned by research: "
+                            + value_text
+                        )
+                        contradictions.append(
+                            "The research returned multiple possible statuses "
+                            "without resolving the official current stage."
+                        )
+                        continue
+                    verified_values.append(value)
+
+                fact_pack[field] = verified_values
+
+            fact_pack["uncertain_or_unverified"] = list(dict.fromkeys(uncertain))
+            fact_pack["contradictions"] = list(dict.fromkeys(contradictions))
 
             citations = data.get("citations") or []
             existing_urls = fact_pack.get("source_urls")
