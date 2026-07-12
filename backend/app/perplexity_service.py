@@ -444,6 +444,155 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
             logger.error(f"Error generating article content: {str(e)}")
             return ""
 
+    async def research_article_facts(
+        self,
+        title: str,
+        summary: str = "",
+        source: str = "",
+        source_url: str = "",
+    ) -> Dict[str, Any]:
+        """Research an article for the admin OpenAI draft workflow.
+
+        Returns a structured factual pack only. It does not write, save,
+        publish, archive or modify an article.
+        """
+        import json
+        import re
+
+        if not self.api_key:
+            logger.error("Perplexity API key not configured for article fact research")
+            return {}
+
+        if not ai_call_allowed(0.05):
+            logger.warning("Perplexity budget guard blocked article fact research")
+            return {}
+
+        system_prompt = """You are a meticulous UK news researcher working for Cheshire Today.
+
+Research the supplied story using the Source URL as the primary reference and reputable corroborating sources where necessary.
+
+Return valid JSON only.
+
+Accuracy rules:
+- Do not write a finished news article.
+- Do not invent or infer missing details.
+- Do not treat the supplied summary as automatically accurate.
+- Verify names, roles, dates, locations, organisations, figures and quotations.
+- Include a factual claim only when it is supported by a source.
+- Keep direct quotations only when their wording is verified.
+- Identify contradictions, uncertainty or details that could not be verified.
+- Prefer the original source, official bodies, public records and established news organisations.
+- Do not include generic background merely to make the fact pack longer.
+- Do not include markdown, citation brackets or commentary outside the JSON.
+
+Return exactly this JSON structure:
+{
+  "verified_headline_facts": ["fact"],
+  "verified_facts": ["fact"],
+  "names_and_roles": [
+    {"name": "name", "role": "role", "verified": true}
+  ],
+  "dates": ["date and what it relates to"],
+  "locations": ["verified place"],
+  "figures": ["verified number and context"],
+  "quotations": [
+    {"quote": "exact verified quotation", "speaker": "speaker"}
+  ],
+  "practical_information": ["deadline, action, contact or next step"],
+  "uncertain_or_unverified": ["claim that could not be confirmed"],
+  "contradictions": ["meaningful disagreement between sources"],
+  "source_urls": ["https://source.example"],
+  "research_summary": "brief factual overview for the editor"
+}
+"""
+
+        user_prompt = f"""Research this story for a Cheshire Today admin rewrite.
+
+Headline: {title}
+Existing summary: {summary}
+Named source: {source}
+Primary source URL: {source_url}
+
+Check the primary source first. Use corroborating sources only to verify or clarify the same story. Return the structured fact pack and nothing else."""
+
+        payload = {
+            "model": "sonar",
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "max_tokens": 2200,
+            "temperature": 0.1,
+            "return_citations": True,
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    PERPLEXITY_API_URL,
+                    headers=self._get_headers(),
+                    json=payload,
+                    timeout=90.0,
+                )
+
+            if response.status_code != 200:
+                logger.error(
+                    f"Perplexity article fact research error: "
+                    f"{response.status_code} - {response.text[:500]}"
+                )
+                return {}
+
+            data = response.json()
+            raw = (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+                .strip()
+            )
+
+            if not raw:
+                return {}
+
+            if "```" in raw:
+                match = re.search(r"\{.*\}", raw, flags=re.S)
+                if match:
+                    raw = match.group(0)
+
+            fact_pack = json.loads(raw)
+
+            if not isinstance(fact_pack, dict):
+                return {}
+
+            citations = data.get("citations") or []
+            existing_urls = fact_pack.get("source_urls")
+            if not isinstance(existing_urls, list):
+                existing_urls = []
+
+            for citation in citations:
+                url = str(citation or "").strip()
+                if url and url not in existing_urls:
+                    existing_urls.append(url)
+
+            fact_pack["source_urls"] = existing_urls
+            return fact_pack
+
+        except json.JSONDecodeError:
+            logger.warning(
+                f"Perplexity returned invalid fact-pack JSON for: {title[:60]}"
+            )
+            return {}
+        except httpx.TimeoutException:
+            logger.error(
+                f"Perplexity article fact research timed out for: {title[:60]}"
+            )
+            return {}
+        except Exception as error:
+            logger.error(
+                f"Perplexity article fact research failed for "
+                f"{title[:60]}: {str(error)}"
+            )
+            return {}
+
     async def search_trending_cheshire_topics(self) -> List[str]:
         """
         Get trending topics in Cheshire for news generation
