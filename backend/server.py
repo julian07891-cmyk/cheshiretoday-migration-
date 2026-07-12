@@ -6515,7 +6515,7 @@ Return this exact JSON shape:
 
         lead_patterns = (
             r"\braising (?:questions|concerns)\b",
-            r"\bprompting scrutiny\b",
+            r"\bprompting (?:scrutiny|discussion|discussions|debate)\b",
             r"\bunderscoring concerns\b",
             r"\bhighlighting the importance\b",
             r"\bsparking debate\b",
@@ -6525,7 +6525,7 @@ Return this exact JSON shape:
 
         vague_attribution_patterns = (
             r"\brecent data (?:shows|indicates|suggests|reveals)\b",
-            r"\bexperts (?:say|suggest|believe|warn|argue)\b",
+            r"\bexperts (?:say|suggest|believe|warn|argue|are examining|are exploring)\b",
             r"\bcritics (?:say|suggest|believe|argue|claim)\b",
             r"\bit is (?:thought|believed|understood|reported)\b",
         )
@@ -6534,15 +6534,22 @@ Return this exact JSON shape:
 
         ending_patterns = (
             r"^\s*(?:the|a)\s+debate\b.*\bcontinues\b",
-            r"^\s*as\b.*\b(?:grapples|evolves|continues)\b",
+            r"^\s*as\b.*\b(?:grapples|evolves|continues|faces)\b",
+            r"^\s*the future\b.*\bremains (?:uncertain|unclear)\b",
+            r"^\s*the situation\b.*\b(?:highlights|underscores)\b.*\burgent need\b",
             r"\bthe question remains\b",
             r"\bthe focus remains\b",
-            r"\burgent need for reform\b",
+            r"\burgent need for\b",
             r"^\s*(?:overall|ultimately|looking ahead)\b",
         )
+        ending_paragraphs = paragraphs[-2:] if len(paragraphs) > 1 else [last_paragraph]
         if (
             last_paragraph.rstrip().endswith("?")
-            or any(re.search(pattern, last_paragraph, re.IGNORECASE) for pattern in ending_patterns)
+            or any(
+                re.search(pattern, paragraph, re.IGNORECASE)
+                for paragraph in ending_paragraphs
+                for pattern in ending_patterns
+            )
         ):
             violations.append("generic, rhetorical or essay-style ending")
 
