@@ -456,8 +456,10 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
         Returns a structured factual pack only. It does not write, save,
         publish, archive or modify an article.
         """
+        import asyncio
         import json
         import re
+        from urllib.parse import urlparse
 
         if not self.api_key:
             logger.error("Perplexity API key not configured for article fact research")
@@ -488,6 +490,9 @@ Accuracy rules:
 - Keep direct quotations only when their exact wording and speaker are verified.
 - Identify contradictions, uncertainty or details that could not be verified.
 - For award, legal, regulatory or official status, give priority to the responsible official body over publisher headlines, social posts or promotional wording.
+- For an award-stage story, populate official_status, official_source_name and official_source_url only when a direct page from the responsible award organiser confirms the exact subject, award and current stage.
+- A newspaper, social-media post, search result, directory or unrelated awards website is not an official-status source.
+- Leave the official-status fields empty when that direct official confirmation cannot be found.
 - Exclude sources concerning a different year, country, organisation, institution or unrelated event.
 - Include only source URLs that directly support or contradict the story being researched.
 - Do not include generic background merely to make the fact pack longer.
@@ -509,6 +514,9 @@ Return exactly this JSON structure:
   "practical_information": ["deadline, action, contact or next step"],
   "uncertain_or_unverified": ["claim that could not be confirmed"],
   "contradictions": ["meaningful disagreement between sources"],
+  "official_status": "exact official award status or empty string",
+  "official_source_name": "responsible official body or empty string",
+  "official_source_url": "direct official confirmation URL or empty string",
   "source_urls": ["https://source.example"],
   "research_summary": "brief factual overview for the editor"
 }
@@ -571,20 +579,281 @@ Check the primary source first, then locate the responsible official organiser, 
             if not isinstance(fact_pack, dict):
                 return {}
 
-            status_terms = (
-                "entered",
-                "nominated",
-                "commended",
-                "shortlisted",
-                "finalist",
-                "winner",
+            citations = data.get("citations") or []
+            existing_urls = fact_pack.get("source_urls")
+            if not isinstance(existing_urls, list):
+                existing_urls = []
+
+            for citation in citations:
+                url = str(citation or "").strip()
+                if url and url not in existing_urls:
+                    existing_urls.append(url)
+
+            existing_urls = list(dict.fromkeys(
+                str(url or "").strip()
+                for url in existing_urls
+                if str(url or "").strip()
+            ))
+            fact_pack["source_urls"] = existing_urls
+
+            status_aliases = {
+                "entered": "entered",
+                "entrant": "entered",
+                "nominated": "nominated",
+                "nominee": "nominated",
+                "nomination": "nominated",
+                "commended": "commended",
+                "commendation": "commended",
+                "shortlist": "shortlisted",
+                "shortlisted": "shortlisted",
+                "finalist": "finalist",
+                "finalists": "finalist",
+                "winner": "winner",
+                "winners": "winner",
+                "won": "winner",
+                "winning": "winner",
+            }
+            status_terms = tuple(dict.fromkeys(status_aliases.values()))
+            status_word_pattern = "|".join(
+                sorted(
+                    (re.escape(term) for term in status_aliases),
+                    key=len,
+                    reverse=True,
+                )
             )
-            ambiguous_status_pattern = re.compile(
-                r"\b(" + "|".join(status_terms) + r")\b"
-                r"\s*(?:/|or)\s*"
-                r"\b(" + "|".join(status_terms) + r")\b",
+            status_pattern = re.compile(
+                r"\b(" + status_word_pattern + r")\b",
                 flags=re.IGNORECASE,
             )
+            ambiguous_status_pattern = re.compile(
+                r"\b(" + status_word_pattern + r")\b"
+                r"\s*(?:/|or)\s*"
+                r"\b(" + status_word_pattern + r")\b",
+                flags=re.IGNORECASE,
+            )
+
+            story_text = f"{title} {summary}".lower()
+            award_status_keywords = (
+                "award",
+                "awards",
+            )
+            award_status_story = (
+                bool(status_pattern.search(story_text))
+                or any(
+                    keyword in story_text
+                    for keyword in award_status_keywords
+                )
+            )
+
+            def normalise_host(url: str) -> str:
+                host = urlparse(str(url or "")).netloc.lower()
+                return host[4:] if host.startswith("www.") else host
+
+            official_status_raw = str(
+                fact_pack.get("official_status") or ""
+            ).strip().lower()
+            official_status = status_aliases.get(
+                official_status_raw,
+                official_status_raw,
+            )
+            official_source_name = str(
+                fact_pack.get("official_source_name") or ""
+            ).strip()
+            official_source_url = str(
+                fact_pack.get("official_source_url") or ""
+            ).strip()
+
+            primary_host = normalise_host(source_url)
+            official_host = normalise_host(official_source_url)
+            blocked_official_hosts = {
+                "facebook.com",
+                "instagram.com",
+                "linkedin.com",
+                "tiktok.com",
+                "twitter.com",
+                "x.com",
+                "youtube.com",
+            }
+
+            def host_is_blocked(host: str) -> bool:
+                return any(
+                    host == blocked
+                    or host.endswith("." + blocked)
+                    for blocked in blocked_official_hosts
+                )
+
+            def normalise_url(url: str) -> str:
+                return str(url or "").strip().rstrip("/")
+
+            listed_urls = {
+                normalise_url(url)
+                for url in existing_urls
+                if normalise_url(url)
+            }
+
+            official_url_listed = (
+                normalise_url(official_source_url) in listed_urls
+            )
+            official_candidate_valid = (
+                official_status in status_terms
+                and bool(official_source_name)
+                and official_source_url.startswith(("http://", "https://"))
+                and official_url_listed
+                and bool(official_host)
+                and official_host != primary_host
+                and not host_is_blocked(official_host)
+            )
+
+            subject_names = []
+            names_and_roles = fact_pack.get("names_and_roles")
+            if isinstance(names_and_roles, list):
+                for item in names_and_roles:
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("verified") is not True:
+                        continue
+
+                    name = str(item.get("name") or "").strip()
+                    if len(name) < 4:
+                        continue
+
+                    subject_names.append(name)
+                    without_the = re.sub(
+                        r"^the\s+",
+                        "",
+                        name,
+                        flags=re.IGNORECASE,
+                    ).strip()
+                    if without_the and without_the != name:
+                        subject_names.append(without_the)
+
+            official_page_fetched = False
+            official_subject_confirmed = False
+            official_status_confirmed = False
+            official_validation_error = ""
+
+            if official_candidate_valid and subject_names:
+                try:
+                    from app.simple_scraper import scrape_article
+
+                    official_result = await asyncio.to_thread(
+                        scrape_article,
+                        official_source_url,
+                        20,
+                    )
+
+                    official_text = " ".join(
+                        [
+                            str(official_result.get("title") or ""),
+                            str(official_result.get("content") or ""),
+                        ]
+                    )
+                    official_text_normalised = re.sub(
+                        r"\s+",
+                        " ",
+                        official_text,
+                    ).strip().lower()
+
+                    official_page_fetched = (
+                        official_result.get("ok") is True
+                        and bool(official_text_normalised)
+                    )
+
+                    official_status_words = [
+                        alias
+                        for alias, canonical in status_aliases.items()
+                        if canonical == official_status
+                    ]
+                    official_status_page_pattern = re.compile(
+                        r"\b(?:"
+                        + "|".join(
+                            re.escape(word)
+                            for word in official_status_words
+                        )
+                        + r")\b",
+                        flags=re.IGNORECASE,
+                    )
+
+                    subject_windows = []
+                    if official_page_fetched:
+                        for name in subject_names:
+                            subject_text = re.sub(
+                                r"\s+",
+                                " ",
+                                name,
+                            ).strip().lower()
+
+                            if not subject_text:
+                                continue
+
+                            for subject_match in re.finditer(
+                                re.escape(subject_text),
+                                official_text_normalised,
+                            ):
+                                window_start = max(
+                                    0,
+                                    subject_match.start() - 500,
+                                )
+                                window_end = min(
+                                    len(official_text_normalised),
+                                    subject_match.end() + 500,
+                                )
+                                subject_windows.append(
+                                    official_text_normalised[
+                                        window_start:window_end
+                                    ]
+                                )
+
+                    official_subject_confirmed = bool(subject_windows)
+                    official_status_confirmed = any(
+                        official_status_page_pattern.search(window)
+                        for window in subject_windows
+                    )
+
+                    if not official_page_fetched:
+                        official_validation_error = str(
+                            official_result.get("error")
+                            or "Official page could not be reliably extracted"
+                        )
+                    elif not official_subject_confirmed:
+                        official_validation_error = (
+                            "The declared official page did not contain the "
+                            "verified subject name"
+                        )
+                    elif not official_status_confirmed:
+                        official_validation_error = (
+                            "The declared status was not found near the subject "
+                            "on the official page"
+                        )
+
+                except Exception as official_error:
+                    official_validation_error = str(official_error)[:200]
+
+            elif official_candidate_valid and not subject_names:
+                official_validation_error = (
+                    "No verified subject name was supplied for official-page "
+                    "validation"
+                )
+
+            official_status_verified = (
+                official_candidate_valid
+                and official_page_fetched
+                and official_subject_confirmed
+                and official_status_confirmed
+            )
+
+            fact_pack["official_status_verified"] = official_status_verified
+            fact_pack["official_status_validation"] = {
+                "source_url_listed": official_url_listed,
+                "source_host_distinct_from_publisher": (
+                    bool(official_host)
+                    and official_host != primary_host
+                ),
+                "page_fetched": official_page_fetched,
+                "subject_confirmed": official_subject_confirmed,
+                "status_confirmed": official_status_confirmed,
+                "error": official_validation_error,
+            }
 
             uncertain = fact_pack.get("uncertain_or_unverified")
             if not isinstance(uncertain, list):
@@ -603,34 +872,68 @@ Check the primary source first, then locate the responsible official organiser, 
                 verified_values = []
                 for value in values:
                     value_text = str(value or "").strip()
+                    status_matches = {
+                        status_aliases.get(match.lower(), match.lower())
+                        for match in status_pattern.findall(value_text)
+                    }
+
+                    reject_reason = ""
+
                     if ambiguous_status_pattern.search(value_text):
-                        uncertain.append(
-                            "Ambiguous status wording returned by research: "
-                            + value_text
+                        reject_reason = "ambiguous status wording"
+                    elif (
+                        award_status_story
+                        and status_matches
+                        and not official_status_verified
+                    ):
+                        reject_reason = (
+                            "status was not confirmed by a direct official source"
                         )
-                        contradictions.append(
-                            "The research returned multiple possible statuses "
-                            "without resolving the official current stage."
+                    elif (
+                        official_status_verified
+                        and status_matches
+                        and official_status not in status_matches
+                    ):
+                        reject_reason = (
+                            "status conflicts with the official confirmed status"
+                        )
+
+                    if reject_reason:
+                        uncertain.append(
+                            f"Unverified award-status claim ({reject_reason}): "
+                            f"{value_text}"
                         )
                         continue
+
                     verified_values.append(value)
 
                 fact_pack[field] = verified_values
 
+            if award_status_story and not official_status_verified:
+                dates = fact_pack.get("dates")
+                if isinstance(dates, list):
+                    for value in dates:
+                        value_text = str(value or "").strip()
+                        if value_text:
+                            uncertain.append(
+                                "Award-stage date not independently "
+                                f"confirmed by an official source: {value_text}"
+                            )
+                fact_pack["dates"] = []
+
+                contradictions.append(
+                    "The research did not provide a directly cited official "
+                    "source confirming the exact current status. Publisher or "
+                    "third-party status wording must not be treated as verified."
+                )
+                fact_pack["research_summary"] = (
+                    "The subject and location may be supported, but the exact "
+                    "award status was not independently "
+                    "confirmed by a directly cited official source."
+                )
+
             fact_pack["uncertain_or_unverified"] = list(dict.fromkeys(uncertain))
             fact_pack["contradictions"] = list(dict.fromkeys(contradictions))
-
-            citations = data.get("citations") or []
-            existing_urls = fact_pack.get("source_urls")
-            if not isinstance(existing_urls, list):
-                existing_urls = []
-
-            for citation in citations:
-                url = str(citation or "").strip()
-                if url and url not in existing_urls:
-                    existing_urls.append(url)
-
-            fact_pack["source_urls"] = existing_urls
             return fact_pack
 
         except json.JSONDecodeError:
