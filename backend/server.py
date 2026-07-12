@@ -6344,44 +6344,44 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
                 f"{source_fetch_status}"
             )
 
-    # Admin-only fallback for publishers that block the Render server.
-    # Perplexity can research the supplied source URL externally and provide
-    # factual material for the final OpenAI draft. Nothing is saved or published.
+    # Admin-only structured research fallback for publishers that block
+    # the Render server. Perplexity returns a fact pack, not article prose.
+    # Nothing is saved, restored or published automatically.
+    research_fact_pack = {}
+
     if not source_page_content and source_url.startswith(("http://", "https://")):
         try:
-            perplexity_fallback = await asyncio.wait_for(
-                perplexity_service.generate_article_content(
+            research_fact_pack = await asyncio.wait_for(
+                perplexity_service.research_article_facts(
                     title=title,
-                    summary=content or summary,
+                    summary=summary or content,
                     source=source,
                     source_url=source_url,
                 ),
                 timeout=120,
             )
 
-            perplexity_fallback = str(perplexity_fallback or "").strip()
-            if perplexity_fallback:
-                source_page_content = perplexity_fallback[:18000]
+            if research_fact_pack:
                 source_fetch_status = (
-                    f"{source_fetch_status}; perplexity_fallback_ok"
+                    f"{source_fetch_status}; fact_research_ok"
                     if source_fetch_status not in ("", "not_attempted")
-                    else "perplexity_fallback_ok"
+                    else "fact_research_ok"
                 )
             else:
                 source_fetch_status = (
-                    f"{source_fetch_status}; perplexity_fallback_empty"
+                    f"{source_fetch_status}; fact_research_empty"
                     if source_fetch_status not in ("", "not_attempted")
-                    else "perplexity_fallback_empty"
+                    else "fact_research_empty"
                 )
 
-        except Exception as perplexity_error:
+        except Exception as research_error:
             source_fetch_status = (
-                f"{source_fetch_status}; perplexity_fallback_failed: "
-                f"{str(perplexity_error)[:120]}"
+                f"{source_fetch_status}; fact_research_failed: "
+                f"{str(research_error)[:120]}"
             )
             logger.warning(
-                f"OpenAI rewrite Perplexity fallback failed for {title[:60]}: "
-                f"{str(perplexity_error)[:160]}"
+                f"OpenAI rewrite fact research failed for {title[:60]}: "
+                f"{str(research_error)[:160]}"
             )
 
     rewrite_payload = {
@@ -6393,6 +6393,7 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
         "source_url": source_url,
         "location": location,
         "source_page_content": source_page_content,
+        "research_fact_pack": research_fact_pack,
         "source_fetch_status": source_fetch_status,
     }
 
@@ -6405,8 +6406,11 @@ Important rules:
 - Return valid JSON only.
 - Do not publish or save anything.
 - Do not say you are an AI.
-- Treat source_page_content as the primary factual material when it is present.
-- Use the existing summary and stored content only as supporting material when the source material is incomplete.
+- If source_page_content is present, treat it as the primary factual material.
+- Otherwise, if research_fact_pack is present, write only from its verified facts, dates, locations, figures, quotations and practical information.
+- Never include anything listed under uncertain_or_unverified or contradictions as an established fact.
+- Do not use your own training knowledge, memory or assumptions to expand the article.
+- Use the existing summary and stored content only as leads to be checked against the source material or research fact pack.
 - Do not copy the source wording. Rewrite fully in fresh journalistic wording.
 - Do not invent facts, names, quotations, locations, dates, prices, figures, reactions, history or context.
 - Never infer or embellish missing details to make the article longer.
@@ -6483,6 +6487,8 @@ Return this exact JSON shape:
         "model": model,
         "source_fetch_status": source_fetch_status,
         "source_page_content_length": len(source_page_content),
+        "research_fact_pack_available": bool(research_fact_pack),
+        "research_source_count": len(research_fact_pack.get("source_urls", [])) if isinstance(research_fact_pack, dict) else 0,
     }
 
 
