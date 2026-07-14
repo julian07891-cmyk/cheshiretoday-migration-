@@ -1098,6 +1098,44 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
+  const handleMoveToManualReview = async (articleId) => {
+    setActionLoading(`manual-review-${articleId}`);
+    try {
+      const response = await fetch(
+        `${getApiUrl()}/api/admin/articles/${articleId}/move-to-manual-review`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders()
+        }
+      );
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast({
+          title: "✅ Sent to Manual Review",
+          description: "Article hidden from the public site and added to Manual Review"
+        });
+        fetchAllData();
+        fetchManualReviewArticles();
+        fetchArticleStats();
+      } else {
+        toast({
+          title: "❌ Error",
+          description: data.detail || "Failed to move article to Manual Review",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleAIReviewArticle = async (articleId) => {
     setActionLoading(`ai-review-${articleId}`);
     try {
@@ -3207,25 +3245,25 @@ const handleDeleteArticle = async (articleId) => {
                           size="sm"
                           onClick={async () => {
                             const confirmed = await showConfirmation({
-                              title: 'Archive Article',
-                              description: `Are you sure you want to archive "${article.title}"? It can be restored from the Archive tab.`,
+                              title: 'Send Article to Manual Review',
+                              description: `Move "${article.title}" out of the public site and into Manual Review for editing?`,
                               variant: 'warning',
-                              confirmText: 'Archive',
+                              confirmText: 'Send to Manual Review',
                               cancelText: 'Cancel'
                             });
                             if (confirmed) {
-                              handleArchiveArticle(article._id || article.id);
+                              handleMoveToManualReview(article._id || article.id);
                             }
                           }}
-                          disabled={actionLoading === `archive-${article.id}`}
+                          disabled={actionLoading === `manual-review-${article.id}`}
                           className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
-                          title="Archive article"
-                          data-testid={`archive-article-${article.id}`}
+                          title="Send article to Manual Review"
+                          data-testid={`manual-review-article-${article.id}`}
                         >
-                          {actionLoading === `archive-${article.id}` ? (
+                          {actionLoading === `manual-review-${article.id}` ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Archive className="h-4 w-4" />
+                            <AlertCircle className="h-4 w-4" />
                           )}
                         </Button>
                         <Button
