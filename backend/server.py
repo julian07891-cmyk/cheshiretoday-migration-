@@ -3700,12 +3700,20 @@ async def get_articles(
                 }
             ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
             
-            # Process IDs
+            # Process IDs and expose ready-to-use canonical article URLs.
             for article in articles:
                 if 'id' not in article or not article['id']:
                     article['id'] = str(article['_id'])
                 if '_id' in article:
                     del article['_id']
+
+                article_id = str(article.get("id") or "").strip()
+                article_slug = _article_slug_from_title(article.get("title"))
+                article["articleId"] = article_id
+                article["slug"] = article_slug
+                article["canonicalUrl"] = (
+                    f"https://cheshiretoday.co.uk/article/{article_id}/{article_slug}"
+                )
             
             return {"articles": articles, "total": len(articles), "search": search}
         
@@ -4328,6 +4336,16 @@ async def get_articles(
         for article in articles:
             article['id'] = str(article['_id'])
             del article['_id']
+
+            # Expose the exact public URL so API consumers do not need to
+            # reproduce Cheshire Today's slug-generation rules.
+            article_id = str(article.get("id") or "").strip()
+            article_slug = _article_slug_from_title(article.get("title"))
+            article["articleId"] = article_id
+            article["slug"] = article_slug
+            article["canonicalUrl"] = (
+                f"https://cheshiretoday.co.uk/article/{article_id}/{article_slug}"
+            )
 
             # Normalize scope for frontend consistency
             if article.get('is_local_source') is True:
