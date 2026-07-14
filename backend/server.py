@@ -6142,7 +6142,12 @@ async def get_admin_articles(
 ):
     """Get admin articles with optional full-database search. Requires admin authentication."""
     try:
-        query = {}
+        admin_visible_clauses = [
+            {"$or": [{"archived": {"$exists": False}}, {"archived": False}]},
+            {"manual_review_hidden_from_public": {"$ne": True}},
+        ]
+
+        query = {"$and": admin_visible_clauses}
         if search and search.strip():
             raw_search = search.strip()
             id_match = re.search(r"([a-f0-9]{24})", raw_search, re.I)
@@ -6164,7 +6169,12 @@ async def get_admin_articles(
                 except Exception:
                     pass
 
-            query = {"$or": or_clauses}
+            query = {
+                "$and": [
+                    *admin_visible_clauses,
+                    {"$or": or_clauses},
+                ]
+            }
 
         articles = await db.articles.find(
             query
@@ -7008,6 +7018,7 @@ async def move_article_to_manual_review(article_id: str, authorized: bool = Depe
 
         now_iso = datetime.now(timezone.utc).isoformat()
         update_doc = {
+            "archived": False,
             "manual_review_hidden_from_public": True,
             "manual_review_reason": "Moved back to Manual Review for editor rewrite before publication",
             "manual_review_created_at": now_iso,
@@ -7017,7 +7028,17 @@ async def move_article_to_manual_review(article_id: str, authorized: bool = Depe
             "updated_at": now_iso,
         }
 
-        await db.articles.update_one(match_query, {"$set": update_doc})
+        await db.articles.update_one(
+            match_query,
+            {
+                "$set": update_doc,
+                "$unset": {
+                    "archived_at": "",
+                    "archive_reason": "",
+                    "archive_source": "",
+                },
+            },
+        )
 
         return {
             "success": True,
