@@ -15745,6 +15745,59 @@ async def _save_email_batch_cursor(digest_key: str, next_index: int, start_index
     )
 
 
+async def _save_email_send_opportunities(
+    digest_key: str,
+    tracking_id: str,
+    accepted_recipients: list,
+    provider: str,
+):
+    """Store privacy-preserving recipient hashes for a successfully accepted newsletter send."""
+    import hashlib
+
+    recipient_hashes = []
+    seen_hashes = set()
+
+    for raw_email in accepted_recipients or []:
+        email_norm = str(raw_email or "").strip().lower()
+        if not email_norm or "@" not in email_norm:
+            continue
+
+        email_hash = hashlib.sha256(email_norm.encode()).hexdigest()[:8]
+        if email_hash in seen_hashes:
+            continue
+
+        seen_hashes.add(email_hash)
+        recipient_hashes.append(email_hash)
+
+    if not tracking_id or not recipient_hashes:
+        logger.warning(
+            f"Email send ledger not written: digest={digest_key} "
+            f"tracking_id_present={bool(tracking_id)} accepted_hashes={len(recipient_hashes)}"
+        )
+        return 0
+
+    ledger_doc = {
+        "digest_key": digest_key,
+        "tracking_id": tracking_id,
+        "provider": provider,
+        "accepted_at": datetime.now(timezone.utc),
+        "accepted_count": len(recipient_hashes),
+        "recipient_hashes": recipient_hashes,
+    }
+
+    await db.email_send_opportunities.update_one(
+        {"tracking_id": tracking_id},
+        {"$set": ledger_doc},
+        upsert=True,
+    )
+
+    logger.info(
+        f"Email send ledger stored: digest={digest_key} "
+        f"tracking={tracking_id} accepted={len(recipient_hashes)}"
+    )
+    return len(recipient_hashes)
+
+
 async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
     """
     Send The Daily Brief to all subscribers with daily_brief preference.
@@ -16270,6 +16323,21 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         )
         
         if success_count > 0:
+            accepted_recipients = list(
+                getattr(email_service, "last_accepted_recipients", []) or []
+            )
+            ledger_count = await _save_email_send_opportunities(
+                "DailyBrief",
+                tracking_id,
+                accepted_recipients,
+                provider_name,
+            )
+            if ledger_count != int(success_count or 0):
+                logger.warning(
+                    f"Daily Brief accepted-recipient mismatch: "
+                    f"success_count={success_count} ledger_count={ledger_count}"
+                )
+
             await _save_email_batch_cursor(
                 "DailyBrief",
                 batch_next,
@@ -16556,6 +16624,26 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             logger.warning(f"Could not log weekly roundup send: {log_error}")
         
         if success_count > 0:
+            accepted_recipients = list(
+                getattr(email_service, "last_accepted_recipients", []) or []
+            )
+            weekly_provider = (
+                "resend"
+                if getattr(email_service, "resend_enabled", False)
+                else "smtp"
+            )
+            ledger_count = await _save_email_send_opportunities(
+                "WeeklyRoundup",
+                tracking_id,
+                accepted_recipients,
+                weekly_provider,
+            )
+            if ledger_count != int(success_count or 0):
+                logger.warning(
+                    f"Weekly Roundup accepted-recipient mismatch: "
+                    f"success_count={success_count} ledger_count={ledger_count}"
+                )
+
             await _save_email_batch_cursor(
                 "WeeklyRoundup",
                 batch_next,

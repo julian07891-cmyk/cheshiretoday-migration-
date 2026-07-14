@@ -155,6 +155,11 @@ class EmailService:
                     )
                 response.raise_for_status()
                 success_count += len(chunk)
+                self.last_accepted_recipients.extend(
+                    str(item.get("to") or "").strip()
+                    for item in chunk
+                    if str(item.get("to") or "").strip()
+                )
                 self.resend_last_successful_chunks = getattr(self, "resend_last_successful_chunks", 0) + 1
             except Exception as e:
                 status_code = getattr(response, "status_code", "no_response")
@@ -636,10 +641,11 @@ Cheshire Today Jobs Team
             logger.warning("No articles for Daily Brief")
             return 0, None
 
-        # Reset provider diagnostics for this send attempt.
+        # Reset provider diagnostics and accepted-recipient state for this send attempt.
         self.resend_last_error = None
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
         
         # Generate tracking ID for this send
         tracking_id = self._generate_tracking_id("daily_brief")
@@ -1144,6 +1150,9 @@ Cheshire Today Jobs Team
                 item = build_recipient_message(email)
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
                     success_count += 1
+                    self.last_accepted_recipients.append(
+                        str(item.get("to") or "").strip()
+                    )
         
         logger.info(f"Daily Brief sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
         return success_count, tracking_id
@@ -1280,6 +1289,12 @@ Cheshire Today Jobs Team
         if not big_read:
             logger.warning("No big read article for Weekly Roundup")
             return 0, None
+
+        # Reset provider diagnostics and accepted-recipient state for this send attempt.
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
         
         # Generate tracking ID for this send
         tracking_id = self._generate_tracking_id("weekly_roundup")
@@ -1449,6 +1464,9 @@ Cheshire Today Jobs Team
             for item in batch_messages:
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
                     success_count += 1
+                    self.last_accepted_recipients.append(
+                        str(item.get("to") or "").strip()
+                    )
         
         logger.info(f"Weekly Roundup sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
         return success_count, tracking_id
