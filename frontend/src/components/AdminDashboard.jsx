@@ -3252,7 +3252,9 @@ const handleDeleteArticle = async (articleId) => {
                               cancelText: 'Cancel'
                             });
                             if (confirmed) {
-                              handleMoveToManualReview(article._id || article.id);
+                              handleMoveToManualReview(
+                                article.mongo_id || article._id || article.id
+                              );
                             }
                           }}
                           disabled={actionLoading === `manual-review-${article.id}`}

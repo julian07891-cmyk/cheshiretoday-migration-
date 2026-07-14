@@ -6167,8 +6167,14 @@ async def get_admin_articles(
             query = {"$or": or_clauses}
 
         articles = await db.articles.find(
-            query, {"_id": 0}
+            query
         ).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
+
+        # Preserve the stored article `id` for existing admin actions, while
+        # exposing Mongo `_id` separately for routes that require the public Mongo ID.
+        for article in articles:
+            article["mongo_id"] = str(article.get("_id") or "")
+            article.pop("_id", None)
 
         total = await db.articles.count_documents(query)
         return {"articles": articles, "total": total, "skip": skip, "limit": limit, "search": search or ""}
