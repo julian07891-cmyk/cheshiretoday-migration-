@@ -73,6 +73,7 @@ const AdminDashboard = ({ onBack }) => {
   
   // Bulk selection state
   const [selectedArticles, setSelectedArticles] = useState(new Set());
+  const [selectedManualReviewArticles, setSelectedManualReviewArticles] = useState(new Set());
   const [selectedSubscribers, setSelectedSubscribers] = useState(new Set());
   const [selectedJobs, setSelectedJobs] = useState(new Set());
   
@@ -2466,6 +2467,77 @@ const handleDeleteArticle = async (articleId) => {
     }
   };
 
+  const handleDeleteSelectedManualReviewArticles = async () => {
+    const selectedIds = Array.from(selectedManualReviewArticles);
+
+    if (selectedIds.length === 0) return;
+
+    const confirmed = await showConfirmation({
+      title: `Delete ${selectedIds.length} Manual Review Articles`,
+      description: `Move ${selectedIds.length} selected article(s) out of Manual Review and into the archive? Shared links will remain preserved.`,
+      variant: 'destructive',
+      confirmText: 'Delete Selected',
+      cancelText: 'Cancel'
+    });
+
+    if (!confirmed) return;
+
+    setActionLoading('delete-selected-manual-review');
+
+    try {
+      const results = await Promise.all(
+        selectedIds.map(async (articleId) => {
+          const response = await fetch(`${getApiUrl()}/api/articles/${articleId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+          });
+
+          return {
+            articleId,
+            ok: response.ok
+          };
+        })
+      );
+
+      const deletedIds = new Set(
+        results.filter(result => result.ok).map(result => result.articleId)
+      );
+      const failedCount = results.length - deletedIds.size;
+
+      setManualReviewArticles(prev =>
+        prev.filter(article => !deletedIds.has(article.id))
+      );
+      setSelectedManualReviewArticles(new Set());
+
+      await Promise.all([
+        fetchManualReviewArticles(),
+        fetchArchivedArticles(),
+        fetchArticleStats()
+      ]);
+
+      if (failedCount === 0) {
+        toast({
+          title: "✅ Articles Deleted",
+          description: `${deletedIds.size} selected article(s) moved to the archive`
+        });
+      } else {
+        toast({
+          title: "⚠️ Bulk Delete Partly Completed",
+          description: `${deletedIds.size} deleted, ${failedCount} failed`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "❌ Bulk Delete Failed",
+        description: error.message || "Failed to delete selected articles",
+        variant: "destructive"
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleDeleteSubscriber = async (email) => {
     if (!window.confirm(`Remove subscriber ${email}?`)) return;
     
@@ -4344,13 +4416,63 @@ const handleDeleteArticle = async (articleId) => {
                       {manualReviewArticles.length} live articles hidden from public feeds until reviewed
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchManualReviewArticles}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (
+                          manualReviewArticles.length > 0 &&
+                          selectedManualReviewArticles.size === manualReviewArticles.length
+                        ) {
+                          setSelectedManualReviewArticles(new Set());
+                        } else {
+                          setSelectedManualReviewArticles(
+                            new Set(manualReviewArticles.map(article => article.id))
+                          );
+                        }
+                      }}
+                      disabled={manualReviewArticles.length === 0}
+                    >
+                      {manualReviewArticles.length > 0 &&
+                      selectedManualReviewArticles.size === manualReviewArticles.length ? (
+                        <>
+                          <Square className="h-4 w-4 mr-1" />
+                          Deselect All
+                        </>
+                      ) : (
+                        <>
+                          <CheckSquare className="h-4 w-4 mr-1" />
+                          Select All
+                        </>
+                      )}
+                    </Button>
+
+                    {selectedManualReviewArticles.size > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteSelectedManualReviewArticles}
+                        disabled={actionLoading === 'delete-selected-manual-review'}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      >
+                        {actionLoading === 'delete-selected-manual-review' ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-1" />
+                        )}
+                        Delete Selected ({selectedManualReviewArticles.size})
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchManualReviewArticles}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -4364,8 +4486,37 @@ const handleDeleteArticle = async (articleId) => {
                     {manualReviewArticles.map((article) => (
                       <div
                         key={article.id}
-                        className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg"
+                        className={`flex items-start gap-3 p-3 border rounded-lg ${
+                          selectedManualReviewArticles.has(article.id)
+                            ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800'
+                            : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
+                        }`}
                       >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextSelected = new Set(selectedManualReviewArticles);
+                            if (nextSelected.has(article.id)) {
+                              nextSelected.delete(article.id);
+                            } else {
+                              nextSelected.add(article.id);
+                            }
+                            setSelectedManualReviewArticles(nextSelected);
+                          }}
+                          className="flex-shrink-0 mt-1"
+                          aria-label={
+                            selectedManualReviewArticles.has(article.id)
+                              ? `Deselect ${article.title}`
+                              : `Select ${article.title}`
+                          }
+                        >
+                          {selectedManualReviewArticles.has(article.id) ? (
+                            <CheckSquare className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <Square className="h-5 w-5 text-gray-400" />
+                          )}
+                        </button>
+
                         {article.image && (
                           <img
                             src={article.image}
