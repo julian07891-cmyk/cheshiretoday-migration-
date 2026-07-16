@@ -139,6 +139,9 @@ const AdminDashboard = ({ onBack }) => {
   
   // Archive and article management state
   const [archivedArticles, setArchivedArticles] = useState([]);
+  const [archivedArticleSearch, setArchivedArticleSearch] = useState('');
+  const [archivedArticleTotal, setArchivedArticleTotal] = useState(0);
+  const [archivedArticlesLoading, setArchivedArticlesLoading] = useState(false);
   const [manualReviewArticles, setManualReviewArticles] = useState([]);
   const [articleStats, setArticleStats] = useState(null);
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
@@ -1038,16 +1041,45 @@ const AdminDashboard = ({ onBack }) => {
   };
 
   // Archive management functions
-  const fetchArchivedArticles = async () => {
+  const fetchArchivedArticles = async (searchValue = archivedArticleSearch) => {
     const authHeaders = getAuthHeaders();
+    const trimmedSearch = String(searchValue || '').trim();
+    const params = new URLSearchParams({
+      limit: '20',
+      skip: '0'
+    });
+
+    if (trimmedSearch) {
+      params.set('search', trimmedSearch);
+    }
+
+    setArchivedArticlesLoading(true);
+
     try {
-      const response = await fetch(`${getApiUrl()}/api/admin/articles/archived`, { headers: authHeaders });
+      const response = await fetch(
+        `${getApiUrl()}/api/admin/articles/archived?${params.toString()}`,
+        { headers: authHeaders }
+      );
+
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
         setArchivedArticles(data.articles || []);
+        setArchivedArticleTotal(Number(data.total || 0));
+      } else {
+        throw new Error(data.detail || 'Failed to load archived articles');
       }
     } catch (error) {
       console.error('Error fetching archived articles:', error);
+      setArchivedArticles([]);
+      setArchivedArticleTotal(0);
+      toast({
+        title: "❌ Archive Load Failed",
+        description: error.message || "Could not load archived articles",
+        variant: "destructive"
+      });
+    } finally {
+      setArchivedArticlesLoading(false);
     }
   };
 
@@ -4636,28 +4668,93 @@ const handleDeleteArticle = async (articleId) => {
             {/* Archived Articles List */}
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Archived Articles</CardTitle>
-                    <CardDescription>
-                      {archivedArticles.length} articles in archive · Manual review is shown above for live hidden articles
-                    </CardDescription>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <CardTitle>Archived Articles</CardTitle>
+                      <CardDescription>
+                        {archivedArticleTotal} matching article{archivedArticleTotal === 1 ? '' : 's'} in archive
+                        {archivedArticleSearch.trim() ? ` for "${archivedArticleSearch.trim()}"` : ''}
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fetchArchivedArticles()}
+                      disabled={archivedArticlesLoading}
+                    >
+                      {archivedArticlesLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchArchivedArticles}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        value={archivedArticleSearch}
+                        onChange={(event) => setArchivedArticleSearch(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            fetchArchivedArticles(archivedArticleSearch);
+                          }
+                        }}
+                        placeholder="Search archive by title, article ID, source or URL"
+                        className="pl-9"
+                      />
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={() => fetchArchivedArticles(archivedArticleSearch)}
+                      disabled={archivedArticlesLoading}
+                    >
+                      {archivedArticlesLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Search className="h-4 w-4 mr-2" />
+                      )}
+                      Search
+                    </Button>
+
+                    {archivedArticleSearch.trim() && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setArchivedArticleSearch('');
+                          fetchArchivedArticles('');
+                        }}
+                        disabled={archivedArticlesLoading}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {archivedArticles.length === 0 ? (
+                {archivedArticlesLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-gray-400" />
+                    <p>Loading archived articles...</p>
+                  </div>
+                ) : archivedArticles.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <Archive className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                    <p>No archived articles</p>
-                    <p className="text-sm mt-1">Use bulk archive to move old articles here</p>
+                    <p>
+                      {archivedArticleSearch.trim()
+                        ? 'No archived articles matched your search'
+                        : 'No archived articles'}
+                    </p>
+                    <p className="text-sm mt-1">
+                      {archivedArticleSearch.trim()
+                        ? 'Try part of the headline, article ID, publisher or source URL'
+                        : 'Use bulk archive to move old articles here'}
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">

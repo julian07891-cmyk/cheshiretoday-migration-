@@ -7329,19 +7329,54 @@ async def get_manual_review_articles(
 @api_router.get("/admin/articles/archived")
 async def get_archived_articles(
     skip: int = 0,
-    limit: int = 50,
+    limit: int = 20,
+    search: Optional[str] = None,
     auth: bool = Depends(get_admin_auth)
 ):
     """Get all archived articles from both legacy (archived flag) and new (archived_articles collection) systems"""
     try:
         safe_skip = max(0, int(skip or 0))
-        safe_limit = min(max(1, int(limit or 50)), 100)
+        safe_limit = min(max(1, int(limit or 20)), 100)
         fetch_cap = min(safe_skip + safe_limit, 500)
         all_archived = []
+
+        raw_search = str(search or "").strip()
+        search_clauses = []
+
+        if raw_search:
+            escaped_search = re.escape(raw_search)
+            search_regex = {"$regex": escaped_search, "$options": "i"}
+
+            search_clauses = [
+                {"title": search_regex},
+                {"source": search_regex},
+                {"source_url": search_regex},
+                {"id": search_regex},
+            ]
+
+            id_match = re.fullmatch(r"[a-f0-9]{24}", raw_search, re.I)
+            if id_match:
+                try:
+                    from bson import ObjectId
+                    search_clauses.append({"_id": ObjectId(raw_search)})
+                except Exception:
+                    pass
+
+        legacy_query = {"archived": True}
+        collection_query = {}
+
+        if search_clauses:
+            legacy_query = {
+                "$and": [
+                    {"archived": True},
+                    {"$or": search_clauses},
+                ]
+            }
+            collection_query = {"$or": search_clauses}
         
         # Get articles from main collection with archived flag (legacy system)
         legacy_archived = await db.articles.find(
-            {"archived": True},
+            legacy_query,
             {"_id": 1, "id": 1, "title": 1, "content": 1, "summary": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source": 1, "source_url": 1, "author": 1, "tags": 1, "featured": 1, "force_live": 1, "scope": 1, "location": 1}
         ).sort([("archived_at", -1), ("publishedDate", -1)]).limit(fetch_cap).to_list(fetch_cap)
         
@@ -7354,7 +7389,7 @@ async def get_archived_articles(
         
         # Get articles from archived_articles collection (new system)
         new_archived = await db.archived_articles.find(
-            {},
+            collection_query,
             {"_id": 1, "id": 1, "title": 1, "content": 1, "summary": 1, "category": 1, "publishedDate": 1, "archived_at": 1, "image": 1, "archive_reason": 1, "verification_status": 1, "rewrite_status": 1, "manual_review_hits": 1, "manual_review_reason": 1, "manual_review_hidden_from_public": 1, "manual_review_created_at": 1, "source": 1, "source_url": 1, "author": 1, "tags": 1, "featured": 1, "force_live": 1, "scope": 1, "location": 1}
         ).sort([("archived_at", -1), ("publishedDate", -1)]).limit(fetch_cap).to_list(fetch_cap)
         
@@ -7369,12 +7404,18 @@ async def get_archived_articles(
         all_archived.sort(key=lambda x: x.get('archived_at', ''), reverse=True)
         
         # Count totals without loading the full archive into memory
-        legacy_total = await db.articles.count_documents({"archived": True})
-        collection_total = await db.archived_articles.count_documents({})
+        legacy_total = await db.articles.count_documents(legacy_query)
+        collection_total = await db.archived_articles.count_documents(collection_query)
         total = legacy_total + collection_total
         paginated = all_archived[safe_skip:safe_skip + safe_limit]
         
-        return {"articles": paginated, "total": total, "skip": safe_skip, "limit": safe_limit}
+        return {
+            "articles": paginated,
+            "total": total,
+            "skip": safe_skip,
+            "limit": safe_limit,
+            "search": raw_search,
+        }
     except Exception as e:
         logger.error(f"Error getting archived articles: {e}")
         raise HTTPException(status_code=500, detail=str(e))
