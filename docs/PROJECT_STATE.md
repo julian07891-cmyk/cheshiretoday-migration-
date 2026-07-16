@@ -20363,3 +20363,2029 @@ Avoid repeatedly adding prose instructions without evidence from the diagnostics
 ```text
 Continue Cheshire Today from the 12 July 2026 update in the single chat-source state file. Read the latest state file before any code/database/content-pool/category/newsletter/affiliate/advertising/article-generation change. We have completed the admin Open AI factual rewrite pipeline: direct source scrape first, structured Perplexity fact-pack fallback when blocked, OpenAI draft restricted to verified material, restructured professional UK-news prompt, and a deterministic editorial guard with one temperature-0 correction pass. Latest pushed commit on full-scrape-prod is 83d8d69 Expand OpenAI editorial guard patterns. The guard now detects known interpretive leads, vague attribution, generic/rhetorical endings in the final two paragraphs and selected US spellings; admin response exposes source, fact-pack and guard diagnostics. Immediate next step: after deploy, press Open AI again on the same healthy-life-expectancy article, paste the resulting draft and inspect editorial_guard_triggered, editorial_guard_corrected, editorial_guard_remaining_violations and the full research_fact_pack. Do not publish the test article merely because it reads well; verify every name, study, quote, figure and healthcare comparison. Workflow: one safe command at a time, scripted edits only, /usr/bin/grep not rg, syntax and diff checks before commit, no npm start unless asked, no automatic OpenAI publishing.
 ```
+
+## 16 July 2026 — Deferred frontend maintenance
+
+### Browserslist / caniuse-lite database refresh
+
+Non-urgent maintenance item added after successful production frontend builds displayed:
+
+```text
+Browserslist: browsers data (caniuse-lite) is 6 months old.
+npx update-browserslist-db@latest
+```
+
+Current decision:
+
+```text
+Do not update during active feature/debugging work.
+The warning does not block builds or deployment.
+Handle it later as a separate frontend maintenance commit.
+```
+
+Safe future workflow:
+
+```bash
+cd frontend
+npx update-browserslist-db@latest
+```
+
+Then:
+
+```text
+1. Inspect package.json / package-lock.json changes.
+2. Run npm run build.
+3. Confirm no unexpected dependency changes or regressions.
+4. Commit separately with a maintenance-only message.
+```
+
+Do not combine this dependency metadata refresh with article, archive, import, newsletter, or production bug fixes.
+
+
+
+---
+
+# Update – 2026-07-16 (Archive Search, Scheduler Investigation & Maintenance)
+
+## Scheduler / Import Investigation
+- Reviewed the complete scheduled pipeline:
+  - `daily_article_generation()`
+  - `generate_articles()`
+  - `import_hybrid_news()`
+  - RSS fetch pipeline
+  - Daily Brief locking and newsletter batching.
+- Confirmed scheduled imports request up to 12 candidates while limiting scheduled public imports to 6, with additional qualifying articles routed into Manual Review.
+- Confirmed distributed locking, newsletter cursor rotation and intentional disabling of automatic hard-delete cleanup remain intact.
+
+### Feed Architecture Audit
+Verified the complete flow:
+
+`RSS_FEEDS → _flatten_feed_groups() → fetch_feed() → fetch_all_feeds() → fetch_local_feeds_only() → fetch_local_news() → import_hybrid_news() → generate_articles() → daily_article_generation()`
+
+Findings:
+- 56 configured feeds.
+- 56 flattened feeds.
+- No hidden feed groups.
+- No duplicate feed expansion.
+- RSS configuration appears healthy and was intentionally left unchanged.
+
+### Scheduler Behaviour
+Operational observation:
+- Imports are not reliably executing every scheduled run.
+- This week they executed fewer than five times.
+- Sometimes around 06:02.
+- Sometimes around 12:00.
+- Sometimes not at all.
+
+Conclusion:
+- Do **not** modify RSS feed definitions while investigating this issue.
+- Future investigation should prioritise scheduler execution (Render/APScheduler/job triggering/logs) before altering feed logic.
+
+## Archive Improvements
+Reason:
+- Archive contained approximately 6,311 articles.
+- Existing paging made locating historical articles impractical.
+- Work initiated to locate and amend the Wilmslow heritage boards article.
+
+Backend:
+- Added archive search parameter.
+- Search by title.
+- Search by article ID.
+- Search by Mongo ObjectId.
+- Search by source.
+- Search by source URL.
+- Reduced default archive page size from 50 to 20.
+- Search-aware totals returned.
+
+Frontend:
+- Archive search box.
+- Search button.
+- Enter-key search.
+- Clear button.
+- Loading indicator.
+- Matching result count.
+- Improved empty-state messaging.
+- Refresh workflow retained.
+
+Verification:
+- Static checks passed.
+- Production frontend build passed.
+- Git diff reviewed.
+- Git status reviewed.
+- Commit created and pushed successfully.
+
+Deployment:
+- Commit: `b3ca258`
+- Message: `Add searchable archive article list`
+
+## Deferred Maintenance
+- Update Browserslist database:
+  `npx update-browserslist-db@latest`
+- Review dependency changes.
+- Rebuild frontend.
+- Commit separately from production fixes.
+
+## Operational Reminder
+Before modifying RSS feeds in future, first verify:
+1. Scheduler execution.
+2. Render/APScheduler timing.
+3. Distributed locks.
+4. Import logs.
+5. Feed counts.
+
+Do not assume RSS feeds are the root cause of intermittent imports until scheduler behaviour has been verified.
+
+---
+
+## Full operational update — 12–16 July 2026
+
+### Current production and source-of-truth checkpoint
+
+```text
+Repository: CT29january26-new-website-migration
+Branch: full-scrape-prod
+Authoritative operational state: docs/PROJECT_STATE.md in the repository
+Authoritative chat-source snapshot: this consolidated file
+State migration commit: 751915b Move operational state into docs
+Latest functional production commit before migration: b3ca258 Add searchable archive article list
+Production health: healthy
+```
+
+Operational source rule:
+
+```text
+- Ignore Cheshire_Economic_AI_Project_Master_Feb2026.pdf for current operational decisions.
+- That PDF is historical strategy only.
+- Read the latest consolidated operational state first.
+- The repository-backed source of truth is docs/PROJECT_STATE.md.
+- Chat-source consolidated files are snapshots and must not replace the repository file once GitHub is current.
+```
+
+### 1. Admin OpenAI rewrite now cross-checks successful publisher scrapes
+
+Test article:
+
+```text
+Mongo ID: 6a5373f217074c92eb2f31e8
+Title: Chester primary shortlisted for independent school of the year
+Source: Chester Standard
+Source URL: https://www.chesterstandard.co.uk/news/26270079.national-award-shortlist-chester-primary-school/?ref=rss
+```
+
+Initial result:
+
+```text
+source_fetch_status: ok
+source_page_content_length: 2283
+research_fact_pack_available: false
+editorial_guard_triggered: false
+```
+
+Root cause:
+
+```python
+if not source_page_content and source_url.startswith(("http://", "https://")):
+```
+
+Independent Perplexity research only ran when publisher scraping failed. A successful scrape prevented independent official-source verification.
+
+Fix:
+
+```text
+- independent research now runs for every valid source URL
+- publisher scrape and fact pack are compared
+- official organiser/authority sources take priority
+- unresolved conflicts must appear in editor notes
+- publisher/social wording must not override official terminology
+- workflow remains Admin-only and non-mutating until the editor presses Update Article
+```
+
+Commit:
+
+```text
+611b57d Cross-check OpenAI rewrites with independent fact research
+```
+
+### 2. Awards and official-status terminology guard
+
+The first post-fix fact pack blended wording such as:
+
+```text
+commended/shortlisted
+```
+
+These stages must remain distinct:
+
+```text
+entered
+nominated
+commended
+shortlisted
+finalist
+winner
+```
+
+Research and parser rules were tightened to:
+
+```text
+- use the official organiser's exact status term
+- reject slash-separated alternatives in verified facts
+- do not call an entrant shortlisted or finalist unless the organiser does
+- treat official organiser/authority records as higher priority than publisher/social wording
+- exclude evidence from different years, countries, organisations, institutions and events
+- move unresolved status wording to uncertain_or_unverified / contradictions
+```
+
+Operational rule:
+
+> Never publish an award-status claim until the exact official stage has been checked. “Commended” does not mean “shortlisted” or “finalist”.
+
+### 3. Newsletter accepted-recipient send-opportunity ledger
+
+Problem:
+
+```text
+Open/click analytics did not prove which recipients had actually been accepted by Resend during a partially successful batch.
+```
+
+Email service changes:
+
+```text
+- EmailService.last_accepted_recipients resets at the start of Daily Brief and Weekly Roundup sends
+- successful Resend chunks append accepted recipients
+- failed Resend chunks do not
+- successful SMTP fallback sends append recipients
+- provider diagnostics remain available
+```
+
+Regression test:
+
+```text
+Chunk 1: 100 accepted
+Chunk 2: 100 failed with HTTP 500
+Chunk 3: 5 accepted
+SUCCESS_COUNT: 105
+ACCEPTED_RECIPIENTS: 105
+SUCCESSFUL_CHUNKS: 2
+FAILED_CHUNKS: 1
+```
+
+MongoDB collection:
+
+```text
+email_send_opportunities
+```
+
+Stored fields:
+
+```text
+digest_key
+tracking_id
+provider
+accepted_at
+accepted_count
+recipient_hashes
+```
+
+Privacy rule:
+
+```text
+- raw recipient email addresses are not stored
+- addresses are normalised
+- only the existing short SHA-256 recipient hash is stored
+```
+
+Commit:
+
+```text
+bbea335 Record newsletter send opportunities
+```
+
+Important limitation:
+
+> Provider acceptance is a valid send opportunity, not proof of final delivery, inbox placement, bounce status, opening or readership.
+
+Future option:
+
+```text
+Add Resend webhook ingestion for delivered, bounced, opened and clicked lifecycle events if delivery-level pruning evidence is needed.
+```
+
+### 4. Canonical public article URLs exposed through API
+
+Problem:
+
+```text
+Social-posting workflows could find an article but could not reliably build the exact public URL before external indexing.
+```
+
+Public API fields added:
+
+```text
+articleId
+slug
+canonicalUrl
+```
+
+Example:
+
+```text
+ID: 6a54c53c9b216c52eb05aca8
+Title: Councillors Seek Support for Jodrell Bank Amid Funding Concerns
+Canonical URL: https://cheshiretoday.co.uk/article/6a54c53c9b216c52eb05aca8/councillors-seek-support-for-jodrell-bank-amid-funding-concerns
+```
+
+The backend uses the existing `_article_slug_from_title()` helper.
+
+Commit:
+
+```text
+dbadc90 Expose canonical article URLs in API
+```
+
+Operational social rule:
+
+```text
+Use the live /api/articles feed first.
+Use canonicalUrl directly when available.
+Do not infer IDs from screenshots.
+Do not rely on Google indexing for current article discovery.
+```
+
+### 5. Main Admin amber action now routes to Manual Review
+
+Requirement:
+
+```text
+The amber action in the main Articles tab should send an article to Manual Review for editing, not permanent Archive.
+```
+
+Route used:
+
+```text
+POST /api/admin/articles/{article_id}/move-to-manual-review
+```
+
+Frontend changes:
+
+```text
+- added handleMoveToManualReview()
+- changed confirmation title and text
+- changed loading state and icon
+- retained the true Archive action inside Manual Review
+```
+
+Commit:
+
+```text
+062a011 Send archived admin articles to manual review
+```
+
+### 6. Admin article ID mismatch repair
+
+Production symptom:
+
+```json
+{"detail":"Article not found"}
+```
+
+Root cause:
+
+```text
+Some documents contain both Mongo _id and a separate UUID/custom id.
+The Admin article endpoint projected Mongo _id out.
+The frontend sometimes sent the stored UUID when the route needed Mongo identity.
+```
+
+Fix:
+
+```text
+- /api/admin/articles now exposes Mongo identity as mongo_id
+- stored id remains unchanged for compatibility
+- Manual Review action prefers article.mongo_id || article._id || article.id
+```
+
+Commit:
+
+```text
+a075a49 Fix admin manual review article IDs
+```
+
+### 7. Articles, Manual Review and Archive separated correctly
+
+Test article:
+
+```text
+Title: Brand new primary school handed over to trust ahead of official opening
+Mongo ID: 6a566b200ce41aa37200e4a3
+Stored ID: 5d0b31dd-01ae-49f1-973e-87a0fc204c44
+```
+
+Problem state:
+
+```text
+manual_review_hidden_from_public: true
+archived: true
+archive_reason: manual_admin
+```
+
+Because Manual Review excludes archived records, the article was hidden from both queues.
+
+Fix to move-to-manual-review:
+
+```text
+- set archived=false
+- set manual_review_hidden_from_public=true
+- set verification_status=needs_manual_review
+- set rewrite_status=manual_review_required
+- set force_live=false
+- clear archived_at
+- clear archive_reason
+- clear archive_source
+```
+
+Fix to the main Admin Articles endpoint:
+
+```text
+exclude archived=true
+exclude manual_review_hidden_from_public=true
+```
+
+Final workflow separation:
+
+```text
+Articles: live, non-review records
+Manual Review: hidden, editable records awaiting review
+Archive: genuinely archived records
+```
+
+Commit:
+
+```text
+1f18f9b Separate live articles from manual review
+```
+
+Live verification:
+
+```text
+- school article appeared in Manual Review
+- school article disappeared from main Articles search
+```
+
+### 8. Jodrell Bank article restoration
+
+The Jodrell Bank article temporarily disappeared because it was deliberately used for Manual Review endpoint testing.
+
+Article:
+
+```text
+ID: 6a54c53c9b216c52eb05aca8
+Title: Councillors Seek Support for Jodrell Bank Amid Funding Concerns
+```
+
+Result:
+
+```text
+- found intact in Manual Review
+- restored through edit/save workflow
+- returned to public API
+- canonical URL verified
+- article live again
+```
+
+This was a test side effect, not a random deletion.
+
+### 9. Manual Review bulk selection and deletion
+
+Added:
+
+```text
+- separate selectedManualReviewArticles state
+- per-row tick boxes
+- selected-row highlighting
+- Select All / Deselect All
+- Delete Selected count
+- one confirmation for the whole operation
+- loading state
+- success and partial-failure reporting
+- refresh of Manual Review, Archive and article statistics
+```
+
+The action uses the existing delete/archive-preservation route, preserving shared-link behaviour.
+
+Commit:
+
+```text
+1dfcccc Add bulk delete for manual review articles
+```
+
+Verification:
+
+```text
+- static checks passed
+- frontend production build passed
+```
+
+### 10. Searchable Archive tab
+
+Archive size observed:
+
+```text
+approximately 6,311 records
+```
+
+Immediate target:
+
+```text
+Six new heritage boards to celebrate Wilmslow’s history unveiled this month
+Article ID: 6a5106c40358c448f328f3c0
+```
+
+Backend archive search now supports:
+
+```text
+search
+skip
+limit
+```
+
+Search fields:
+
+```text
+title
+stored article id
+Mongo ObjectId
+source
+source_url
+```
+
+Collections searched:
+
+```text
+legacy archived records in articles
+archived_articles collection
+```
+
+Other backend changes:
+
+```text
+- default page size reduced from 50 to 20
+- search-aware totals
+- search value returned in response
+```
+
+Frontend additions:
+
+```text
+- search input
+- Search button
+- Enter-key search
+- Clear button
+- Refresh button
+- loading state
+- error toast
+- matching-result count
+- search-specific empty state
+```
+
+Commit:
+
+```text
+b3ca258 Add searchable archive article list
+```
+
+Verification:
+
+```text
+- backend syntax passed
+- git diff checks passed
+- frontend production build passed
+- production health returned healthy
+```
+
+### 11. Intermittent Render 512MB memory investigation
+
+Render event:
+
+```text
+Instance: sxqq2
+Failure: used over 512MB
+Date: 16 July 2026
+Time: 06:02 Europe/London
+```
+
+Schedules confirmed:
+
+```text
+06:00 article generation
+12:00 article generation
+18:00 article generation
+07:30 Daily Brief Monday–Saturday
+09:00–12:00 Sunday Weekly Roundup batches
+```
+
+Operational observation:
+
+```text
+- OOM does not happen every run
+- sometimes near 06:00
+- sometimes near 12:00
+- some days have no OOM
+- fewer than five incidents during the observed week
+```
+
+Pipeline reviewed:
+
+```text
+daily_article_generation()
+generate_articles()
+import_hybrid_news()
+fetch_all_feeds()
+fetch_local_feeds_only()
+fetch_local_news()
+fetch_feed()
+```
+
+Feed architecture verified:
+
+```text
+56 configured feeds
+56 flattened feeds
+no hidden feed-group expansion
+```
+
+Interpretation:
+
+```text
+56 feeds means 56 source endpoints checked for candidates.
+It does not mean 56 articles are automatically imported or published.
+```
+
+Potential peak-memory contributors:
+
+```text
+- up to 10,000 active article projections loaded
+- up to 10,000 archived article projections loaded
+- all 56 feeds currently fetched concurrently through asyncio.gather
+- one httpx.AsyncClient created per feed task
+- complete response bodies/parser structures may remain until gather completes
+- no explicit per-feed entry cap
+- national candidate pools remain while local pools are fetched
+- imported article dictionaries remain until the run finishes
+- duplicate cleanup runs after generation
+```
+
+Patch decision:
+
+```text
+A proposed concurrency=4 and max 40 entries per feed patch was intentionally not applied.
+```
+
+Reason:
+
+```text
+- failures are intermittent
+- per-feed caps could alter discovery
+- no repeated failing stage has been proven
+```
+
+Current decision:
+
+```text
+Do not alter feed definitions, feed count or per-feed coverage yet.
+Collect exact OOM timestamps and final pre-restart logs first.
+If failures repeatedly occur in fetch_all_feeds, bounded concurrency alone is the preferred first mitigation.
+```
+
+Investigation order:
+
+```text
+1. Collect exact OOM timestamps.
+2. Match each event to scheduled jobs.
+3. Inspect final logs before restart.
+4. Identify whether failure occurs during:
+   - database duplicate preload
+   - fetch_all_feeds
+   - local-feed fetching
+   - Perplexity rewriting
+   - database insertion
+   - duplicate cleanup
+5. Apply a targeted fix only after identifying the repeated stage.
+```
+
+### 12. Deferred Browserslist maintenance
+
+Build warning:
+
+```text
+Browserslist: browsers data (caniuse-lite) is 6 months old.
+```
+
+Decision:
+
+```text
+- non-urgent
+- not a production build failure
+- unrelated to current feature deployments
+```
+
+Deferred task:
+
+```bash
+cd frontend
+npx update-browserslist-db@latest
+```
+
+Before committing:
+
+```text
+- inspect package.json and package-lock.json
+- confirm no unexpected dependency changes
+- run npm run build
+- commit separately from functional production fixes
+```
+
+### 13. Repository-backed operational state migration
+
+Historical repository files found:
+
+```text
+PROJECT_CURRENT_STATE_MASTER_MARCH_2026.md
+PROJECT_CURRENT_STATE_MASTER_MARCH_2026_UPDATED_20260410_v3_FULL.md
+```
+
+New authoritative path:
+
+```text
+docs/PROJECT_STATE.md
+```
+
+Migration facts:
+
+```text
+- the historically maintained file was moved with git mv
+- the latest 20,365-line consolidated operational file replaced its outdated contents
+- the downloaded consolidated file and repository file were verified byte-for-byte
+- matching SHA-256 before commit: 030471a0d5df857aa4b3f15ae3abad55721f8485e722bb3d5ad7352ca8cbf28a
+- matching line count before commit: 20,365
+- a small pointer remains at the former path
+```
+
+Commit:
+
+```text
+751915b Move operational state into docs
+```
+
+Push:
+
+```text
+b3ca258..751915b full-scrape-prod -> full-scrape-prod
+```
+
+Standing workflow:
+
+```text
+- docs/PROJECT_STATE.md is the only current repository operational source of truth
+- read it before code/database/scheduler/newsletter/SEO/import/category/affiliate/advertising/infrastructure work
+- update it after meaningful work
+- commit and push it
+- do not create dated replacement operational state files
+- chat-source consolidated files are snapshots
+- no manual state-file editing; use scripted updates with duplicate protection and diff/status checks
+```
+
+### 14. Relevant pushed commit sequence
+
+```text
+611b57d Cross-check OpenAI rewrites with independent fact research
+bbea335 Record newsletter send opportunities
+dbadc90 Expose canonical article URLs in API
+062a011 Send archived admin articles to manual review
+a075a49 Fix admin manual review article IDs
+1f18f9b Separate live articles from manual review
+1dfcccc Add bulk delete for manual review articles
+b3ca258 Add searchable archive article list
+751915b Move operational state into docs
+```
+
+All were pushed to:
+
+```text
+origin/full-scrape-prod
+```
+
+### 15. Current hard workflow and editorial memory
+
+Technical workflow:
+
+```text
+- read the latest state first
+- one safe command at a time when guiding terminal work
+- scripted edits only; no manual editing
+- use /usr/bin/grep, not rg
+- run syntax and git diff checks before commit
+- do not use npm start unless explicitly requested
+- check production health after deployment
+- do not broaden prompts/regex blindly; diagnose the actual stage first
+```
+
+OpenAI/editorial workflow:
+
+```text
+- OpenAI remains Admin-only
+- no automatic saving or publishing
+- convincing prose is not evidence of factual accuracy
+- inspect source diagnostics, fact pack and guard diagnostics
+- human review remains mandatory
+- verify names, organisations, dates, figures, quotations and official status wording
+```
+
+Cheshire Today positioning:
+
+```text
+Local economic intelligence platform for Cheshire
+```
+
+Target editorial balance:
+
+```text
+40% Local
+40% Business / Finance / Property / Economy
+20% AI / Tech
+```
+
+Avoid:
+
+```text
+crime-heavy filler
+weak generic national filler
+low-value tragedy/traffic stories
+exaggerated headlines
+intrusive ad-style wording
+duplicate themes too close together
+```
+
+Manual article style:
+
+```text
+professional local-news tone
+avoid repeating names unnecessarily
+use natural pronouns/references
+tight structure
+no generic filler
+no unsupported interpretation
+```
+
+Social-posting workflow:
+
+```text
+- use live /api/articles feed first
+- sort and assess by publishedDate
+- verify canonicalUrl and public page
+- prioritise today's articles
+- never recommend an old article as a normal daily post
+- keep platform themes consistent on the same day unless there is a strong reason not to
+```
+
+Newsletter pruning safety:
+
+```text
+- do not deactivate or delete subscribers merely because no open/click row exists
+- require a valid accepted-recipient send opportunity
+- provider acceptance still does not prove final delivery
+- protected/internal addresses must remain excluded from pruning
+```
+
+### 16. Open follow-ups
+
+```text
+1. Verify deployed Archive search using article ID 6a5106c40358c448f328f3c0.
+2. Amend the Wilmslow heritage-board article to include Wilmslow Civic Trust.
+3. Continue collecting Render OOM timestamps and final pre-restart logs.
+4. Do not change RSS coverage without evidence.
+5. Complete exact official-status verification for award articles.
+6. Add Resend webhook lifecycle handling later if delivery/bounce evidence is required.
+7. Perform Browserslist maintenance separately.
+8. Keep docs/PROJECT_STATE.md and the latest consolidated chat-source snapshot aligned after meaningful sessions.
+```
+
+# Cheshire Today – Master Project State
+Date: 7 March 2026
+
+--------------------------------------------------
+PROJECT OVERVIEW
+--------------------------------------------------
+
+Cheshire Today is a hybrid local economic intelligence platform combining:
+- Local Cheshire news
+- Business & finance coverage
+- AI & technology authority
+- UK economic and policy news
+
+Stack:
+
+Frontend: React (CRA)
+Backend: FastAPI (Python)
+Database: MongoDB
+Hosting: Render
+Domain: cheshiretoday.co.uk
+SSL: Active for root and www
+
+--------------------------------------------------
+CURRENT LIVE SYSTEM STATUS
+--------------------------------------------------
+
+Database:
+
+Total stored articles: 1202
+Active articles: 44
+Archived articles: 1158
+
+Archive system preserves URLs so shared links remain valid.
+
+Active category mix:
+
+Local News: 18
+Business: 12
+UK News: 8
+Tech: 6
+
+Editorial balance:
+
+Local ≈ 41%
+Authority (Business + Tech) ≈ 41%
+UK ≈ 18%
+
+Target strategy:
+
+40% Local
+40% Authority
+20% UK
+
+System currently aligned with strategy.
+
+--------------------------------------------------
+CONTENT QUALITY
+--------------------------------------------------
+
+Minimum article length rule:
+
+All active articles ≥ 1000 characters.
+
+Previously:
+
+21 short articles detected
+21 regenerated via API
+1 archived
+
+Current status:
+
+ACTIVE_UNDER_1000 = 0
+
+--------------------------------------------------
+HOMEPAGE SYSTEM
+--------------------------------------------------
+
+Homepage sections:
+
+Hero
+Top Stories
+Latest
+AI & Business
+More Stories
+Finance
+Property
+
+Features implemented:
+
+Global dedupe
+Topic caps
+Editorial pool filtering
+40/40/20 pillar balancing
+Mobile responsive section limits
+
+Mobile behaviour:
+
+Sections collapse to 4 items
+Show More toggle enabled
+
+Desktop behaviour:
+
+Larger feed display
+
+Sidebar hidden on mobile to prevent repetition.
+
+--------------------------------------------------
+IMPORT SYSTEM
+--------------------------------------------------
+
+Hybrid RSS importer operational.
+
+Sources include:
+
+Cheshire Live
+BBC
+Liverpool Echo
+Regional feeds
+Google News regional queries
+
+Import pipeline includes:
+
+Duplicate title detection
+Duplicate image prevention
+Auto archive cleanup
+Image reuse control
+Hybrid AI rewrite option
+
+Scheduled imports:
+
+06:00
+12:00
+18:00
+
+Target active pool:
+
+55–70 articles.
+
+--------------------------------------------------
+ARCHIVE SYSTEM
+--------------------------------------------------
+
+Articles automatically archived when pool grows too large.
+
+Archive protects:
+
+existing URLs
+SEO links
+shared content.
+
+--------------------------------------------------
+DEPLOYMENT STATUS
+--------------------------------------------------
+
+Production hosting: Render
+
+Frontend service deployed
+Backend service deployed
+
+Domain connected:
+
+cheshiretoday.co.uk
+www.cheshiretoday.co.uk
+
+SSL active.
+
+--------------------------------------------------
+PROJECT WORKFLOW RULES
+--------------------------------------------------
+
+Development workflow:
+
+Check current state before any modification.
+Apply changes via terminal commands only.
+No manual editing inside files.
+One command per step.
+Verify system state after each change.
+
+Local verification method:
+
+npm run build
+npx serve -s build
+
+Do NOT use npm start.
+
+--------------------------------------------------
+NEXT PHASE TASKS
+--------------------------------------------------
+
+1. Newsletter system
+
+SMTP activation
+Newsletter testing
+Subject-line optimisation strategy
+
+2. Monetisation
+
+Affiliate blocks
+Affiliate networks integration
+Commerce guides system
+
+3. AI content
+
+Perplexity article generation tests
+Evergreen article production
+
+4. SEO improvements
+
+Structured data
+Schema markup
+Internal linking optimisation
+
+--------------------------------------------------
+SYSTEM OPERATING MODE
+--------------------------------------------------
+
+Current recommendation:
+
+Stop major structural changes.
+Allow scheduled imports to run.
+Maintain active pool between 55–70.
+Focus on monetisation and growth.
+
+--------------------------------------------------
+END OF FILE
+--------------------------------------------------
+
+## Update — 13 March 2026 (post-deploy scheduler + layout verification)
+
+### What was verified
+- Production deploy completed successfully.
+- Morning scheduler **did run** on 13 March 2026 at **06:00:00 UTC**.
+- Logs confirm:
+  - `Generate morning news articles` started at 06:00 UTC
+  - distributed lock acquired
+  - intentional `rewrite_delay_seconds=900` applied
+  - hybrid import completed around **06:16–06:17 UTC**
+  - 7 articles imported total
+- Therefore the scheduler is working correctly; visible publication happens about **15–17 minutes after trigger time** because of the intentional rewrite delay.
+
+### Backend quality gates now enforced
+- Hybrid RSS importer now skips:
+  - articles with **no image**
+  - articles with **content under 600 chars**
+- Local verification confirmed newly inserted records are now:
+  - image present
+  - full-length content (~5k–6k+ chars)
+- Legacy bad short/no-image records were cleaned from MongoDB.
+
+### Frontend/article presentation improvements now live
+- Homepage supports **image-first card layout** plus **text-only headline strip** for no-image stories.
+- Article page `More stories` now follows the same pattern as homepage.
+- Sidebar no-image items no longer render broken/empty thumbnails.
+- Added orphan-row safeguard so card grids do not end with a single stranded card.
+- Added display-only short-title enhancement on article pages:
+  - visible H1 can expand short titles for readability
+  - SEO/OpenGraph/Twitter titles remain unchanged.
+
+### Important live behavior note
+- Homepage freshness ordering still uses **publishedDate**, not `created_at`.
+- This means scheduler-imported stories can exist in production without always surfacing immediately on homepage top slots if their source `publishedDate` is older.
+- This is currently a deliberate **no-change decision** to avoid destabilising working production.
+- Revisit later only if homepage freshness becomes a clear editorial problem.
+
+### Operational conclusion
+- Scheduler: working
+- Import pipeline: working
+- Quality gates: working
+- Layout/rendering for no-image stories: working
+- Production left stable without changing homepage sort logic
+
+### Next recommended step
+- Observe the **12:00 UTC scheduler run** and confirm the same 15–17 minute publish pattern.
+- After that, freeze content engine changes unless a production issue appears.
+
+## SEO note — 13 March 2026 (article schema verification)
+
+### What was checked
+- Live article page source was tested with `curl`.
+- Publisher/organization schema is present in raw HTML (`NewsMediaOrganization`, `ImageObject`, `Place`).
+- `ArticlePageV2.jsx` does define a `NewsArticle` JSON-LD object in frontend code.
+- However, raw initial HTML response does **not reliably expose `@type: NewsArticle`** in the first server response.
+
+### Current interpretation
+- Article structured data appears to be client-rendered after article fetch/render.
+- This is weaker for Google News / indexing than having `NewsArticle` JSON-LD present in the initial HTML response.
+- Backend already contains article HTML/JSON-LD machinery in `backend/server.py`, so the architectural path for a stronger fix already exists.
+
+### Recommended future fix
+- Move article `NewsArticle` JSON-LD into the **initial server HTML response** for article pages.
+- Goal: ensure `curl` / crawlers can see full article schema without relying on client-side React render.
+- This is a **high-value SEO hardening task**, but not a production emergency.
+
+### Production decision
+- Leave current live setup unchanged for now to avoid destabilising production.
+- Revisit when doing next SEO hardening pass.
+
+--------------------------------------------------
+GOOGLE SEARCH CONSOLE MONITORING (POST-LAUNCH)
+--------------------------------------------------
+
+Purpose:
+Monitor SEO health and indexing behaviour during the first 4–6 weeks after stable production launch.
+
+The site infrastructure is now technically correct:
+- robots.txt verified
+- sitemap.xml active
+- news-sitemap.xml active
+- Google Analytics installed
+- Google Search Console connected
+- automated publishing running (06:00 / 12:00 / 18:00)
+
+Because of this, the project now enters the observation phase rather than development changes.
+
+--------------------------------------------------
+1. Indexed Pages
+--------------------------------------------------
+
+Location:
+Search Console → Pages
+
+Current baseline (March 2026):
+Indexed: ~16
+Not indexed: ~68
+
+Expected progression:
+
+Week 1:
+30–50 indexed pages
+
+Week 2:
+60–90 indexed pages
+
+Week 4:
+120–200 indexed pages
+
+If indexing remains below ~40 pages after 3–4 weeks,
+investigate crawl/indexing issues.
+
+--------------------------------------------------
+2. Search Impressions
+--------------------------------------------------
+
+Location:
+Search Console → Performance
+
+Expected growth pattern:
+
+Week 1:
+20–80 impressions per day
+
+Week 2:
+100–300 impressions per day
+
+Week 4:
+500–1500 impressions per day
+
+Clicks normally appear after impressions grow.
+
+--------------------------------------------------
+3. Crawl Frequency
+--------------------------------------------------
+
+Location:
+Search Console → Settings → Crawl stats
+
+Expected progression:
+
+Week 1:
+~30 pages crawled per day
+
+Week 2:
+~80 pages crawled per day
+
+Week 4:
+200+ pages crawled per day
+
+Growth indicates Google increasing trust in the site.
+
+--------------------------------------------------
+4. Search Queries
+--------------------------------------------------
+
+After several weeks, Search Console should begin showing
+queries related to:
+
+- Cheshire news
+- Chester news
+- Warrington news
+- Cheshire business news
+- planning applications Cheshire
+- local economic news
+
+These signals help guide editorial focus.
+
+--------------------------------------------------
+Important Operational Rule
+--------------------------------------------------
+
+During this monitoring phase:
+
+DO NOT make major SEO or homepage algorithm changes
+unless a clear technical issue appears.
+
+Focus on:
+- consistent publishing
+- maintaining article quality
+- keeping scheduler stable
+- monitoring GSC metrics weekly
+
+## Update — 13 March 2026 (midday scheduler verification + timezone note)
+
+### 12:00 scheduler verification
+- Midday scheduler run was verified successfully.
+- New articles were inserted with `created_at` timestamps around **12:15–12:16 UTC**.
+- This matches the expected behaviour:
+  - scheduler trigger at 12:00
+  - intentional 900-second rewrite delay
+  - visible/import completion around 12:15–12:17
+- Example newly inserted articles from the 12:00 cycle included:
+  - Burglar jailed after gang raided Cheshire business stealing £50,000 worth of power tools
+  - Live M6 Cheshire updates as crash causes delays
+  - AI toys for children misread emotions and respond inappropriately, researchers warn
+  - UK economy flatlines in January as people cut back on eating out
+  - What on earth is going on with the oil price?
+  - Council cannot appeal asylum seeker hotel ruling
+
+### Important interpretation
+- The content engine and scheduler are working correctly at midday as well as morning.
+- If newly imported articles do not immediately appear at the top of homepage/API output, this is due to homepage/API surfacing logic using source/article `publishedDate` behaviour rather than import-time freshness.
+
+### UK time / scheduler clock note
+- Verified operationally that current scheduler timestamps are aligned with UK time for this period.
+- On **13 March 2026**, UK local time is effectively **UTC/GMT**.
+- Therefore current scheduler events logged at:
+  - 06:00 UTC
+  - 07:30 UTC
+  - 12:00 UTC
+  are also:
+  - 06:00 UK
+  - 07:30 UK
+  - 12:00 UK
+- Note for later: this alignment will change once British Summer Time begins.
+
+## Planned next phase — Category architecture upgrade (March 2026)
+
+### Goal
+Improve editorial category purity while keeping the current scheduler and article volume stable.
+
+### Current scheduler / volume to preserve
+- Scheduler runs:
+  - 06:00
+  - 12:00
+  - 18:00
+- Current import pattern per cycle is approximately:
+  - 2 Local
+  - 1 UK
+  - 2 Business
+  - 2 Tech / AI
+- Do not change volume yet.
+- Do not change scheduler timing yet.
+
+### Target category structure
+
+#### Local
+Must contain only Cheshire-specific news.
+
+Desired Local topics:
+- local government
+- planning
+- infrastructure
+- transport
+- community
+- local economy
+- local business openings
+- education
+- development projects
+
+Desired Local source focus:
+- Cheshire Live
+- Warrington Guardian
+- Chester Chronicle
+- Macclesfield Express
+- Crewe Chronicle
+- Northwich Guardian
+- Knutsford Guardian
+- Nantwich News
+- Winsford Guardian
+- Runcorn & Widnes World
+
+Operational note:
+- crime / court / police stories should be limited or de-weighted where possible
+
+#### UK
+Should become a national economy / money / policy section.
+
+Desired UK topics:
+- finance
+- money
+- tax
+- property market
+- energy prices
+- banking
+- fintech
+- AI regulation
+- technology policy
+- economic policy
+- startups / investment
+
+Desired UK source focus:
+- Financial Times
+- BBC Business
+- BBC Technology
+- Guardian Money
+- MoneySavingExpert
+- Sky Business
+- ONS releases
+- HM Treasury
+- Bank of England
+- City AM
+- Reuters UK Business
+- strong Google News economic feeds
+
+#### Business
+Must contain pure business news only.
+
+Desired Business topics:
+- company news
+- industry developments
+- markets
+- earnings
+- M&A
+- retail sector
+- manufacturing
+- supply chains
+- startup funding
+
+Desired Business source focus:
+- Financial Times Business
+- Reuters Business
+- Bloomberg Business
+- BBC Business
+- Guardian Business
+- Sky Business
+
+Should avoid:
+- crime
+- entertainment
+- generic politics
+- general UK filler
+
+### RSS feed expansion plan
+Expand source pool for:
+- Cheshire local coverage
+- UK economy / finance coverage
+- AI / Tech coverage
+
+Possible additional Cheshire feeds:
+- Chester Chronicle
+- Macclesfield Express
+- Crewe Chronicle
+- Northwich Guardian
+- Knutsford Guardian
+- Nantwich News
+- Winsford Guardian
+- Runcorn & Widnes World
+
+Possible additional UK economy feeds:
+- ONS
+- HM Treasury
+- Bank of England
+- City AM
+- Reuters UK Business
+- property market feeds
+- fintech feeds
+
+Possible additional AI / Tech feeds:
+- MIT Technology Review
+- VentureBeat
+- Wired
+- DeepMind blog
+- OpenAI blog
+- AI regulation feeds
+
+### Classification note
+Do not rely only on title keywords for location/category logic.
+Many RSS titles do not include clear locations.
+Future improvements should consider:
+- source-based weighting
+- summary/content analysis
+- location confidence scoring
+- better Cheshire locality detection
+
+### Implementation rules for next chat
+Before any code changes:
+1. Inspect current category logic
+2. Inspect rss source configuration
+3. Inspect backend category mapping
+4. Inspect homepage/category feed logic
+
+Files likely involved:
+- backend/app/rss_sources.py
+- backend/app/news_feed_service.py
+- backend/server.py
+
+Workflow rules remain:
+- one terminal command at a time
+- check state before modifying
+- no manual file editing where avoidable
+
+### Strategic objective
+Move Cheshire Today closer to:
+Local Economic Intelligence Platform for Cheshire
+
+with cleaner separation across:
+- Local
+- UK economy / money / policy
+- Business
+- AI / Tech
+
+## March 16, 2026 - Emergency stability update and pool-safety findings
+
+### Reason for investigation
+Production had shown disappearance of fresh articles, especially recent March 13-15 items, despite the intended 14-day active window. Investigation was completed before making any further pool/archive changes.
+
+### Confirmed current live behaviour
+Public API inspection confirmed:
+- live active pool recovered beyond the damaged baseline of 101
+- observed active count during investigation increased to 131 and then 146
+- fresh March 16 articles are now persisting in the live API instead of disappearing
+- current live date mix observed during investigation:
+  - 2026-03-16: 37
+  - 2026-03-15: 4
+  - 2026-03-14: 1
+  - 2026-03-12: 12
+  - 2026-03-09: 7
+  - 2026-03-08: 70
+
+### Current live category mix observed
+Public API sample showed:
+- Local News: 32
+- Business: 39
+- Tech: 10
+- UK News: 58
+- Science: 6
+- Health: 1
+
+This means:
+- ingestion is working
+- fresh content is staying live
+- visible pool is larger because articles are no longer being wrongly removed
+- March 8 backlog still remains visible because the archive rule is age-based, not count-based
+
+### Root cause of disappearing fresh articles
+Investigation of git history and server logic confirmed two dangerous article-removal paths had existed:
+
+1. Startup duplicate cleanup
+- startup previously called auto_clean_duplicate_articles()
+- this was identified as unsafe because it could remove legitimate recent articles using only the first 5 words of title
+- this startup call is now disabled
+
+2. Hard-delete safety cap at 100 visible articles
+- cleanup_old_articles() previously deleted anything older than the 100th newest article by publishedDate
+- this did NOT protect articles by import time
+- therefore newly imported but slightly older-dated recent articles (for example March 13-15) could still be permanently deleted immediately
+- this hard-delete cap is now disabled
+
+### Important conclusion
+The disappearance of March 13-15 articles was NOT consistent with the intended 14-day active policy.
+Those articles were lost because unsafe hard-delete logic overrode the 14-day archive rule.
+
+### Confirmed current safe/unsafe paths
+Safe / currently acceptable:
+- scheduled archive job still active at 01:30 using days_old = 14
+- this matches the requirement that articles stay active for at least two weeks before automatic archiving
+- post-import duplicate cleanup uses _remove_duplicates_internal()
+- scheduled-generation cleanup also uses _remove_duplicates_internal()
+- _remove_duplicates_internal() groups by exact full title, keeps the longest-content version, attempts archive first, and only removes basically empty broken items with no outbound link
+
+Unsafe / do not restore:
+- startup duplicate hard-delete cleanup
+- hard-delete visible cap at 100
+- any keep_visible / keep newest N automatic archive behaviour as a replacement for the 14-day rule
+- automatic ratio rebalance for visible pool
+- any logic that removes recent articles by pool size instead of article age
+
+### Git-history findings relevant to future chats
+Confirmed in git history:
+- "Auto maintain 65 active articles" was previously introduced and then reverted
+- archive window was previously extended from 7 days to 14 days
+- automatic ratio rebalance was disabled by default
+- March 16 emergency patch explicitly disabled:
+  - startup duplicate cleanup
+  - 100-article hard-delete safety cap
+
+Therefore:
+- do NOT reintroduce count-based pool maintenance
+- do NOT replace the 14-day archive policy with keep_visible behaviour
+- do NOT assume smaller visible pool = safer system
+
+### Current interpretation of system health
+As of this investigation:
+- article generation/import pipeline is working
+- fresh articles persist
+- content lengths are healthy (multi-thousand-character articles observed)
+- pool is safer than before, but larger than ideal because old articles are now surviving correctly until the 14-day window expires
+
+This larger pool should NOT be treated as a bug by itself unless it causes a separate homepage or editorial issue.
+
+### Working rule from this point
+Before any future pool/archive modification:
+1. Check git history first for prior reverted pool logic
+2. Confirm whether proposed logic conflicts with the 14-day active requirement
+3. Never reintroduce hard-delete behaviour for recent editorial content
+4. Prefer archive-preserving behaviour only
+5. Inspect current live API state before changing cleanup logic
+
+
+--------------------------------------------------
+UPDATE: 29 MARCH 2026 – HOMEPAGE LOGIC, LIVE DATA, AND PRODUCTION DIAGNOSIS
+--------------------------------------------------
+
+### Summary of work completed in this chat
+This chat completed a major homepage logic stabilisation and production diagnosis cycle.
+
+Completed:
+- fixed admin "Force show on homepage" action so it actually sends authenticated requests and refreshes admin data correctly
+- restored homepage freshness ordering after an earlier force_live boost caused older stories to outrank newer ones
+- made `force_live` work without breaking hero / Top Stories freshness
+- rebuilt and tested homepage locally multiple times using:
+  - `npm run build`
+  - `npx serve -s build`
+- fixed repeated runtime crashes / blank-page issues caused by:
+  - variables being used before declaration
+  - duplicate `const k = articleKey(a)` declarations
+  - corrupted code structure inside `isPropertyish`
+  - misplaced dedupe and sorting logic
+- implemented homepage dedupe across:
+  - Latest
+  - AI & Tech sidebar
+  - Business sidebar
+  - Finance sidebar
+  - Property & Tax sidebar
+  - AI & Business feed
+  - More Stories
+- fixed cross-sidebar duplication, especially Finance vs Property / Tax
+- made More Stories:
+  - fully populated
+  - freshness-first
+  - filtered against entertainment / celebrity / filler
+  - stronger on local / business / finance / public-impact utility
+- tightened Business & Finance / AI & Business quality rules to reduce soft culture / entertainment leakage
+- tuned Top Stories away from entertainment and toward local/economic/public-impact stories
+- verified local production-style output visually at multiple points during the chat
+
+### Key commits / deployment state
+A later homepage stabilisation commit was created and pushed:
+- `6d40c63` — Fix homepage dedupe: sidebar isolation + property block repair + stability fixes
+
+Additional homepage code in this chat also included:
+- freshness-first ordering
+- feed dedupe
+- More Stories quality gating
+- section ordering clean-up
+- sidebar isolation
+
+### Important homepage architecture conclusions from this chat
+Homepage logic is now intentionally structured as:
+1. fetch public article pool
+2. apply editorial filters
+3. build shared ranked pools
+4. construct section-specific feeds
+5. dedupe across sections where required
+6. sort final feeds for stable rendering
+7. render freshness-first homepage
+
+Important final behavior:
+- Latest = newest-first
+- More Stories = newest-first with quality filter
+- Top Stories = editorially filtered / weighted
+- Business / Finance / Property sidebars = deduped and stabilised
+- no blank-page crashes in the final validated local state
+
+### Live production diagnosis completed
+A production issue was investigated where the homepage appeared stuck at 27 March articles.
+
+Findings:
+- this was NOT caused by homepage code alone
+- live public API initially had no 28–29 March articles
+- manual live article generation was triggered successfully:
+  - `/api/generate-articles`
+  - returned success with fresh article generation
+- after manual generation, live public API showed 28–29 March content, including:
+  - 2026-03-29 local stories
+  - 2026-03-28 business stories
+
+Conclusion:
+- homepage freshness logic was working
+- the real production issue at that stage was missing fresh public data, likely due to scheduler/import inactivity or zero-result scheduled runs before manual generation
+
+### Important live deployment / serving conclusion
+Production domain behaviour was investigated in detail.
+
+Confirmed:
+- `cheshiretoday.co.uk` is served by the BACKEND web service, not the separate frontend migration static service
+- backend serves SPA assets from:
+  - `backend/frontend_build`
+- relevant live backend code:
+  - `_FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"`
+  - root `/` and SPA routes serve files from that folder
+
+Important implication for future chats:
+- production deploy for the visible site must be treated primarily as a BACKEND deploy if the backend-embedded React build is the live artifact
+- do not assume the separate `cheshiretoday-frontend-migration` service controls the production domain
+- verify what bundle/domain is actually serving before diagnosing frontend deployment mismatches
+
+### Verified production status by end of chat
+By the end of this chat:
+- live API showed fresh March 28–29 articles
+- live homepage screenshots matched the corrected homepage behaviour
+- latest articles were surfacing again
+- homepage no longer appeared stuck at March 27
+- local final state was visually validated as stable and clean
+
+### Remaining issues / next-phase tasks
+Do next:
+1. inspect Render logs when the automatic scheduler runs
+2. confirm whether scheduled imports/article generation are running correctly after March 29
+3. identify any obsolete Facebook auto-scheduler tasks/processes still logging or executing
+4. disable/delete unused Facebook scheduler functionality if it is not part of active production operations
+5. keep Render focused only on actively used automation and production tasks
+
+### Explicit note about Facebook scheduler cleanup
+User reported Render logs showing Facebook auto-scheduler activity even though Facebook automation is not being actively used.
+This should be investigated in the next chat and removed/disabled if inactive, to reduce noise and avoid unnecessary work on Render.
+
+### Working restart instruction for next chat
+In the next chat:
+- read `PROJECT_CURRENT_STATE_MASTER_MARCH_2026.md`
+- read `PROJECT_HANDOVER_MASTER_MARCH_2026.md`
+- assume homepage logic / dedupe / freshness work from this chat is complete
+- start with Render scheduler/log inspection
+- specifically investigate unused Facebook auto-scheduler jobs and remove/disable them if confirmed unnecessary
+
+# Historical Project State
+
+This March 2026 snapshot is retained for historical reference only.
+The authoritative operational source of truth is now:
+
+- `docs/PROJECT_STATE.md`
+
+### 12. Important command/workflow reminders
+
+```text
+- Check current state first.
+- One command at a time.
+- No manual file edits unless absolutely necessary.
+- Prefer safe terminal/script changes.
+- Use grep, not rg.
+- Do not use npm start unless explicitly requested.
+- Verify after each change.
+- Render auto-deploy remains disabled; deploy manually when needed.
+- Backend-only changes require backend Render deploy only.
+- Frontend/admin UI changes require frontend/static Render deploy too.
+```
+
+### Important caution going forward
+
+Do not undo the archived article `noindex` behaviour. It is needed to clean up thousands of old/weak imported URLs in Search Console.
+
+Do not make `archived=True` automatically mean noindex without checking `force_live=True`. The final intended behaviour is:
+
+- `manual_review_hidden_from_public=True` always noindex.
+- `archived=True` and `force_live` not true = noindex.
+- `archived=True` and `force_live=True` = indexable and sitemap-eligible.
+
+Do not add thin/stub guide pages back into the sitemap until they have useful guide content above the current threshold.
+
+## 18. Recommended new-chat resume prompt
+
+Use this in a fresh chat:
+
+```text
+Continue Cheshire Today from the 30 May 2026 project state update. First check the single chat-source master state file before any code/database/content/category change. Follow the workflow: one command at a time, no manual file edits, use grep not rg, verify after each step, do not use npm start unless asked. The latest deployed fixes include: Perplexity budget-aware Manual Review queueing, public import cap handling, Manual Review Open AI button and AI details display, Force Live restoring Manual Review articles, stale status no longer re-hiding edited live articles, and RSS source-date freshness gates (3 days for Business/Finance/Tech/UK, 7 days for Local). Next priority: verify the next scheduled import does not surface stale source-dated articles, then review the remaining Manual Review queue and only publish strong local/business/finance/AI-tech candidates.
+```
+
+### L. Resume prompt for next chat after 26 June 2026 update
+
+```text
+Continue Cheshire Today from the 26 June 2026 update section in the single chat-source master state file. First check that state file before any code/database/content-pool/category/indexing change. Workflow: one command at a time, safe terminal/script changes, use grep not rg, verify after each step, no dev server unless asked. Latest key changes: OpenAI Manual Review rewrite draft flow added and pushed (ad131c7); dry-run cold subscriber report added (b2b91e9) but no cleanup allowed yet; article intro now uses visibleIntro plus Continue reading ↓ (1d762b1/87b9bb4); article guide wording softened and guide heading links now point to a real relevant /guides/<slug> not broken /guides (e1fdbe6). One sponsored/empty article from The Register, ID 6a3d5ef0323e96d2ddee7115, was removed from public view and confirmed found_public: 0. Follow-ups: check live deploy/article UX, do not link to /guides unless a real index route is built, do not deactivate newsletter subscribers until recipient delivery ledger exists, and keep OpenAI rewrite as draft-only/manual-review.
+```
+
+### M. Resume prompt for next chat after 22 June 2026 work
+
+```text
+Continue Cheshire Today from the 22 June 2026 QA/update section in the single chat-source master state file. First check that state file before any code/database/content-pool/category/indexing change. Workflow: one command at a time, safe terminal/script changes, use grep not rg, verify after each step, no dev server unless asked. Latest key commits: 398be93 added /latest-articles crawl hub; 2218069 switched sitemap/canonical to /article-index; 49a1296 relaxed local homepage editorial filter; c5475ee raised scheduled public import cap from 4 to 6; d9e0b2d added public-feed similar-title dedupe; 5a3cb1f tightened dedupe threshold and fixed duplicate Starmer homepage story. Current QA: API speed good (~1.2s), homepage count 24 from total 56 after filters, old May/April local stories still appear until more fresh public local articles build up. Do not bulk-unhide manual review articles; many are short snippets or vague local-anchor rewrites. Follow-ups: monitor next scheduled imports, inspect admin hidden Local News, secure /api/generate-articles with admin auth later, resubmit sitemap and inspect /article-index in Search Console.
+```
+
+
+---
+
+### M. Resume prompt for next chat after 7 July 2026 work
+
+```text
+Continue Cheshire Today from the 7 July 2026 update in the single chat-source master state file. First check the state file before any code/database/content-pool/category/newsletter/affiliate/advertising change. Latest work completed: article intro/Continue reading/guide-heading UX commits through eba2db9; Daily Brief failure logging and Resend validation commits 5c31603 and 276f7ff; affiliate authority-page DB updates adding EMPLA to best-ai-productivity-tools-uk and Alison to best-online-gcse-a-level-courses-uk; BrickZoneHub guide created as draft best-building-renovation-supplies-uk; frontend sponsored placement label fix commit f3175f4; live active house-guide placements created for article_sidebar and article_mobile pointing to the AI productivity and online learning guides. Important: house-guide promos should display “Affiliate guide”, not “Sponsored”, after frontend deploy. Do not promote BrickZoneHub until its guide is written/QA’d/published. Known unresolved issues: import/manual-review gates can allow weak/thin RSS fallback items public; Resend key may still need replacing if validation returns 401; check house-guide impression/click counts after 24–72 hours. Workflow: one command at a time, safe terminal/script changes, use /usr/bin/grep not rg, verify after each step, no dev server unless asked.
+```
+
+# Cheshire Today — Consolidated Operational State Master
+
+> **Authoritative operational source of truth — consolidated 10 July 2026**
+>
+> This file supersedes the separate Cheshire Today state-file copies that existed in the chat source.
+> It combines the historical master state, the 26 June update, the 7 July update,
+> the 10 July indexing update, and the latest 10 July operational work.
+>
+> Do not use `Cheshire_Economic_AI_Project_Master_Feb2026.pdf` as current operational truth.
+> Use it only for high-level historical strategy when explicitly relevant.
+
+## Source reconciliation
+
+Merged from:
+
+```text
+cheshire_today_project_state_latest_UPDATED_20260526.md
+cheshire_today_project_state_latest_UPDATED_20260526_UPDATED_20260530.md
+cheshire_today_project_state_latest_UPDATED_20260526_UPDATED_20260707.md
+cheshire_today_project_state_latest_UPDATED_20260710.md
+```
+
+Notes:
+
+```text
+- UPDATED_20260526.md and UPDATED_20260710.md were byte-identical copies despite different names.
+- The 30 May/26 June file and the 7 July file shared the same historical base but had different later update sections.
+- Both unique later sections have been preserved here in chronological order.
+```
+
+---
+
+### L. Immediate next steps
+
+1. **Resolve the GP Facebook preview/link display issue without blind changes**
+
+Use the exact canonical URL:
+
+```text
+https://cheshiretoday.co.uk/article/6a4fd3fa1c580910e0709045/patients-reveal-easiest-gp-practices-to-contact-by-phone-in-and-around-chester
+```
+
+Check:
+
+```text
+HTTP status/redirect chain
+canonical
+robots
+og:title
+og:description
+og:image
+og:image response status/content-type/dimensions
+Facebook Sharing Debugger fetched URL and preview
+```
+
+2. **Trace social-post URL creation**
+
+Do not rely on broad searches that include backups/build logs. Search active source only:
+
+```text
+frontend/src
+backend/server.py
+backend/app
+```
+
+Exclude:
+
+```text
+*.bak*
+node_modules
+venv
+build logs
+```
+
+Find any workflow that produces a Facebook caption with `/article/{slug}` instead of the exact live canonical URL.
+
+3. **Add image caption support later**
+
+After the Facebook issue is stable, add optional `image_caption` support across backend/admin/public article rendering.
+
+4. **Continue monitoring Daily Brief**
+
+Check future Wednesday/Thursday sends for:
+
+```text
+instance_id begins srv-
+success_count > 0
+provider_error is null
+```
+
+5. **Keep one state file only**
+
+This consolidated file supersedes the separate state-file copies listed in its source reconciliation section.
+
+## Operational update — 12–16 July 2026
+
+### Current production checkpoint
+
+- Repository: `CT29january26-new-website-migration`
+- Branch: `full-scrape-prod`
+- Baseline state migration commit: `751915b Move operational state into docs`
+- Latest functional production commit before the state migration: `b3ca258 Add searchable archive article list`
+- Production health: healthy
+- Authoritative operational state file: `docs/PROJECT_STATE.md`
+
+### Admin OpenAI factual cross-check
+- Tested the Admin-only OpenAI rewrite flow on article `6a5373f217074c92eb2f31e8`, “Chester primary shortlisted for independent school of the year”.
+- Confirmed a successful publisher scrape prevented independent Perplexity research because research only ran when `source_page_content` was empty.
+- Changed the workflow so independent research runs for every valid source URL, compares publisher content with the fact pack, prioritises official sources and records contradictions.
+- Commit: `611b57d Cross-check OpenAI rewrites with independent fact research`.
+- Tightened award-stage terminology so entered, nominated, commended, shortlisted, finalist and winner are never blended. Slash-separated alternatives must not remain in verified fields. Official organiser terminology is authoritative.
+- Operational rule: never publish award-status wording until the exact official stage is verified.
+
+### Newsletter accepted-recipient ledger
+- Added `last_accepted_recipients` tracking to Daily Brief and Weekly Roundup sends.
+- Successful Resend chunks and SMTP sends add recipients; failed chunks do not.
+- Added MongoDB collection `email_send_opportunities` with `digest_key`, `tracking_id`, `provider`, `accepted_at`, `accepted_count` and privacy-preserving recipient hashes.
+- Regression test simulated 100 accepted, 100 failed and 5 accepted; success and ledger counts both equalled 105.
+- Commit: `bbea335 Record newsletter send opportunities`.
+- Limitation: provider acceptance does not prove final delivery, inbox placement, bounce status or readership. Resend webhook lifecycle ingestion remains future work.
+
+### Canonical URLs in the public API
+- Public article responses now expose `articleId`, `slug` and `canonicalUrl`.
+- Verified on Jodrell Bank article `6a54c53c9b216c52eb05aca8`.
+- Commit: `dbadc90 Expose canonical article URLs in API`.
+- Social-posting rule: use the live API first and consume `canonicalUrl` directly rather than inferring IDs from screenshots or relying on external indexing.
+
+### Main Admin amber action now routes to Manual Review
+- Changed the main Articles-tab amber action from permanent Archive to `move-to-manual-review`.
+- Updated wording, confirmation, icon and loading state.
+- True Archive remains available inside Manual Review.
+- Commit: `062a011 Send archived admin articles to manual review`.
+
+### Admin article-ID mismatch repair
+- Root cause: records can have Mongo `_id` plus a separate UUID/custom `id`; the Admin endpoint projected Mongo `_id` out.
+- `/api/admin/articles` now exposes `mongo_id` while preserving existing `id`.
+- Manual Review action prefers `article.mongo_id || article._id || article.id`.
+- Commit: `a075a49 Fix admin manual review article IDs`.
+
+### Articles, Manual Review and Archive separation
+- Test article “Brand new primary school handed over to trust ahead of official opening” had both `manual_review_hidden_from_public=true` and `archived=true`, so it appeared in neither queue.
+- Moving to Manual Review now sets `archived=false` and clears `archived_at`, `archive_reason` and `archive_source`.
+- Main Admin Articles now excludes archived and Manual Review-hidden records.
+- Result: Articles = live non-review; Manual Review = hidden editable; Archive = genuinely archived.
+- Commit: `1f18f9b Separate live articles from manual review`.
+- Live verification passed.
+
+### Jodrell Bank restoration
+- The Jodrell Bank article disappeared because it had deliberately been used for the Manual Review endpoint test.
+- It was found intact in Manual Review and restored through edit/save.
+- Public API and canonical URL were verified live again.
+
+### Manual Review bulk selection and deletion
+- Added separate Manual Review selection state, row tick boxes, selected-row highlighting, Select All/Deselect All, Delete Selected, single confirmation, loading and partial-failure reporting.
+- Uses the existing delete/archive-preservation endpoint.
+- Commit: `1dfcccc Add bulk delete for manual review articles`.
+- Frontend production build passed.
+
+### Searchable Archive tab
+- Archive contained about 6,311 records and only exposed the newest page.
+- Added server-side search across title, stored ID, Mongo ObjectId, source and source URL in both archive systems.
+- Default page size reduced from 50 to 20; totals are search-aware.
+- Frontend gained Search, Enter-key search, Clear, Refresh, loading state, matching count, error toast and improved empty state.
+- Immediate target article: `6a5106c40358c448f328f3c0`, “Six new heritage boards to celebrate Wilmslow’s history unveiled this month”.
+- Commit: `b3ca258 Add searchable archive article list`.
+- Syntax, diff and production build checks passed; production health returned healthy.
+
+### Intermittent Render 512MB OOM investigation
+- Render event: instance `sxqq2`, over 512MB at 06:02 on 16 July 2026.
+- Scheduled article generation runs at 06:00, 12:00 and 18:00 Europe/London.
+- User confirmed failures are intermittent: sometimes 06:00, sometimes 12:00, sometimes none all day, fewer than five incidents in the observed week.
+- Reviewed `daily_article_generation`, `generate_articles`, `import_hybrid_news`, `fetch_all_feeds`, `fetch_local_feeds_only`, `fetch_local_news` and `fetch_feed`.
+- Confirmed 56 configured and 56 flattened feeds; no hidden feed-group expansion.
+- Memory-pressure factors: up to 10,000 active and 10,000 archived projections loaded; all 56 feeds launched concurrently with `asyncio.gather`; each fetch creates its own `httpx.AsyncClient`; full response/parser structures can remain until gather completes; no per-feed entry cap; national and local pools overlap in memory.
+- No RSS memory patch was applied.
+- A proposed concurrency=4 plus 40-item cap patch was intentionally not run because failures are intermittent and the item cap could alter discovery.
+- Decision: collect several exact OOM timestamps and final pre-restart logs. If failures consistently occur during `fetch_all_feeds`, bounded concurrency alone is the preferred first mitigation.
+
+### Deferred Browserslist maintenance
+- Build warning: `caniuse-lite` data is six months old.
+- Deferred command: `cd frontend && npx update-browserslist-db@latest`.
+- Inspect `package.json` and `package-lock.json`, rebuild and commit separately from production fixes.
+
+### Repository-backed state migration
+- Found historical repository state files:
+  - `PROJECT_CURRENT_STATE_MASTER_MARCH_2026.md`
+  - `PROJECT_CURRENT_STATE_MASTER_MARCH_2026_UPDATED_20260410_v3_FULL.md`
+- Moved the actively maintained historical file to `docs/PROJECT_STATE.md` and preserved a pointer at the former path.
+- Replaced its outdated contents with the 20,365-line consolidated July operational state.
+- Verified the Downloads/chat-source copy and repository copy were byte-for-byte identical by SHA-256 before commit.
+- Commit: `751915b Move operational state into docs`.
+- Standing rule: `docs/PROJECT_STATE.md` is the only current operational source of truth. Read it first, update it in place, commit and push it. Chat attachments are historical snapshots only.
+
+### Relevant pushed commits
+- `611b57d Cross-check OpenAI rewrites with independent fact research`
+- `bbea335 Record newsletter send opportunities`
+- `dbadc90 Expose canonical article URLs in API`
+- `062a011 Send archived admin articles to manual review`
+- `a075a49 Fix admin manual review article IDs`
+- `1f18f9b Separate live articles from manual review`
+- `1dfcccc Add bulk delete for manual review articles`
+- `b3ca258 Add searchable archive article list`
+- `751915b Move operational state into docs`
+
+### Open follow-ups
+1. Verify live Archive search using `6a5106c40358c448f328f3c0`.
+2. Amend the Wilmslow heritage-board article to include Wilmslow Civic Trust.
+3. Continue OOM evidence collection before altering RSS coverage.
+4. Complete exact official-status verification for award articles.
+5. Add Resend webhook lifecycle handling later if delivery/bounce data is required.
+6. Perform Browserslist maintenance separately.
+7. Keep `docs/PROJECT_STATE.md` updated and pushed after every meaningful session.
