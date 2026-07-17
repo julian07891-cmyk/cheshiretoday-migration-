@@ -4804,10 +4804,28 @@ const handleDeleteArticle = async (articleId) => {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenAIRewriteDraft(article);
+                          }}
+                          disabled={actionLoading === "openai-rewrite-" + (article._id || article.id)}
+                          className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                          title="Rewrite with OpenAI and open draft editor"
+                        >
+                          {actionLoading === "openai-rewrite-" + (article._id || article.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <AlertCircle className="h-4 w-4" />
+                          )}
+                          <span className="ml-1">Open AI</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => { e.stopPropagation(); handleAIReviewArticle(article._id || article.id); }}
                           disabled={actionLoading === "ai-review-" + (article._id || article.id)}
                           className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                          title="Check with ChatGPT"
+                          title="Run saved ChatGPT risk review"
                         >
                           {actionLoading === "ai-review-" + (article._id || article.id) ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

@@ -22389,3 +22389,75 @@ This consolidated file supersedes the separate state-file copies listed in its s
 5. Add Resend webhook lifecycle handling later if delivery/bounce data is required.
 6. Perform Browserslist maintenance separately.
 7. Keep `docs/PROJECT_STATE.md` updated and pushed after every meaningful session.
+
+---
+
+## 17 July 2026 — Archive OpenAI rewrite-draft action
+
+### Production validation blocker
+
+The controlled healthy-life-expectancy rewrite validation could not be run from browser automation even after the production Admin page was authenticated.
+
+Verified blocker:
+
+```text
+- the authenticated Admin session was available only inside the browser page;
+- the browser-control evaluation environment did not expose localStorage or fetch;
+- browser security policy blocked javascript: page-context execution and prohibited indirect workarounds;
+- no authentication token was revealed, copied, exported or persisted;
+- the rewrite-draft endpoint was not invoked;
+- no article was saved, published, restored, unarchived or modified.
+```
+
+Target article:
+
+```text
+Title: We are living fewer years in good health: Is the NHS part of the problem?
+Article ID: 71c315b6-292a-4b7f-8363-88e627fdde2f
+Status: archived
+Archive reason: auto_cap
+Source: BBC News
+```
+
+### Archive UI mismatch
+
+Manual Review already exposed the non-mutating **Open AI** action through:
+
+```text
+POST /api/admin/articles/{article_id}/openai-rewrite-draft
+```
+
+Archive rows exposed only the older `/ai-review` risk-review action, despite the documented requirement that Open AI be available in both Manual Review and Archive.
+
+### Implemented frontend correction
+
+`frontend/src/components/AdminDashboard.jsx` now adds a labelled **Open AI** action to every Archive row.
+
+The Archive action:
+
+```text
+- reuses handleOpenAIRewriteDraft(article);
+- calls POST /api/admin/articles/{article_id}/openai-rewrite-draft;
+- uses the existing loading and error handling;
+- opens the returned unsaved draft in the existing article editor;
+- does not restore or unarchive the article;
+- does not save or publish automatically;
+- does not call the older /ai-review endpoint.
+```
+
+The older Archive risk-review action remains because it has a separate stateful purpose. Its tooltip is now **Run saved ChatGPT risk review** so it is distinguishable from the rewrite-draft action.
+
+No backend change was required. The existing backend endpoint already locates archived articles by ID and returns a non-persisted draft.
+
+Verification:
+
+```text
+- exact Manual Review and Archive handler references checked with /usr/bin/grep;
+- git diff --check passed;
+- production frontend build compiled successfully;
+- no production rewrite request was made during implementation.
+```
+
+### Immediate next step
+
+After deployment, run exactly one Open AI rewrite-draft validation on article `71c315b6-292a-4b7f-8363-88e627fdde2f` from its Archive row. Capture the complete API response and fact pack, verify every factual claim, and do not press Update Article or otherwise save or publish the draft.
