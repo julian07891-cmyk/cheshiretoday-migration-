@@ -10780,7 +10780,7 @@ async def cleanup_invalid_emails():
 
 
 @api_router.post("/send-digest")
-async def send_digest_now():
+async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
     """Manually trigger sending news digest to all subscribers (for testing)"""
     try:
         # ============================================
@@ -13882,7 +13882,7 @@ async def api_ads_txt():
 
 
 @api_router.post("/trigger-daily-generation")
-async def trigger_daily_generation():
+async def trigger_daily_generation(authorized: bool = Depends(get_admin_auth)):
     """Manually trigger daily article generation (admin endpoint)"""
     try:
         await daily_article_generation(count=12)

@@ -22565,3 +22565,9 @@ QA found that `POST /api/admin/remove-duplicates` was registered twice: the inte
 ## 17 July 2026 — Admin authentication for content operations
 
 QA confirmed that `POST /api/sync-rss-now`, `POST /api/fix-mismatched-content` and `POST /api/remove-product-articles` were unauthenticated even though all three active Admin Dashboard callers already supplied bearer authentication. Admin authentication was added to the existing route functions without changing their paths, business logic or response fields. Scheduler and Render cron behavior are unchanged. Focused regression tests verify one authenticated registration per route, unauthenticated `401` responses and that no RSS, Perplexity or database work starts before authentication. No production import, archive or deletion was executed.
+
+---
+
+## 17 July 2026 — Admin authentication for cost-bearing operations
+
+QA confirmed that `POST /api/send-digest` and `POST /api/trigger-daily-generation` lacked Admin authentication. Scheduled Daily Brief, Weekly Roundup and article-generation jobs call internal Python functions rather than these HTTP wrappers and remain unchanged. Admin authentication was added only to the existing route signatures. Focused tests verify one authenticated registration per route, unauthenticated `401` responses and that email, subscriber database, digest-log, generation, scheduler-lock, RSS and Perplexity work cannot start before authentication. No email send or article generation was executed.
