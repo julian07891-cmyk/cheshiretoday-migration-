@@ -22571,3 +22571,9 @@ QA confirmed that `POST /api/sync-rss-now`, `POST /api/fix-mismatched-content` a
 ## 17 July 2026 — Admin authentication for cost-bearing operations
 
 QA confirmed that `POST /api/send-digest` and `POST /api/trigger-daily-generation` lacked Admin authentication. Scheduled Daily Brief, Weekly Roundup and article-generation jobs call internal Python functions rather than these HTTP wrappers and remain unchanged. Admin authentication was added only to the existing route signatures. Focused tests verify one authenticated registration per route, unauthenticated `401` responses and that email, subscriber database, digest-log, generation, scheduler-lock, RSS and Perplexity work cannot start before authentication. No email send or article generation was executed.
+
+---
+
+## 17 July 2026 — Admin authentication and response hardening for subscriber maintenance
+
+QA confirmed that `POST /api/cleanup-subscribers`, `POST /api/cleanup-invalid-emails` and `GET /api/check-subscribers` lacked Admin authentication. The check route exposed subscriber addresses and MongoDB document IDs, while invalid-email cleanup returned the removed addresses. Admin authentication and aggregate-only responses were added without changing cleanup criteria. Newsletter signup, preferences, unsubscribe, scheduling, batching and delivery remain unchanged. Focused tests verify authentication, blocked unauthenticated database access and sanitized responses using isolated stubs. No production subscriber operation was executed.

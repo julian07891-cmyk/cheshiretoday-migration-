@@ -10684,7 +10684,7 @@ async def test_email_send():
 
 
 @api_router.get("/check-subscribers")
-async def check_subscribers():
+async def check_subscribers(authorized: bool = Depends(get_admin_auth)):
     """Check for duplicate subscribers and return stats"""
     try:
         subscribers = await db.subscribers.find({}, {"_id": 1, "email": 1}).to_list(1000)
@@ -10704,14 +10704,14 @@ async def check_subscribers():
             "total_records": len(subscribers),
             "unique_emails": len(email_counts),
             "duplicate_emails": len(duplicates),
-            "duplicates": duplicates
+            "duplicate_records": sum(len(ids) - 1 for ids in duplicates.values())
         }
     except Exception as e:
         return {"error": str(e)}
 
 
 @api_router.post("/cleanup-subscribers")
-async def cleanup_duplicate_subscribers():
+async def cleanup_duplicate_subscribers(authorized: bool = Depends(get_admin_auth)):
     """Remove duplicate subscriber entries, keeping only the first one"""
     try:
         subscribers = await db.subscribers.find({}, {"_id": 1, "email": 1}).to_list(1000)
@@ -10745,7 +10745,7 @@ async def cleanup_duplicate_subscribers():
 
 
 @api_router.post("/cleanup-invalid-emails")
-async def cleanup_invalid_emails():
+async def cleanup_invalid_emails(authorized: bool = Depends(get_admin_auth)):
     """Remove invalid email addresses from subscribers"""
     import re
     try:
@@ -10754,14 +10754,11 @@ async def cleanup_invalid_emails():
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         
         invalid_ids = []
-        invalid_emails = []
-        
         for s in subscribers:
             email = s.get('email', '').strip()
             # Remove if: empty, reserved/example domain, invalid format, or test addresses
             if not is_deliverable_newsletter_email(email):
                 invalid_ids.append(s.get('_id'))
-                invalid_emails.append(email)
         
         # Delete invalid subscribers
         deleted_count = 0
@@ -10772,7 +10769,6 @@ async def cleanup_invalid_emails():
         return {
             "success": True,
             "invalid_removed": deleted_count,
-            "invalid_emails": invalid_emails,
             "remaining_subscribers": len(subscribers) - deleted_count
         }
     except Exception as e:
