@@ -170,6 +170,7 @@ const AdminDashboard = ({ onBack }) => {
   // Manual Article Creation state
   const [showAddArticle, setShowAddArticle] = useState(false);
   const [editingArticle, setEditingArticle] = useState(null);
+  const [openAIRewriteDiagnostics, setOpenAIRewriteDiagnostics] = useState(null);
   const [articleForm, setArticleForm] = useState({
     title: '',
     summary: '',
@@ -1215,6 +1216,7 @@ const AdminDashboard = ({ onBack }) => {
       return;
     }
 
+    setOpenAIRewriteDiagnostics(null);
     setActionLoading(`openai-rewrite-${articleId}`);
     try {
       const response = await fetch(`${getApiUrl()}/api/admin/articles/${articleId}/openai-rewrite-draft`, {
@@ -1225,6 +1227,7 @@ const AdminDashboard = ({ onBack }) => {
 
       if (response.ok && data.success && data.draft) {
         const draft = data.draft;
+        setOpenAIRewriteDiagnostics(data);
         setArticleForm({
           title: draft.title || article.title || '',
           summary: draft.summary || article.summary || '',
@@ -1259,6 +1262,28 @@ const AdminDashboard = ({ onBack }) => {
       });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleCopyOpenAIRewriteDiagnostics = async () => {
+    if (!openAIRewriteDiagnostics) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(
+        JSON.stringify(openAIRewriteDiagnostics, null, 2)
+      );
+      toast({
+        title: "✅ Diagnostics copied",
+        description: "The OpenAI rewrite response JSON was copied."
+      });
+    } catch (error) {
+      toast({
+        title: "❌ Copy failed",
+        description: error.message || "Could not copy the diagnostics JSON.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1382,6 +1407,7 @@ const AdminDashboard = ({ onBack }) => {
       scope: 'cheshire'
     });
     setEditingArticle(null);
+    setOpenAIRewriteDiagnostics(null);
   };
 
   const handleAddArticle = () => {
@@ -1390,6 +1416,7 @@ const AdminDashboard = ({ onBack }) => {
   };
 
   const handleEditArticle = (article) => {
+    setOpenAIRewriteDiagnostics(null);
     setArticleForm({
       title: article.title || '',
       summary: article.summary || '',
@@ -6233,6 +6260,97 @@ const handleDeleteArticle = async (articleId) => {
           </DialogHeader>
 
           <form onSubmit={handleSubmitArticle} className="space-y-4">
+            {openAIRewriteDiagnostics && (
+              <details className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/30">
+                <summary className="cursor-pointer font-semibold text-purple-900 dark:text-purple-100">
+                  OpenAI Rewrite Diagnostics
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-md border border-purple-200 bg-white p-3 text-sm dark:border-purple-800 dark:bg-gray-900">
+                    <p className="font-semibold text-purple-900 dark:text-purple-100">
+                      Read-only editorial verification
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      These session-only diagnostics are not part of the editable article and will not be saved.
+                    </p>
+                  </div>
+
+                  <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                    <div>
+                      <dt className="font-medium">Editorial guard triggered</dt>
+                      <dd>{String(openAIRewriteDiagnostics.draft?.editorial_guard_triggered ?? false)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Editorial guard corrected</dt>
+                      <dd>{String(openAIRewriteDiagnostics.draft?.editorial_guard_corrected ?? false)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Source fetch status</dt>
+                      <dd className="break-words">{openAIRewriteDiagnostics.draft?.source_fetch_status || 'Not reported'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Source page content length</dt>
+                      <dd>{openAIRewriteDiagnostics.draft?.source_page_content_length ?? 'Not reported'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Research fact pack available</dt>
+                      <dd>{String(openAIRewriteDiagnostics.draft?.research_fact_pack_available ?? false)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium">Research source count</dt>
+                      <dd>{openAIRewriteDiagnostics.draft?.research_source_count ?? 'Not reported'}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Editorial guard violations</p>
+                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-gray-950 p-3 text-xs text-gray-100">
+                      {JSON.stringify(openAIRewriteDiagnostics.draft?.editorial_guard_violations || [], null, 2)}
+                    </pre>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Remaining editorial guard violations</p>
+                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-gray-950 p-3 text-xs text-gray-100">
+                      {JSON.stringify(openAIRewriteDiagnostics.draft?.editorial_guard_remaining_violations || [], null, 2)}
+                    </pre>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Editor notes</p>
+                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-gray-950 p-3 text-xs text-gray-100">
+                      {openAIRewriteDiagnostics.draft?.editor_notes || 'No editor notes returned.'}
+                    </pre>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Complete research fact pack</p>
+                    <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-gray-950 p-3 text-xs text-gray-100">
+                      {JSON.stringify(openAIRewriteDiagnostics.draft?.research_fact_pack || {}, null, 2)}
+                    </pre>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCopyOpenAIRewriteDiagnostics}
+                  >
+                    Copy diagnostics JSON
+                  </Button>
+
+                  <details className="rounded-md border border-purple-200 bg-white p-3 dark:border-purple-800 dark:bg-gray-900">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Raw rewrite response JSON
+                    </summary>
+                    <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md bg-gray-950 p-3 text-xs text-gray-100">
+                      {JSON.stringify(openAIRewriteDiagnostics, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              </details>
+            )}
+
             {/* Title */}
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>

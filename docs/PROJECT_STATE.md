@@ -22461,3 +22461,50 @@ Verification:
 ### Immediate next step
 
 After deployment, run exactly one Open AI rewrite-draft validation on article `71c315b6-292a-4b7f-8363-88e627fdde2f` from its Archive row. Capture the complete API response and fact pack, verify every factual claim, and do not press Update Article or otherwise save or publish the draft.
+
+---
+
+## 17 July 2026 — Session-only OpenAI rewrite diagnostics
+
+The deployed Archive **Open AI** action could open the returned draft, but browser automation could not capture the complete network response. Running the one permitted healthy-life-expectancy validation without preserving the fact pack and editorial-guard diagnostics would have wasted the test.
+
+`frontend/src/components/AdminDashboard.jsx` now retains the complete successful rewrite response in temporary React state and exposes it inside the existing article draft editor through a collapsed **OpenAI Rewrite Diagnostics** section.
+
+The read-only section displays:
+
+```text
+- editorial_guard_triggered
+- editorial_guard_violations
+- editorial_guard_corrected
+- editorial_guard_remaining_violations
+- source_fetch_status
+- source_page_content_length
+- research_fact_pack_available
+- research_source_count
+- the complete research_fact_pack
+- editor_notes
+- a collapsed raw view of the complete endpoint response JSON
+```
+
+An explicit **Copy diagnostics JSON** button copies only the response JSON and reports success or failure through the existing toast pattern. It does not include authentication tokens, request headers, credentials or browser storage.
+
+Safety boundaries:
+
+```text
+- diagnostics exist only in frontend session state;
+- diagnostics are not attached to articleForm or the article;
+- Update Article sends only the existing articleForm payload;
+- diagnostics clear when the editor closes, resets, opens Add Article or opens a normal Edit workflow;
+- no backend, saving, publishing, Archive-status, risk-review or feature-flag behaviour changed;
+- no production rewrite endpoint was invoked during implementation.
+```
+
+Verification:
+
+```text
+- git diff --check passed;
+- production frontend build compiled successfully;
+- existing Browserslist-age and Node deprecation warnings remain deferred.
+```
+
+Immediate next step: review and deploy this frontend-only diagnostics change, then run exactly one Archive-row Open AI validation for article `71c315b6-292a-4b7f-8363-88e627fdde2f`, copy the complete diagnostics JSON, and do not save or publish the draft.
