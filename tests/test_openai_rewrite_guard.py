@@ -46,6 +46,41 @@ def test_named_attribution_is_allowed():
     )
 
 
+@pytest.mark.parametrize(
+    "content",
+    [
+        "Two doses ensure full protection.",
+        "The product guarantees protection.",
+        "The measure completely prevents infection.",
+        "The treatment eliminates the risk.",
+        "The vaccine is fully effective.",
+        "The change creates zero risk.",
+        "The product is always safe.",
+        "The treatment never causes side effects.",
+    ],
+)
+def test_absolute_or_unsupported_certainty_is_detected(content):
+    assert (
+        "absolute or unsupported certainty"
+        in server.find_openai_rewrite_editorial_violations(content)
+    )
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "Two doses offer protection.",
+        "The measure reduces the risk.",
+        "The study reported approximately 82.9% effectiveness.",
+    ],
+)
+def test_supported_non_absolute_wording_is_allowed(content):
+    assert (
+        "absolute or unsupported certainty"
+        not in server.find_openai_rewrite_editorial_violations(content)
+    )
+
+
 def _openai_response(payload):
     return SimpleNamespace(
         choices=[
@@ -176,6 +211,65 @@ def test_remaining_vague_attribution_is_reported(monkeypatch):
     assert result["editorial_guard_corrected"] is False
     assert result["editorial_guard_remaining_violations"] == [
         "vague or unnamed attribution"
+    ]
+    assert "Editorial guard still detected" in result["editor_notes"]
+
+
+def test_correction_pass_removes_absolute_certainty(monkeypatch):
+    initial_content = (
+        "The vaccine requires two doses to ensure full protection."
+    )
+    corrected_content = (
+        "The vaccine requires two doses to provide protection."
+    )
+    calls = _install_rewrite_mocks(
+        monkeypatch,
+        initial_content,
+        corrected_content,
+    )
+
+    result = asyncio.run(
+        server.run_openai_article_rewrite_draft(
+            {
+                "title": "Vaccination recommendation",
+                "source_url": "https://example.com/source",
+            }
+        )
+    )
+
+    assert result["editorial_guard_violations"] == [
+        "absolute or unsupported certainty"
+    ]
+    assert result["editorial_guard_corrected"] is True
+    assert result["editorial_guard_remaining_violations"] == []
+    assert "provide protection" in result["content"]
+    assert calls[1]["temperature"] == 0
+
+    initial_prompt = calls[0]["messages"][0]["content"]
+    correction_prompt = calls[1]["messages"][0]["content"]
+    assert "CLAIM STRENGTH AND OFFICIAL STATUS" in initial_prompt
+    assert "Cost-effectiveness analysis is evidence" in initial_prompt
+    assert "Review the complete draft for unsupported strengthening" in correction_prompt
+    assert "financial consequences" in correction_prompt
+
+
+def test_remaining_absolute_certainty_is_reported(monkeypatch):
+    content = "The vaccine guarantees full protection."
+    calls = _install_rewrite_mocks(monkeypatch, content, content)
+
+    result = asyncio.run(
+        server.run_openai_article_rewrite_draft(
+            {
+                "title": "Vaccination recommendation",
+                "source_url": "https://example.com/source",
+            }
+        )
+    )
+
+    assert len(calls) == 2
+    assert result["editorial_guard_corrected"] is False
+    assert result["editorial_guard_remaining_violations"] == [
+        "absolute or unsupported certainty"
     ]
     assert "Editorial guard still detected" in result["editor_notes"]
 

@@ -22532,3 +22532,30 @@ Implemented backend safeguards:
 No endpoint response, database, persistence, publication or feature-flag behaviour changed.
 
 Immediate next step: deploy the reviewed patch, then run one new controlled rewrite verification on a suitable test article before treating the guard fix as complete.
+
+---
+
+## 17 July 2026 — OpenAI claim-strength and certainty safeguards
+
+A controlled rewrite verification for **Teenagers from 15 should be given free MenB vaccine, say UK experts** (`6a590e2611cd784274055b7c`) passed attribution and observed fact-pack identity validation but failed strict factual reliability. The draft strengthened qualified source claims into full protection, oversimplified population-specific cost-effectiveness analysis, changed “highly unlikely to be cost-effective” into “unnecessary”, and inferred financial implications for government.
+
+Implemented a narrowly scoped draft-only safeguard:
+
+```text
+- the initial rewrite prompt now preserves claim strength, scope, population, uncertainty and official decision stage;
+- contradictions and uncertain_or_unverified are hard limits, while unverified official status cannot be strengthened;
+- unsupported motives, financial consequences and implementation or policy outcomes are prohibited;
+- a deterministic guard flags a small family of high-risk absolute-certainty phrases as "absolute or unsupported certainty";
+- the existing temperature-zero correction pass audits the complete draft and removes or qualifies unsupported strengthening;
+- focused tests cover detection, permitted qualified wording, successful correction and reported remaining violations.
+```
+
+The admin-only endpoint, fact-pack generation, persistence, publication and article-state behaviour are unchanged. Syntax compilation and the focused rewrite-guard suite pass with 29 tests.
+
+Immediate next step: review and deploy this patch, then run exactly one controlled rewrite-draft validation on a suitable unsaved article and inspect the complete diagnostics before making further changes.
+
+---
+
+## 17 July 2026 — duplicate cleanup route authentication correction
+
+QA found that `POST /api/admin/remove-duplicates` was registered twice: the internal `_remove_duplicates_internal()` helper was unintentionally exposed without authentication before the intended authenticated `remove_duplicate_articles(...)` wrapper. The helper's route decorator was removed, while the helper and all scheduler/direct Python calls remain unchanged. Focused regression tests now verify that exactly one authenticated route remains, unauthenticated requests cannot invoke cleanup, and the helper remains directly callable. No production cleanup or data mutation was executed.

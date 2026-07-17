@@ -3125,7 +3125,6 @@ async def clean_article_content(authorized: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api_router.post("/admin/remove-duplicates")
 async def _remove_duplicates_internal():
     """
     Internal helper function to remove duplicate articles.
@@ -6368,6 +6367,19 @@ def find_openai_rewrite_editorial_violations(article_content: str):
     if any(re.search(pattern, body, re.IGNORECASE) for pattern in vague_attribution_patterns):
         violations.append("vague or unnamed attribution")
 
+    absolute_certainty_patterns = (
+        r"\bensure(?:s|d)? full protection\b",
+        r"\bguarantee(?:s|d)? (?:full )?protection\b",
+        r"\bcompletely prevent(?:s|ed)?\b",
+        r"\beliminate(?:s|d)? the risk\b",
+        r"\bfully effective\b",
+        r"\bzero risk\b",
+        r"\balways safe\b",
+        r"\bnever causes?\b",
+    )
+    if any(re.search(pattern, body, re.IGNORECASE) for pattern in absolute_certainty_patterns):
+        violations.append("absolute or unsupported certainty")
+
     ending_patterns = (
         r"^\s*(?:the|a)\s+debate\b.*\bcontinues\b",
         r"^\s*as\b.*\b(?:grapples|evolves|continues|faces)\b",
@@ -6529,6 +6541,16 @@ SOURCE CONTROL
 - Rewrite fully in fresh wording rather than copying the source.
 - Treat every sentence as if an editor may ask for its supporting source. Remove any sentence that cannot be supported.
 
+CLAIM STRENGTH AND OFFICIAL STATUS
+- Preserve the exact strength, scope, population, conditions and uncertainty of every source claim.
+- Never strengthen may to will, possible to likely, protection to full protection, unlikely to be cost-effective to unnecessary, recommendation to decision or approval, under consideration to will happen, concern to failure, or eligible to entitled.
+- Distinguish recommendation, consultation, proposal, consideration, approval, decision and implementation.
+- Preserve exact cost-effectiveness qualifications and the population or conditions to which they apply.
+- Treat contradictions and uncertain_or_unverified as hard limits; do not make categorical claims that conflict with either field.
+- Treat official_status_verified=false as a warning not to strengthen or extend an official or policy status.
+- Never infer government or organisational motives, financial consequences, savings, funding decisions, implementation dates, implementation consequences or policy outcomes.
+- Cost-effectiveness analysis is evidence used in policy-making, not itself a government policy decision.
+
 NEWS JUDGEMENT AND ATTRIBUTION
 - Select the strongest verified facts. Do not try to include every available detail.
 - Separate reported facts from opinion, criticism, analysis and forecasts.
@@ -6636,6 +6658,12 @@ Rules:
 - Do not imply that a person, study or organisation made a claim supplied by another source.
 - If the exact responsible source cannot be identified, remove the claim.
 - Repeat the person or organisation name when necessary instead of using vague plural attribution.
+- Review the complete draft for unsupported strengthening, not only the detected phrase.
+- Restore the exact source strength, scope, population, conditions, uncertainty and official decision stage.
+- Remove absolute efficacy or outcome wording unless the same absolute claim is explicitly supported.
+- Do not convert recommendation, consideration or cost-effectiveness analysis into approval, implementation or government policy.
+- Remove inferred motives, financial consequences, savings, funding decisions, implementation details or policy outcomes that are not explicit in verified evidence.
+- Treat contradictions and uncertain_or_unverified as hard limits, and do not strengthen official status when official_status_verified is false.
 - Make the opening factual and remove interpretation such as "raising concerns" or "prompting scrutiny".
 - Attribute opinions and interpretations directly to the named person or organisation responsible.
 - Remove a generic or rhetorical final paragraph entirely when necessary.
