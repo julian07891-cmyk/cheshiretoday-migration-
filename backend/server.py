@@ -6330,6 +6330,75 @@ If recommending archive for Business, Finance, Tech or AI, editor_notes must exp
     return review
 
 
+def find_openai_rewrite_editorial_violations(article_content: str):
+    """Return deterministic editorial violations in an OpenAI rewrite draft."""
+    body = str(article_content or "").strip()
+    if not body:
+        return []
+
+    paragraphs = [
+        paragraph.strip()
+        for paragraph in re.split(r"\n\s*\n", body)
+        if paragraph.strip()
+    ]
+    first_paragraph = paragraphs[0] if paragraphs else body
+    last_paragraph = paragraphs[-1] if paragraphs else body
+    violations = []
+
+    lead_patterns = (
+        r"\braising (?:questions|concerns)\b",
+        r"\bprompting (?:scrutiny|discussion|discussions|debate)\b",
+        r"\bunderscoring concerns\b",
+        r"\bhighlighting the importance\b",
+        r"\bsparking debate\b",
+    )
+    if any(re.search(pattern, first_paragraph, re.IGNORECASE) for pattern in lead_patterns):
+        violations.append("interpretive wording in the opening paragraph")
+
+    vague_attribution_patterns = (
+        r"\brecent data (?:shows|indicates|suggests|reveals)\b",
+        r"\bexperts (?:say|suggest|believe|warn|argue|claim|are examining|are exploring)\b",
+        r"\bexperts (?:have |has )?(?:raise|raised|expressed|voiced) concerns?\b",
+        r"\bcritics (?:say|suggest|believe|argue|claim|warn)\b",
+        r"\bresearchers (?:say|suggest|believe|argue|claim|warn)\b",
+        r"\bofficials (?:say|suggest|believe|argue|claim|warn)\b",
+        r"\bobservers (?:say|suggest|believe|argue|claim|warn)\b",
+        r"\bit is (?:thought|believed|understood|reported)\b",
+    )
+    if any(re.search(pattern, body, re.IGNORECASE) for pattern in vague_attribution_patterns):
+        violations.append("vague or unnamed attribution")
+
+    ending_patterns = (
+        r"^\s*(?:the|a)\s+debate\b.*\bcontinues\b",
+        r"^\s*as\b.*\b(?:grapples|evolves|continues|faces)\b",
+        r"^\s*the future\b.*\bremains (?:uncertain|unclear)\b",
+        r"^\s*the situation\b.*\b(?:highlights|underscores)\b.*\burgent need\b",
+        r"\bthe question remains\b",
+        r"\bthe focus remains\b",
+        r"\burgent need for\b",
+        r"^\s*(?:overall|ultimately|looking ahead)\b",
+    )
+    ending_paragraphs = paragraphs[-2:] if len(paragraphs) > 1 else [last_paragraph]
+    if (
+        last_paragraph.rstrip().endswith("?")
+        or any(
+            re.search(pattern, paragraph, re.IGNORECASE)
+            for paragraph in ending_paragraphs
+            for pattern in ending_patterns
+        )
+    ):
+        violations.append("generic, rhetorical or essay-style ending")
+
+    british_english_patterns = (
+        r"\baging\b",
+        r"\bmarginalized\b",
+    )
+    if any(re.search(pattern, body, re.IGNORECASE) for pattern in british_english_patterns):
+        violations.append("non-British spelling")
+
+    return violations
+
+
 async def run_openai_article_rewrite_draft(article: dict) -> dict:
     """Create an OpenAI rewrite draft for admin review. Does not save, publish, unhide or update the DB."""
     api_key = os.environ.get("OPENAI_API_KEY", "").strip()
@@ -6392,6 +6461,7 @@ async def run_openai_article_rewrite_draft(article: dict) -> dict:
                     summary=summary or content,
                     source=source,
                     source_url=source_url,
+                    publisher_content=source_page_content,
                 ),
                 timeout=120,
             )
@@ -6465,6 +6535,9 @@ NEWS JUDGEMENT AND ATTRIBUTION
 - Attribute opinions and interpretations directly to the named person or organisation making them.
 - Attribute important statistics, reports and claims to their named source.
 - Never use vague attribution such as "experts say", "critics believe", "recent data shows" or "it is thought".
+- Attribute every factual finding, opinion, interpretation or criticism to the specific person, organisation, study or official body supporting it.
+- Never combine findings from one source with opinions from another source under a collective label such as "experts", "critics", "researchers" or "officials".
+- When two sources support different parts of a paragraph, identify each source separately.
 - When comparing figures, give the exact periods being compared whenever they are available.
 - Do not imply that correlation proves causation.
 - Do not add a Cheshire connection unless the verified material supports one.
@@ -6539,76 +6612,13 @@ Return this exact JSON shape:
             "editor_notes": "OpenAI returned non-JSON output. Original article has been left unchanged."
         }
 
-    def _find_editorial_violations(article_content: str):
-        body = str(article_content or "").strip()
-        if not body:
-            return []
-
-        paragraphs = [
-            paragraph.strip()
-            for paragraph in re.split(r"\n\s*\n", body)
-            if paragraph.strip()
-        ]
-        first_paragraph = paragraphs[0] if paragraphs else body
-        last_paragraph = paragraphs[-1] if paragraphs else body
-        violations = []
-
-        lead_patterns = (
-            r"\braising (?:questions|concerns)\b",
-            r"\bprompting (?:scrutiny|discussion|discussions|debate)\b",
-            r"\bunderscoring concerns\b",
-            r"\bhighlighting the importance\b",
-            r"\bsparking debate\b",
-        )
-        if any(re.search(pattern, first_paragraph, re.IGNORECASE) for pattern in lead_patterns):
-            violations.append("interpretive wording in the opening paragraph")
-
-        vague_attribution_patterns = (
-            r"\brecent data (?:shows|indicates|suggests|reveals)\b",
-            r"\bexperts (?:say|suggest|believe|warn|argue|are examining|are exploring)\b",
-            r"\bcritics (?:say|suggest|believe|argue|claim)\b",
-            r"\bit is (?:thought|believed|understood|reported)\b",
-        )
-        if any(re.search(pattern, body, re.IGNORECASE) for pattern in vague_attribution_patterns):
-            violations.append("vague or unnamed attribution")
-
-        ending_patterns = (
-            r"^\s*(?:the|a)\s+debate\b.*\bcontinues\b",
-            r"^\s*as\b.*\b(?:grapples|evolves|continues|faces)\b",
-            r"^\s*the future\b.*\bremains (?:uncertain|unclear)\b",
-            r"^\s*the situation\b.*\b(?:highlights|underscores)\b.*\burgent need\b",
-            r"\bthe question remains\b",
-            r"\bthe focus remains\b",
-            r"\burgent need for\b",
-            r"^\s*(?:overall|ultimately|looking ahead)\b",
-        )
-        ending_paragraphs = paragraphs[-2:] if len(paragraphs) > 1 else [last_paragraph]
-        if (
-            last_paragraph.rstrip().endswith("?")
-            or any(
-                re.search(pattern, paragraph, re.IGNORECASE)
-                for paragraph in ending_paragraphs
-                for pattern in ending_patterns
-            )
-        ):
-            violations.append("generic, rhetorical or essay-style ending")
-
-        british_english_patterns = (
-            r"\baging\b",
-            r"\bmarginalized\b",
-        )
-        if any(re.search(pattern, body, re.IGNORECASE) for pattern in british_english_patterns):
-            violations.append("non-British spelling")
-
-        return violations
-
     draft_title = str(draft.get("title") or title).strip()
     draft_summary = str(draft.get("summary") or summary).strip()
     draft_content = str(draft.get("content") or content).strip()
     draft_category = str(draft.get("category") or category or "Local News").strip()
     draft_notes = str(draft.get("editor_notes") or "").strip()
 
-    editorial_guard_violations = _find_editorial_violations(draft_content)
+    editorial_guard_violations = find_openai_rewrite_editorial_violations(draft_content)
 
     if editorial_guard_violations:
         correction_system_prompt = """You are a strict UK newspaper copy editor.
@@ -6622,6 +6632,10 @@ Rules:
 - Use only facts already present in the draft or supported by source_page_content or research_fact_pack.
 - Do not add new names, figures, claims, quotations, context or conclusions.
 - Remove unsupported or vaguely attributed claims when no named source supports them.
+- Split blended evidence into separately attributed sentences.
+- Do not imply that a person, study or organisation made a claim supplied by another source.
+- If the exact responsible source cannot be identified, remove the claim.
+- Repeat the person or organisation name when necessary instead of using vague plural attribution.
 - Make the opening factual and remove interpretation such as "raising concerns" or "prompting scrutiny".
 - Attribute opinions and interpretations directly to the named person or organisation responsible.
 - Remove a generic or rhetorical final paragraph entirely when necessary.
@@ -6679,7 +6693,7 @@ Rules:
                 part for part in (draft_notes, guard_failure_note) if part
             )
 
-    editorial_guard_remaining_violations = _find_editorial_violations(draft_content)
+    editorial_guard_remaining_violations = find_openai_rewrite_editorial_violations(draft_content)
 
     if editorial_guard_remaining_violations:
         remaining_note = (
@@ -17628,4 +17642,3 @@ async def get_admin_feature_flags(auth: bool = Depends(get_admin_auth)):
         "auto_generation_enabled": os.environ.get("AUTO_GENERATION_ENABLED") in ["1", "true", "True"],
         "environment": os.environ.get("ENVIRONMENT", "local")
     }
-

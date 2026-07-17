@@ -7,12 +7,87 @@ Cost-optimized: Only used for local Cheshire news, not general UK news
 import os
 import httpx
 import logging
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
+
+
+def validate_fact_pack_people(
+    fact_pack: Dict[str, Any],
+    publisher_content: str = "",
+    publisher_url: str = "",
+) -> Dict[str, Any]:
+    """Downgrade incomplete or unsupported verified person identities."""
+    names_and_roles = fact_pack.get("names_and_roles")
+    if not isinstance(names_and_roles, list):
+        fact_pack["names_and_roles"] = []
+        return fact_pack
+
+    uncertain = fact_pack.get("uncertain_or_unverified")
+    if not isinstance(uncertain, list):
+        uncertain = []
+
+    publisher_text = re.sub(r"\s+", " ", str(publisher_content or "")).strip()
+    normalised_publisher_url = str(publisher_url or "").strip().rstrip("/")
+    listed_source_keys = {
+        (
+            urlparse(str(url or "").strip()).netloc.lower(),
+            urlparse(str(url or "").strip()).path.rstrip("/"),
+        )
+        for url in fact_pack.get("source_urls", [])
+        if str(url or "").strip()
+    }
+    honorifics = {
+        "dr", "mr", "mrs", "ms", "miss", "prof", "professor",
+        "sir", "dame", "lord", "lady", "rev", "reverend",
+    }
+
+    for item in names_and_roles:
+        if not isinstance(item, dict) or item.get("verified") is not True:
+            continue
+
+        name = re.sub(r"\s+", " ", str(item.get("name") or "")).strip()
+        tokens = re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ'’-]+", name)
+        reason = ""
+
+        if len(tokens) < 2:
+            reason = "incomplete personal name"
+        elif tokens[0].rstrip(".").lower() in honorifics and len(tokens) < 3:
+            reason = "incomplete honorific-based personal name"
+        item_source_url = str(item.get("source_url") or "").strip().rstrip("/")
+        publisher_source_key = (
+            urlparse(normalised_publisher_url).netloc.lower(),
+            urlparse(normalised_publisher_url).path.rstrip("/"),
+        )
+        item_source_key = (
+            urlparse(item_source_url).netloc.lower(),
+            urlparse(item_source_url).path.rstrip("/"),
+        )
+        independent_provenance = (
+            bool(item_source_url)
+            and item_source_key in listed_source_keys
+            and item_source_key != publisher_source_key
+        )
+        publisher_is_claimed_source = not independent_provenance
+        if (
+            not reason
+            and publisher_text
+            and publisher_is_claimed_source
+            and not re.search(r"\b" + re.escape(name) + r"\b", publisher_text, re.IGNORECASE)
+        ):
+            reason = "name was not found in the fetched publisher content"
+
+        if reason:
+            item["verified"] = False
+            uncertain.append(f"Unverified person identity ({reason}): {name or '[missing name]'}")
+
+    fact_pack["uncertain_or_unverified"] = list(dict.fromkeys(uncertain))
+    return fact_pack
 
 
 
@@ -450,6 +525,7 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
         summary: str = "",
         source: str = "",
         source_url: str = "",
+        publisher_content: str = "",
     ) -> Dict[str, Any]:
         """Research an article for the admin OpenAI draft workflow.
 
@@ -480,6 +556,9 @@ Accuracy rules:
 - Do not invent or infer missing details.
 - Do not treat the supplied summary as automatically accurate.
 - Verify names, roles, dates, locations, organisations, figures and quotations.
+- For people, provide the complete published name and complete role.
+- Do not mark surname-only, given-name-only, honorific-plus-given-name, inferred or reconstructed identities as verified.
+- Put incomplete or conflicting person identities in uncertain_or_unverified.
 - For awards, legal decisions, regulatory action, appointments and similar staged processes, determine the exact current status from the responsible official body.
 - Treat entered, nominated, commended, shortlisted, finalist and winner as distinct statuses. Never substitute one status for another.
 - Use the exact terminology published by the official organiser or responsible authority.
@@ -503,7 +582,7 @@ Return exactly this JSON structure:
   "verified_headline_facts": ["fact"],
   "verified_facts": ["fact"],
   "names_and_roles": [
-    {"name": "name", "role": "role", "verified": true}
+    {"name": "complete published name", "role": "complete role", "verified": true, "source_url": "https://supporting-source.example"}
   ],
   "dates": ["date and what it relates to"],
   "locations": ["verified place"],
@@ -595,6 +674,11 @@ Check the primary source first, then locate the responsible official organiser, 
                 if str(url or "").strip()
             ))
             fact_pack["source_urls"] = existing_urls
+            fact_pack = validate_fact_pack_people(
+                fact_pack,
+                publisher_content=publisher_content,
+                publisher_url=source_url,
+            )
 
             status_aliases = {
                 "entered": "entered",

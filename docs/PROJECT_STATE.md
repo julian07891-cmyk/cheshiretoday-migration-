@@ -22508,3 +22508,27 @@ Verification:
 ```
 
 Immediate next step: review and deploy this frontend-only diagnostics change, then run exactly one Archive-row Open AI validation for article `71c315b6-292a-4b7f-8363-88e627fdde2f`, copy the complete diagnostics JSON, and do not save or publish the draft.
+
+---
+
+## 17 July 2026 — OpenAI attribution guard and fact-pack identity validation
+
+The controlled healthy-life-expectancy rewrite verification completed for archived article `71c315b6-292a-4b7f-8363-88e627fdde2f`. Factual reliability passed with one minor attribution ambiguity, but the editorial guard failed strict evaluation because it did not detect a vague plural attribution that blended National Voices evidence with Gareth Lyon's separate opinion. Nothing was saved or published.
+
+The research fact pack also returned the malformed name `Aareth Lyon` and incomplete identities including `Rees`, `McKee` and `Sir Michael`.
+
+Implemented backend safeguards:
+
+```text
+- extracted the deterministic rewrite editorial guard into a testable module-level helper;
+- expanded vague-attribution detection, including "experts have raised concerns";
+- required sentence-level named attribution and prohibited blending separate sources under collective labels;
+- strengthened the existing temperature-zero correction prompt to split or remove blended attribution;
+- added conservative person validation that downgrades incomplete or publisher-unsupported names without fuzzy correction;
+- preserved independently researched complete identities when explicit provenance is supplied;
+- added focused regression tests for detection, correction, remaining violations and person-name validation.
+```
+
+No endpoint response, database, persistence, publication or feature-flag behaviour changed.
+
+Immediate next step: deploy the reviewed patch, then run one new controlled rewrite verification on a suitable test article before treating the guard fix as complete.
