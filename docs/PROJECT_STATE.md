@@ -22559,3 +22559,9 @@ Immediate next step: review and deploy this patch, then run exactly one controll
 ## 17 July 2026 — duplicate cleanup route authentication correction
 
 QA found that `POST /api/admin/remove-duplicates` was registered twice: the internal `_remove_duplicates_internal()` helper was unintentionally exposed without authentication before the intended authenticated `remove_duplicate_articles(...)` wrapper. The helper's route decorator was removed, while the helper and all scheduler/direct Python calls remain unchanged. Focused regression tests now verify that exactly one authenticated route remains, unauthenticated requests cannot invoke cleanup, and the helper remains directly callable. No production cleanup or data mutation was executed.
+
+---
+
+## 17 July 2026 — Admin authentication for content operations
+
+QA confirmed that `POST /api/sync-rss-now`, `POST /api/fix-mismatched-content` and `POST /api/remove-product-articles` were unauthenticated even though all three active Admin Dashboard callers already supplied bearer authentication. Admin authentication was added to the existing route functions without changing their paths, business logic or response fields. Scheduler and Render cron behavior are unchanged. Focused regression tests verify one authenticated registration per route, unauthenticated `401` responses and that no RSS, Perplexity or database work starts before authentication. No production import, archive or deletion was executed.

@@ -14278,7 +14278,7 @@ async def fix_bad_content(authorized: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/fix-mismatched-content")
-async def fix_mismatched_content():
+async def fix_mismatched_content(authorized: bool = Depends(get_admin_auth)):
     """
     Legacy cleanup endpoint.
     Archive articles containing old emergency/fallback template filler.
@@ -14327,7 +14327,7 @@ async def fix_mismatched_content():
 
 
 @api_router.post("/remove-product-articles")
-async def remove_product_articles():
+async def remove_product_articles(authorized: bool = Depends(get_admin_auth)):
     """
     Remove articles that are product advertisements, gadgets, deals, or shopping content.
     These should not appear on a news site.
@@ -14386,7 +14386,7 @@ async def remove_product_articles():
 
 
 @api_router.post("/sync-rss-now")
-async def sync_rss_now():
+async def sync_rss_now(authorized: bool = Depends(get_admin_auth)):
     """
     Force immediate sync of RSS feeds - imports latest articles from all feeds.
     This is useful after deployment to quickly get the latest articles.
