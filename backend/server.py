@@ -929,11 +929,6 @@ async def fetch_trending_headlines(scope: str, count: int = 5) -> List[tuple]:
         logger.error(f"Error fetching trending headlines: {str(e)}")
         return []
 
-class GenerateFromHeadlineRequest(BaseModel):
-    headline: str
-    category: str = "Local News"
-    scope: str = "uk"
-
 # =====================================================================================
 # ADMIN LOGIN ENDPOINT
 # =====================================================================================
@@ -1640,65 +1635,6 @@ async def seed_authority_pages(auth: bool = Depends(get_admin_auth)):
     return {"success": True, "upserts": upserts, "total": total}
 
 # =====================================================================================
-
-@api_router.post("/generate-from-headline")
-async def generate_from_headline(request: GenerateFromHeadlineRequest):
-    """
-    Generate a single article based on a specific breaking news headline.
-    This provides on-demand article generation when a user clicks a headline.
-    """
-    try:
-        logger.info(f"Generating article from headline: {request.headline[:50]}...")
-        
-        # Get used photo IDs to ensure uniqueness
-        used_photo_ids = await get_used_images_from_db()
-        
-        # Generate the article using the headline as the topic
-        article_data = await generate_article_with_gemini(
-            topic=request.headline,
-            scope=request.scope,
-            category=request.category,
-            used_photo_ids=used_photo_ids
-        )
-        
-        if not article_data:
-            return {"success": False, "message": "Could not generate article", "article": None}
-        
-        # Get a matching image
-        image = await get_dynamic_image(
-            title=article_data['title'],
-            category=request.category,
-            content=article_data['content'],
-            scope=request.scope,
-            used_photo_ids=used_photo_ids
-        )
-        
-        if not image:
-            # Use a default image if none found
-            image = ""
-        
-        # Create the article
-        article = {
-            "id": str(uuid4()),
-            "title": article_data['title'],
-            "content": article_data['content'],
-            "image": image,
-            "category": request.category,
-            "tags": article_data.get('tags', [request.scope, request.category.lower().replace(' ', '-')]),
-            "publishedDate": datetime.now(timezone.utc).isoformat(),
-            "author": "Cheshire Today Editorial"
-        }
-        
-        # Save to database
-        await db.articles.insert_one({**article, "_id": None})
-        
-        logger.info(f"✅ Generated article from headline: {article['title'][:40]}...")
-        
-        return {"success": True, "article": article}
-        
-    except Exception as e:
-        logger.error(f"Error generating article from headline: {str(e)}")
-        return {"success": False, "message": str(e), "article": None}
 
 @api_router.post("/generate-articles", response_model=GenerateArticlesResponse)
 async def generate_articles(request: GenerateArticlesRequest):
@@ -4916,35 +4852,6 @@ async def get_seo_article_page(article_id: str, request: Request):
         </html>
         """)
 
-
-@api_router.post("/clean-all-articles")
-async def clean_all_articles():
-    """Clean markdown formatting from all existing articles in the database"""
-    try:
-        articles = await db.articles.find({}).to_list(1000)
-        cleaned_count = 0
-        
-        for article in articles:
-            original_title = article.get('title', '')
-            original_content = article.get('content', '')
-            
-            cleaned_title = clean_article_content(original_title)
-            cleaned_content = clean_article_content(original_content)
-            
-            # Only update if changes were made
-            if cleaned_title != original_title or cleaned_content != original_content:
-                await db.articles.update_one(
-                    {"_id": article["_id"]},
-                    {"$set": {"title": cleaned_title, "content": cleaned_content}}
-                )
-                cleaned_count += 1
-        
-        logger.info(f"Cleaned {cleaned_count} articles")
-        return {"success": True, "articles_cleaned": cleaned_count, "total_articles": len(articles)}
-    
-    except Exception as e:
-        logger.error(f"Error cleaning articles: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/article-meta/{article_id}")
 async def get_article_meta(article_id: str):
@@ -10640,47 +10547,6 @@ async def get_smart_prioritized_articles(auth: bool = Depends(get_admin_auth), l
     except Exception as e:
         logger.error(f"Error getting smart articles: {str(e)}")
         return {"success": False, "error": str(e), "articles": []}
-
-
-@api_router.post("/test-email")
-async def test_email_send():
-    """Test email sending to verify SMTP configuration"""
-    try:
-        import os
-        test_email = "news@cheshiretoday.co.uk"  # Send test to admin
-        
-        smtp_host = os.environ.get('SMTP_HOST')
-        smtp_port = os.environ.get('SMTP_PORT')
-        smtp_user = os.environ.get('SMTP_USER')
-        smtp_pass = os.environ.get('SMTP_PASSWORD', '')
-        
-        logger.info(f"TEST EMAIL - SMTP Config: Host={smtp_host}, Port={smtp_port}, User={smtp_user}, Pass={'***' if smtp_pass else 'MISSING'}")
-        
-        # Try to send a simple test email with detailed error capture
-        try:
-            result = email_service._send_email(
-                to_email=test_email,
-                subject="Cheshire Today - Email Test",
-                html_content="<h1>Test Email</h1><p>If you receive this, email sending is working!</p>"
-            )
-            error_msg = None
-        except Exception as send_error:
-            result = False
-            error_msg = str(send_error)
-            logger.error(f"Email send exception: {error_msg}")
-        
-        return {
-            "success": result,
-            "test_email": test_email,
-            "smtp_host": smtp_host,
-            "smtp_port": smtp_port,
-            "smtp_user": smtp_user,
-            "smtp_password_set": bool(smtp_pass),
-            "error": error_msg
-        }
-    except Exception as e:
-        logger.error(f"Test email error: {str(e)}")
-        return {"success": False, "error": str(e)}
 
 
 @api_router.get("/check-subscribers")

@@ -22583,3 +22583,9 @@ QA confirmed that `POST /api/cleanup-subscribers`, `POST /api/cleanup-invalid-em
 ## 17 July 2026 — Removal of disabled legacy image routes
 
 `POST /api/update-local-news-images`, `POST /api/reassign-all-images-uk` and `POST /api/fix-all-images-uk` had already been permanently disabled under the RSS-only image policy. No frontend, scheduler, Render cron, tracked script, test or documented operator dependency was found. The dead wrappers and unreachable mutation bodies were removed without changing active RSS/source-image handling or image helpers. Focused tests verify that all three paths now return `404` while active article and RSS routes remain registered. No production image or article operation was executed.
+
+---
+
+## 18 July 2026 — Removal of unauthenticated legacy operational routes
+
+`POST /api/test-email`, `POST /api/clean-all-articles` and `POST /api/generate-from-headline` were enabled without Admin authentication despite allowing public SMTP email sending and configuration disclosure, bulk article rewriting, and direct Gemini generation/publication. No active frontend, scheduler, Render cron, tracked script, test or documented operator dependency was found. All three routes and their route-specific bodies were removed. Authenticated email tests, Admin article editing and cleaning, hybrid imports, Manual Review, and scheduled generation remain unchanged. Focused tests confirm the POST operations are absent from OpenAPI without sending email, invoking AI, cleaning articles or changing production data. A duplicate `clean_article_content` Python function name remains in `backend/server.py`; the removed `/api/clean-all-articles` route no longer depends on the earlier helper, and the remaining naming collision was intentionally left unchanged because no current active behavior was altered. Any rename should follow a focused read-only caller audit in a later step.
