@@ -5028,6 +5028,8 @@ async def subscribe_newsletter(request: SubscribeRequest):
         # Create new subscriber with preferences (January 2026 update)
         subscriber = {
             "id": str(uuid.uuid4()),
+            "newsletter_management_id": str(uuid.uuid4()),
+            "newsletter_token_version": 1,
             "email": email,
             "subscribed_at": datetime.now(timezone.utc).isoformat(),
             "created_at": datetime.now(timezone.utc).isoformat(),

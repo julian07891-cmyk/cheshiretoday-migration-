@@ -22613,3 +22613,9 @@ The frozen newsletter ownership model uses purpose-specific signed links plus ma
 ## 18 July 2026 — Newsletter ownership Stage 2 migration tooling
 
 Stage 2 added only isolated tooling for `newsletter_management_id` and `newsletter_token_version`. The script provides read-only dry-run and guarded apply modes, with expected-count and exact interactive confirmation controls, conditional idempotent updates limited to those two fields, privacy-safe aggregate output, and explicit gated creation of the unique management-ID index. Offline tests cover validation, duplicates, conflicts, idempotency, index safety, CLI controls and protected-field invariants. No subscriber creation path, route, email builder, frontend, index or production record changed, and no production migration was executed. The next required stage is to initialise both fields in subscriber creation before any production migration run.
+
+---
+
+## 18 July 2026 — Newsletter ownership Stage 3 subscriber creation fields
+
+Both public subscribe aliases use the same `subscribe_newsletter(...)` creation function. Brand-new subscriber documents now initialise `newsletter_management_id` as separate canonical UUIDv4 text and `newsletter_token_version` as integer `1`, while retaining the existing generic subscriber `id`. Existing active, inactive, reactivation and preference branches are unchanged; no existing subscriber was backfilled or modified. No token service, signing secret, tokenised route, email builder or frontend flow was activated. No migration ran, and no newsletter management index was created or activated. Isolated tests were added, and no production signup or subscriber operation occurred. The next required action is final diff review and deployment before any migration dry-run.
