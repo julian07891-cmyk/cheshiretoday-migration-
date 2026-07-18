@@ -1636,8 +1636,9 @@ async def seed_authority_pages(auth: bool = Depends(get_admin_auth)):
 
 # =====================================================================================
 
-@api_router.post("/generate-articles", response_model=GenerateArticlesResponse)
-async def generate_articles(request: GenerateArticlesRequest):
+async def _generate_articles_internal(
+    request: GenerateArticlesRequest,
+) -> GenerateArticlesResponse:
     """
     Generate articles using HYBRID approach (cost-optimized):
     - RSS feeds for UK news (FREE) with original images
@@ -1655,7 +1656,7 @@ async def generate_articles(request: GenerateArticlesRequest):
             public_import_limit=getattr(request, "public_import_limit", None)
         )
         
-        result = await import_hybrid_news(hybrid_request)
+        result = await _import_hybrid_news_internal(hybrid_request)
         
         cheshire_count = result.get('cheshire_articles', 0)
         uk_count = result.get('uk_articles', 0)
@@ -1672,6 +1673,14 @@ async def generate_articles(request: GenerateArticlesRequest):
     except Exception as e:
         logging.error(f"Error in generate_articles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/generate-articles", response_model=GenerateArticlesResponse)
+async def generate_articles(
+    request: GenerateArticlesRequest,
+    authorized: bool = Depends(get_admin_auth),
+):
+    return await _generate_articles_internal(request)
 
 
 # ============================================================================
@@ -1827,8 +1836,9 @@ class HybridNewsRequest(BaseModel):
     public_import_limit: Optional[int] = None  # Optional cap for public articles per import run
 
 
-@api_router.post("/import-hybrid-news")
-async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
+async def _import_hybrid_news_internal(
+    request: HybridNewsRequest,
+) -> dict:
     """
     Import news using HYBRID approach (cost-optimized):
     1. RSS feeds for UK news - ONLY articles WITH RSS images (FREE & perfect match)
@@ -2773,6 +2783,14 @@ async def import_hybrid_news(request: HybridNewsRequest = HybridNewsRequest()):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.post("/import-hybrid-news")
+async def import_hybrid_news(
+    request: HybridNewsRequest = HybridNewsRequest(),
+    authorized: bool = Depends(get_admin_auth),
+):
+    return await _import_hybrid_news_internal(request)
+
+
 @api_router.post("/admin/clear-and-refresh")
 async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
     """
@@ -2820,7 +2838,7 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
             rewrite_delay_seconds=0            # Manual/admin refresh should not wait 15 minutes
         )
         
-        import_result = await import_hybrid_news(request)
+        import_result = await _import_hybrid_news_internal(request)
         
         # AUTO-CLEANUP: Remove any duplicates or short articles after import
         cleanup_result = await _remove_duplicates_internal()
@@ -15490,7 +15508,7 @@ async def daily_article_generation(count: int = 12):
         try:
             # Request up to 12 candidates, but keep only 6 public; extras go to manual review.
             # Keeps quality/cost controlled while reducing homepage starvation from an overly thin public pool.
-            await generate_articles(GenerateArticlesRequest(count=count, include_uk_news=True, public_import_limit=6))
+            await _generate_articles_internal(GenerateArticlesRequest(count=count, include_uk_news=True, public_import_limit=6))
         except Exception as gen_error:
             logger.error(f"Error during article generation (will retry): {str(gen_error)}")
             # Don't fail the entire job, just log and continue
