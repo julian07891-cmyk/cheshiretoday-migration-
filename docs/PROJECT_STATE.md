@@ -22595,3 +22595,9 @@ QA confirmed that `POST /api/cleanup-subscribers`, `POST /api/cleanup-invalid-em
 ## 18 July 2026 — Admin authentication for generation and hybrid import
 
 `POST /api/generate-articles` and `POST /api/import-hybrid-news` previously mixed unauthenticated HTTP routing with reusable internal business logic. The unchanged generation and import logic now lives in `_generate_articles_internal(...)` and `_import_hybrid_news_internal(...)`, while thin HTTP wrappers require Admin authentication. APScheduler calls the generation helper directly, and clear-and-refresh calls the import helper directly. Import, duplicate, archive, image, Manual Review, cost, response and scheduler behaviour remain unchanged. Focused regression tests cover authentication, wrapper delegation, internal callers and frontend bearer compatibility. No production generation, import, RSS, AI or database operation was executed.
+
+---
+
+## 18 July 2026 — Admin authentication for legacy import routes
+
+`POST /api/import-real-news` and `POST /api/rss/import-rss` remained unauthenticated. Importing `get_admin_auth` from `server.py` inside `rss_routes.py` would create a circular import, so the RSS POST is now registered through a factory-built protected router using the exact production dependency, while the public RSS GET routes remain unchanged. `/api/import-real-news` now directly requires Admin authentication. Importer logic, responses, scheduler and authentication internals are unchanged. Focused tests prove unauthenticated requests cannot reach RSS, Perplexity, image or database work. No production import was executed.

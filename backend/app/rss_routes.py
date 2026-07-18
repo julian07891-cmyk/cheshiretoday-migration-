@@ -44,7 +44,6 @@ async def list_rss_sources(category: Optional[str] = Query(None)):
         sources = get_rss_sources()
     return {"sources": sources, "count": len(sources)}
 
-@router.post("/import-rss")
 async def import_rss_articles(
     category: Optional[str] = Query(None, description="Filter by category"),
     max_per_source: int = Query(3, ge=1, le=10),
@@ -126,6 +125,18 @@ async def import_rss_articles(
     except Exception as e:
         logger.error(f"Error importing RSS articles: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error importing articles: {str(e)}")
+
+
+def create_admin_import_router(admin_auth_dependency):
+    protected_router = APIRouter(prefix="/api/rss", tags=["rss"])
+    protected_router.add_api_route(
+        "/import-rss",
+        import_rss_articles,
+        methods=["POST"],
+        dependencies=[Depends(admin_auth_dependency)],
+    )
+    return protected_router
+
 
 @router.get("/feed.xml", response_class=Response)
 async def generate_rss_feed(

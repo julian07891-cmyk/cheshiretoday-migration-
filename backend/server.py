@@ -1735,7 +1735,11 @@ async def get_local_real_news(limit: int = 20):
 
 
 @api_router.post("/import-real-news")
-async def import_real_news(limit: int = 20, category: Optional[str] = None):
+async def import_real_news(
+    limit: int = 20,
+    category: Optional[str] = None,
+    authorized: bool = Depends(get_admin_auth),
+):
     """
     Import real news articles from RSS feeds into the database.
     These articles will appear alongside AI-generated content.
@@ -14644,6 +14648,9 @@ async def head_article(article_id: str):
 
 app.include_router(api_router)
 app.include_router(rss_routes.router)
+app.include_router(
+    rss_routes.create_admin_import_router(get_admin_auth)
+)
 
 # =====================================================================================
 # SERVE REACT FRONTEND (Render copies build into backend/frontend_build)
