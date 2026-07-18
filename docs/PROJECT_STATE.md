@@ -22601,3 +22601,9 @@ QA confirmed that `POST /api/cleanup-subscribers`, `POST /api/cleanup-invalid-em
 ## 18 July 2026 — Admin authentication for legacy import routes
 
 `POST /api/import-real-news` and `POST /api/rss/import-rss` remained unauthenticated. Importing `get_admin_auth` from `server.py` inside `rss_routes.py` would create a circular import, so the RSS POST is now registered through a factory-built protected router using the exact production dependency, while the public RSS GET routes remain unchanged. `/api/import-real-news` now directly requires Admin authentication. Importer logic, responses, scheduler and authentication internals are unchanged. Focused tests prove unauthenticated requests cannot reach RSS, Perplexity, image or database work. No production import was executed.
+
+---
+
+## 18 July 2026 — Newsletter ownership Stage 1 token service
+
+The frozen newsletter ownership model uses purpose-specific signed links plus mailbox verification for public and legacy flows. Stage 1 added only an isolated token service supporting `preferences`, `unsubscribe` and `reactivate`, with fixed newsletter and 30-minute website/compatibility expiry profiles. It enforces HS256, exactly five claims, canonical UUIDv4 subscriber-management IDs, positive token versions and a 60-second clock skew. Missing or weak `NEWSLETTER_LINK_SECRET` configuration fails closed inside the service. Isolated tests cover signing, expiry, purpose separation, tampering, strict claims, identity/version validation and safe errors. No route, subscriber, migration, email builder, frontend flow or production configuration changed, and no production token, email or subscriber operation occurred. The next stage is migration tooling only, after diff approval and a deployment decision.
