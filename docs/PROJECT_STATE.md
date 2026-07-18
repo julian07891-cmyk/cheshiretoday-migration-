@@ -22577,3 +22577,9 @@ QA confirmed that `POST /api/send-digest` and `POST /api/trigger-daily-generatio
 ## 17 July 2026 — Admin authentication and response hardening for subscriber maintenance
 
 QA confirmed that `POST /api/cleanup-subscribers`, `POST /api/cleanup-invalid-emails` and `GET /api/check-subscribers` lacked Admin authentication. The check route exposed subscriber addresses and MongoDB document IDs, while invalid-email cleanup returned the removed addresses. Admin authentication and aggregate-only responses were added without changing cleanup criteria. Newsletter signup, preferences, unsubscribe, scheduling, batching and delivery remain unchanged. Focused tests verify authentication, blocked unauthenticated database access and sanitized responses using isolated stubs. No production subscriber operation was executed.
+
+---
+
+## 17 July 2026 — Removal of disabled legacy image routes
+
+`POST /api/update-local-news-images`, `POST /api/reassign-all-images-uk` and `POST /api/fix-all-images-uk` had already been permanently disabled under the RSS-only image policy. No frontend, scheduler, Render cron, tracked script, test or documented operator dependency was found. The dead wrappers and unreachable mutation bodies were removed without changing active RSS/source-image handling or image helpers. Focused tests verify that all three paths now return `404` while active article and RSS routes remain registered. No production image or article operation was executed.
