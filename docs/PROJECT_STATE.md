@@ -22619,3 +22619,9 @@ Stage 2 added only isolated tooling for `newsletter_management_id` and `newslett
 ## 18 July 2026 — Newsletter ownership Stage 3 subscriber creation fields
 
 Both public subscribe aliases use the same `subscribe_newsletter(...)` creation function. Brand-new subscriber documents now initialise `newsletter_management_id` as separate canonical UUIDv4 text and `newsletter_token_version` as integer `1`, while retaining the existing generic subscriber `id`. Existing active, inactive, reactivation and preference branches are unchanged; no existing subscriber was backfilled or modified. No token service, signing secret, tokenised route, email builder or frontend flow was activated. No migration ran, and no newsletter management index was created or activated. Isolated tests were added, and no production signup or subscriber operation occurred. The next required action is final diff review and deployment before any migration dry-run.
+
+---
+
+## 18 July 2026 — Newsletter ownership Stage 4A secure route contracts
+
+Phase 1 Stage 4A added contracts for eight dormant secure newsletter-management routes. Every route returns the same generic HTTP `503`; no subscriber lookup or mutation, token verification, email send, challenge, migration or index operation occurs. Existing newsletter routes remain unchanged, and the isolated token service remains unused. Offline contract tests cover registration, validation, OpenAPI, privacy and preservation of existing routes. No production endpoint was invoked. The next stage is wiring the token service only into preference verification and secure preference updates.

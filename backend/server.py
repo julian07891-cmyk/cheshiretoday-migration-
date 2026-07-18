@@ -14,7 +14,7 @@ import httpx
 import secrets
 import hashlib
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, EmailStr, Field, StrictBool, field_validator
 from typing import List, Optional
 import uuid
 from uuid import uuid4
@@ -324,6 +324,48 @@ class PreferencesUpdateRequest(BaseModel):
 class UnsubscribeRequest(BaseModel):
     """Request model for unsubscribe endpoint"""
     email: str
+
+
+class NewsletterTokenRequest(BaseModel):
+    token: str = Field(..., min_length=1, max_length=4096)
+
+    @field_validator("token", mode="before")
+    @classmethod
+    def normalize_token(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+
+class SecureNewsletterPreferencesUpdateRequest(NewsletterTokenRequest):
+    daily_brief: StrictBool
+    weekly_roundup: StrictBool
+    breaking_news: StrictBool
+
+
+class NewsletterSecureLinkRequest(BaseModel):
+    email: EmailStr
+
+
+class NewsletterReactivationConfirmRequest(NewsletterTokenRequest):
+    daily_brief: StrictBool
+    weekly_roundup: StrictBool
+    breaking_news: StrictBool
+
+
+class NewsletterGenericResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class NewsletterSecurePreferences(BaseModel):
+    daily_brief: bool
+    weekly_roundup: bool
+    breaking_news: bool
+
+
+class NewsletterSecurePreferencesResponse(BaseModel):
+    success: bool
+    preferences: NewsletterSecurePreferences
+
 
 class AdvertiseLeadCreate(BaseModel):
     name: str
@@ -5079,6 +5121,133 @@ NEWSLETTER_ALLOWED_CATEGORIES = [
     "Tax",
     "AI & Tech",
 ]
+
+SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE = (
+    "Secure newsletter management is not yet available."
+)
+SECURE_NEWSLETTER_MANAGEMENT_503 = {
+    503: {
+        "description": SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    }
+}
+
+
+@api_router.post(
+    "/newsletter/preferences/verify",
+    response_model=NewsletterSecurePreferencesResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def verify_secure_newsletter_preferences(
+    request: NewsletterTokenRequest,
+):
+    # Stage 4A contract only: token verification is intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.put(
+    "/newsletter/preferences/secure",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def update_secure_newsletter_preferences(
+    request: SecureNewsletterPreferencesUpdateRequest,
+):
+    # Stage 4A contract only: subscriber updates are intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.post(
+    "/newsletter/preferences/request-link",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def request_secure_newsletter_preferences_link(
+    request: NewsletterSecureLinkRequest,
+):
+    # Stage 4A contract only: link delivery is intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.post(
+    "/newsletter/unsubscribe/confirm",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def confirm_secure_newsletter_unsubscribe(
+    request: NewsletterTokenRequest,
+):
+    # Stage 4A contract only: unsubscribe mutation is intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.post(
+    "/newsletter/unsubscribe/one-click",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def one_click_secure_newsletter_unsubscribe(request: Request):
+    # Stage 4A contract only: RFC form parsing and unsubscribe are intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.post(
+    "/newsletter/unsubscribe/request-link",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def request_secure_newsletter_unsubscribe_link(
+    request: NewsletterSecureLinkRequest,
+):
+    # Stage 4A contract only: link delivery is intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.post(
+    "/newsletter/reactivate/request-link",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def request_secure_newsletter_reactivation_link(
+    request: NewsletterSecureLinkRequest,
+):
+    # Stage 4A contract only: link delivery is intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
+
+
+@api_router.post(
+    "/newsletter/reactivate/confirm",
+    response_model=NewsletterGenericResponse,
+    responses=SECURE_NEWSLETTER_MANAGEMENT_503,
+)
+async def confirm_secure_newsletter_reactivation(
+    request: NewsletterReactivationConfirmRequest,
+):
+    # Stage 4A contract only: subscriber reactivation is intentionally deferred.
+    raise HTTPException(
+        status_code=503,
+        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    )
 
 
 @api_router.get("/newsletter/preferences/{email}")
