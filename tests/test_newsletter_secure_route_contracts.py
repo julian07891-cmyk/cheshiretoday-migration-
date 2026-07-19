@@ -11,6 +11,7 @@ os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DB_NAME", "cheshire_test")
 os.environ.setdefault("LOCAL_DEV_NO_DB", "1")
 os.environ.setdefault("STRIPE_API_KEY", "sk_test_dummy")
+os.environ.pop("NEWSLETTER_LINK_SECRET", None)
 
 from backend import server
 
@@ -380,12 +381,27 @@ def test_secure_models_expose_only_frozen_fields():
     ) == {"success", "preferences"}
 
 
-def test_token_and_migration_modules_remain_unused_by_application_startup():
+def test_token_service_is_imported_but_not_initialized_during_startup():
     source = Path(server.__file__).read_text()
+    service_helper_source = inspect.getsource(
+        server._create_secure_newsletter_token_service
+    )
 
-    assert "newsletter_token_service" not in source
+    assert "from app.newsletter_token_service import" in source
+    assert "newsletter_token_service_from_environment()" in service_helper_source
+    assert source.count("newsletter_token_service_from_environment()") == 1
+    assert "NEWSLETTER_LINK_SECRET" not in os.environ
     assert "migrate_newsletter_management_ids" not in source
-    assert "NEWSLETTER_LINK_SECRET" not in source
+
+
+def test_application_import_does_not_touch_subscribers_or_email_without_secret():
+    startup_source = inspect.getsource(server.startup_event)
+
+    assert "NEWSLETTER_LINK_SECRET" not in os.environ
+    assert server.app is not None
+    assert "_create_secure_newsletter_token_service" not in startup_source
+    assert "db.subscribers" not in startup_source
+    assert "email_service." not in startup_source
 
 
 def test_scheduler_registration_source_is_unchanged_by_secure_skeletons():

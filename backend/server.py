@@ -44,6 +44,15 @@ LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
 from app.news_feed_service import news_feed_service
+from app.newsletter_token_service import (
+    ExpiredNewsletterTokenError,
+    InvalidNewsletterTokenError,
+    NewsletterTokenConfigurationError,
+    NewsletterTokenVersionMismatchError,
+    PREFERENCES_PURPOSE,
+    WrongNewsletterTokenPurposeError,
+    newsletter_token_service_from_environment,
+)
 from app.perplexity_service import perplexity_service, ai_budget_available
 
 # Stripe integration for paid job listings
@@ -5125,11 +5134,121 @@ NEWSLETTER_ALLOWED_CATEGORIES = [
 SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE = (
     "Secure newsletter management is not yet available."
 )
+SECURE_NEWSLETTER_TOKEN_INVALID = (
+    "This newsletter management link is invalid or has expired."
+)
+SECURE_NEWSLETTER_TOKEN_WRONG_PURPOSE = (
+    "This newsletter management link cannot be used for this action."
+)
+SECURE_NEWSLETTER_REACTIVATION_REQUIRED = (
+    "Please reactivate your subscription before managing email preferences."
+)
+SECURE_NEWSLETTER_UPDATE_CONFLICT = (
+    "Your email preferences could not be updated. Please try again."
+)
 SECURE_NEWSLETTER_MANAGEMENT_503 = {
     503: {
         "description": SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
     }
 }
+
+
+def _create_secure_newsletter_token_service():
+    try:
+        return newsletter_token_service_from_environment()
+    except NewsletterTokenConfigurationError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+
+def _raise_secure_newsletter_token_error(exc: Exception):
+    if isinstance(exc, WrongNewsletterTokenPurposeError):
+        raise HTTPException(
+            status_code=403,
+            detail=SECURE_NEWSLETTER_TOKEN_WRONG_PURPOSE,
+        ) from exc
+    if isinstance(
+        exc,
+        (
+            ExpiredNewsletterTokenError,
+            NewsletterTokenVersionMismatchError,
+            InvalidNewsletterTokenError,
+        ),
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        ) from exc
+    raise exc
+
+
+def _is_valid_newsletter_token_version(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+async def _get_secure_newsletter_preference_subscriber(token: str):
+    token_service = _create_secure_newsletter_token_service()
+    try:
+        claims = token_service.verify_newsletter_token(
+            token,
+            expected_purpose=PREFERENCES_PURPOSE,
+        )
+    except (
+        ExpiredNewsletterTokenError,
+        WrongNewsletterTokenPurposeError,
+        NewsletterTokenVersionMismatchError,
+        InvalidNewsletterTokenError,
+    ) as exc:
+        _raise_secure_newsletter_token_error(exc)
+
+    try:
+        subscriber = await db.subscribers.find_one(
+            {
+                "newsletter_management_id": (
+                    claims.subscriber_management_id
+                )
+            },
+            {
+                "_id": 0,
+                "newsletter_management_id": 1,
+                "newsletter_token_version": 1,
+                "active": 1,
+                "daily_brief": 1,
+                "weekly_roundup": 1,
+                "breaking_news": 1,
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if not subscriber:
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
+    stored_version = subscriber.get("newsletter_token_version")
+    if (
+        not _is_valid_newsletter_token_version(stored_version)
+        or stored_version != claims.token_version
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
+    if subscriber.get("active") is not True:
+        raise HTTPException(
+            status_code=409,
+            detail=SECURE_NEWSLETTER_REACTIVATION_REQUIRED,
+        )
+
+    return claims, subscriber
 
 
 @api_router.post(
@@ -5140,10 +5259,16 @@ SECURE_NEWSLETTER_MANAGEMENT_503 = {
 async def verify_secure_newsletter_preferences(
     request: NewsletterTokenRequest,
 ):
-    # Stage 4A contract only: token verification is intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    _, subscriber = await _get_secure_newsletter_preference_subscriber(
+        request.token
+    )
+    return NewsletterSecurePreferencesResponse(
+        success=True,
+        preferences=NewsletterSecurePreferences(
+            daily_brief=subscriber.get("daily_brief", True),
+            weekly_roundup=subscriber.get("weekly_roundup", False),
+            breaking_news=subscriber.get("breaking_news", False),
+        ),
     )
 
 
@@ -5155,10 +5280,42 @@ async def verify_secure_newsletter_preferences(
 async def update_secure_newsletter_preferences(
     request: SecureNewsletterPreferencesUpdateRequest,
 ):
-    # Stage 4A contract only: subscriber updates are intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    claims, _ = await _get_secure_newsletter_preference_subscriber(
+        request.token
+    )
+    try:
+        result = await db.subscribers.update_one(
+            {
+                "newsletter_management_id": (
+                    claims.subscriber_management_id
+                ),
+                "newsletter_token_version": claims.token_version,
+                "active": True,
+            },
+            {
+                "$set": {
+                    "daily_brief": request.daily_brief,
+                    "weekly_roundup": request.weekly_roundup,
+                    "breaking_news": request.breaking_news,
+                    "preferences_updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if result.matched_count != 1:
+        raise HTTPException(
+            status_code=409,
+            detail=SECURE_NEWSLETTER_UPDATE_CONFLICT,
+        )
+
+    return NewsletterGenericResponse(
+        success=True,
+        message="Your email preferences have been updated.",
     )
 
 
