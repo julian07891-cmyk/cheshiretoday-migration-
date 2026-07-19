@@ -5239,6 +5239,29 @@ class NewsletterUnsubscribeRequestLinkCollaborators:
         self.now = now
 
 
+class NewsletterReactivationRequestLinkCollaborators:
+    """Injected future orchestration dependencies for the dormant route."""
+
+    def __init__(
+        self,
+        *,
+        rate_limit_repository,
+        challenge_repository,
+        lookup_subscriber,
+        issue_token,
+        send_management_email,
+        source_ip,
+        now,
+    ):
+        self.rate_limit_repository = rate_limit_repository
+        self.challenge_repository = challenge_repository
+        self.lookup_subscriber = lookup_subscriber
+        self.issue_token = issue_token
+        self.send_management_email = send_management_email
+        self.source_ip = source_ip
+        self.now = now
+
+
 def _create_newsletter_preferences_request_link_collaborators(
     _request: Request,
 ):
@@ -5248,6 +5271,14 @@ def _create_newsletter_preferences_request_link_collaborators(
 
 
 def _create_newsletter_unsubscribe_request_link_collaborators(
+    _request: Request,
+):
+    """Fail closed until a separately reviewed runtime adapter is provided."""
+
+    raise RuntimeError("Newsletter request-link collaborators are unavailable.")
+
+
+def _create_newsletter_reactivation_request_link_collaborators(
     _request: Request,
 ):
     """Fail closed until a separately reviewed runtime adapter is provided."""
@@ -5481,6 +5512,113 @@ async def _run_newsletter_unsubscribe_request_link(
             email_result = collaborators.send_management_email(
                 recipient_email=normalized_email,
                 purpose=_NEWSLETTER_REQUEST_LINK_UNSUBSCRIBE_PURPOSE,
+                token=token,
+                expires_at=expires_at,
+                now=current,
+            )
+        except Exception:
+            email_result = None
+
+        if getattr(email_result, "accepted", False):
+            await collaborators.challenge_repository.mark_delivered(token_hash)
+        else:
+            await collaborators.challenge_repository.mark_failed(token_hash)
+    except Exception:
+        # Public callers receive the same accepted response for every internal
+        # outcome, including collaborator and storage failures.
+        return
+
+
+async def _run_newsletter_reactivation_request_link(
+    *,
+    email: str,
+    http_request: Request,
+):
+    """Run the future non-enumerating flow through injected collaborators."""
+
+    try:
+        collaborators = (
+            _create_newsletter_reactivation_request_link_collaborators(
+                http_request
+            )
+        )
+        current = collaborators.now
+        if (
+            not isinstance(current, datetime)
+            or current.tzinfo is None
+            or current.utcoffset() != timedelta(0)
+        ):
+            return
+
+        normalized_email, email_hash, ip_hash = (
+            _normalize_and_hash_newsletter_request(
+                email,
+                collaborators.source_ip,
+            )
+        )
+
+        ip_decision = await collaborators.rate_limit_repository.reserve_request(
+            dimension=_NEWSLETTER_REQUEST_LINK_IP_DIMENSION,
+            subject_hash=ip_hash,
+            operation=_NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE,
+            now=current,
+        )
+        if not getattr(ip_decision, "allowed", False):
+            return
+
+        email_decision = (
+            await collaborators.rate_limit_repository.reserve_request(
+                dimension=_NEWSLETTER_REQUEST_LINK_EMAIL_DIMENSION,
+                subject_hash=email_hash,
+                operation=_NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE,
+                now=current,
+            )
+        )
+        if not getattr(email_decision, "allowed", False):
+            return
+
+        subscriber = await collaborators.lookup_subscriber(
+            normalized_email,
+            dict(_NEWSLETTER_REQUEST_LINK_PROJECTION),
+        )
+        if not isinstance(subscriber, dict):
+            return
+
+        management_id = subscriber.get("newsletter_management_id")
+        token_version = subscriber.get("newsletter_token_version")
+        if not (
+            _valid_newsletter_management_id(management_id)
+            and _is_valid_newsletter_token_version(token_version)
+            and subscriber.get("active") is False
+        ):
+            return
+
+        expires_at = current + timedelta(minutes=30)
+        token = collaborators.issue_token(
+            subscriber_management_id=management_id,
+            purpose=_NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE,
+            token_version=token_version,
+            expiry_profile=_NEWSLETTER_REQUEST_LINK_REACTIVATE_PROFILE,
+            now=current,
+        )
+        if not isinstance(token, str) or not token:
+            return
+
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        challenge_result = await collaborators.challenge_repository.create_pending(
+            token_hash=token_hash,
+            subscriber_management_id=management_id,
+            purpose=_NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE,
+            issued_at=current,
+            expires_at=expires_at,
+        )
+        if not getattr(challenge_result, "succeeded", False):
+            return
+
+        try:
+            email_result = collaborators.send_management_email(
+                recipient_email=normalized_email,
+                purpose=_NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE,
                 token=token,
                 expires_at=expires_at,
                 now=current,
@@ -6021,11 +6159,24 @@ async def request_secure_newsletter_unsubscribe_link(
 )
 async def request_secure_newsletter_reactivation_link(
     request: NewsletterSecureLinkRequest,
+    http_request: Request,
 ):
-    # Stage 4A contract only: link delivery is intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    if NEWSLETTER_REQUEST_LINKS_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
+    await _run_newsletter_reactivation_request_link(
+        email=str(request.email),
+        http_request=http_request,
+    )
+    return JSONResponse(
+        status_code=202,
+        content={
+            "success": True,
+            "message": SECURE_NEWSLETTER_REQUEST_LINK_ACCEPTED,
+        },
     )
 
 

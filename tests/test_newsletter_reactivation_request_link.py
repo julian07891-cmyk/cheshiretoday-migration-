@@ -16,7 +16,7 @@ os.environ.pop("NEWSLETTER_LINK_SECRET", None)
 from backend import server
 
 
-PATH = "/api/newsletter/unsubscribe/request-link"
+PATH = "/api/newsletter/reactivate/request-link"
 EMAIL = "Reader@Example.com"
 NORMALIZED_EMAIL = "reader@example.com"
 SOURCE_IP = "203.0.113.42"
@@ -40,8 +40,7 @@ class FakeRateLimitRepository:
 
     async def reserve_request(self, **kwargs):
         self.calls.append(kwargs)
-        if self.events is not None:
-            self.events.append(f"{kwargs['dimension']}_limit")
+        self.events.append(f"{kwargs['dimension']}_limit")
         if self.error:
             raise self.error
         decision = self.decisions.pop(0)
@@ -128,7 +127,7 @@ class Harness:
             failed_error=failed_error,
             events=self.events,
         )
-        self.collaborators = server.NewsletterUnsubscribeRequestLinkCollaborators(
+        self.collaborators = server.NewsletterReactivationRequestLinkCollaborators(
             rate_limit_repository=self.rate_repository,
             challenge_repository=self.challenge_repository,
             lookup_subscriber=self.lookup_subscriber,
@@ -160,18 +159,18 @@ class Harness:
         return SimpleNamespace(accepted=self.email_accepted)
 
 
-def subscriber(**overrides):
+def inactive_subscriber(**overrides):
     value = {
         "newsletter_management_id": MANAGEMENT_ID,
         "newsletter_token_version": 1,
-        "active": True,
+        "active": False,
     }
     value.update(overrides)
     return value
 
 
 def call_route(monkeypatch, harness=None):
-    harness = harness or Harness(subscriber=subscriber())
+    harness = harness or Harness(subscriber=inactive_subscriber())
     monkeypatch.setattr(server, "NEWSLETTER_REQUEST_LINKS_ENABLED", True)
     original_normalize = server._normalize_and_hash_newsletter_request
 
@@ -185,7 +184,7 @@ def call_route(monkeypatch, harness=None):
 
     monkeypatch.setattr(
         server,
-        "_create_newsletter_unsubscribe_request_link_collaborators",
+        "_create_newsletter_reactivation_request_link_collaborators",
         factory,
     )
     monkeypatch.setattr(
@@ -226,7 +225,7 @@ def test_disabled_gate_returns_exact_503_before_factory(monkeypatch):
 
     monkeypatch.setattr(
         server,
-        "_create_newsletter_unsubscribe_request_link_collaborators",
+        "_create_newsletter_reactivation_request_link_collaborators",
         factory,
     )
     response = TestClient(server.app).post(PATH, json={"email": EMAIL})
@@ -241,17 +240,14 @@ def test_invalid_email_is_rejected_before_orchestration(monkeypatch):
     assert response.status_code == 422
 
 
-@pytest.mark.parametrize("active", [True, False])
-def test_active_and_inactive_subscribers_are_eligible(monkeypatch, active):
-    response, harness = call_route(
-        monkeypatch, Harness(subscriber=subscriber(active=active))
-    )
+def test_inactive_subscriber_is_eligible(monkeypatch):
+    response, harness = call_route(monkeypatch)
     assert_generic(response)
     assert len(harness.issue_calls) == 1
     assert len(harness.email_calls) == 1
 
 
-def test_email_normalization_projection_and_rate_limit_order(monkeypatch):
+def test_email_normalization_projection_and_limiter_order(monkeypatch):
     response, harness = call_route(monkeypatch)
     assert_generic(response)
     assert [call["dimension"] for call in harness.rate_repository.calls] == [
@@ -259,7 +255,7 @@ def test_email_normalization_projection_and_rate_limit_order(monkeypatch):
         "email",
     ]
     assert all(
-        call["operation"] == "unsubscribe"
+        call["operation"] == "reactivate"
         for call in harness.rate_repository.calls
     )
     assert harness.rate_repository.calls[0]["subject_hash"] == hashlib.sha256(
@@ -282,7 +278,7 @@ def test_email_normalization_projection_and_rate_limit_order(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "rate_decisions",
+    "decisions",
     [
         [False],
         [SimpleNamespace(allowed=False, reason="cooldown")],
@@ -294,14 +290,15 @@ def test_email_normalization_projection_and_rate_limit_order(monkeypatch):
         [True, SimpleNamespace(allowed=False, reason="daily_limit")],
     ],
 )
-def test_limiter_denials_stop_later_work(monkeypatch, rate_decisions):
+def test_limiter_denials_stop_all_later_work(monkeypatch, decisions):
     response, harness = call_route(
         monkeypatch,
-        Harness(subscriber=subscriber(), rate_decisions=rate_decisions),
+        Harness(subscriber=inactive_subscriber(), rate_decisions=decisions),
     )
     assert_generic(response)
     assert harness.lookup_calls == []
     assert harness.issue_calls == []
+    assert harness.challenge_repository.created == []
     assert harness.email_calls == []
 
 
@@ -319,44 +316,45 @@ def test_limiter_storage_failure_is_non_enumerating(monkeypatch):
     "value",
     [
         None,
-        subscriber(newsletter_management_id=None),
-        subscriber(newsletter_management_id="invalid"),
-        subscriber(newsletter_management_id=MANAGEMENT_ID.upper()),
-        subscriber(newsletter_management_id="{" + MANAGEMENT_ID + "}"),
-        subscriber(newsletter_management_id=UUID_V1),
-        subscriber(newsletter_token_version=None),
-        subscriber(newsletter_token_version=True),
-        subscriber(newsletter_token_version="1"),
-        subscriber(newsletter_token_version=0),
-        subscriber(newsletter_token_version=-1),
-        subscriber(active=None),
-        subscriber(active="true"),
-        subscriber(active=1),
-        subscriber(active=[]),
-        subscriber(active={}),
+        inactive_subscriber(active=True),
+        inactive_subscriber(active=None),
+        inactive_subscriber(active="false"),
+        inactive_subscriber(active=0),
+        inactive_subscriber(active=[]),
+        inactive_subscriber(active={}),
+        inactive_subscriber(newsletter_management_id=None),
+        inactive_subscriber(newsletter_management_id="invalid"),
+        inactive_subscriber(newsletter_management_id=MANAGEMENT_ID.upper()),
+        inactive_subscriber(
+            newsletter_management_id="{" + MANAGEMENT_ID + "}"
+        ),
+        inactive_subscriber(newsletter_management_id=UUID_V1),
+        inactive_subscriber(newsletter_token_version=None),
+        inactive_subscriber(newsletter_token_version=True),
+        inactive_subscriber(newsletter_token_version="1"),
+        inactive_subscriber(newsletter_token_version=0),
+        inactive_subscriber(newsletter_token_version=-1),
     ],
 )
 def test_ineligible_subscribers_do_no_token_challenge_or_email(
     monkeypatch, value
 ):
-    response, harness = call_route(
-        monkeypatch, Harness(subscriber=value)
-    )
+    response, harness = call_route(monkeypatch, Harness(subscriber=value))
     assert_generic(response)
     assert harness.issue_calls == []
     assert harness.challenge_repository.created == []
     assert harness.email_calls == []
 
 
-def test_token_uses_exact_purpose_profile_and_validated_identity(monkeypatch):
+def test_token_uses_only_reactivate_purpose_and_reactivation_profile(monkeypatch):
     response, harness = call_route(monkeypatch)
     assert_generic(response)
     assert harness.issue_calls == [
         {
             "subscriber_management_id": MANAGEMENT_ID,
-            "purpose": "unsubscribe",
+            "purpose": "reactivate",
             "token_version": 1,
-            "expiry_profile": "website_unsubscribe",
+            "expiry_profile": "reactivation",
             "now": NOW,
         }
     ]
@@ -376,7 +374,7 @@ def test_token_failure_stops_challenge_and_email(
     response, harness = call_route(
         monkeypatch,
         Harness(
-            subscriber=subscriber(),
+            subscriber=inactive_subscriber(),
             token_result=token_result,
             token_error=token_error,
         ),
@@ -387,18 +385,16 @@ def test_token_failure_stops_challenge_and_email(
 
 
 @pytest.mark.parametrize(
-    ("challenge_succeeds", "challenge_error"),
+    ("succeeds", "error"),
     [(False, None), (True, RuntimeError("private duplicate conflict"))],
 )
-def test_challenge_failure_stops_email(
-    monkeypatch, challenge_succeeds, challenge_error
-):
+def test_challenge_failure_stops_email(monkeypatch, succeeds, error):
     response, harness = call_route(
         monkeypatch,
         Harness(
-            subscriber=subscriber(),
-            challenge_succeeds=challenge_succeeds,
-            challenge_error=challenge_error,
+            subscriber=inactive_subscriber(),
+            challenge_succeeds=succeeds,
+            challenge_error=error,
         ),
     )
     assert_generic(response)
@@ -407,14 +403,14 @@ def test_challenge_failure_stops_email(
     assert harness.email_calls == []
 
 
-def test_challenge_contains_only_approved_transient_values(monkeypatch):
+def test_pending_challenge_contains_only_approved_values(monkeypatch):
     response, harness = call_route(monkeypatch)
     assert_generic(response)
     challenge = harness.challenge_repository.created[0]
     assert challenge == {
         "token_hash": hashlib.sha256(TOKEN.encode()).hexdigest(),
         "subscriber_management_id": MANAGEMENT_ID,
-        "purpose": "unsubscribe",
+        "purpose": "reactivate",
         "issued_at": NOW,
         "expires_at": NOW.replace(minute=30),
     }
@@ -423,13 +419,13 @@ def test_challenge_contains_only_approved_transient_values(monkeypatch):
     assert SOURCE_IP not in challenge.values()
 
 
-def test_email_delivery_receives_exact_unsubscribe_inputs_once(monkeypatch):
+def test_management_email_is_attempted_exactly_once(monkeypatch):
     response, harness = call_route(monkeypatch)
     assert_generic(response)
     assert harness.email_calls == [
         {
             "recipient_email": NORMALIZED_EMAIL,
-            "purpose": "unsubscribe",
+            "purpose": "reactivate",
             "token": TOKEN,
             "expires_at": NOW.replace(minute=30),
             "now": NOW,
@@ -445,13 +441,13 @@ def test_email_delivery_receives_exact_unsubscribe_inputs_once(monkeypatch):
         (True, RuntimeError("private provider failure"), "failed"),
     ],
 )
-def test_delivery_attempt_transitions_once_without_retry(
+def test_delivery_result_transitions_once_without_retry(
     monkeypatch, accepted, email_error, transition
 ):
     response, harness = call_route(
         monkeypatch,
         Harness(
-            subscriber=subscriber(),
+            subscriber=inactive_subscriber(),
             email_accepted=accepted,
             email_error=email_error,
         ),
@@ -473,13 +469,13 @@ def test_delivery_attempt_transitions_once_without_retry(
         (False, None, RuntimeError("private transition failure")),
     ],
 )
-def test_transition_failure_remains_generic_and_does_not_retry(
+def test_transition_failure_is_generic_and_does_not_retry(
     monkeypatch, accepted, delivered_error, failed_error
 ):
     response, harness = call_route(
         monkeypatch,
         Harness(
-            subscriber=subscriber(),
+            subscriber=inactive_subscriber(),
             email_accepted=accepted,
             delivered_error=delivered_error,
             failed_error=failed_error,
@@ -491,7 +487,7 @@ def test_transition_failure_remains_generic_and_does_not_retry(
     assert len(harness.email_calls) == 1
 
 
-def test_successful_order_is_exact(monkeypatch):
+def test_successful_orchestration_order_is_exact(monkeypatch):
     response, harness = call_route(monkeypatch)
     assert_generic(response)
     assert harness.events == [
@@ -517,16 +513,14 @@ def test_lookup_and_factory_failures_are_non_enumerating(monkeypatch):
     monkeypatch.setattr(server, "NEWSLETTER_REQUEST_LINKS_ENABLED", True)
     monkeypatch.setattr(
         server,
-        "_create_newsletter_unsubscribe_request_link_collaborators",
+        "_create_newsletter_reactivation_request_link_collaborators",
         lambda _request: (_ for _ in ()).throw(RuntimeError("private factory")),
     )
     response = TestClient(server.app).post(PATH, json={"email": EMAIL})
     assert_generic(response)
 
 
-def test_route_registered_once_and_stage_4e5_reactivation_is_non_enumerating(
-    monkeypatch,
-):
+def test_route_is_registered_exactly_once():
     routes = [
         route
         for route in server.app.routes
@@ -534,13 +528,7 @@ def test_route_registered_once_and_stage_4e5_reactivation_is_non_enumerating(
         and "POST" in getattr(route, "methods", set())
     ]
     assert len(routes) == 1
-    assert routes[0].endpoint is server.request_secure_newsletter_unsubscribe_link
-    monkeypatch.setattr(server, "NEWSLETTER_REQUEST_LINKS_ENABLED", True)
-    response = TestClient(server.app).post(
-        "/api/newsletter/reactivate/request-link",
-        json={"email": EMAIL},
-    )
-    assert_generic(response)
+    assert routes[0].endpoint is server.request_secure_newsletter_reactivation_link
 
 
 @pytest.mark.parametrize(
@@ -548,6 +536,8 @@ def test_route_registered_once_and_stage_4e5_reactivation_is_non_enumerating(
     [
         ("POST", "/api/newsletter/preferences/request-link",
          "request_secure_newsletter_preferences_link"),
+        ("POST", "/api/newsletter/unsubscribe/request-link",
+         "request_secure_newsletter_unsubscribe_link"),
         ("POST", "/api/newsletter/preferences/verify",
          "verify_secure_newsletter_preferences"),
         ("PUT", "/api/newsletter/preferences/secure",

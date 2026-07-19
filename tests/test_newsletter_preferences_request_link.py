@@ -700,14 +700,13 @@ def test_route_is_registered_exactly_once_and_keeps_existing_endpoint():
     assert routes[0].endpoint is server.request_secure_newsletter_preferences_link
 
 
-def test_reactivation_request_link_remains_exact_dormant_503(monkeypatch):
+def test_stage_4e5_reactivation_request_link_is_non_enumerating(monkeypatch):
     monkeypatch.setattr(server, "NEWSLETTER_REQUEST_LINKS_ENABLED", True)
     response = TestClient(server.app).post(
         "/api/newsletter/reactivate/request-link",
         json={"email": EMAIL},
     )
-    assert response.status_code == 503
-    assert response.json() == {"detail": UNAVAILABLE}
+    assert_generic_accepted(response)
 
 
 ROUTE_CONTRACTS = (
