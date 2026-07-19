@@ -182,6 +182,10 @@ class FakeChallengeCollection:
         self.last_find_projection = None
         self.last_find_session = None
         self.last_find_options = None
+        self.last_consume_query = None
+        self.last_consume_update = None
+        self.last_consume_session = None
+        self.last_consume_options = None
 
     async def insert_one(self, document):
         if self.fail:
@@ -215,10 +219,14 @@ class FakeChallengeCollection:
         return {"_id": "internal-only"} if projection else deepcopy(document)
 
     async def find_one_and_update(
-        self, query, update, *, return_document=None
+        self, query, update, *, return_document=None, **kwargs
     ):
         if self.fail:
             raise RuntimeError("raw atomic payload should never escape")
+        self.last_consume_query = deepcopy(query)
+        self.last_consume_update = deepcopy(update)
+        self.last_consume_session = kwargs.get("session")
+        self.last_consume_options = dict(kwargs)
         async with self.lock:
             document = self.documents.get(query["token_hash"])
             if not document or not matches(document, query):
@@ -1198,6 +1206,7 @@ async def test_wrong_purpose_cannot_be_consumed():
     )
     result = await repository.consume(
         token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
         expected_purpose="unsubscribe",
         now=NOW + timedelta(minutes=1),
     )
@@ -1213,11 +1222,13 @@ async def test_atomic_consume_succeeds_once_and_only_changes_consumed_at():
     first, second = await asyncio.gather(
         repository.consume(
             token_hash=TOKEN_HASH,
+            subscriber_management_id=MANAGEMENT_ID,
             expected_purpose="preferences",
             now=NOW + timedelta(minutes=1),
         ),
         repository.consume(
             token_hash=TOKEN_HASH,
+            subscriber_management_id=MANAGEMENT_ID,
             expected_purpose="preferences",
             now=NOW + timedelta(minutes=1),
         ),
@@ -1229,10 +1240,94 @@ async def test_atomic_consume_succeeds_once_and_only_changes_consumed_at():
 
 
 @async_test
+async def test_consume_filter_binds_identity_and_forwards_session():
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    session = object()
+    current = NOW + timedelta(minutes=1)
+
+    result = await repository.consume(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        expected_purpose="preferences",
+        now=current,
+        session=session,
+    )
+
+    assert result == security.ChallengeResult(
+        True,
+        security.ChallengeResultReason.CONSUMED,
+    )
+    assert collection.last_consume_query == {
+        "token_hash": TOKEN_HASH,
+        "subscriber_management_id": MANAGEMENT_ID,
+        "purpose": security.PREFERENCES_OPERATION,
+        "delivery_status": security.DELIVERED_DELIVERY,
+        "consumed_at": None,
+        "expires_at": {"$gt": current},
+    }
+    assert collection.last_consume_update == {
+        "$set": {"consumed_at": current}
+    }
+    assert collection.last_consume_session is session
+    assert collection.last_consume_options == {"session": session}
+    assert not hasattr(result, "_id")
+
+
+@async_test
+async def test_consume_omits_session_by_default_and_rejects_identity_mismatch():
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    other_management_id = "079b97fb-1e71-4410-aa2d-a326ea8c34fd"
+
+    result = await repository.consume(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=other_management_id,
+        expected_purpose="preferences",
+        now=NOW + timedelta(minutes=1),
+    )
+
+    assert result.reason is security.ChallengeResultReason.NOT_ELIGIBLE
+    assert collection.last_consume_options == {}
+    assert collection.last_consume_session is None
+    assert "start_session" not in inspect.getsource(
+        security.NewsletterChallengeRepository
+    )
+
+
+@pytest.mark.parametrize(
+    "management_id",
+    (
+        "not-a-uuid",
+        MANAGEMENT_ID.upper(),
+        "2551c92b-a7a4-11ec-b909-0242ac120002",
+    ),
+)
+@async_test
+async def test_consume_rejects_invalid_management_id(management_id):
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+
+    with pytest.raises(security.NewsletterLinkValidationError):
+        await repository.consume(
+            token_hash=TOKEN_HASH,
+            subscriber_management_id=management_id,
+            expected_purpose="preferences",
+            now=NOW + timedelta(minutes=1),
+        )
+
+    assert collection.last_consume_query is None
+
+
+@async_test
 async def test_failed_challenge_cannot_be_consumed():
     repository, _ = challenge_repository(status=security.FAILED_DELIVERY)
     result = await repository.consume(
         token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
         expected_purpose="preferences",
         now=NOW + timedelta(minutes=1),
     )
@@ -1247,6 +1342,7 @@ async def test_challenge_storage_failure_fails_closed():
     collection.fail = True
     result = await repository.consume(
         token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
         expected_purpose="preferences",
         now=NOW + timedelta(minutes=1),
     )

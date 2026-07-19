@@ -22679,3 +22679,9 @@ Phase 1 Stage 4E5 implemented only reactivation request-link orchestration behin
 ## 19 July 2026 — Newsletter ownership Stage 4E6A preference challenge read
 
 Phase 1 Stage 4E6A added subscriber-bound preference-challenge eligibility and optional session passthrough for future transactions, plus a separate literal-false confirmation-enforcement gate. When enabled only in isolated tests, preference verification requires a delivered, unexpired, unconsumed matching `preferences` challenge and remains read-only; production returns the existing generic HTTP `503` before collaborator access while the gate is false. Preference update, unsubscribe, reactivation, request-link and legacy routes remain unchanged. No collection or index was created, no migration, secret, email, frontend or production operation occurred, and isolated tests were added. Stage 4E6 is not complete.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4E6B preference challenge consumption
+
+Phase 1 Stage 4E6B added subscriber-bound, single-use challenge consumption for secure preference updates behind the unchanged literal-false enforcement gate. When enabled only in isolated tests, the subscriber is re-read and revalidated inside one transaction that consumes the matching challenge and conditionally updates only the three tier preferences plus `preferences_updated_at`; the token version remains unchanged, replay is rejected, transaction failures roll back both operations where the transaction outcome is known, and indeterminate commit outcomes fail closed without claiming rollback certainty. Stage 4E6A preference verification and all other routes remain unchanged. Production continues to return the generic HTTP `503`; no migration, index, secret, email, frontend, collection creation or production operation occurred, and isolated tests were expanded. Stage 4E6 is not complete.

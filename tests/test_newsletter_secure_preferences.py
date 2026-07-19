@@ -94,14 +94,18 @@ class FakeSubscriberCollection:
         self.find_calls = []
         self.update_calls = []
 
-    async def find_one(self, query, projection):
-        self.find_calls.append((deepcopy(query), deepcopy(projection)))
+    async def find_one(self, query, projection, **kwargs):
+        self.find_calls.append(
+            (deepcopy(query), deepcopy(projection), dict(kwargs))
+        )
         if self.find_error:
             raise self.find_error
         return deepcopy(self.subscriber)
 
-    async def update_one(self, query, update):
-        self.update_calls.append((deepcopy(query), deepcopy(update)))
+    async def update_one(self, query, update, **kwargs):
+        self.update_calls.append(
+            (deepcopy(query), deepcopy(update), dict(kwargs))
+        )
         if self.update_error:
             raise self.update_error
         return SimpleNamespace(matched_count=self.matched_count)
@@ -119,6 +123,8 @@ class FakeChallengeRepository:
         )
         self.error = error
         self.read_calls = []
+        self.consume_calls = []
+        self.consumed = False
 
     async def read_eligible_preference(self, **kwargs):
         self.read_calls.append(deepcopy(kwargs))
@@ -126,8 +132,44 @@ class FakeChallengeRepository:
             raise self.error
         return self.result
 
-    async def consume(self, **_kwargs):
-        raise AssertionError("preference verification must not consume")
+    async def consume(self, **kwargs):
+        self.consume_calls.append(dict(kwargs))
+        if self.error:
+            raise self.error
+        if self.consumed:
+            return SimpleNamespace(
+                succeeded=False,
+                reason=server.ChallengeResultReason.NOT_ELIGIBLE,
+            )
+        self.consumed = True
+        return SimpleNamespace(
+            succeeded=True,
+            reason=server.ChallengeResultReason.CONSUMED,
+        )
+
+
+class FakeTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class FakeSession:
+    def start_transaction(self):
+        return FakeTransaction()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class FakeTransactionClient:
+    async def start_session(self):
+        return FakeSession()
 
 
 def _install(
@@ -168,6 +210,11 @@ def _install(
         "_create_newsletter_preference_challenge_repository",
         lambda: challenge_repository,
     )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_transaction_client",
+        lambda: FakeTransactionClient(),
+    )
     monkeypatch.setattr(server, "db", SimpleNamespace(subscribers=subscribers))
     return (
         TestClient(server.app),
@@ -194,12 +241,11 @@ def test_missing_or_weak_secret_returns_503_before_subscriber_lookup(
         "newsletter_token_service_from_environment",
         fail_closed_factory,
     )
-    if route == VERIFY_PATH:
-        monkeypatch.setattr(
-            server,
-            "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
-            True,
-        )
+    monkeypatch.setattr(
+        server,
+        "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
+        True,
+    )
     monkeypatch.setattr(server, "db", SimpleNamespace(subscribers=subscribers))
     payload = {"token": TOKEN}
     if route == UPDATE_PATH:
@@ -305,6 +351,7 @@ def test_subscriber_lookup_uses_management_id_and_minimal_projection(monkeypatch
                 "weekly_roundup": 1,
                 "breaking_news": 1,
             },
+            {},
         )
     ]
 
@@ -410,7 +457,7 @@ def test_secure_update_changes_only_tiers_and_timestamp_with_conditions(monkeypa
         "message": "Your email preferences have been updated.",
     }
     assert len(subscribers.update_calls) == 1
-    query, update = subscribers.update_calls[0]
+    query, update, options = subscribers.update_calls[0]
     assert query == {
         "newsletter_management_id": MANAGEMENT_ID,
         "newsletter_token_version": TOKEN_VERSION,
@@ -429,6 +476,7 @@ def test_secure_update_changes_only_tiers_and_timestamp_with_conditions(monkeypa
     assert isinstance(update["$set"]["preferences_updated_at"], datetime)
     assert update["$set"]["preferences_updated_at"].tzinfo == timezone.utc
     assert "newsletter_token_version" not in update["$set"]
+    assert options.keys() == {"session"}
 
 
 def test_all_false_preferences_are_accepted(monkeypatch):
@@ -453,8 +501,8 @@ def test_all_false_preferences_are_accepted(monkeypatch):
     assert subscribers.update_calls[0][1]["$set"]["breaking_news"] is False
 
 
-def test_idempotent_repeat_is_safe_and_does_not_increment_version(monkeypatch):
-    client, _, subscribers, _ = _install(
+def test_replay_is_rejected_and_does_not_increment_version(monkeypatch):
+    client, _, subscribers, challenge_repository = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
     )
@@ -468,10 +516,15 @@ def test_idempotent_repeat_is_safe_and_does_not_increment_version(monkeypatch):
     first = client.put(UPDATE_PATH, json=payload)
     second = client.put(UPDATE_PATH, json=payload)
 
-    assert first.status_code == second.status_code == 200
-    assert len(subscribers.update_calls) == 2
-    for _, update in subscribers.update_calls:
-        assert "newsletter_token_version" not in update["$set"]
+    assert first.status_code == 200
+    assert second.status_code == 401
+    assert second.json() == {"detail": GENERIC_401}
+    assert len(subscribers.update_calls) == 1
+    assert len(challenge_repository.consume_calls) == 2
+    assert (
+        "newsletter_token_version"
+        not in subscribers.update_calls[0][1]["$set"]
+    )
 
 
 def test_conditional_update_conflict_returns_generic_409(monkeypatch):

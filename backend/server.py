@@ -5662,6 +5662,12 @@ def _create_newsletter_preference_challenge_repository():
     )
 
 
+def _create_newsletter_preference_transaction_client():
+    """Return the existing Motor client only when the gated route is called."""
+
+    return client
+
+
 def _raise_secure_newsletter_token_error(exc: Exception):
     if isinstance(exc, WrongNewsletterTokenPurposeError):
         raise HTTPException(
@@ -6056,38 +6062,131 @@ async def verify_secure_newsletter_preferences(
 async def update_secure_newsletter_preferences(
     request: SecureNewsletterPreferencesUpdateRequest,
 ):
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
     claims, _ = await _get_secure_newsletter_preference_subscriber(
         request.token
     )
     try:
-        result = await db.subscribers.update_one(
-            {
-                "newsletter_management_id": (
-                    claims.subscriber_management_id
-                ),
-                "newsletter_token_version": claims.token_version,
-                "active": True,
-            },
-            {
-                "$set": {
-                    "daily_brief": request.daily_brief,
-                    "weekly_roundup": request.weekly_roundup,
-                    "breaking_news": request.breaking_news,
-                    "preferences_updated_at": datetime.now(timezone.utc),
-                }
-            },
+        token_hash = hash_newsletter_challenge_token(request.token)
+        challenge_repository = (
+            _create_newsletter_preference_challenge_repository()
         )
+        transaction_client = (
+            _create_newsletter_preference_transaction_client()
+        )
+        session_context = await transaction_client.start_session()
+        async with session_context as session:
+            async with session.start_transaction():
+                subscriber = await db.subscribers.find_one(
+                    {
+                        "newsletter_management_id": (
+                            claims.subscriber_management_id
+                        )
+                    },
+                    {
+                        "_id": 0,
+                        "newsletter_management_id": 1,
+                        "newsletter_token_version": 1,
+                        "active": 1,
+                    },
+                    session=session,
+                )
+                if not subscriber:
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                stored_version = subscriber.get(
+                    "newsletter_token_version"
+                )
+                if (
+                    subscriber.get("newsletter_management_id")
+                    != claims.subscriber_management_id
+                    or not _is_valid_newsletter_token_version(stored_version)
+                    or stored_version != claims.token_version
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+                if subscriber.get("active") is not True:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=SECURE_NEWSLETTER_REACTIVATION_REQUIRED,
+                    )
+
+                now = datetime.now(timezone.utc)
+                challenge_result = await challenge_repository.consume(
+                    token_hash=token_hash,
+                    subscriber_management_id=(
+                        claims.subscriber_management_id
+                    ),
+                    expected_purpose=PREFERENCES_PURPOSE,
+                    now=now,
+                    session=session,
+                )
+                if (
+                    getattr(challenge_result, "reason", None)
+                    is ChallengeResultReason.STORAGE_ERROR
+                ):
+                    raise RuntimeError(
+                        "Newsletter challenge storage is unavailable."
+                    )
+                if (
+                    getattr(challenge_result, "succeeded", None) is not True
+                    or getattr(challenge_result, "reason", None)
+                    is not ChallengeResultReason.CONSUMED
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                result = await db.subscribers.update_one(
+                    {
+                        "newsletter_management_id": (
+                            claims.subscriber_management_id
+                        ),
+                        "newsletter_token_version": claims.token_version,
+                        "active": True,
+                    },
+                    {
+                        "$set": {
+                            "daily_brief": request.daily_brief,
+                            "weekly_roundup": request.weekly_roundup,
+                            "breaking_news": request.breaking_news,
+                            "preferences_updated_at": now,
+                        }
+                    },
+                    session=session,
+                )
+                matched_count = result.matched_count
+                if type(matched_count) is not int or matched_count < 0:
+                    raise RuntimeError(
+                        "Newsletter subscriber update result is invalid."
+                    )
+                if matched_count == 0:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=SECURE_NEWSLETTER_UPDATE_CONFLICT,
+                    )
+                if matched_count != 1:
+                    raise RuntimeError(
+                        "Newsletter subscriber update result is invalid."
+                    )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
         ) from exc
-
-    if result.matched_count != 1:
-        raise HTTPException(
-            status_code=409,
-            detail=SECURE_NEWSLETTER_UPDATE_CONFLICT,
-        )
 
     return NewsletterGenericResponse(
         success=True,

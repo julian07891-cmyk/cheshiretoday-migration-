@@ -652,16 +652,21 @@ class NewsletterChallengeRepository:
         self,
         *,
         token_hash: str,
+        subscriber_management_id: str,
         expected_purpose: str,
         now: datetime,
+        session=None,
     ) -> ChallengeResult:
         approved_hash = _validate_hash(token_hash, "Token hash")
+        approved_management_id = _canonical_uuid4(subscriber_management_id)
         approved_purpose = _validate_operation(expected_purpose)
         current = _require_utc(now, "Current time")
+        session_options = {"session": session} if session is not None else {}
         try:
             document = await self._collection.find_one_and_update(
                 {
                     "token_hash": approved_hash,
+                    "subscriber_management_id": approved_management_id,
                     "purpose": approved_purpose,
                     "delivery_status": DELIVERED_DELIVERY,
                     "consumed_at": None,
@@ -669,6 +674,7 @@ class NewsletterChallengeRepository:
                 },
                 {"$set": {"consumed_at": current}},
                 return_document=ReturnDocument.AFTER,
+                **session_options,
             )
         except Exception:
             return ChallengeResult(False, ChallengeResultReason.STORAGE_ERROR)
