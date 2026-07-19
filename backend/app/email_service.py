@@ -16,6 +16,8 @@ from typing import List, Optional, Dict, Tuple
 import logging
 import httpx
 
+from app.newsletter_management_email import NewsletterManagementEmailMessage
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,6 +97,58 @@ class EmailService:
         from_email = self.resend_from_email or self.from_email
         from_name = self.resend_from_name or self.from_name
         return f"{from_name} <{from_email}>" if from_name else from_email
+
+    def newsletter_management_transport_ready(self) -> bool:
+        """Return a value-safe readiness signal without performing I/O."""
+
+        return bool(
+            getattr(self, "resend_enabled", False)
+            and self.resend_api_key
+            and (self.resend_from_email or self.from_email)
+        )
+
+    def send_newsletter_management_transactional(
+        self,
+        message: NewsletterManagementEmailMessage,
+    ) -> bool:
+        """Attempt one untracked management-email delivery through Resend."""
+
+        if (
+            not isinstance(message, NewsletterManagementEmailMessage)
+            or not self.newsletter_management_transport_ready()
+        ):
+            return False
+
+        payload = {
+            "from": self._resend_from_header(),
+            "to": [message.recipient_email],
+            "subject": message.subject,
+            "html": message.html,
+            "text": message.text,
+        }
+        if self.reply_to:
+            payload["reply_to"] = self.reply_to
+
+        try:
+            response = httpx.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {self.resend_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+                timeout=30.0,
+            )
+        except httpx.TimeoutException:
+            raise TimeoutError(
+                "Newsletter management email delivery is indeterminate."
+            ) from None
+        except Exception:
+            raise RuntimeError(
+                "Newsletter management email transport failed."
+            ) from None
+
+        return 200 <= response.status_code < 300
 
     def _send_resend_batch(self, batch_messages: List[dict]) -> int:
         """Send personalized emails via Resend batch API in chunks."""
@@ -1638,5 +1692,4 @@ Cheshire Today Jobs Team
         return success_count
 
 email_service = EmailService()
-
 

@@ -1621,10 +1621,17 @@ def test_route_registration_and_unrelated_routes_are_preserved():
         assert routes.count(registration) == 1
 
 
-def test_no_runtime_activation_or_production_collaborators_exist():
+def test_runtime_collaborators_exist_but_activation_remains_disabled():
     source = open(server.__file__, encoding="utf-8").read()
     assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in source
-    assert "NewsletterChallengeRepository(" not in source
+    factory_marker = (
+        "def _create_newsletter_preference_challenge_repository():"
+    )
+    assert factory_marker in source
+    assert "NewsletterChallengeRepository(" not in source.split(
+        factory_marker,
+        1,
+    )[0]
     assert "create_index(" not in source[
         source.index("NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED"):
         source.index('@api_router.get("/newsletter/categories")')

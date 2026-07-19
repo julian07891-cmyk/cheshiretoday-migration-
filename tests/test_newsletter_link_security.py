@@ -1,4 +1,5 @@
 import asyncio
+import ast
 import hashlib
 import inspect
 import logging
@@ -1364,7 +1365,54 @@ def test_runtime_import_is_narrow_and_creates_no_repository_at_startup():
     root = Path(__file__).resolve().parents[1]
     server_source = (root / "backend/server.py").read_text()
     assert "newsletter_link_security" in server_source
-    assert "NewsletterChallengeRepository(" not in server_source
+
+    tree = ast.parse(server_source)
+    lazy_factory = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_create_newsletter_preference_challenge_repository"
+    )
+
+    def constructor_calls(node, name):
+        return [
+            call
+            for call in ast.walk(node)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Name)
+            and call.func.id == name
+        ]
+
+    assert len(constructor_calls(lazy_factory, "NewsletterChallengeRepository")) == 1
+    assert not any(
+        constructor_calls(node, "NewsletterChallengeRepository")
+        for node in tree.body
+        if node is not lazy_factory
+    )
+    assert not constructor_calls(lazy_factory, "AsyncIOMotorClient")
+    assert not any(
+        isinstance(node, ast.Attribute)
+        and node.attr in {"start_session", "create_index", "create_collection"}
+        for node in ast.walk(lazy_factory)
+    )
+
+    startup = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "startup_event"
+    )
+    startup_names = {
+        node.id
+        for node in ast.walk(startup)
+        if isinstance(node, ast.Name)
+    }
+    assert "_create_newsletter_preference_challenge_repository" not in startup_names
+    assert "_create_newsletter_rate_limit_repository" not in startup_names
+    assert "_create_newsletter_preference_transaction_client" not in startup_names
+    assert "NewsletterChallengeRepository" not in startup_names
+    assert "NewsletterRateLimitRepository" not in startup_names
+    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in server_source
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in server_source
     for relative in (
         "backend/app/email_service.py",
         "backend/scheduler/tasks.py",

@@ -56,8 +56,18 @@ from app.newsletter_token_service import (
     newsletter_token_service_from_environment,
 )
 from app.newsletter_link_security import (
+    CHALLENGE_COLLECTION_NAME,
+    RATE_LIMIT_COLLECTION_NAME,
     ChallengeResultReason,
+    NewsletterChallengeRepository,
+    NewsletterRateLimitRepository,
     hash_token as hash_newsletter_challenge_token,
+)
+from app.newsletter_management_email import (
+    CANONICAL_SITE_ORIGIN,
+    NewsletterManagementEmailHelper,
+    NewsletterManagementEmailPurpose,
+    NewsletterManagementEmailRequest,
 )
 from app.perplexity_service import perplexity_service, ai_budget_available
 
@@ -5277,27 +5287,131 @@ class NewsletterReactivationRequestLinkCollaborators:
 
 
 def _create_newsletter_preferences_request_link_collaborators(
-    _request: Request,
+    request: Request,
 ):
-    """Fail closed until a separately reviewed runtime adapter is provided."""
-
-    raise RuntimeError("Newsletter request-link collaborators are unavailable.")
+    return _create_newsletter_request_link_collaborators(
+        request,
+        NewsletterPreferencesRequestLinkCollaborators,
+    )
 
 
 def _create_newsletter_unsubscribe_request_link_collaborators(
-    _request: Request,
+    request: Request,
 ):
-    """Fail closed until a separately reviewed runtime adapter is provided."""
-
-    raise RuntimeError("Newsletter request-link collaborators are unavailable.")
+    return _create_newsletter_request_link_collaborators(
+        request,
+        NewsletterUnsubscribeRequestLinkCollaborators,
+    )
 
 
 def _create_newsletter_reactivation_request_link_collaborators(
-    _request: Request,
+    request: Request,
 ):
-    """Fail closed until a separately reviewed runtime adapter is provided."""
+    return _create_newsletter_request_link_collaborators(
+        request,
+        NewsletterReactivationRequestLinkCollaborators,
+    )
 
-    raise RuntimeError("Newsletter request-link collaborators are unavailable.")
+
+class _NewsletterManagementEmailTransport:
+    """Narrow adapter over the existing application email-service owner."""
+
+    def __init__(self, service):
+        self._service = service
+
+    def send_transactional(self, message):
+        return self._service.send_newsletter_management_transactional(message)
+
+
+def _create_newsletter_rate_limit_repository():
+    """Build a lazy repository over the existing application database."""
+
+    return NewsletterRateLimitRepository(db[RATE_LIMIT_COLLECTION_NAME])
+
+
+def _create_newsletter_preference_challenge_repository():
+    """Build a lazy repository over the existing application database."""
+
+    return NewsletterChallengeRepository(db[CHALLENGE_COLLECTION_NAME])
+
+
+def _create_newsletter_management_email_helper():
+    """Build the untracked helper without performing a delivery."""
+
+    return NewsletterManagementEmailHelper(
+        transport=_NewsletterManagementEmailTransport(email_service),
+        site_origin=CANONICAL_SITE_ORIGIN,
+    )
+
+
+def _newsletter_runtime_collaborator_readiness():
+    """Return privacy-safe booleans without environment or network access."""
+
+    return {
+        "database_bound": db is not None,
+        "transaction_client_bound": client is not None,
+        "email_transport_configured": bool(
+            email_service.newsletter_management_transport_ready()
+        ),
+        "request_links_enabled": (
+            NEWSLETTER_REQUEST_LINKS_ENABLED is True
+        ),
+        "challenge_enforcement_enabled": (
+            NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is True
+        ),
+    }
+
+
+def _create_newsletter_request_link_collaborators(
+    request: Request,
+    collaborator_type,
+):
+    """Create one purpose-neutral set of lazy production collaborators."""
+
+    source_ip = getattr(getattr(request, "client", None), "host", None)
+    if not isinstance(source_ip, str) or not source_ip:
+        raise RuntimeError("Newsletter request source is unavailable.")
+
+    rate_limit_repository = _create_newsletter_rate_limit_repository()
+    challenge_repository = (
+        _create_newsletter_preference_challenge_repository()
+    )
+    token_service = _create_secure_newsletter_token_service()
+    email_helper = _create_newsletter_management_email_helper()
+
+    async def lookup_subscriber(normalized_email, projection):
+        return await db.subscribers.find_one(
+            {"email": normalized_email},
+            projection,
+        )
+
+    def send_management_email(
+        *,
+        recipient_email,
+        purpose,
+        token,
+        expires_at,
+        now,
+    ):
+        return email_helper.send(
+            NewsletterManagementEmailRequest(
+                recipient_email=recipient_email,
+                purpose=NewsletterManagementEmailPurpose(purpose),
+                token=token,
+                expires_at=expires_at,
+            ),
+            now=now,
+        )
+
+    return collaborator_type(
+        rate_limit_repository=rate_limit_repository,
+        challenge_repository=challenge_repository,
+        lookup_subscriber=lookup_subscriber,
+        issue_token=token_service.issue_newsletter_token,
+        send_management_email=send_management_email,
+        source_ip=source_ip,
+        now=datetime.now(timezone.utc),
+    )
 
 
 def _valid_newsletter_management_id(value) -> bool:
@@ -5658,14 +5772,6 @@ def _create_secure_newsletter_token_service():
             status_code=503,
             detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
         ) from exc
-
-
-def _create_newsletter_preference_challenge_repository():
-    """Fail closed until a separately reviewed runtime adapter is provided."""
-
-    raise RuntimeError(
-        "Newsletter preference challenge repository is unavailable."
-    )
 
 
 def _create_newsletter_preference_transaction_client():

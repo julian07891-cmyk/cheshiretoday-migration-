@@ -22697,3 +22697,9 @@ Phase 1 Stage 4E6C added transactional, subscriber-bound challenge consumption f
 ## 19 July 2026 — Newsletter ownership Stage 4E6D reactivation challenge consumption
 
 Phase 1 Stage 4E6D added transactional, subscriber-bound challenge consumption for secure reactivation behind the unchanged literal-false enforcement gate. Only literal inactive subscribers are eligible; challenge consumption, explicit preference selection, reactivation audit fields and a single token-version increment occur with the subscriber update in one transaction while historical unsubscribe fields remain intact, and replay is rejected. Known transaction failures roll back challenge and subscriber changes, while indeterminate commit outcomes fail closed without claiming rollback certainty. Production remains HTTP `503`; Stage 4E6A–C, request-link and legacy routes are unchanged, and no migration, index, secret, email, frontend, collection creation or production operation occurred. Isolated tests were expanded. Stage 4E6 and Phase 1 are not complete.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4F1 runtime collaborators
+
+Phase 1 Stage 4F1 added lazy production collaborator wiring over the existing application database, Motor client and email-service owner: challenge and rate-limit repositories select only their reviewed collections, transactions reuse the existing client, and the management-email adapter performs one untracked Resend attempt with no retry or SMTP fallback. Privacy-safe readiness booleans perform no I/O, no collection or index is created automatically, and both readiness gates remain literal `False`, so startup and all public secure-route behavior remain fail-closed without the signing secret. No migration, index, secret, email, frontend, legacy-route or production operation occurred; isolated tests were added and obsolete isolation assertions were updated. Activation readiness is not complete.

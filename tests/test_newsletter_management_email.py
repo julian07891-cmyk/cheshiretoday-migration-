@@ -570,22 +570,28 @@ def test_module_import_is_runtime_isolated(monkeypatch):
     assert reloaded
 
 
-def test_no_runtime_module_imports_the_isolated_helper():
+def test_stage_4f1_runtime_imports_are_narrow():
     repository = Path(__file__).resolve().parents[1]
+    importers = []
     for path in (repository / "backend").rglob("*.py"):
         if path.name == "newsletter_management_email.py":
             continue
-        assert "newsletter_management_email" not in path.read_text(
-            errors="ignore"
-        ), path
+        if "newsletter_management_email" in path.read_text(errors="ignore"):
+            importers.append(path.relative_to(repository).as_posix())
+    assert importers == [
+        "backend/server.py",
+        "backend/app/email_service.py",
+    ]
 
 
-def test_existing_runtime_files_have_no_stage_4e2_changes():
+def test_stage_4f1_runtime_wiring_remains_gated_and_lazy():
     repository = Path(__file__).resolve().parents[1]
     server = (repository / "backend/server.py").read_text()
     email_service = (repository / "backend/app/email_service.py").read_text()
-    assert "newsletter_management_email" not in server
-    assert "newsletter_management_email" not in email_service
+    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in server
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in server
+    assert "def _create_newsletter_management_email_helper(" in server
+    assert "def send_newsletter_management_transactional(" in email_service
 
 
 def test_transport_protocol_has_only_the_frozen_send_contract():
