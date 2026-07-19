@@ -279,7 +279,7 @@ class FailOnAccess:
     ("method", "path", "_endpoint", "payload", "_request_model", "_response_model"),
     SECURE_ROUTES,
 )
-def test_dormant_routes_return_only_generic_503_without_business_access(
+def test_secure_routes_fail_closed_without_secret_or_business_access(
     monkeypatch,
     method,
     path,

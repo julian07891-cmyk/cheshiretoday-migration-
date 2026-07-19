@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Body
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Body, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
@@ -50,6 +50,7 @@ from app.newsletter_token_service import (
     NewsletterTokenConfigurationError,
     NewsletterTokenVersionMismatchError,
     PREFERENCES_PURPOSE,
+    UNSUBSCRIBE_PURPOSE,
     WrongNewsletterTokenPurposeError,
     newsletter_token_service_from_environment,
 )
@@ -5146,6 +5147,15 @@ SECURE_NEWSLETTER_REACTIVATION_REQUIRED = (
 SECURE_NEWSLETTER_UPDATE_CONFLICT = (
     "Your email preferences could not be updated. Please try again."
 )
+SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT = (
+    "Your unsubscribe request could not be processed. Please try again."
+)
+SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID = (
+    "The one-click unsubscribe request is invalid."
+)
+SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS = (
+    "Your unsubscribe request has been processed."
+)
 SECURE_NEWSLETTER_MANAGEMENT_503 = {
     503: {
         "description": SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
@@ -5251,6 +5261,130 @@ async def _get_secure_newsletter_preference_subscriber(token: str):
     return claims, subscriber
 
 
+async def _process_secure_newsletter_unsubscribe(
+    token: str,
+    token_service=None,
+):
+    if token_service is None:
+        token_service = _create_secure_newsletter_token_service()
+    try:
+        claims = token_service.verify_newsletter_token(
+            token,
+            expected_purpose=UNSUBSCRIBE_PURPOSE,
+        )
+    except (
+        ExpiredNewsletterTokenError,
+        WrongNewsletterTokenPurposeError,
+        NewsletterTokenVersionMismatchError,
+        InvalidNewsletterTokenError,
+    ) as exc:
+        _raise_secure_newsletter_token_error(exc)
+
+    subscriber_query = {
+        "newsletter_management_id": claims.subscriber_management_id,
+    }
+    subscriber_projection = {
+        "_id": 0,
+        "newsletter_token_version": 1,
+        "active": 1,
+    }
+    try:
+        subscriber = await db.subscribers.find_one(
+            subscriber_query,
+            subscriber_projection,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if not subscriber:
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
+    stored_version = subscriber.get("newsletter_token_version")
+    if (
+        not _is_valid_newsletter_token_version(stored_version)
+        or stored_version != claims.token_version
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
+    subscriber_active = subscriber.get("active")
+    if subscriber_active is False:
+        return NewsletterGenericResponse(
+            success=True,
+            message=SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS,
+        )
+    if subscriber_active is not True:
+        raise HTTPException(
+            status_code=409,
+            detail=SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT,
+        )
+
+    try:
+        result = await db.subscribers.update_one(
+            {
+                "newsletter_management_id": (
+                    claims.subscriber_management_id
+                ),
+                "newsletter_token_version": claims.token_version,
+                "active": True,
+            },
+            {
+                "$set": {
+                    "active": False,
+                    "daily_brief": False,
+                    "weekly_roundup": False,
+                    "breaking_news": False,
+                    "unsubscribed_at": datetime.now(timezone.utc),
+                    "unsubscribe_method": "secure_token",
+                }
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if result.matched_count != 1:
+        try:
+            current_subscriber = await db.subscribers.find_one(
+                subscriber_query,
+                subscriber_projection,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+            ) from exc
+
+        if not (
+            current_subscriber
+            and _is_valid_newsletter_token_version(
+                current_subscriber.get("newsletter_token_version")
+            )
+            and current_subscriber.get("newsletter_token_version")
+            == claims.token_version
+            and current_subscriber.get("active") is False
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT,
+            )
+
+    return NewsletterGenericResponse(
+        success=True,
+        message=SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS,
+    )
+
+
 @api_router.post(
     "/newsletter/preferences/verify",
     response_model=NewsletterSecurePreferencesResponse,
@@ -5342,11 +5476,7 @@ async def request_secure_newsletter_preferences_link(
 async def confirm_secure_newsletter_unsubscribe(
     request: NewsletterTokenRequest,
 ):
-    # Stage 4A contract only: unsubscribe mutation is intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
-    )
+    return await _process_secure_newsletter_unsubscribe(request.token)
 
 
 @api_router.post(
@@ -5354,11 +5484,48 @@ async def confirm_secure_newsletter_unsubscribe(
     response_model=NewsletterGenericResponse,
     responses=SECURE_NEWSLETTER_MANAGEMENT_503,
 )
-async def one_click_secure_newsletter_unsubscribe(request: Request):
-    # Stage 4A contract only: RFC form parsing and unsubscribe are intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+async def one_click_secure_newsletter_unsubscribe(
+    request: Request,
+    token: Optional[str] = Query(default=None),
+):
+    token_service = _create_secure_newsletter_token_service()
+
+    if not token or not token.strip() or len(token.strip()) > 4096:
+        raise HTTPException(
+            status_code=400,
+            detail=SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID,
+        )
+
+    content_type = request.headers.get("content-type", "").lower()
+    if not (
+        content_type.startswith("application/x-www-form-urlencoded")
+        or content_type.startswith("multipart/form-data")
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID,
+        )
+
+    try:
+        form = await request.form()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID,
+        ) from exc
+
+    if (
+        list(form.multi_items())
+        != [("List-Unsubscribe", "One-Click")]
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID,
+        )
+
+    return await _process_secure_newsletter_unsubscribe(
+        token.strip(),
+        token_service=token_service,
     )
 
 
