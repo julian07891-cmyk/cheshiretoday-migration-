@@ -5963,6 +5963,12 @@ async def _process_secure_newsletter_unsubscribe(
 async def _process_secure_newsletter_reactivation(
     request: NewsletterReactivationConfirmRequest,
 ):
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
     token_service = _create_secure_newsletter_token_service()
     try:
         claims = token_service.verify_newsletter_token(
@@ -5982,6 +5988,7 @@ async def _process_secure_newsletter_reactivation(
     }
     subscriber_projection = {
         "_id": 0,
+        "newsletter_management_id": 1,
         "newsletter_token_version": 1,
         "active": 1,
     }
@@ -6004,7 +6011,9 @@ async def _process_secure_newsletter_reactivation(
 
     stored_version = subscriber.get("newsletter_token_version")
     if (
-        not _is_valid_newsletter_token_version(stored_version)
+        subscriber.get("newsletter_management_id")
+        != claims.subscriber_management_id
+        or not _is_valid_newsletter_token_version(stored_version)
         or stored_version != claims.token_version
     ):
         raise HTTPException(
@@ -6018,50 +6027,120 @@ async def _process_secure_newsletter_reactivation(
             detail=SECURE_NEWSLETTER_REACTIVATION_CONFLICT,
         )
 
-    now = datetime.now(timezone.utc)
     try:
-        result = await db.subscribers.update_one(
-            {
-                "newsletter_management_id": (
-                    claims.subscriber_management_id
-                ),
-                "newsletter_token_version": claims.token_version,
-                "active": False,
-            },
-            {
-                "$set": {
-                    "active": True,
-                    "daily_brief": request.daily_brief,
-                    "weekly_roundup": request.weekly_roundup,
-                    "breaking_news": request.breaking_news,
-                    "reactivated_at": now,
-                    "reactivation_method": "verified_email",
-                    "preferences_updated_at": now,
-                    "newsletter_token_version": claims.token_version + 1,
-                }
-            },
+        token_hash = hash_newsletter_challenge_token(request.token)
+        challenge_repository = (
+            _create_newsletter_preference_challenge_repository()
         )
+        transaction_client = (
+            _create_newsletter_preference_transaction_client()
+        )
+        session_context = await transaction_client.start_session()
+        async with session_context as session:
+            async with session.start_transaction():
+                current_subscriber = await db.subscribers.find_one(
+                    subscriber_query,
+                    subscriber_projection,
+                    session=session,
+                )
+                if not current_subscriber:
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                current_version = current_subscriber.get(
+                    "newsletter_token_version"
+                )
+                if (
+                    current_subscriber.get("newsletter_management_id")
+                    != claims.subscriber_management_id
+                    or not _is_valid_newsletter_token_version(current_version)
+                    or current_version != claims.token_version
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                if current_subscriber.get("active") is not False:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=SECURE_NEWSLETTER_REACTIVATION_CONFLICT,
+                    )
+
+                now = datetime.now(timezone.utc)
+                challenge_result = await challenge_repository.consume(
+                    token_hash=token_hash,
+                    subscriber_management_id=(
+                        claims.subscriber_management_id
+                    ),
+                    expected_purpose=REACTIVATE_PURPOSE,
+                    now=now,
+                    session=session,
+                )
+                if (
+                    getattr(challenge_result, "reason", None)
+                    is ChallengeResultReason.STORAGE_ERROR
+                ):
+                    raise RuntimeError(
+                        "Newsletter challenge storage is unavailable."
+                    )
+                if (
+                    getattr(challenge_result, "succeeded", None) is not True
+                    or getattr(challenge_result, "reason", None)
+                    is not ChallengeResultReason.CONSUMED
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                result = await db.subscribers.update_one(
+                    {
+                        "newsletter_management_id": (
+                            claims.subscriber_management_id
+                        ),
+                        "newsletter_token_version": claims.token_version,
+                        "active": False,
+                    },
+                    {
+                        "$set": {
+                            "active": True,
+                            "daily_brief": request.daily_brief,
+                            "weekly_roundup": request.weekly_roundup,
+                            "breaking_news": request.breaking_news,
+                            "reactivated_at": now,
+                            "reactivation_method": "verified_email",
+                            "preferences_updated_at": now,
+                            "newsletter_token_version": (
+                                claims.token_version + 1
+                            ),
+                        }
+                    },
+                    session=session,
+                )
+                matched_count = result.matched_count
+                if type(matched_count) is not int or matched_count < 0:
+                    raise RuntimeError(
+                        "Newsletter subscriber update result is invalid."
+                    )
+                if matched_count == 0:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=SECURE_NEWSLETTER_REACTIVATION_CONFLICT,
+                    )
+                if matched_count != 1:
+                    raise RuntimeError(
+                        "Newsletter subscriber update result is invalid."
+                    )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
         ) from exc
-
-    if result.matched_count != 1:
-        try:
-            await db.subscribers.find_one(
-                subscriber_query,
-                subscriber_projection,
-            )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
-            ) from exc
-        raise HTTPException(
-            status_code=409,
-            detail=SECURE_NEWSLETTER_REACTIVATION_CONFLICT,
-        )
 
     return NewsletterGenericResponse(
         success=True,
@@ -6439,6 +6518,11 @@ async def request_secure_newsletter_reactivation_link(
 async def confirm_secure_newsletter_reactivation(
     request: NewsletterReactivationConfirmRequest,
 ):
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
     return await _process_secure_newsletter_reactivation(request)
 
 

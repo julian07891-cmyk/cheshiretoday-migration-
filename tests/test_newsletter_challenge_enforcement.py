@@ -25,6 +25,7 @@ VERIFY_PATH = "/api/newsletter/preferences/verify"
 UPDATE_PATH = "/api/newsletter/preferences/secure"
 UNSUBSCRIBE_CONFIRM_PATH = "/api/newsletter/unsubscribe/confirm"
 UNSUBSCRIBE_ONE_CLICK_PATH = "/api/newsletter/unsubscribe/one-click"
+REACTIVATE_CONFIRM_PATH = "/api/newsletter/reactivate/confirm"
 TOKEN = "offline-stage-4e6a-token"
 TOKEN_HASH = hashlib.sha256(TOKEN.encode()).hexdigest()
 MANAGEMENT_ID = "a40ad20d-2439-4b5a-b4ce-f256c79a3daf"
@@ -157,8 +158,8 @@ def _install_enabled(monkeypatch, *, challenge_result=None, challenge_error=None
 
 
 class TransactionalState:
-    def __init__(self):
-        self.subscriber = {
+    def __init__(self, subscriber=None):
+        self.subscriber = deepcopy(subscriber) if subscriber is not None else {
             "newsletter_management_id": MANAGEMENT_ID,
             "newsletter_token_version": 3,
             "active": True,
@@ -435,9 +436,10 @@ def _install_transactional_update(
     commit_error=False,
     indeterminate_commit=False,
     transaction_subscriber=None,
+    initial_subscriber=None,
 ):
     order = []
-    state = TransactionalState()
+    state = TransactionalState(initial_subscriber)
     token_service = OrderedTokenService(order)
     subscribers = TransactionalSubscribers(
         state,
@@ -1225,6 +1227,252 @@ def test_unavailable_transaction_client_factory_is_generic_503(monkeypatch):
     assert state.subscriber == before
     assert subscribers.update_calls == []
     assert "private transaction factory detail" not in response.text
+
+
+def _reactivation_subscriber():
+    return {
+        "newsletter_management_id": MANAGEMENT_ID,
+        "newsletter_token_version": 3,
+        "active": False,
+        "daily_brief": False,
+        "weekly_roundup": False,
+        "breaking_news": False,
+        "unsubscribed_at": "historical-unsubscribe-time",
+        "unsubscribe_method": "secure_token",
+    }
+
+
+def _reactivation_payload():
+    return {
+        "token": TOKEN,
+        "daily_brief": False,
+        "weekly_roundup": True,
+        "breaking_news": False,
+    }
+
+
+def test_reactivation_gate_precedes_session_and_every_collaborator(
+    monkeypatch,
+):
+    class FailOnAccess:
+        def __getattr__(self, name):
+            raise AssertionError(f"unexpected access: {name}")
+
+    monkeypatch.setattr(
+        server,
+        "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
+        False,
+    )
+    monkeypatch.setattr(
+        server,
+        "newsletter_token_service_from_environment",
+        lambda: (_ for _ in ()).throw(AssertionError("token service called")),
+    )
+    monkeypatch.setattr(
+        server,
+        "hash_newsletter_challenge_token",
+        lambda _token: (_ for _ in ()).throw(AssertionError("hash called")),
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_challenge_repository",
+        lambda: (_ for _ in ()).throw(AssertionError("challenge called")),
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_transaction_client",
+        lambda: (_ for _ in ()).throw(AssertionError("session called")),
+    )
+    monkeypatch.setattr(server, "db", FailOnAccess())
+
+    response = TestClient(server.app).post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
+
+
+def test_transactional_reactivation_uses_same_session_and_increments_once(
+    monkeypatch,
+):
+    (
+        client,
+        order,
+        state,
+        subscribers,
+        challenge_repository,
+        transaction_client,
+    ) = _install_transactional_update(
+        monkeypatch,
+        initial_subscriber=_reactivation_subscriber(),
+    )
+
+    response = client.post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Your subscription preferences have been confirmed.",
+    }
+    session = transaction_client.session
+    assert len(subscribers.find_calls) == 2
+    assert subscribers.find_calls[0][2] == {}
+    assert subscribers.find_calls[1][2] == {"session": session}
+    consume = challenge_repository.consume_calls[0]
+    assert consume["token_hash"] == TOKEN_HASH
+    assert consume["subscriber_management_id"] == MANAGEMENT_ID
+    assert consume["expected_purpose"] == server.REACTIVATE_PURPOSE
+    assert consume["session"] is session
+    query, update, kwargs = subscribers.update_calls[0]
+    assert kwargs == {"session": session}
+    assert query == {
+        "newsletter_management_id": MANAGEMENT_ID,
+        "newsletter_token_version": 3,
+        "active": False,
+    }
+    assert update["$set"]["daily_brief"] is False
+    assert update["$set"]["weekly_roundup"] is True
+    assert update["$set"]["breaking_news"] is False
+    assert update["$set"]["newsletter_token_version"] == 4
+    assert state.subscriber["unsubscribed_at"] == "historical-unsubscribe-time"
+    assert state.subscriber["unsubscribe_method"] == "secure_token"
+    assert transaction_client.session.transaction.commit_attempts == 1
+    assert [step[0] for step in order].count("transaction_commit") == 1
+
+
+def test_reactivation_conflict_rolls_back_challenge_and_subscriber(
+    monkeypatch,
+):
+    (
+        client,
+        order,
+        state,
+        subscribers,
+        challenge_repository,
+        transaction_client,
+    ) = _install_transactional_update(
+        monkeypatch,
+        matched_count=0,
+        initial_subscriber=_reactivation_subscriber(),
+    )
+
+    response = client.post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+
+    assert response.status_code == 409
+    assert state.challenge_consumed is False
+    assert state.subscriber == _reactivation_subscriber()
+    assert challenge_repository.successful_consumptions == 1
+    assert len(subscribers.update_calls) == 1
+    assert transaction_client.session.transaction.commit_attempts == 0
+
+
+def test_malformed_reactivation_result_rolls_back_known_changes(monkeypatch):
+    (
+        client,
+        order,
+        state,
+        _,
+        challenge_repository,
+        transaction_client,
+    ) = _install_transactional_update(
+        monkeypatch,
+        update_result=SimpleNamespace(matched_count=True),
+        initial_subscriber=_reactivation_subscriber(),
+    )
+
+    response = client.post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
+    assert state.challenge_consumed is False
+    assert state.subscriber == _reactivation_subscriber()
+    assert challenge_repository.successful_consumptions == 1
+    assert transaction_client.session.transaction.commit_attempts == 0
+
+
+@pytest.mark.parametrize(
+    ("failure", "known_rollback"),
+    (("commit", True), ("indeterminate", False)),
+)
+def test_reactivation_commit_failures_are_generic_without_retry(
+    monkeypatch,
+    failure,
+    known_rollback,
+):
+    (
+        client,
+        order,
+        state,
+        subscribers,
+        challenge_repository,
+        transaction_client,
+    ) = _install_transactional_update(
+        monkeypatch,
+        commit_error=failure == "commit",
+        indeterminate_commit=failure == "indeterminate",
+        initial_subscriber=_reactivation_subscriber(),
+    )
+
+    response = client.post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
+    assert len(challenge_repository.consume_calls) == 1
+    assert len(subscribers.update_calls) == 1
+    assert transaction_client.session.transaction.commit_attempts == 1
+    assert [step[0] for step in order].count("session_create") == 1
+    if known_rollback:
+        assert state.challenge_consumed is False
+        assert state.subscriber == _reactivation_subscriber()
+
+
+def test_reactivation_replay_has_no_second_consume_update_or_commit(
+    monkeypatch,
+):
+    (
+        client,
+        order,
+        state,
+        subscribers,
+        challenge_repository,
+        transaction_client,
+    ) = _install_transactional_update(
+        monkeypatch,
+        initial_subscriber=_reactivation_subscriber(),
+    )
+
+    first = client.post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+    replay = client.post(
+        REACTIVATE_CONFIRM_PATH,
+        json=_reactivation_payload(),
+    )
+
+    assert first.status_code == 200
+    assert replay.status_code == 401
+    assert replay.json() == {"detail": GENERIC_401}
+    assert state.subscriber["newsletter_token_version"] == 4
+    assert challenge_repository.successful_consumptions == 1
+    assert len(challenge_repository.consume_calls) == 1
+    assert len(subscribers.update_calls) == 1
+    assert [step[0] for step in order].count("session_create") == 1
+    assert transaction_client.session.transaction.commit_attempts == 1
 
 
 def test_valid_challenge_backed_preference_verification_is_read_only(
