@@ -22673,3 +22673,9 @@ Phase 1 Stage 4E4 implemented only unsubscribe request-link orchestration behind
 ## 19 July 2026 — Newsletter ownership Stage 4E5 reactivation request-link
 
 Phase 1 Stage 4E5 implemented only reactivation request-link orchestration behind the same hard-disabled readiness gate. The future non-enumerating path uses IP-first then email rate limiting, permits only subscribers whose active state is literally `False`, issues only `reactivate` tokens with the `reactivation` profile, creates a pending challenge, attempts one direct untracked management-email delivery and conditionally marks the challenge delivered or failed. All enabled-path outcomes return the same generic HTTP `202`, while production remains HTTP `503` with the literal gate set to `False`; Stage 4B–4E4 and legacy routes are unchanged. No production endpoint, email, token, subscriber, challenge, migration, collection, index or configuration operation occurred. Newsletter ownership security is not yet complete.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4E6A preference challenge read
+
+Phase 1 Stage 4E6A added subscriber-bound preference-challenge eligibility and optional session passthrough for future transactions, plus a separate literal-false confirmation-enforcement gate. When enabled only in isolated tests, preference verification requires a delivered, unexpired, unconsumed matching `preferences` challenge and remains read-only; production returns the existing generic HTTP `503` before collaborator access while the gate is false. Preference update, unsubscribe, reactivation, request-link and legacy routes remain unchanged. No collection or index was created, no migration, secret, email, frontend or production operation occurred, and isolated tests were added. Stage 4E6 is not complete.

@@ -178,6 +178,10 @@ class FakeChallengeCollection:
         self.fail = False
         self.index_calls = 0
         self.lock = asyncio.Lock()
+        self.last_find_query = None
+        self.last_find_projection = None
+        self.last_find_session = None
+        self.last_find_options = None
 
     async def insert_one(self, document):
         if self.fail:
@@ -198,9 +202,13 @@ class FakeChallengeCollection:
             document.update(deepcopy(update["$set"]))
             return Result(1)
 
-    async def find_one(self, query, projection=None):
+    async def find_one(self, query, projection=None, **kwargs):
         if self.fail:
             raise RuntimeError("raw find payload should never escape")
+        self.last_find_query = deepcopy(query)
+        self.last_find_projection = deepcopy(projection)
+        self.last_find_session = kwargs.get("session")
+        self.last_find_options = dict(kwargs)
         document = self.documents.get(query["token_hash"])
         if not document or not matches(document, query):
             return None
@@ -1033,7 +1041,9 @@ async def test_delivered_preference_challenge_is_read_without_consumption():
         status=security.DELIVERED_DELIVERY
     )
     result = await repository.read_eligible_preference(
-        token_hash=TOKEN_HASH, now=NOW + timedelta(minutes=1)
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=NOW + timedelta(minutes=1),
     )
     assert result.reason is security.ChallengeResultReason.ELIGIBLE
     assert collection.documents[TOKEN_HASH]["consumed_at"] is None
@@ -1052,9 +1062,133 @@ async def test_delivered_preference_challenge_is_read_without_consumption():
 async def test_ineligible_preference_challenges_rejected(status, consumed, now):
     repository, _ = challenge_repository(status=status, consumed_at=consumed)
     result = await repository.read_eligible_preference(
-        token_hash=TOKEN_HASH, now=now
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=now,
     )
     assert result.reason is security.ChallengeResultReason.NOT_ELIGIBLE
+
+
+@async_test
+async def test_preference_challenge_is_bound_to_subscriber_management_id():
+    repository, _ = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    result = await repository.read_eligible_preference(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=str(uuid4()),
+        now=NOW + timedelta(minutes=1),
+    )
+    assert result.reason is security.ChallengeResultReason.NOT_ELIGIBLE
+
+
+@async_test
+async def test_missing_or_wrong_purpose_preference_challenge_is_ineligible():
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    collection.documents[TOKEN_HASH]["purpose"] = security.UNSUBSCRIBE_OPERATION
+    wrong_purpose = await repository.read_eligible_preference(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=NOW + timedelta(minutes=1),
+    )
+    del collection.documents[TOKEN_HASH]
+    missing = await repository.read_eligible_preference(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=NOW + timedelta(minutes=1),
+    )
+    assert wrong_purpose.reason is security.ChallengeResultReason.NOT_ELIGIBLE
+    assert missing.reason is security.ChallengeResultReason.NOT_ELIGIBLE
+
+
+@async_test
+async def test_preference_challenge_read_storage_failure_is_safe():
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    collection.fail = True
+    result = await repository.read_eligible_preference(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=NOW + timedelta(minutes=1),
+    )
+    assert result == security.ChallengeResult(
+        False,
+        security.ChallengeResultReason.STORAGE_ERROR,
+    )
+
+
+@pytest.mark.parametrize(
+    "management_id",
+    (
+        "not-a-uuid",
+        MANAGEMENT_ID.upper(),
+        "2551c92b-a7a4-11ec-b909-0242ac120002",
+    ),
+)
+@async_test
+async def test_preference_challenge_rejects_invalid_management_id(
+    management_id,
+):
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    with pytest.raises(security.NewsletterLinkValidationError):
+        await repository.read_eligible_preference(
+            token_hash=TOKEN_HASH,
+            subscriber_management_id=management_id,
+            now=NOW + timedelta(minutes=1),
+        )
+    assert collection.last_find_query is None
+
+
+@async_test
+async def test_preference_challenge_filter_and_optional_session_contract():
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    session = object()
+    result = await repository.read_eligible_preference(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=NOW + timedelta(minutes=1),
+        session=session,
+    )
+    assert result == security.ChallengeResult(
+        True,
+        security.ChallengeResultReason.ELIGIBLE,
+    )
+    assert collection.last_find_query == {
+        "token_hash": TOKEN_HASH,
+        "subscriber_management_id": MANAGEMENT_ID,
+        "purpose": security.PREFERENCES_OPERATION,
+        "delivery_status": security.DELIVERED_DELIVERY,
+        "consumed_at": None,
+        "expires_at": {"$gt": NOW + timedelta(minutes=1)},
+    }
+    assert collection.last_find_projection == {"_id": 1}
+    assert collection.last_find_session is session
+    assert not hasattr(result, "_id")
+
+
+@async_test
+async def test_preference_challenge_omits_session_by_default():
+    repository, collection = challenge_repository(
+        status=security.DELIVERED_DELIVERY
+    )
+    result = await repository.read_eligible_preference(
+        token_hash=TOKEN_HASH,
+        subscriber_management_id=MANAGEMENT_ID,
+        now=NOW + timedelta(minutes=1),
+    )
+    assert result.succeeded
+    assert collection.last_find_session is None
+    assert collection.last_find_options == {}
+    assert "start_session" not in inspect.getsource(
+        security.NewsletterChallengeRepository
+    )
 
 
 @async_test
@@ -1130,10 +1264,12 @@ def test_module_has_no_environment_database_email_or_runtime_imports():
     assert "logging." not in source
 
 
-def test_runtime_modules_do_not_import_isolated_module():
+def test_runtime_import_is_narrow_and_creates_no_repository_at_startup():
     root = Path(__file__).resolve().parents[1]
+    server_source = (root / "backend/server.py").read_text()
+    assert "newsletter_link_security" in server_source
+    assert "NewsletterChallengeRepository(" not in server_source
     for relative in (
-        "backend/server.py",
         "backend/app/email_service.py",
         "backend/scheduler/tasks.py",
         "backend/scripts/migrate_newsletter_management_ids.py",

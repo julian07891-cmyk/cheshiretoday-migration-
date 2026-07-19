@@ -1,8 +1,8 @@
-"""Isolated storage contracts for future secure newsletter link workflows.
+"""Storage contracts and privacy-safe helpers for secure newsletter links.
 
-This module is deliberately unused by the running application.  It owns no
-database client, reads no environment variables, sends no email, and creates no
-indexes.  Callers must inject MongoDB-like collections explicitly.
+This module owns no database client, reads no environment variables, sends no
+email, and creates no indexes. Callers must inject MongoDB-like collections
+explicitly.
 """
 
 from __future__ import annotations
@@ -621,20 +621,26 @@ class NewsletterChallengeRepository:
         self,
         *,
         token_hash: str,
+        subscriber_management_id: str,
         now: datetime,
+        session=None,
     ) -> ChallengeResult:
         approved_hash = _validate_hash(token_hash, "Token hash")
+        approved_management_id = _canonical_uuid4(subscriber_management_id)
         current = _require_utc(now, "Current time")
+        session_options = {"session": session} if session is not None else {}
         try:
             document = await self._collection.find_one(
                 {
                     "token_hash": approved_hash,
+                    "subscriber_management_id": approved_management_id,
                     "purpose": PREFERENCES_OPERATION,
                     "delivery_status": DELIVERED_DELIVERY,
                     "consumed_at": None,
                     "expires_at": {"$gt": current},
                 },
                 {"_id": 1},
+                **session_options,
             )
         except Exception:
             return ChallengeResult(False, ChallengeResultReason.STORAGE_ERROR)

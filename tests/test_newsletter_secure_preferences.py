@@ -107,6 +107,29 @@ class FakeSubscriberCollection:
         return SimpleNamespace(matched_count=self.matched_count)
 
 
+class FakeChallengeRepository:
+    def __init__(self, result=None, error=None):
+        self.result = (
+            SimpleNamespace(
+                succeeded=True,
+                reason=server.ChallengeResultReason.ELIGIBLE,
+            )
+            if result is None
+            else result
+        )
+        self.error = error
+        self.read_calls = []
+
+    async def read_eligible_preference(self, **kwargs):
+        self.read_calls.append(deepcopy(kwargs))
+        if self.error:
+            raise self.error
+        return self.result
+
+    async def consume(self, **_kwargs):
+        raise AssertionError("preference verification must not consume")
+
+
 def _install(
     monkeypatch,
     *,
@@ -116,6 +139,8 @@ def _install(
     matched_count=1,
     find_error=None,
     update_error=None,
+    challenge_result=None,
+    challenge_error=None,
 ):
     token_service = FakeTokenService(error=token_error, claims=claims)
     subscribers = FakeSubscriberCollection(
@@ -129,8 +154,27 @@ def _install(
         "newsletter_token_service_from_environment",
         lambda: token_service,
     )
+    challenge_repository = FakeChallengeRepository(
+        result=challenge_result,
+        error=challenge_error,
+    )
+    monkeypatch.setattr(
+        server,
+        "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
+        True,
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_challenge_repository",
+        lambda: challenge_repository,
+    )
     monkeypatch.setattr(server, "db", SimpleNamespace(subscribers=subscribers))
-    return TestClient(server.app), token_service, subscribers
+    return (
+        TestClient(server.app),
+        token_service,
+        subscribers,
+        challenge_repository,
+    )
 
 
 @pytest.mark.parametrize("route", (VERIFY_PATH, UPDATE_PATH))
@@ -150,6 +194,12 @@ def test_missing_or_weak_secret_returns_503_before_subscriber_lookup(
         "newsletter_token_service_from_environment",
         fail_closed_factory,
     )
+    if route == VERIFY_PATH:
+        monkeypatch.setattr(
+            server,
+            "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
+            True,
+        )
     monkeypatch.setattr(server, "db", SimpleNamespace(subscribers=subscribers))
     payload = {"token": TOKEN}
     if route == UPDATE_PATH:
@@ -207,7 +257,7 @@ def test_token_failures_are_safely_mapped_before_lookup(
     expected_status,
     expected_detail,
 ):
-    client, token_service, subscribers = _install(
+    client, token_service, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
         token_error=error,
@@ -235,7 +285,7 @@ def test_token_failures_are_safely_mapped_before_lookup(
 
 
 def test_subscriber_lookup_uses_management_id_and_minimal_projection(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
     )
@@ -274,7 +324,7 @@ def test_missing_subscriber_or_invalid_stored_version_is_generic_401(
     monkeypatch,
     subscriber,
 ):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=subscriber,
     )
@@ -289,7 +339,7 @@ def test_missing_subscriber_or_invalid_stored_version_is_generic_401(
 
 
 def test_inactive_subscriber_requires_reactivation_without_write(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(active=False),
     )
@@ -303,7 +353,7 @@ def test_inactive_subscriber_requires_reactivation_without_write(monkeypatch):
 
 
 def test_verify_returns_only_three_preferences_and_performs_no_write(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(
             daily_brief=False,
@@ -339,7 +389,7 @@ def test_verify_returns_only_three_preferences_and_performs_no_write(monkeypatch
 
 
 def test_secure_update_changes_only_tiers_and_timestamp_with_conditions(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
     )
@@ -382,7 +432,7 @@ def test_secure_update_changes_only_tiers_and_timestamp_with_conditions(monkeypa
 
 
 def test_all_false_preferences_are_accepted(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
     )
@@ -404,7 +454,7 @@ def test_all_false_preferences_are_accepted(monkeypatch):
 
 
 def test_idempotent_repeat_is_safe_and_does_not_increment_version(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
     )
@@ -425,7 +475,7 @@ def test_idempotent_repeat_is_safe_and_does_not_increment_version(monkeypatch):
 
 
 def test_conditional_update_conflict_returns_generic_409(monkeypatch):
-    client, _, subscribers = _install(
+    client, _, subscribers, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
         matched_count=0,
@@ -474,12 +524,14 @@ def test_other_six_secure_routes_remain_exact_generic_503(
     assert subscribers.update_calls == []
 
 
-def test_no_email_challenge_or_rate_limit_collaborator_is_used(monkeypatch):
+def test_verify_uses_challenge_but_no_email_or_rate_limit_collaborator(
+    monkeypatch,
+):
     class FailOnAccess:
         def __getattr__(self, name):
             raise AssertionError(f"unexpected collaborator access: {name}")
 
-    client, _, _ = _install(
+    client, _, _, challenge_repository = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
     )
@@ -488,19 +540,19 @@ def test_no_email_challenge_or_rate_limit_collaborator_is_used(monkeypatch):
     response = client.post(VERIFY_PATH, json={"token": TOKEN})
 
     assert response.status_code == 200
+    assert len(challenge_repository.read_calls) == 1
     source = open(server.__file__, encoding="utf-8").read()
     secure_section = source[
         source.index("def _create_secure_newsletter_token_service"):
         source.index('@api_router.get("/newsletter/categories")')
     ]
-    assert "newsletter_link_challenges" not in secure_section
     assert "rate_limit" not in secure_section
     assert "email_service" not in secure_section
 
 
 @pytest.mark.parametrize("route", (VERIFY_PATH, UPDATE_PATH))
 def test_database_failure_is_generic_503(monkeypatch, route):
-    client, _, _ = _install(
+    client, _, _, _ = _install(
         monkeypatch,
         subscriber=_active_subscriber(),
         find_error=RuntimeError("private database payload"),

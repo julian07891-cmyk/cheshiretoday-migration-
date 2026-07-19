@@ -55,6 +55,10 @@ from app.newsletter_token_service import (
     WrongNewsletterTokenPurposeError,
     newsletter_token_service_from_environment,
 )
+from app.newsletter_link_security import (
+    ChallengeResultReason,
+    hash_token as hash_newsletter_challenge_token,
+)
 from app.perplexity_service import perplexity_service, ai_budget_available
 
 # Stripe integration for paid job listings
@@ -5173,6 +5177,10 @@ SECURE_NEWSLETTER_MANAGEMENT_503 = {
 # subscriber migration, unique index, signing secret, provider adapter and
 # frontend management flow have each been reviewed and activated separately.
 NEWSLETTER_REQUEST_LINKS_ENABLED = False
+# Stage 4E6A challenge-enforcement gate. This remains independently disabled
+# until challenge storage, indexes and the complete confirmation flow have
+# each been reviewed and activated separately.
+NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False
 SECURE_NEWSLETTER_REQUEST_LINK_ACCEPTED = (
     "If the address is eligible, an email with the next step will be sent "
     "shortly."
@@ -5646,6 +5654,14 @@ def _create_secure_newsletter_token_service():
         ) from exc
 
 
+def _create_newsletter_preference_challenge_repository():
+    """Fail closed until a separately reviewed runtime adapter is provided."""
+
+    raise RuntimeError(
+        "Newsletter preference challenge repository is unavailable."
+    )
+
+
 def _raise_secure_newsletter_token_error(exc: Exception):
     if isinstance(exc, WrongNewsletterTokenPurposeError):
         raise HTTPException(
@@ -5975,9 +5991,53 @@ async def _process_secure_newsletter_reactivation(
 async def verify_secure_newsletter_preferences(
     request: NewsletterTokenRequest,
 ):
-    _, subscriber = await _get_secure_newsletter_preference_subscriber(
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
+    claims, subscriber = await _get_secure_newsletter_preference_subscriber(
         request.token
     )
+    try:
+        token_hash = hash_newsletter_challenge_token(request.token)
+        challenge_repository = (
+            _create_newsletter_preference_challenge_repository()
+        )
+        challenge_result = (
+            await challenge_repository.read_eligible_preference(
+                token_hash=token_hash,
+                subscriber_management_id=(
+                    claims.subscriber_management_id
+                ),
+                now=datetime.now(timezone.utc),
+            )
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if (
+        getattr(challenge_result, "reason", None)
+        is ChallengeResultReason.STORAGE_ERROR
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+    if (
+        getattr(challenge_result, "succeeded", None) is not True
+        or getattr(challenge_result, "reason", None)
+        is not ChallengeResultReason.ELIGIBLE
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
     return NewsletterSecurePreferencesResponse(
         success=True,
         preferences=NewsletterSecurePreferences(
