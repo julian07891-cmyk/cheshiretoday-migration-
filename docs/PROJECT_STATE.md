@@ -22655,3 +22655,9 @@ Phase 1 Stage 4E1 added only an isolated, unused newsletter link-security reposi
 ## 19 July 2026 — Newsletter ownership Stage 4E2 isolated management email helper
 
 Phase 1 Stage 4E2 added only an isolated, unused transactional newsletter-management email helper for preference, unsubscribe and reactivation purposes. It uses fixed non-personalised subjects, direct HTTPS fragment-token URLs, an injected transport and immutable privacy-safe results, with no tracking redirect, pixel, analytics, SMTP fallback, provider binding, database access, route wiring or runtime activation. Offline tests were added; no production email or endpoint was invoked, and the request-link routes remain dormant. The next stage is final read-only diff review before any commit.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4E3 preferences request-link
+
+Phase 1 Stage 4E3 implemented only the preferences request-link route behind an explicit readiness gate that defaults off, so the route remains fail-closed. Future non-enumerating orchestration is isolated behind injected collaborators and selects only `website_preferences` for active subscribers or `reactivation` for inactive subscribers; the unsubscribe and reactivation request-link routes remain dormant. No runtime activation, production email, migration or index operation occurred, and no production endpoint was invoked. Newsletter ownership security is not yet complete.

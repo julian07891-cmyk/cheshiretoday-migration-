@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Body, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -5169,6 +5169,193 @@ SECURE_NEWSLETTER_MANAGEMENT_503 = {
     }
 }
 
+# Stage 4E3 readiness gate. This remains deliberately disabled until the
+# subscriber migration, unique index, signing secret, provider adapter and
+# frontend management flow have each been reviewed and activated separately.
+NEWSLETTER_REQUEST_LINKS_ENABLED = False
+SECURE_NEWSLETTER_REQUEST_LINK_ACCEPTED = (
+    "If the address is eligible, an email with the next step will be sent "
+    "shortly."
+)
+_NEWSLETTER_REQUEST_LINK_PROJECTION = {
+    "_id": 0,
+    "newsletter_management_id": 1,
+    "newsletter_token_version": 1,
+    "active": 1,
+}
+_NEWSLETTER_REQUEST_LINK_EMAIL_DIMENSION = "email"
+_NEWSLETTER_REQUEST_LINK_IP_DIMENSION = "ip"
+_NEWSLETTER_REQUEST_LINK_PREFERENCES_PURPOSE = "preferences"
+_NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE = "reactivate"
+_NEWSLETTER_REQUEST_LINK_PREFERENCES_PROFILE = "website_preferences"
+_NEWSLETTER_REQUEST_LINK_REACTIVATE_PROFILE = "reactivation"
+
+
+class NewsletterPreferencesRequestLinkCollaborators:
+    """Injected future orchestration dependencies for the dormant route."""
+
+    def __init__(
+        self,
+        *,
+        rate_limit_repository,
+        challenge_repository,
+        lookup_subscriber,
+        issue_token,
+        send_management_email,
+        source_ip,
+        now,
+    ):
+        self.rate_limit_repository = rate_limit_repository
+        self.challenge_repository = challenge_repository
+        self.lookup_subscriber = lookup_subscriber
+        self.issue_token = issue_token
+        self.send_management_email = send_management_email
+        self.source_ip = source_ip
+        self.now = now
+
+
+def _create_newsletter_preferences_request_link_collaborators(
+    _request: Request,
+):
+    """Fail closed until a separately reviewed runtime adapter is provided."""
+
+    raise RuntimeError("Newsletter request-link collaborators are unavailable.")
+
+
+def _valid_newsletter_management_id(value) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = uuid.UUID(value)
+    except (ValueError, AttributeError, TypeError):
+        return False
+    return parsed.version == 4 and str(parsed) == value
+
+
+def _normalize_and_hash_newsletter_request(email: str, source_ip: str):
+    normalized_email = email.strip().lower()
+    return (
+        normalized_email,
+        hashlib.sha256(normalized_email.encode()).hexdigest(),
+        hashlib.sha256(source_ip.encode()).hexdigest(),
+    )
+
+
+async def _run_newsletter_preferences_request_link(
+    *,
+    email: str,
+    http_request: Request,
+):
+    """Run the future non-enumerating flow through injected collaborators."""
+
+    try:
+        collaborators = (
+            _create_newsletter_preferences_request_link_collaborators(
+                http_request
+            )
+        )
+        current = collaborators.now
+        if (
+            not isinstance(current, datetime)
+            or current.tzinfo is None
+            or current.utcoffset() != timedelta(0)
+        ):
+            return
+
+        normalized_email, email_hash, ip_hash = (
+            _normalize_and_hash_newsletter_request(
+                email,
+                collaborators.source_ip,
+            )
+        )
+
+        ip_decision = await collaborators.rate_limit_repository.reserve_request(
+            dimension=_NEWSLETTER_REQUEST_LINK_IP_DIMENSION,
+            subject_hash=ip_hash,
+            operation=_NEWSLETTER_REQUEST_LINK_PREFERENCES_PURPOSE,
+            now=current,
+        )
+        if not getattr(ip_decision, "allowed", False):
+            return
+
+        email_decision = (
+            await collaborators.rate_limit_repository.reserve_request(
+                dimension=_NEWSLETTER_REQUEST_LINK_EMAIL_DIMENSION,
+                subject_hash=email_hash,
+                operation=_NEWSLETTER_REQUEST_LINK_PREFERENCES_PURPOSE,
+                now=current,
+            )
+        )
+        if not getattr(email_decision, "allowed", False):
+            return
+
+        subscriber = await collaborators.lookup_subscriber(
+            normalized_email,
+            dict(_NEWSLETTER_REQUEST_LINK_PROJECTION),
+        )
+        if not isinstance(subscriber, dict):
+            return
+
+        management_id = subscriber.get("newsletter_management_id")
+        token_version = subscriber.get("newsletter_token_version")
+        if not (
+            _valid_newsletter_management_id(management_id)
+            and _is_valid_newsletter_token_version(token_version)
+        ):
+            return
+
+        active = subscriber.get("active")
+        if active is True:
+            purpose = _NEWSLETTER_REQUEST_LINK_PREFERENCES_PURPOSE
+            expiry_profile = _NEWSLETTER_REQUEST_LINK_PREFERENCES_PROFILE
+        elif active is False:
+            purpose = _NEWSLETTER_REQUEST_LINK_REACTIVATE_PURPOSE
+            expiry_profile = _NEWSLETTER_REQUEST_LINK_REACTIVATE_PROFILE
+        else:
+            return
+
+        expires_at = current + timedelta(minutes=30)
+        token = collaborators.issue_token(
+            subscriber_management_id=management_id,
+            purpose=purpose,
+            token_version=token_version,
+            expiry_profile=expiry_profile,
+            now=current,
+        )
+        if not isinstance(token, str) or not token:
+            return
+
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        challenge_result = await collaborators.challenge_repository.create_pending(
+            token_hash=token_hash,
+            subscriber_management_id=management_id,
+            purpose=purpose,
+            issued_at=current,
+            expires_at=expires_at,
+        )
+        if not getattr(challenge_result, "succeeded", False):
+            return
+
+        try:
+            email_result = collaborators.send_management_email(
+                recipient_email=normalized_email,
+                purpose=purpose,
+                token=token,
+                expires_at=expires_at,
+                now=current,
+            )
+        except Exception:
+            email_result = None
+
+        if getattr(email_result, "accepted", False):
+            await collaborators.challenge_repository.mark_delivered(token_hash)
+        else:
+            await collaborators.challenge_repository.mark_failed(token_hash)
+    except Exception:
+        # Public callers receive the same accepted response for every internal
+        # outcome, including collaborator and storage failures.
+        return
+
 
 def _create_secure_newsletter_token_service():
     try:
@@ -5576,11 +5763,24 @@ async def update_secure_newsletter_preferences(
 )
 async def request_secure_newsletter_preferences_link(
     request: NewsletterSecureLinkRequest,
+    http_request: Request,
 ):
-    # Stage 4A contract only: link delivery is intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+    if NEWSLETTER_REQUEST_LINKS_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
+    await _run_newsletter_preferences_request_link(
+        email=str(request.email),
+        http_request=http_request,
+    )
+    return JSONResponse(
+        status_code=202,
+        content={
+            "success": True,
+            "message": SECURE_NEWSLETTER_REQUEST_LINK_ACCEPTED,
+        },
     )
 
 
