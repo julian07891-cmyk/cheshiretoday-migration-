@@ -5181,6 +5181,12 @@ NEWSLETTER_REQUEST_LINKS_ENABLED = False
 # until challenge storage, indexes and the complete confirmation flow have
 # each been reviewed and activated separately.
 NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False
+
+
+class _NewsletterOneClickInactiveReplay(Exception):
+    """Abort an ineligible inactive one-click transaction without disclosure."""
+
+
 SECURE_NEWSLETTER_REQUEST_LINK_ACCEPTED = (
     "If the address is eligible, an email with the next step will be sent "
     "shortly."
@@ -5759,7 +5765,15 @@ async def _get_secure_newsletter_preference_subscriber(token: str):
 async def _process_secure_newsletter_unsubscribe(
     token: str,
     token_service=None,
+    *,
+    allow_inactive_replay: bool = False,
 ):
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
     if token_service is None:
         token_service = _create_secure_newsletter_token_service()
     try:
@@ -5780,6 +5794,7 @@ async def _process_secure_newsletter_unsubscribe(
     }
     subscriber_projection = {
         "_id": 0,
+        "newsletter_management_id": 1,
         "newsletter_token_version": 1,
         "active": 1,
     }
@@ -5802,7 +5817,9 @@ async def _process_secure_newsletter_unsubscribe(
 
     stored_version = subscriber.get("newsletter_token_version")
     if (
-        not _is_valid_newsletter_token_version(stored_version)
+        subscriber.get("newsletter_management_id")
+        != claims.subscriber_management_id
+        or not _is_valid_newsletter_token_version(stored_version)
         or stored_version != claims.token_version
     ):
         raise HTTPException(
@@ -5811,68 +5828,131 @@ async def _process_secure_newsletter_unsubscribe(
         )
 
     subscriber_active = subscriber.get("active")
-    if subscriber_active is False:
-        return NewsletterGenericResponse(
-            success=True,
-            message=SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS,
-        )
-    if subscriber_active is not True:
+    if subscriber_active is not True and subscriber_active is not False:
         raise HTTPException(
             status_code=409,
             detail=SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT,
         )
 
     try:
-        result = await db.subscribers.update_one(
-            {
-                "newsletter_management_id": (
-                    claims.subscriber_management_id
-                ),
-                "newsletter_token_version": claims.token_version,
-                "active": True,
-            },
-            {
-                "$set": {
-                    "active": False,
-                    "daily_brief": False,
-                    "weekly_roundup": False,
-                    "breaking_news": False,
-                    "unsubscribed_at": datetime.now(timezone.utc),
-                    "unsubscribe_method": "secure_token",
-                }
-            },
+        token_hash = hash_newsletter_challenge_token(token)
+        challenge_repository = (
+            _create_newsletter_preference_challenge_repository()
         )
+        transaction_client = (
+            _create_newsletter_preference_transaction_client()
+        )
+        session_context = await transaction_client.start_session()
+        async with session_context as session:
+            async with session.start_transaction():
+                current_subscriber = await db.subscribers.find_one(
+                    subscriber_query,
+                    subscriber_projection,
+                    session=session,
+                )
+                if not current_subscriber:
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                current_version = current_subscriber.get(
+                    "newsletter_token_version"
+                )
+                if (
+                    current_subscriber.get("newsletter_management_id")
+                    != claims.subscriber_management_id
+                    or not _is_valid_newsletter_token_version(current_version)
+                    or current_version != claims.token_version
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                current_active = current_subscriber.get("active")
+                if current_active is not True and current_active is not False:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT,
+                    )
+
+                now = datetime.now(timezone.utc)
+                challenge_result = await challenge_repository.consume(
+                    token_hash=token_hash,
+                    subscriber_management_id=(
+                        claims.subscriber_management_id
+                    ),
+                    expected_purpose=UNSUBSCRIBE_PURPOSE,
+                    now=now,
+                    session=session,
+                )
+                if (
+                    getattr(challenge_result, "reason", None)
+                    is ChallengeResultReason.STORAGE_ERROR
+                ):
+                    raise RuntimeError(
+                        "Newsletter challenge storage is unavailable."
+                    )
+                if (
+                    getattr(challenge_result, "succeeded", None) is not True
+                    or getattr(challenge_result, "reason", None)
+                    is not ChallengeResultReason.CONSUMED
+                ):
+                    if allow_inactive_replay and current_active is False:
+                        raise _NewsletterOneClickInactiveReplay
+                    raise HTTPException(
+                        status_code=401,
+                        detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+                    )
+
+                if current_active is True:
+                    result = await db.subscribers.update_one(
+                        {
+                            "newsletter_management_id": (
+                                claims.subscriber_management_id
+                            ),
+                            "newsletter_token_version": claims.token_version,
+                            "active": True,
+                        },
+                        {
+                            "$set": {
+                                "active": False,
+                                "daily_brief": False,
+                                "weekly_roundup": False,
+                                "breaking_news": False,
+                                "unsubscribed_at": now,
+                                "unsubscribe_method": "secure_token",
+                            }
+                        },
+                        session=session,
+                    )
+                    matched_count = result.matched_count
+                    if type(matched_count) is not int or matched_count < 0:
+                        raise RuntimeError(
+                            "Newsletter subscriber update result is invalid."
+                        )
+                    if matched_count == 0:
+                        raise HTTPException(
+                            status_code=409,
+                            detail=SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT,
+                        )
+                    if matched_count != 1:
+                        raise RuntimeError(
+                            "Newsletter subscriber update result is invalid."
+                        )
+    except _NewsletterOneClickInactiveReplay:
+        return NewsletterGenericResponse(
+            success=True,
+            message=SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS,
+        )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
         ) from exc
-
-    if result.matched_count != 1:
-        try:
-            current_subscriber = await db.subscribers.find_one(
-                subscriber_query,
-                subscriber_projection,
-            )
-        except Exception as exc:
-            raise HTTPException(
-                status_code=503,
-                detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
-            ) from exc
-
-        if not (
-            current_subscriber
-            and _is_valid_newsletter_token_version(
-                current_subscriber.get("newsletter_token_version")
-            )
-            and current_subscriber.get("newsletter_token_version")
-            == claims.token_version
-            and current_subscriber.get("active") is False
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail=SECURE_NEWSLETTER_UNSUBSCRIBE_CONFLICT,
-            )
 
     return NewsletterGenericResponse(
         success=True,
@@ -6230,6 +6310,11 @@ async def request_secure_newsletter_preferences_link(
 async def confirm_secure_newsletter_unsubscribe(
     request: NewsletterTokenRequest,
 ):
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
     return await _process_secure_newsletter_unsubscribe(request.token)
 
 
@@ -6242,6 +6327,12 @@ async def one_click_secure_newsletter_unsubscribe(
     request: Request,
     token: Optional[str] = Query(default=None),
 ):
+    if NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is not True:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        )
+
     token_service = _create_secure_newsletter_token_service()
 
     if not token or not token.strip() or len(token.strip()) > 4096:
@@ -6280,6 +6371,7 @@ async def one_click_secure_newsletter_unsubscribe(
     return await _process_secure_newsletter_unsubscribe(
         token.strip(),
         token_service=token_service,
+        allow_inactive_replay=True,
     )
 
 

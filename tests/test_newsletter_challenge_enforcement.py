@@ -23,6 +23,8 @@ from app import newsletter_link_security as link_security
 
 VERIFY_PATH = "/api/newsletter/preferences/verify"
 UPDATE_PATH = "/api/newsletter/preferences/secure"
+UNSUBSCRIBE_CONFIRM_PATH = "/api/newsletter/unsubscribe/confirm"
+UNSUBSCRIBE_ONE_CLICK_PATH = "/api/newsletter/unsubscribe/one-click"
 TOKEN = "offline-stage-4e6a-token"
 TOKEN_HASH = hashlib.sha256(TOKEN.encode()).hexdigest()
 MANAGEMENT_ID = "a40ad20d-2439-4b5a-b4ce-f256c79a3daf"
@@ -928,6 +930,167 @@ def test_abort_failure_is_generic_and_exposes_no_transaction_detail(
     assert state.challenge_consumed is False
     assert state.subscriber == before
     assert "private abort detail" not in response.text
+
+
+def test_transactional_human_unsubscribe_uses_same_session_and_updates_once(
+    monkeypatch,
+):
+    client, order, state, subscribers, challenge_repository, tx_client = (
+        _install_transactional_update(monkeypatch)
+    )
+
+    response = client.post(
+        UNSUBSCRIBE_CONFIRM_PATH,
+        json={"token": TOKEN},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "success": True,
+        "message": "Your unsubscribe request has been processed.",
+    }
+    session = tx_client.session
+    assert subscribers.find_calls[1][2] == {"session": session}
+    assert challenge_repository.consume_calls[0]["session"] is session
+    assert challenge_repository.consume_calls[0][
+        "expected_purpose"
+    ] == server.UNSUBSCRIBE_PURPOSE
+    assert subscribers.update_calls[0][2] == {"session": session}
+    assert set(subscribers.update_calls[0][1]["$set"]) == {
+        "active",
+        "daily_brief",
+        "weekly_roundup",
+        "breaking_news",
+        "unsubscribed_at",
+        "unsubscribe_method",
+    }
+    assert state.subscriber["active"] is False
+    assert state.subscriber["newsletter_token_version"] == 3
+    assert [step[0] for step in order].count("transaction_commit") == 1
+
+
+def test_inactive_human_unsubscribe_consumes_once_without_subscriber_update(
+    monkeypatch,
+):
+    client, order, state, subscribers, challenge_repository, _ = (
+        _install_transactional_update(monkeypatch)
+    )
+    state.subscriber["active"] = False
+
+    first = client.post(UNSUBSCRIBE_CONFIRM_PATH, json={"token": TOKEN})
+    replay = client.post(UNSUBSCRIBE_CONFIRM_PATH, json={"token": TOKEN})
+
+    assert first.status_code == 200
+    assert replay.status_code == 401
+    assert subscribers.update_calls == []
+    assert challenge_repository.successful_consumptions == 1
+    assert [step[0] for step in order].count("transaction_commit") == 1
+
+
+def test_rfc_one_click_replay_is_idempotent_without_second_commit(
+    monkeypatch,
+):
+    client, order, state, subscribers, challenge_repository, _ = (
+        _install_transactional_update(monkeypatch)
+    )
+    path = f"{UNSUBSCRIBE_ONE_CLICK_PATH}?token={TOKEN}"
+    form = {"List-Unsubscribe": "One-Click"}
+
+    first = client.post(path, data=form)
+    replay = client.post(path, data=form)
+
+    assert first.status_code == replay.status_code == 200
+    assert state.subscriber["active"] is False
+    assert len(subscribers.update_calls) == 1
+    assert challenge_repository.successful_consumptions == 1
+    assert [step[0] for step in order].count("transaction_commit") == 1
+
+
+def test_unsubscribe_conflict_rolls_back_challenge_and_subscriber(monkeypatch):
+    client, order, state, _, _, _ = _install_transactional_update(
+        monkeypatch,
+        matched_count=0,
+    )
+    before = deepcopy(state.subscriber)
+
+    response = client.post(
+        UNSUBSCRIBE_CONFIRM_PATH,
+        json={"token": TOKEN},
+    )
+
+    assert response.status_code == 409
+    assert state.challenge_consumed is False
+    assert state.subscriber == before
+    assert [step[0] for step in order].count("transaction_abort") == 1
+
+
+def test_malformed_unsubscribe_result_rolls_back_known_changes(monkeypatch):
+    client, order, state, subscribers, challenge_repository, _ = (
+        _install_transactional_update(
+            monkeypatch,
+            update_result=SimpleNamespace(matched_count=True),
+        )
+    )
+    before = deepcopy(state.subscriber)
+
+    response = client.post(
+        UNSUBSCRIBE_CONFIRM_PATH,
+        json={"token": TOKEN},
+    )
+
+    assert response.status_code == 503
+    assert state.challenge_consumed is False
+    assert state.subscriber == before
+    assert len(subscribers.update_calls) == 1
+    assert challenge_repository.successful_consumptions == 1
+    assert [step[0] for step in order].count("transaction_abort") == 1
+
+
+@pytest.mark.parametrize(
+    "failure_options",
+    (
+        {"storage_error": True},
+        {"session_error": True},
+        {"start_error": True},
+        {"commit_error": True},
+        {"indeterminate_commit": True},
+    ),
+)
+def test_unsubscribe_transaction_failures_are_generic_without_retry(
+    monkeypatch,
+    failure_options,
+):
+    client, order, state, subscribers, challenge_repository, tx_client = (
+        _install_transactional_update(monkeypatch, **failure_options)
+    )
+    before = deepcopy(state.subscriber)
+
+    response = client.post(
+        UNSUBSCRIBE_CONFIRM_PATH,
+        json={"token": TOKEN},
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
+    assert [step[0] for step in order].count("subscriber_update") <= 1
+    assert [step[0] for step in order].count("consume") <= 1
+    if failure_options.get("commit_error"):
+        assert state.subscriber == before
+        assert state.challenge_consumed is False
+    if failure_options.get("indeterminate_commit"):
+        assert tx_client.session.transaction.commit_attempts == 1
+        assert [step[0] for step in order].count(
+            "transaction_commit_indeterminate"
+        ) == 1
+    for private_value in (
+        TOKEN,
+        TOKEN_HASH,
+        MANAGEMENT_ID,
+        "private",
+        "transaction",
+        "database",
+    ):
+        assert private_value not in response.text
 
 
 @pytest.mark.parametrize(

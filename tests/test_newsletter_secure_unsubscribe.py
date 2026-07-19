@@ -1,5 +1,7 @@
 import os
+import hashlib
 from copy import deepcopy
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -18,6 +20,7 @@ from backend import server
 TOKEN = "offline-secure-unsubscribe-token"
 MANAGEMENT_ID = "ee764040-6937-42c1-9237-437a922f5598"
 TOKEN_VERSION = 4
+TOKEN_HASH = hashlib.sha256(TOKEN.encode()).hexdigest()
 CONFIRM_PATH = "/api/newsletter/unsubscribe/confirm"
 ONE_CLICK_PATH = "/api/newsletter/unsubscribe/one-click"
 SUCCESS_BODY = {
@@ -29,6 +32,10 @@ GENERIC_401 = "This newsletter management link is invalid or has expired."
 GENERIC_403 = "This newsletter management link cannot be used for this action."
 CONFLICT_409 = "Your unsubscribe request could not be processed. Please try again."
 INVALID_FORM_400 = "The one-click unsubscribe request is invalid."
+
+
+class IntSubclass(int):
+    pass
 
 
 def _subscriber(**overrides):
@@ -77,8 +84,10 @@ class FakeSubscribers:
         self.find_calls = []
         self.update_calls = []
 
-    async def find_one(self, query, projection):
-        self.find_calls.append((deepcopy(query), deepcopy(projection)))
+    async def find_one(self, query, projection, **kwargs):
+        self.find_calls.append(
+            (deepcopy(query), deepcopy(projection), dict(kwargs))
+        )
         if self.find_error:
             raise self.find_error
         if not self.find_results:
@@ -87,14 +96,69 @@ class FakeSubscribers:
             return deepcopy(self.find_results[0])
         return deepcopy(self.find_results.pop(0))
 
-    async def update_one(self, query, update):
-        self.update_calls.append((deepcopy(query), deepcopy(update)))
+    async def update_one(self, query, update, **kwargs):
+        self.update_calls.append(
+            (deepcopy(query), deepcopy(update), dict(kwargs))
+        )
         if self.update_error:
             raise self.update_error
         return SimpleNamespace(matched_count=self.matched_count)
 
     def __getattr__(self, name):
         raise AssertionError(f"unexpected subscriber operation: {name}")
+
+
+class FakeChallengeRepository:
+    def __init__(self):
+        self.consumed = False
+        self.consume_calls = []
+        self.successful_consumptions = 0
+
+    async def consume(self, **kwargs):
+        self.consume_calls.append(dict(kwargs))
+        if self.consumed:
+            return SimpleNamespace(
+                succeeded=False,
+                reason=server.ChallengeResultReason.NOT_ELIGIBLE,
+            )
+        self.consumed = True
+        self.successful_consumptions += 1
+        return SimpleNamespace(
+            succeeded=True,
+            reason=server.ChallengeResultReason.CONSUMED,
+        )
+
+
+class FakeTransaction:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
+class FakeSession:
+    def __init__(self):
+        self.transaction = FakeTransaction()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+    def start_transaction(self):
+        return self.transaction
+
+
+class FakeTransactionClient:
+    def __init__(self):
+        self.sessions = []
+
+    async def start_session(self):
+        session = FakeSession()
+        self.sessions.append(session)
+        return session
 
 
 def _install(
@@ -113,10 +177,34 @@ def _install(
         find_error=find_error,
         update_error=update_error,
     )
+    challenge_repository = FakeChallengeRepository()
+    transaction_client = FakeTransactionClient()
+    subscribers.challenge_repository = challenge_repository
+    subscribers.transaction_client = transaction_client
+    monkeypatch.setattr(
+        server,
+        "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
+        True,
+    )
     monkeypatch.setattr(
         server,
         "newsletter_token_service_from_environment",
         lambda: token_service,
+    )
+    monkeypatch.setattr(
+        server,
+        "hash_newsletter_challenge_token",
+        lambda token: hashlib.sha256(token.encode()).hexdigest(),
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_challenge_repository",
+        lambda: challenge_repository,
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_transaction_client",
+        lambda: transaction_client,
     )
     monkeypatch.setattr(server, "db", SimpleNamespace(subscribers=subscribers))
     return TestClient(server.app), token_service, subscribers
@@ -177,6 +265,52 @@ def test_missing_and_weak_secrets_return_503_before_lookup(
 def test_application_startup_does_not_require_newsletter_secret():
     assert "NEWSLETTER_LINK_SECRET" not in os.environ
     assert server.app is not None
+
+
+@pytest.mark.parametrize("path", (CONFIRM_PATH, ONE_CLICK_PATH))
+def test_disabled_gate_stops_before_every_collaborator(monkeypatch, path):
+    class FailOnAccess:
+        def __getattr__(self, name):
+            raise AssertionError(f"unexpected access: {name}")
+
+    monkeypatch.setattr(
+        server,
+        "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED",
+        False,
+    )
+    monkeypatch.setattr(
+        server,
+        "newsletter_token_service_from_environment",
+        lambda: (_ for _ in ()).throw(AssertionError("token service called")),
+    )
+    monkeypatch.setattr(
+        server,
+        "hash_newsletter_challenge_token",
+        lambda _token: (_ for _ in ()).throw(AssertionError("hash called")),
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_challenge_repository",
+        lambda: (_ for _ in ()).throw(AssertionError("challenge called")),
+    )
+    monkeypatch.setattr(
+        server,
+        "_create_newsletter_preference_transaction_client",
+        lambda: (_ for _ in ()).throw(AssertionError("session called")),
+    )
+    monkeypatch.setattr(server, "db", FailOnAccess())
+
+    response = (
+        TestClient(server.app).post(path, json={"token": TOKEN})
+        if path == CONFIRM_PATH
+        else TestClient(server.app).post(
+            f"{path}?token={TOKEN}",
+            data={"List-Unsubscribe": "One-Click"},
+        )
+    )
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
 
 
 @pytest.mark.parametrize(
@@ -252,17 +386,18 @@ def test_human_confirmation_soft_unsubscribes_only_approved_fields(monkeypatch):
     assert response.status_code == 200
     assert response.json() == SUCCESS_BODY
     assert token_service.calls == [(TOKEN, server.UNSUBSCRIBE_PURPOSE)]
-    assert subscribers.find_calls == [
-        (
-            {"newsletter_management_id": MANAGEMENT_ID},
-            {
-                "_id": 0,
-                "newsletter_token_version": 1,
-                "active": 1,
-            },
-        )
-    ]
-    query, update = subscribers.update_calls[0]
+    assert len(subscribers.find_calls) == 2
+    for query, projection, _options in subscribers.find_calls:
+        assert query == {"newsletter_management_id": MANAGEMENT_ID}
+        assert projection == {
+            "_id": 0,
+            "newsletter_management_id": 1,
+            "newsletter_token_version": 1,
+            "active": 1,
+        }
+    assert subscribers.find_calls[0][2] == {}
+    session = subscribers.find_calls[1][2]["session"]
+    query, update, options = subscribers.update_calls[0]
     assert query == {
         "newsletter_management_id": MANAGEMENT_ID,
         "newsletter_token_version": TOKEN_VERSION,
@@ -283,9 +418,10 @@ def test_human_confirmation_soft_unsubscribes_only_approved_fields(monkeypatch):
     assert update["$set"]["breaking_news"] is False
     assert update["$set"]["unsubscribe_method"] == "secure_token"
     assert "newsletter_token_version" not in update["$set"]
+    assert options == {"session": session}
 
 
-def test_already_inactive_is_idempotent_without_write(monkeypatch):
+def test_human_inactive_challenge_is_consumed_once_then_replay_fails(monkeypatch):
     client, _, subscribers = _install(
         monkeypatch,
         find_results=[_subscriber(active=False)],
@@ -294,8 +430,10 @@ def test_already_inactive_is_idempotent_without_write(monkeypatch):
     first = _confirm(client)
     second = _confirm(client)
 
-    assert first.status_code == second.status_code == 200
-    assert first.json() == second.json() == SUCCESS_BODY
+    assert first.status_code == 200
+    assert first.json() == SUCCESS_BODY
+    assert second.status_code == 401
+    assert second.json() == {"detail": GENERIC_401}
     assert subscribers.update_calls == []
 
 
@@ -361,7 +499,7 @@ def test_malformed_active_state_after_failed_update_is_not_idempotent(
 
     assert response.status_code == 409
     assert response.json() == {"detail": CONFLICT_409}
-    assert len(subscribers.update_calls) == 1
+    assert subscribers.update_calls == []
     for private_value in (TOKEN, MANAGEMENT_ID, "private@example.com"):
         assert private_value not in response.text
 
@@ -377,11 +515,11 @@ def test_concurrent_idempotent_unsubscribe_returns_success(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == SUCCESS_BODY
-    assert len(subscribers.update_calls) == 1
+    assert subscribers.update_calls == []
     assert len(subscribers.find_calls) == 2
 
 
-def test_true_conditional_conflict_returns_409(monkeypatch):
+def test_in_transaction_version_change_returns_generic_401(monkeypatch):
     client, _, subscribers = _install(
         monkeypatch,
         find_results=[
@@ -390,6 +528,51 @@ def test_true_conditional_conflict_returns_409(monkeypatch):
         ],
         matched_count=0,
     )
+
+    response = _confirm(client)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": GENERIC_401}
+    assert subscribers.update_calls == []
+
+
+@pytest.mark.parametrize(
+    "result",
+    (
+        SimpleNamespace(),
+        SimpleNamespace(matched_count=None),
+        SimpleNamespace(matched_count=True),
+        SimpleNamespace(matched_count=False),
+        SimpleNamespace(matched_count="1"),
+        SimpleNamespace(matched_count=1.0),
+        SimpleNamespace(matched_count=Decimal("1")),
+        SimpleNamespace(matched_count=IntSubclass(1)),
+        SimpleNamespace(matched_count=-1),
+        SimpleNamespace(matched_count=2),
+        SimpleNamespace(matched_count=object()),
+    ),
+)
+def test_malformed_update_result_fails_closed(monkeypatch, result):
+    client, _, subscribers = _install(monkeypatch)
+
+    async def malformed_update(query, update, **kwargs):
+        subscribers.update_calls.append(
+            (deepcopy(query), deepcopy(update), dict(kwargs))
+        )
+        return result
+
+    subscribers.update_one = malformed_update
+    response = _confirm(client)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
+    assert len(subscribers.update_calls) == 1
+    for private_value in (TOKEN, TOKEN_HASH, MANAGEMENT_ID, "matched_count"):
+        assert private_value not in response.text
+
+
+def test_exact_zero_update_conflict_returns_409(monkeypatch):
+    client, _, subscribers = _install(monkeypatch, matched_count=0)
 
     response = _confirm(client)
 
@@ -433,6 +616,103 @@ def test_rfc_one_click_accepts_exact_form_and_multipart(monkeypatch, request_kwa
     assert "set-cookie" not in response.headers
     assert token_service.calls == [(TOKEN, server.UNSUBSCRIBE_PURPOSE)]
     assert len(subscribers.update_calls) == 1
+
+
+def test_rfc_one_click_replay_is_successful_without_second_mutation(monkeypatch):
+    client, _, subscribers = _install(
+        monkeypatch,
+        find_results=[
+            _subscriber(active=True),
+            _subscriber(active=True),
+            _subscriber(active=False),
+            _subscriber(active=False),
+        ],
+    )
+
+    first = _one_click(
+        client,
+        data={"List-Unsubscribe": "One-Click"},
+    )
+    replay = _one_click(
+        client,
+        data={"List-Unsubscribe": "One-Click"},
+    )
+
+    assert first.status_code == replay.status_code == 200
+    assert first.json() == replay.json() == SUCCESS_BODY
+    assert len(subscribers.update_calls) == 1
+    assert subscribers.challenge_repository.successful_consumptions == 1
+    assert len(subscribers.transaction_client.sessions) == 2
+
+
+def test_active_unsubscribe_uses_bound_challenge_and_same_session(monkeypatch):
+    client, _, subscribers = _install(monkeypatch)
+
+    response = _confirm(client)
+
+    assert response.status_code == 200
+    session = subscribers.transaction_client.sessions[0]
+    consume = subscribers.challenge_repository.consume_calls[0]
+    assert consume["token_hash"] == TOKEN_HASH
+    assert consume["subscriber_management_id"] == MANAGEMENT_ID
+    assert consume["expected_purpose"] == server.UNSUBSCRIBE_PURPOSE
+    assert consume["session"] is session
+    assert subscribers.find_calls[1][2] == {"session": session}
+    assert subscribers.update_calls[0][2] == {"session": session}
+
+
+@pytest.mark.parametrize(
+    "result",
+    (
+        SimpleNamespace(
+            succeeded=False,
+            reason=server.ChallengeResultReason.NOT_ELIGIBLE,
+        ),
+        SimpleNamespace(
+            succeeded=False,
+            reason=server.ChallengeResultReason.FAILED,
+        ),
+        SimpleNamespace(
+            succeeded=False,
+            reason=server.ChallengeResultReason.ELIGIBLE,
+        ),
+        SimpleNamespace(succeeded=False, reason="malformed"),
+        SimpleNamespace(),
+    ),
+)
+def test_ineligible_challenge_states_are_generic_401(monkeypatch, result):
+    client, _, subscribers = _install(monkeypatch)
+
+    async def consume(**kwargs):
+        subscribers.challenge_repository.consume_calls.append(dict(kwargs))
+        return result
+
+    subscribers.challenge_repository.consume = consume
+    response = _confirm(client)
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": GENERIC_401}
+    assert subscribers.update_calls == []
+    for private_value in (TOKEN, TOKEN_HASH, MANAGEMENT_ID):
+        assert private_value not in response.text
+
+
+def test_challenge_storage_failure_is_generic_503(monkeypatch):
+    client, _, subscribers = _install(monkeypatch)
+
+    async def consume(**kwargs):
+        subscribers.challenge_repository.consume_calls.append(dict(kwargs))
+        return SimpleNamespace(
+            succeeded=False,
+            reason=server.ChallengeResultReason.STORAGE_ERROR,
+        )
+
+    subscribers.challenge_repository.consume = consume
+    response = _confirm(client)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
+    assert subscribers.update_calls == []
 
 
 @pytest.mark.parametrize(
