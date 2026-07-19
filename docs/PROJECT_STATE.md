@@ -22703,3 +22703,9 @@ Phase 1 Stage 4E6D added transactional, subscriber-bound challenge consumption f
 ## 19 July 2026 — Newsletter ownership Stage 4F1 runtime collaborators
 
 Phase 1 Stage 4F1 added lazy production collaborator wiring over the existing application database, Motor client and email-service owner: challenge and rate-limit repositories select only their reviewed collections, transactions reuse the existing client, and the management-email adapter performs one untracked Resend attempt with no retry or SMTP fallback. Privacy-safe readiness booleans perform no I/O, no collection or index is created automatically, and both readiness gates remain literal `False`, so startup and all public secure-route behavior remain fail-closed without the signing secret. No migration, index, secret, email, frontend, legacy-route or production operation occurred; isolated tests were added and obsolete isolation assertions were updated. Activation readiness is not complete.
+
+---
+
+## 20 July 2026 — Newsletter ownership Stage 4F2 guarded index tooling
+
+Phase 1 Stage 4F2 added one isolated synchronous provisioning script for the four reviewed challenge and request-limit indexes, with read-only dry-run, interactive exact-confirmation apply, strict existing-definition conflict rejection, post-create rediscovery, full final verification and privacy-safe aggregate output. The script is not imported by runtime code and no database, production index, collection document, gate, secret, route, scheduler, migration or production behavior changed; offline tests were added. The indexes have not been created and activation readiness is not complete.
