@@ -22649,3 +22649,9 @@ Phase 1 Stage 4D implemented only secure reactivation confirmation, with `reacti
 ## 19 July 2026 — Newsletter ownership Stage 4E1 isolated link security
 
 Phase 1 Stage 4E1 added only an isolated, unused newsletter link-security repository module. It provides privacy-safe full SHA-256 email/IP/token hashing, the frozen email and IP quotas, challenge creation and delivery state, preference eligibility and atomic single-use consumption, plus exact future index definitions with semantic conflict validation. Errors and optional fingerprints are redacted; no runtime module imports the new code, and no route, email, subscriber, migration, index, scheduler or frontend behaviour changed. Offline tests were added, no production system was accessed, and request-link flows remain dormant. The next stage is final read-only diff review before any commit.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4E2 isolated management email helper
+
+Phase 1 Stage 4E2 added only an isolated, unused transactional newsletter-management email helper for preference, unsubscribe and reactivation purposes. It uses fixed non-personalised subjects, direct HTTPS fragment-token URLs, an injected transport and immutable privacy-safe results, with no tracking redirect, pixel, analytics, SMTP fallback, provider binding, database access, route wiring or runtime activation. Offline tests were added; no production email or endpoint was invoked, and the request-link routes remain dormant. The next stage is final read-only diff review before any commit.
