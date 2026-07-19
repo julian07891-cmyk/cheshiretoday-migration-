@@ -22661,3 +22661,9 @@ Phase 1 Stage 4E2 added only an isolated, unused transactional newsletter-manage
 ## 19 July 2026 — Newsletter ownership Stage 4E3 preferences request-link
 
 Phase 1 Stage 4E3 implemented only the preferences request-link route behind an explicit readiness gate that defaults off, so the route remains fail-closed. Future non-enumerating orchestration is isolated behind injected collaborators and selects only `website_preferences` for active subscribers or `reactivation` for inactive subscribers; the unsubscribe and reactivation request-link routes remain dormant. No runtime activation, production email, migration or index operation occurred, and no production endpoint was invoked. Newsletter ownership security is not yet complete.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4E4 unsubscribe request-link
+
+Phase 1 Stage 4E4 implemented only unsubscribe request-link orchestration behind the same hard-disabled readiness gate. The future non-enumerating path uses IP-first then email rate limiting, requires valid management identity and token version for active or inactive subscribers, issues only `unsubscribe` tokens with the `website_unsubscribe` profile, creates a pending challenge, attempts one direct untracked management-email delivery and conditionally marks the challenge delivered or failed. All enabled-path outcomes return the same generic HTTP `202`, while production remains HTTP `503` with the literal gate set to `False`; the reactivation request-link remains dormant, and Stage 4B–4E3 and legacy routes are unchanged. No production endpoint, email, token, subscriber, challenge, migration, collection, index or configuration operation occurred. Newsletter ownership security is not yet complete.
