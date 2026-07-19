@@ -50,6 +50,7 @@ from app.newsletter_token_service import (
     NewsletterTokenConfigurationError,
     NewsletterTokenVersionMismatchError,
     PREFERENCES_PURPOSE,
+    REACTIVATE_PURPOSE,
     UNSUBSCRIBE_PURPOSE,
     WrongNewsletterTokenPurposeError,
     newsletter_token_service_from_environment,
@@ -5156,6 +5157,12 @@ SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID = (
 SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS = (
     "Your unsubscribe request has been processed."
 )
+SECURE_NEWSLETTER_REACTIVATION_CONFLICT = (
+    "Your subscription could not be confirmed. Please request a new link."
+)
+SECURE_NEWSLETTER_REACTIVATION_SUCCESS = (
+    "Your subscription preferences have been confirmed."
+)
 SECURE_NEWSLETTER_MANAGEMENT_503 = {
     503: {
         "description": SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
@@ -5385,6 +5392,115 @@ async def _process_secure_newsletter_unsubscribe(
     )
 
 
+async def _process_secure_newsletter_reactivation(
+    request: NewsletterReactivationConfirmRequest,
+):
+    token_service = _create_secure_newsletter_token_service()
+    try:
+        claims = token_service.verify_newsletter_token(
+            request.token,
+            expected_purpose=REACTIVATE_PURPOSE,
+        )
+    except (
+        ExpiredNewsletterTokenError,
+        WrongNewsletterTokenPurposeError,
+        NewsletterTokenVersionMismatchError,
+        InvalidNewsletterTokenError,
+    ) as exc:
+        _raise_secure_newsletter_token_error(exc)
+
+    subscriber_query = {
+        "newsletter_management_id": claims.subscriber_management_id,
+    }
+    subscriber_projection = {
+        "_id": 0,
+        "newsletter_token_version": 1,
+        "active": 1,
+    }
+    try:
+        subscriber = await db.subscribers.find_one(
+            subscriber_query,
+            subscriber_projection,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if not subscriber:
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
+    stored_version = subscriber.get("newsletter_token_version")
+    if (
+        not _is_valid_newsletter_token_version(stored_version)
+        or stored_version != claims.token_version
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail=SECURE_NEWSLETTER_TOKEN_INVALID,
+        )
+
+    if subscriber.get("active") is not False:
+        raise HTTPException(
+            status_code=409,
+            detail=SECURE_NEWSLETTER_REACTIVATION_CONFLICT,
+        )
+
+    now = datetime.now(timezone.utc)
+    try:
+        result = await db.subscribers.update_one(
+            {
+                "newsletter_management_id": (
+                    claims.subscriber_management_id
+                ),
+                "newsletter_token_version": claims.token_version,
+                "active": False,
+            },
+            {
+                "$set": {
+                    "active": True,
+                    "daily_brief": request.daily_brief,
+                    "weekly_roundup": request.weekly_roundup,
+                    "breaking_news": request.breaking_news,
+                    "reactivated_at": now,
+                    "reactivation_method": "verified_email",
+                    "preferences_updated_at": now,
+                    "newsletter_token_version": claims.token_version + 1,
+                }
+            },
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+        ) from exc
+
+    if result.matched_count != 1:
+        try:
+            await db.subscribers.find_one(
+                subscriber_query,
+                subscriber_projection,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
+            ) from exc
+        raise HTTPException(
+            status_code=409,
+            detail=SECURE_NEWSLETTER_REACTIVATION_CONFLICT,
+        )
+
+    return NewsletterGenericResponse(
+        success=True,
+        message=SECURE_NEWSLETTER_REACTIVATION_SUCCESS,
+    )
+
+
 @api_router.post(
     "/newsletter/preferences/verify",
     response_model=NewsletterSecurePreferencesResponse,
@@ -5567,11 +5683,7 @@ async def request_secure_newsletter_reactivation_link(
 async def confirm_secure_newsletter_reactivation(
     request: NewsletterReactivationConfirmRequest,
 ):
-    # Stage 4A contract only: subscriber reactivation is intentionally deferred.
-    raise HTTPException(
-        status_code=503,
-        detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
-    )
+    return await _process_secure_newsletter_reactivation(request)
 
 
 @api_router.get("/newsletter/preferences/{email}")

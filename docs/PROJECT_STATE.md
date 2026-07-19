@@ -22637,3 +22637,9 @@ Phase 1 Stage 4B implemented only secure preference-token verification and prefe
 ## 19 July 2026 — Newsletter ownership Stage 4C secure unsubscribe
 
 Phase 1 Stage 4C implemented only secure human-confirmed and RFC one-click unsubscribe. Both routes use `unsubscribe`-purpose tokens, subscriber-management identity and positive token-version checks. Unsubscribe is soft, conditional and idempotent; it may update only `active`, `daily_brief`, `weekly_roundup`, `breaking_news`, `unsubscribed_at` and `unsubscribe_method`, and it does not increment the token version. The four remaining secure routes stay dormant; Stage 4B preference routes and all legacy routes are unchanged. No email, request-link, challenge, rate-limit, frontend, migration or index work occurred. Offline tests were added, and no production endpoint or subscriber operation was invoked. Newsletter ownership security is not yet complete.
+
+---
+
+## 19 July 2026 — Newsletter ownership Stage 4D secure reactivation
+
+Phase 1 Stage 4D implemented only secure reactivation confirmation, with `reactivate`-purpose, subscriber-management identity, positive token-version and literal inactive-state checks plus explicit tier-preference selection. The conditional update preserves historical unsubscribe fields and increments `newsletter_token_version` exactly once, so replay is rejected. The three request-link routes remain dormant; Stage 4B preferences, Stage 4C unsubscribe and all legacy routes are unchanged. No email, challenge, rate-limit, frontend, migration or index work occurred. Offline tests were added, and no production endpoint or subscriber operation was invoked. Newsletter ownership security is not yet complete.
