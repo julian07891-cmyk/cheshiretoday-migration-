@@ -5127,10 +5127,10 @@ SECURE_NEWSLETTER_MANAGEMENT_503 = {
     }
 }
 
-# Stage 4E3 readiness gate. This remains deliberately disabled until the
-# subscriber migration, unique index, signing secret, provider adapter and
-# frontend management flow have each been reviewed and activated separately.
-NEWSLETTER_REQUEST_LINKS_ENABLED = False
+# Stage 4E3 readiness gate. This is enabled only after the subscriber migration,
+# unique index, signing secret, provider adapter and frontend management flow
+# have each been reviewed and activated separately.
+NEWSLETTER_REQUEST_LINKS_ENABLED = True
 # Stage 4E6A challenge-enforcement gate. This remains independently controlled
 # from request-link issuance after challenge storage, indexes and the complete
 # confirmation flow were reviewed and activated separately.

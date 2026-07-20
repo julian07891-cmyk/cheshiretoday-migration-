@@ -22727,3 +22727,9 @@ Phase 1 Stage 4F4 was committed as `85bc971efe9b36afa2edefbac6dbef65fc7f1048`, d
 ## 20 July 2026 — Newsletter challenge enforcement activation
 
 After the approved subscriber migration, newsletter index provisioning and signing-secret configuration, `NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED` was changed to literal `True`. `NEWSLETTER_REQUEST_LINKS_ENABLED` remains literal `False`, so request-link issuance stays unavailable while secure confirmation routes enforce subscriber-bound challenges. No migration, index, email or production-data operation was performed in this step.
+
+---
+
+## 20 July 2026 — Newsletter request-link activation
+
+After challenge enforcement was deployed and verified healthy, `NEWSLETTER_REQUEST_LINKS_ENABLED` was changed to literal `True`. Both newsletter activation gates are now enabled in source. No migration, index, email or production-data operation was performed in this step.
