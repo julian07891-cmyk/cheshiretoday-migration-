@@ -5131,10 +5131,10 @@ SECURE_NEWSLETTER_MANAGEMENT_503 = {
 # subscriber migration, unique index, signing secret, provider adapter and
 # frontend management flow have each been reviewed and activated separately.
 NEWSLETTER_REQUEST_LINKS_ENABLED = False
-# Stage 4E6A challenge-enforcement gate. This remains independently disabled
-# until challenge storage, indexes and the complete confirmation flow have
-# each been reviewed and activated separately.
-NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False
+# Stage 4E6A challenge-enforcement gate. This remains independently controlled
+# from request-link issuance after challenge storage, indexes and the complete
+# confirmation flow were reviewed and activated separately.
+NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True
 
 
 class _NewsletterOneClickInactiveReplay(Exception):

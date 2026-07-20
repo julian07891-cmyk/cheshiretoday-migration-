@@ -22721,3 +22721,9 @@ Phase 1 Stage 4F3 added the three frontend consumers for secure preferences, hum
 ## 20 July 2026 — Newsletter ownership Stage 4F4 legacy cutover
 
 Phase 1 Stage 4F4 was committed as `85bc971efe9b36afa2edefbac6dbef65fc7f1048`, deployed and verified healthy in production. It retired public email-only preference and unsubscribe routes, prevents signup-based reactivation of existing subscribers, provides privacy-safe legacy-link retirement and explicit secure request-link forms, and uses clean untracked routine management URLs. First-time signup and authenticated Admin operations remain available, all secure routes remain behind the two literal-false gates, and outbound RFC one-click headers remain fail-closed because the synchronous routine-delivery paths cannot yet guarantee subscriber-bound challenge persistence and per-recipient headers. No migration, newsletter index provisioning, secret configuration, email delivery or production-data mutation occurred; activation remains incomplete.
+
+---
+
+## 20 July 2026 — Newsletter challenge enforcement activation
+
+After the approved subscriber migration, newsletter index provisioning and signing-secret configuration, `NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED` was changed to literal `True`. `NEWSLETTER_REQUEST_LINKS_ENABLED` remains literal `False`, so request-link issuance stays unavailable while secure confirmation routes enforce subscriber-bound challenges. No migration, index, email or production-data operation was performed in this step.
