@@ -22739,3 +22739,9 @@ After challenge enforcement was deployed and verified healthy, `NEWSLETTER_REQUE
 ## 20 July 2026 — Newsletter request-limit reservation correction
 
 After the activated request-link path exposed MongoDB's prohibition on `$expr` in an upsert predicate, request-link issuance was disabled again while challenge enforcement remained enabled. The rate-limit repository now reserves an eligible existing record with a non-upsert conditional update and creates only a genuinely absent record with an insert protected by the existing compound unique index; duplicate insert races are classified from the stored rolling-window state. Quotas, rolling-window pruning, indexes, privacy-safe fail-closed behavior and request-link orchestration are unchanged. This correction was verified locally only; no deployment or production operation occurred.
+
+---
+
+## 20 July 2026 — Newsletter request-link reactivation
+
+After the corrected request-limit reservation was deployed healthy, `NEWSLETTER_REQUEST_LINKS_ENABLED` was restored to literal `True` for controlled production verification. Challenge enforcement remains enabled; no migration, index or configuration change was performed in this step.

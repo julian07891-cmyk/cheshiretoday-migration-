@@ -72,12 +72,12 @@ def test_authenticated_admin_subscriber_routes_remain_registered():
     assert len(_registrations("DELETE", "/api/admin/subscribers/{email}")) == 1
 
 
-def test_gates_remain_literal_false():
-    assert server.NEWSLETTER_REQUEST_LINKS_ENABLED is False
-    assert server.NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is False
+def test_gates_are_enabled():
+    assert server.NEWSLETTER_REQUEST_LINKS_ENABLED is True
+    assert server.NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is True
     source = inspect.getsource(server)
-    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in source
-    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in source
+    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = True" in source
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in source
 
 
 def test_routine_management_urls_are_clean_and_untracked():

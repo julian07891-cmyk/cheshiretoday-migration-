@@ -211,11 +211,12 @@ def assert_generic(response):
         assert private.lower() not in response.text.lower()
 
 
-def test_readiness_gate_remains_literal_false():
-    assert server.NEWSLETTER_REQUEST_LINKS_ENABLED is False
+def test_readiness_gate_is_enabled():
+    assert server.NEWSLETTER_REQUEST_LINKS_ENABLED is True
 
 
 def test_disabled_gate_returns_exact_503_before_factory(monkeypatch):
+    monkeypatch.setattr(server, "NEWSLETTER_REQUEST_LINKS_ENABLED", False)
     touched = False
 
     def factory(_request):

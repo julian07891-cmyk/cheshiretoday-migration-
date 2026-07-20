@@ -1422,7 +1422,7 @@ def test_runtime_import_is_narrow_and_creates_no_repository_at_startup():
     assert "_create_newsletter_preference_transaction_client" not in startup_names
     assert "NewsletterChallengeRepository" not in startup_names
     assert "NewsletterRateLimitRepository" not in startup_names
-    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in server_source
+    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = True" in server_source
     assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in server_source
     for relative in (
         "backend/app/email_service.py",

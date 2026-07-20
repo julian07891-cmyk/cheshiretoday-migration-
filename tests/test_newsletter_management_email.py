@@ -588,8 +588,8 @@ def test_stage_4f1_runtime_wiring_remains_gated_and_lazy():
     repository = Path(__file__).resolve().parents[1]
     server = (repository / "backend/server.py").read_text()
     email_service = (repository / "backend/app/email_service.py").read_text()
-    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in server
-    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in server
+    assert "NEWSLETTER_REQUEST_LINKS_ENABLED = True" in server
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in server
     assert "def _create_newsletter_management_email_helper(" in server
     assert "def send_newsletter_management_transactional(" in email_service
 
