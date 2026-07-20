@@ -321,7 +321,7 @@ def test_readiness_is_value_safe_and_performs_no_io(monkeypatch):
     assert all(type(value) is bool for value in result.values())
 
 
-def test_secure_and_legacy_routes_remain_registered_once():
+def test_secure_and_signup_routes_remain_registered_once():
     expected = (
         ("POST", "/api/newsletter/preferences/verify"),
         ("PUT", "/api/newsletter/preferences/secure"),
@@ -333,12 +333,6 @@ def test_secure_and_legacy_routes_remain_registered_once():
         ("POST", "/api/newsletter/reactivate/confirm"),
         ("POST", "/api/subscribe"),
         ("POST", "/api/newsletter/subscribe"),
-        ("GET", "/api/newsletter/preferences/{email}"),
-        ("PUT", "/api/newsletter/preferences"),
-        ("POST", "/api/newsletter/email-preferences"),
-        ("PUT", "/api/newsletter/email-preferences"),
-        ("GET", "/api/newsletter/email-preferences/{email}"),
-        ("POST", "/api/newsletter/unsubscribe"),
     )
 
     for method, path in expected:

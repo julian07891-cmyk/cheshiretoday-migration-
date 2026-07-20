@@ -68,6 +68,23 @@ const click = async (element) => {
   });
 };
 
+const changeInput = async (input, value) => {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    ).set;
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+};
+
+const submitForm = async (form) => {
+  await act(async () => {
+    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+};
+
 const checkboxByLabel = (container, labelText) =>
   Array.from(container.querySelectorAll("label")).find((label) =>
     label.textContent.includes(labelText),
@@ -149,6 +166,158 @@ describe("fragment-token capture", () => {
     await flush();
     expect(fetch).not.toHaveBeenCalled();
     expect(page.container.textContent).toContain("This link is not valid");
+    await page.cleanup();
+  });
+
+  test("legacy email query is synchronously stripped and never transferred", async () => {
+    const replaceState = jest.spyOn(window.history, "replaceState");
+    const page = await renderPage(
+      SecureNewsletterPreferencesPage,
+      "/newsletter/preferences?email=private%40example.com",
+    );
+
+    expect(window.location.search).toBe("");
+    expect(window.location.href).not.toContain("private");
+    expect(replaceState).toHaveBeenCalledWith(
+      {},
+      "",
+      "/newsletter/preferences",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+    expect(page.container.textContent).toContain("older link has been retired");
+    expect(page.container.textContent).not.toContain("private@example.com");
+    await page.cleanup();
+  });
+});
+
+describe("clean request-link entry", () => {
+  test.each([
+    [
+      SecureNewsletterPreferencesPage,
+      "/newsletter/preferences",
+      "/api/newsletter/preferences/request-link",
+      "Request preferences link",
+    ],
+    [
+      SecureNewsletterUnsubscribePage,
+      "/unsubscribe",
+      "/api/newsletter/unsubscribe/request-link",
+      "Request unsubscribe link",
+    ],
+    [
+      SecureNewsletterReactivationPage,
+      "/newsletter/reactivate",
+      "/api/newsletter/reactivate/request-link",
+      "Request reactivation link",
+    ],
+  ])(
+    "uses only its secure request-link endpoint",
+    async (Component, url, endpoint, actionLabel) => {
+      fetch.mockReturnValueOnce(
+        jsonResponse(202, {
+          success: true,
+          message:
+            "If the address is eligible, an email with the next step will be sent shortly.",
+        }),
+      );
+      const page = await renderPage(Component, url);
+      const input = page.container.querySelector('input[type="email"]');
+      await changeInput(input, " Reader@Example.com ");
+      await click(
+        Array.from(page.container.querySelectorAll("button")).find(
+          (button) => button.textContent === actionLabel,
+        ),
+      );
+      await flush();
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch.mock.calls[0][0]).toMatch(new RegExp(`${endpoint}$`));
+      expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
+        email: "reader@example.com",
+      });
+      expect(fetch.mock.calls[0][0]).not.toContain("reader");
+      expect(page.container.textContent).toContain("Check your email");
+      expect(page.container.textContent).not.toContain("reader@example.com");
+      expect(fetch.mock.calls[0][0]).not.toContain("one-click");
+      await page.cleanup();
+    },
+  );
+
+  test("prevents duplicate request-link submissions while pending", async () => {
+    const pending = pendingJsonResponse();
+    fetch.mockReturnValueOnce(pending.promise);
+    const page = await renderPage(
+      SecureNewsletterPreferencesPage,
+      "/newsletter/preferences",
+    );
+    const input = page.container.querySelector('input[type="email"]');
+    const form = page.container.querySelector("form");
+    await changeInput(input, "reader@example.com");
+    await submitForm(form);
+    await submitForm(form);
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      pending.resolve({
+        ok: true,
+        status: 202,
+        json: () => Promise.resolve({ success: true, message: "generic" }),
+      });
+    });
+    await flush();
+    await page.cleanup();
+  });
+
+  test.each([401, 403, 409, 422, 429, 503])(
+    "handles request-link HTTP %s without exposing response details",
+    async (status) => {
+      fetch.mockReturnValueOnce(jsonResponse(status, { detail: TOKEN }));
+      const page = await renderPage(
+        SecureNewsletterUnsubscribePage,
+        "/unsubscribe",
+      );
+      await changeInput(
+        page.container.querySelector('input[type="email"]'),
+        "reader@example.com",
+      );
+      await submitForm(page.container.querySelector("form"));
+      await flush();
+
+      expect(page.container.textContent).not.toContain(TOKEN);
+      expect(page.container.textContent).not.toContain("reader@example.com");
+      await page.cleanup();
+    },
+  );
+
+  test.each([
+    [
+      "malformed JSON",
+      () => Promise.resolve({
+        ok: true,
+        status: 202,
+        json: () => Promise.reject(new Error(TOKEN)),
+      }),
+    ],
+    [
+      "unexpected success shape",
+      () => jsonResponse(202, { success: false, detail: TOKEN }),
+    ],
+    ["network failure", () => Promise.reject(new Error(TOKEN))],
+  ])("fails safely for %s", async (_label, responseFactory) => {
+    fetch.mockImplementationOnce(responseFactory);
+    const page = await renderPage(
+      SecureNewsletterReactivationPage,
+      "/newsletter/reactivate",
+    );
+    await changeInput(
+      page.container.querySelector('input[type="email"]'),
+      "reader@example.com",
+    );
+    await submitForm(page.container.querySelector("form"));
+    await flush();
+
+    expect(page.container.textContent).not.toContain(TOKEN);
+    expect(page.container.textContent).not.toContain("reader@example.com");
     await page.cleanup();
   });
 });
@@ -512,5 +681,16 @@ describe("privacy and route source contracts", () => {
     expect(appSource).not.toContain(
       "/api/newsletter/unsubscribe/one-click",
     );
+  });
+
+  test("signup confirmation contains no email-only management API", () => {
+    const source = require("fs").readFileSync(
+      require("path").join(__dirname, "NewsletterPreferences.jsx"),
+      "utf8",
+    );
+    expect(source).not.toContain("/api/newsletter/email-preferences");
+    expect(source).not.toContain("/api/newsletter/preferences/");
+    expect(source).not.toContain("/api/newsletter/unsubscribe");
+    expect(source).not.toContain("fetch(");
   });
 });

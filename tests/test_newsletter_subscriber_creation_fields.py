@@ -208,7 +208,7 @@ def test_existing_subscriber_branches_never_assign_management_fields(
     _assert_private_subscribe_response(response)
 
 
-def test_existing_active_preference_update_does_not_touch_management_fields(
+def test_existing_active_signup_request_does_not_update_preferences(
     monkeypatch,
 ):
     existing = {
@@ -223,12 +223,22 @@ def test_existing_active_preference_update_does_not_touch_management_fields(
         monkeypatch, existing, preferences
     )
 
-    assert subscribers.updates == [
-        (
-            {"email": TEST_EMAIL},
-            {"$set": {"preferences": preferences}},
-        )
-    ]
+    assert subscribers.updates == []
+
+
+def test_existing_active_and_inactive_responses_are_non_enumerating(monkeypatch):
+    active, active_store, _ = _run_subscribe(
+        monkeypatch,
+        {"email": TEST_EMAIL, "active": True},
+    )
+    inactive, inactive_store, _ = _run_subscribe(
+        monkeypatch,
+        {"email": TEST_EMAIL, "active": False},
+    )
+
+    assert active.model_dump() == inactive.model_dump()
+    assert active_store.updates == []
+    assert inactive_store.updates == []
 
 
 def test_subscribe_responses_expose_no_subscriber_identifiers(monkeypatch):

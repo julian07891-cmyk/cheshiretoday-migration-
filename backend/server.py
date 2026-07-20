@@ -331,26 +331,6 @@ class CommentResponse(BaseModel):
 # NEWSLETTER SEGMENTATION
 # =====================================================================================
 
-class NewsletterPreferences(BaseModel):
-    categories: List[str] = []  # Categories user wants: Local News, Sports, etc.
-    frequency: str = "daily"  # daily, weekly, breaking_only
-    
-class UpdatePreferencesRequest(BaseModel):
-    email: EmailStr
-    preferences: NewsletterPreferences
-
-class PreferencesUpdateRequest(BaseModel):
-    """Request model for updating email tier preferences (daily brief, weekly, breaking news)"""
-    email: str
-    daily_brief: bool = True
-    weekly_roundup: bool = False
-    breaking_news: bool = False
-
-class UnsubscribeRequest(BaseModel):
-    """Request model for unsubscribe endpoint"""
-    email: str
-
-
 class NewsletterTokenRequest(BaseModel):
     token: str = Field(..., min_length=1, max_length=4096)
 
@@ -5052,38 +5032,12 @@ async def subscribe_newsletter(request: SubscribeRequest):
         existing = await db.subscribers.find_one({"email": email}, {"_id": 0})
         
         if existing:
-            # If this email previously unsubscribed, reactivate it cleanly.
-            update_data = {}
-            unset_data = {}
-
-            if request.preferences:
-                update_data["preferences"] = request.preferences
-
-            if existing.get("active") is False:
-                update_data.update({
-                    "active": True,
-                    "daily_brief": True,
-                    "weekly_roundup": False,
-                    "breaking_news": False,
-                    "reactivated_at": datetime.now(timezone.utc).isoformat(),
-                    "preferences_updated_at": datetime.now(timezone.utc).isoformat(),
-                })
-                unset_data.update({
-                    "unsubscribe_method": "",
-                    "unsubscribe_reason": "",
-                })
-
-            if update_data or unset_data:
-                update_op = {}
-                if update_data:
-                    update_op["$set"] = update_data
-                if unset_data:
-                    update_op["$unset"] = unset_data
-                await db.subscribers.update_one({"email": email}, update_op)
-
+            # Existing addresses must use mailbox-verified management flows.
+            # Keep the response identical for active and inactive records and do
+            # not change subscriber state or preferences from public signup.
             return SubscribeResponse(
                 success=True,
-                message="You're already subscribed to our newsletter!" if existing.get("active") is not False else "Welcome back — your Daily Brief subscription has been reactivated."
+                message="Thanks. If this address is eligible, no further action is needed."
             )
         
         # Default preferences
@@ -5136,16 +5090,6 @@ async def subscribe_newsletter(request: SubscribeRequest):
 # =====================================================================================
 # NEWSLETTER PREFERENCES ENDPOINTS
 # =====================================================================================
-
-# Allowed newsletter categories (used for validating user preference updates)
-NEWSLETTER_ALLOWED_CATEGORIES = [
-    "Local News",
-    "UK News",
-    "Business",
-    "Finance",
-    "Tax",
-    "AI & Tech",
-]
 
 SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE = (
     "Secure newsletter management is not yet available."
@@ -6632,126 +6576,6 @@ async def confirm_secure_newsletter_reactivation(
     return await _process_secure_newsletter_reactivation(request)
 
 
-@api_router.get("/newsletter/preferences/{email}")
-async def get_newsletter_preferences(email: str):
-    """Get newsletter preferences for an email - includes new tiered preferences (Jan 2026)"""
-    try:
-        email = email.lower().strip()
-        subscriber = await db.subscribers.find_one({"email": email}, {"_id": 0})
-        
-        if not subscriber:
-            return {
-                "found": False,
-                "email": email,
-                "message": "Email not found in subscriber list",
-                "preferences": None
-            }
-        
-        return {
-            "found": True,
-            "success": True,
-            "email": email,
-            "preferences": {
-                # New tiered email preferences (Jan 2026)
-                "daily_brief": subscriber.get("daily_brief", True),
-                "weekly_roundup": subscriber.get("weekly_roundup", False),
-                "breaking_news": subscriber.get("breaking_news", False),
-                # Legacy preferences (kept for backwards compatibility)
-                "categories": subscriber.get("preferences", {}).get("categories", ["Local News", "UK News"]),
-                "frequency": subscriber.get("preferences", {}).get("frequency", "daily")
-            },
-            "subscribed_at": str(subscriber.get("subscribed_at")) if subscriber.get("subscribed_at") else None
-        }
-    except Exception as e:
-        logger.error(f"Error getting preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to get preferences")
-
-@api_router.put("/newsletter/preferences")
-async def update_newsletter_preferences(request: UpdatePreferencesRequest):
-    """Update newsletter preferences for a subscriber"""
-    try:
-        email = request.email.lower().strip()
-        
-        # Check if subscriber exists
-        existing = await db.subscribers.find_one({"email": email})
-        if not existing:
-            raise HTTPException(status_code=404, detail="Subscriber not found. Please subscribe first.")
-        
-        # Update preferences
-        await db.subscribers.update_one(
-            {"email": email},
-            {"$set": {
-                "preferences": {
-                    "categories": [c for c in (request.preferences.categories or []) if c in NEWSLETTER_ALLOWED_CATEGORIES],
-                    "frequency": request.preferences.frequency
-                },
-                "preferences_updated_at": datetime.now(timezone.utc).isoformat()
-            }}
-        )
-        
-        logger.info(f"Updated newsletter preferences for: {email}")
-        
-        return {
-            "success": True,
-            "message": "Your newsletter preferences have been updated!"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update preferences")
-
-
-@api_router.post("/newsletter/email-preferences")
-async def update_email_preferences(request: PreferencesUpdateRequest):
-    """
-    Update email tier preferences (Daily Brief, Weekly Roundup, Breaking News).
-    If all preferences are disabled, user still stays subscribed but won't receive any emails.
-    """
-    try:
-        email = request.email.lower().strip()
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email is required")
-        
-        # Check if subscriber exists
-        subscriber = await db.subscribers.find_one({"email": email})
-        
-        if not subscriber:
-            raise HTTPException(status_code=404, detail="Email not found. Please subscribe first.")
-        
-        # Update tiered preferences
-        await db.subscribers.update_one(
-            {"email": email},
-            {"$set": {
-                "daily_brief": request.daily_brief,
-                "weekly_roundup": request.weekly_roundup,
-                "breaking_news": request.breaking_news,
-                "preferences_updated_at": datetime.now(timezone.utc)
-            }}
-        )
-        
-        # If ALL preferences are False, log it
-        if not request.daily_brief and not request.weekly_roundup and not request.breaking_news:
-            logger.info(f"Subscriber {email[:3]}*** disabled all email preferences")
-        
-        return {
-            "success": True,
-            "message": "Your email preferences have been updated.",
-            "preferences": {
-                "daily_brief": request.daily_brief,
-                "weekly_roundup": request.weekly_roundup,
-                "breaking_news": request.breaking_news
-            }
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating email preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update preferences")
-
 @api_router.get("/newsletter/categories")
 async def get_available_categories():
     """Get available newsletter subscription options (January 2026 update)"""
@@ -6790,79 +6614,6 @@ async def get_available_categories():
         ]
     }
 
-
-class UpdateEmailPreferencesRequest(BaseModel):
-    email: str
-    daily_brief: Optional[bool] = None
-    weekly_roundup: Optional[bool] = None
-    breaking_news: Optional[bool] = None
-
-
-@api_router.put("/newsletter/email-preferences")
-async def update_email_preferences(request: UpdateEmailPreferencesRequest):
-    """Update subscriber's email preferences (Daily Brief, Weekly Roundup, Breaking News)"""
-    try:
-        email = request.email.lower().strip()
-        
-        # Check if subscriber exists
-        existing = await db.subscribers.find_one({"email": email})
-        if not existing:
-            raise HTTPException(status_code=404, detail="Subscriber not found")
-        
-        # Build update object
-        update_data = {}
-        if request.daily_brief is not None:
-            update_data["daily_brief"] = request.daily_brief
-        if request.weekly_roundup is not None:
-            update_data["weekly_roundup"] = request.weekly_roundup
-        if request.breaking_news is not None:
-            update_data["breaking_news"] = request.breaking_news
-        
-        if update_data:
-            await db.subscribers.update_one(
-                {"email": email},
-                {"$set": update_data}
-            )
-        
-        logger.info(f"Updated email preferences for: {email}")
-        
-        return {
-            "success": True,
-            "email": email,
-            "preferences": update_data,
-            "message": "Your email preferences have been updated!"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating email preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.get("/newsletter/email-preferences/{email}")
-async def get_email_preferences(email: str):
-    """Get subscriber's current email preferences"""
-    try:
-        email = email.lower().strip()
-        subscriber = await db.subscribers.find_one({"email": email}, {"_id": 0})
-        
-        if not subscriber:
-            raise HTTPException(status_code=404, detail="Subscriber not found")
-        
-        return {
-            "email": email,
-            "daily_brief": subscriber.get("daily_brief", True),  # Default to True
-            "weekly_roundup": subscriber.get("weekly_roundup", False),
-            "breaking_news": subscriber.get("breaking_news", False),
-            "subscribed_at": subscriber.get("subscribed_at")
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting email preferences: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================================================================
 # COMMENTS SYSTEM ENDPOINTS
@@ -7209,82 +6960,6 @@ async def get_admin_stats(authorized: bool = Depends(get_admin_auth)):
     except Exception as e:
         logger.error(f"Error getting admin stats: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# =====================================================================================
-# PUBLIC NEWSLETTER ENDPOINTS (No auth required)
-# =====================================================================================
-
-@api_router.post("/newsletter/unsubscribe")
-async def unsubscribe_newsletter(payload: UnsubscribeRequest, request: Request):
-    """
-    Public endpoint to unsubscribe from newsletter.
-    Soft-unsubscribes so future sends exclude the email while keeping an audit trail.
-    """
-    try:
-        email = payload.email.lower().strip()
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email is required")
-        
-        now_iso = datetime.now(timezone.utc).isoformat()
-        subscriber = await db.subscribers.find_one({"email": email})
-
-        audit_doc = {
-            "email": email,
-            "requested_at": now_iso,
-            "method": "public_unsubscribe",
-            "matched_subscriber": bool(subscriber),
-            "ip": request.client.host if request.client else None,
-            "user_agent": request.headers.get("user-agent", "")[:300],
-        }
-
-        if subscriber:
-            audit_doc.update({
-                "subscriber_id": subscriber.get("id"),
-                "previous_active": subscriber.get("active"),
-                "previous_daily_brief": subscriber.get("daily_brief"),
-                "previous_weekly_roundup": subscriber.get("weekly_roundup"),
-                "previous_breaking_news": subscriber.get("breaking_news"),
-                "previous_preferences_updated_at": subscriber.get("preferences_updated_at"),
-            })
-
-            await db.subscribers.update_one(
-                {"email": email},
-                {"$set": {
-                    "active": False,
-                    "daily_brief": False,
-                    "weekly_roundup": False,
-                    "breaking_news": False,
-                    "unsubscribed_at": now_iso,
-                    "unsubscribe_method": "public_unsubscribe",
-                    "preferences_updated_at": now_iso,
-                }}
-            )
-
-        try:
-            await db.unsubscribe_log.insert_one(audit_doc)
-        except Exception as audit_error:
-            logger.warning(f"Failed to write unsubscribe audit log: {audit_error}")
-
-        if not subscriber:
-            logger.info(f"Unsubscribe attempt for non-existent email: {email[:3]}***")
-            return {
-                "success": True,
-                "message": "If you were subscribed, you have been unsubscribed successfully."
-            }
-        
-        logger.info(f"Subscriber unsubscribed: {email[:3]}***")
-        return {
-            "success": True,
-            "message": "You have been successfully unsubscribed from all Cheshire Today emails."
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error unsubscribing: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to process unsubscribe request")
 
 
 @api_router.post("/admin/normalize-published-dates")
@@ -13512,15 +13187,12 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
 
         success_count = 0
         for email in to_emails:
-            from urllib.parse import quote
-            prefs_url = f"{email_service.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{email_service.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = email_service._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = email_service._get_tracked_url(tracking_id, unsub_url)
+            prefs_url = f"{email_service.base_url}/newsletter/preferences"
+            unsub_url = f"{email_service.base_url}/unsubscribe"
 
             html_personal = None
             if html:
-                html_personal = html_base.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+                html_personal = html_base.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
 
             # text: if placeholders exist, replace them with raw URLs
             text_personal = None

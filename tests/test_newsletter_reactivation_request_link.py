@@ -550,18 +550,6 @@ def test_route_is_registered_exactly_once():
          "confirm_secure_newsletter_reactivation"),
         ("POST", "/api/subscribe", "subscribe_newsletter"),
         ("POST", "/api/newsletter/subscribe", "subscribe_newsletter"),
-        ("GET", "/api/newsletter/preferences/{email}",
-         "get_newsletter_preferences"),
-        ("PUT", "/api/newsletter/preferences",
-         "update_newsletter_preferences"),
-        ("POST", "/api/newsletter/email-preferences",
-         "update_email_preferences"),
-        ("PUT", "/api/newsletter/email-preferences",
-         "update_email_preferences"),
-        ("GET", "/api/newsletter/email-preferences/{email}",
-         "get_email_preferences"),
-        ("POST", "/api/newsletter/unsubscribe",
-         "unsubscribe_newsletter"),
     ],
 )
 def test_existing_routes_remain_registered_once(method, path, endpoint):

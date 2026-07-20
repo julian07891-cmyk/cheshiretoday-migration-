@@ -773,48 +773,6 @@ ROUTE_CONTRACTS = (
         "SubscribeRequest",
         "SubscribeResponse",
     ),
-    (
-        "GET",
-        "/api/newsletter/preferences/{email}",
-        "get_newsletter_preferences",
-        None,
-        None,
-    ),
-    (
-        "PUT",
-        "/api/newsletter/preferences",
-        "update_newsletter_preferences",
-        "UpdatePreferencesRequest",
-        None,
-    ),
-    (
-        "POST",
-        "/api/newsletter/email-preferences",
-        "update_email_preferences",
-        "PreferencesUpdateRequest",
-        None,
-    ),
-    (
-        "PUT",
-        "/api/newsletter/email-preferences",
-        "update_email_preferences",
-        "UpdateEmailPreferencesRequest",
-        None,
-    ),
-    (
-        "GET",
-        "/api/newsletter/email-preferences/{email}",
-        "get_email_preferences",
-        None,
-        None,
-    ),
-    (
-        "POST",
-        "/api/newsletter/unsubscribe",
-        "unsubscribe_newsletter",
-        "UnsubscribeRequest",
-        None,
-    ),
 )
 
 

@@ -801,18 +801,12 @@ def test_four_remaining_secure_routes_stay_dormant(monkeypatch):
         assert response.json() == {"detail": GENERIC_503}
 
 
-def test_stage_4b_and_legacy_routes_remain_singly_registered():
+def test_stage_4b_and_signup_routes_remain_singly_registered():
     expected = (
         ("POST", "/api/newsletter/preferences/verify"),
         ("PUT", "/api/newsletter/preferences/secure"),
         ("POST", "/api/subscribe"),
         ("POST", "/api/newsletter/subscribe"),
-        ("GET", "/api/newsletter/preferences/{email}"),
-        ("PUT", "/api/newsletter/preferences"),
-        ("POST", "/api/newsletter/email-preferences"),
-        ("PUT", "/api/newsletter/email-preferences"),
-        ("GET", "/api/newsletter/email-preferences/{email}"),
-        ("POST", "/api/newsletter/unsubscribe"),
     )
 
     for method, path in expected:

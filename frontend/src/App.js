@@ -74,9 +74,6 @@ const ShareAlertsButton = lazy(() => import("./components/ShareAlertsButton"));
 const BottomNav = lazy(() => import("./components/BottomNav"));
 const CategoryTabs = lazy(() => import("./components/CategoryTabs"));
 const CommentsSection = lazy(() => import("./components/CommentsSection"));
-const NewsletterPreferences = lazy(
-  () => import("./components/NewsletterPreferences"),
-);
 const JobBoard = lazy(() => import("./components/JobBoard"));
 const PostJob = lazy(() => import("./components/PostJob"));
 const PaymentSuccess = lazy(() => import("./components/PaymentSuccess"));

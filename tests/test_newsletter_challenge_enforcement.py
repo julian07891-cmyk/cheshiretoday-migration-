@@ -1610,12 +1610,6 @@ def test_route_registration_and_unrelated_routes_are_preserved():
         ("POST", "/api/newsletter/reactivate/request-link"),
         ("POST", "/api/subscribe"),
         ("POST", "/api/newsletter/subscribe"),
-        ("GET", "/api/newsletter/preferences/{email}"),
-        ("PUT", "/api/newsletter/preferences"),
-        ("POST", "/api/newsletter/email-preferences"),
-        ("PUT", "/api/newsletter/email-preferences"),
-        ("GET", "/api/newsletter/email-preferences/{email}"),
-        ("POST", "/api/newsletter/unsubscribe"),
     )
     for registration in expected:
         assert routes.count(registration) == 1

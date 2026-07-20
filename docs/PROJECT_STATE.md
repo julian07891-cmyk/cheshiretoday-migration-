@@ -22715,3 +22715,9 @@ Phase 1 Stage 4F2 added one isolated synchronous provisioning script for the fou
 ## 20 July 2026 — Newsletter ownership Stage 4F3 frontend fragment consumers
 
 Phase 1 Stage 4F3 added the three frontend consumers for secure preferences, human unsubscribe and reactivation links. Each captures only the canonical fragment token into component memory, immediately removes the fragment from browser history, never renders or persists it, uses the reviewed secure endpoints, requires explicit user action before mutation and presents privacy-safe accessible failure states; the browser never invokes RFC one-click unsubscribe. Backend code, gates, secrets, email, migration and indexes remain unchanged, no production endpoint was invoked, and focused offline frontend tests were added. Production activation and Phase 1 remain incomplete.
+
+---
+
+## 20 July 2026 — Newsletter ownership Stage 4F4 legacy cutover
+
+Phase 1 Stage 4F4 was implemented locally to retire public email-only preference and unsubscribe routes, prevent signup-based reactivation of existing subscribers, add privacy-safe legacy-link retirement and explicit secure request-link forms, and change routine visible management links to clean untracked entry URLs. First-time signup and authenticated Admin operations remain available, all secure routes remain behind the two literal-false gates, and outbound RFC one-click headers remain fail-closed because the synchronous routine-delivery paths cannot yet guarantee subscriber-bound challenge persistence and per-recipient headers. No migration, index provisioning, secret configuration, production operation, email delivery, commit, push or deployment occurred; activation remains incomplete.

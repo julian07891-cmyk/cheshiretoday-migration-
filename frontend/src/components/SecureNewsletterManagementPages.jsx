@@ -9,9 +9,12 @@ import {
   Mail,
 } from "lucide-react";
 import {
-  captureNewsletterFragmentToken,
+  captureNewsletterLinkState,
   confirmSecureNewsletterReactivation,
   confirmSecureNewsletterUnsubscribe,
+  requestSecureNewsletterPreferencesLink,
+  requestSecureNewsletterReactivationLink,
+  requestSecureNewsletterUnsubscribeLink,
   secureNewsletterStateForFailure,
   updateSecureNewsletterPreferences,
   verifySecureNewsletterPreferences,
@@ -32,6 +35,10 @@ const STATE_COPY = {
     title: "This link is not valid",
     message: "Please request a new secure newsletter link and try again.",
   },
+  retired: {
+    title: "This older link has been retired",
+    message: "Request a new secure newsletter link to continue.",
+  },
   unavailable: {
     title: "Newsletter management is unavailable",
     message: "Please try again later.",
@@ -43,8 +50,8 @@ const STATE_COPY = {
 };
 
 const useCapturedToken = () => {
-  const [token] = useState(() => captureNewsletterFragmentToken());
-  return token;
+  const [linkState] = useState(() => captureNewsletterLinkState());
+  return linkState;
 };
 
 const SecurePageShell = ({ title, description, children }) => (
@@ -110,6 +117,79 @@ const SuccessState = ({ title, message }) => (
   </div>
 );
 
+const RequestLinkForm = ({ requestLink, actionLabel }) => {
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [state, setState] = useState("ready");
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (submitting) {
+      return;
+    }
+    const normalizedEmail = email.trim().toLowerCase();
+    if (
+      !normalizedEmail ||
+      normalizedEmail.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    ) {
+      setState("invalid");
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await requestLink(normalizedEmail);
+    if (
+      result.ok &&
+      result.data?.success === true &&
+      typeof result.data?.message === "string"
+    ) {
+      setState("success");
+    } else {
+      setState(result.status === 503 || result.status === 0 ? "unavailable" : "invalid");
+    }
+    setSubmitting(false);
+  };
+
+  if (state === "success") {
+    return (
+      <SuccessState
+        title="Check your email"
+        message="If the address is eligible, an email with the next step will be sent shortly."
+      />
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-6 space-y-3">
+      <label
+        htmlFor={`newsletter-link-${actionLabel}`}
+        className="block text-sm font-medium text-gray-800 dark:text-gray-200"
+      >
+        Email address
+      </label>
+      <input
+        id={`newsletter-link-${actionLabel}`}
+        type="email"
+        autoComplete="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        disabled={submitting}
+        required
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+      />
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitting ? "Requesting…" : actionLabel}
+      </button>
+      {state !== "ready" && <FlowState state={state} />}
+    </form>
+  );
+};
+
 const PreferenceControls = ({ preferences, onChange, disabled }) => {
   const options = [
     ["daily_brief", "Daily Brief"],
@@ -141,9 +221,12 @@ const PreferenceControls = ({ preferences, onChange, disabled }) => {
 };
 
 export const SecureNewsletterPreferencesPage = () => {
-  const token = useCapturedToken();
+  const linkState = useCapturedToken();
+  const token = linkState.token;
   const verificationStarted = useRef(false);
-  const [state, setState] = useState(token ? "loading" : "invalid");
+  const [state, setState] = useState(
+    linkState.retired ? "retired" : token ? "loading" : "invalid",
+  );
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [submitting, setSubmitting] = useState(false);
 
@@ -232,13 +315,22 @@ export const SecureNewsletterPreferencesPage = () => {
         />
       )}
       {!["ready", "success"].includes(state) && <FlowState state={state} />}
+      {!["ready", "success", "loading"].includes(state) && (
+        <RequestLinkForm
+          requestLink={requestSecureNewsletterPreferencesLink}
+          actionLabel="Request preferences link"
+        />
+      )}
     </SecurePageShell>
   );
 };
 
 export const SecureNewsletterUnsubscribePage = () => {
-  const token = useCapturedToken();
-  const [state, setState] = useState(token ? "ready" : "invalid");
+  const linkState = useCapturedToken();
+  const token = linkState.token;
+  const [state, setState] = useState(
+    linkState.retired ? "retired" : token ? "ready" : "invalid",
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (event) => {
@@ -279,13 +371,22 @@ export const SecureNewsletterUnsubscribePage = () => {
         />
       )}
       {!["ready", "success"].includes(state) && <FlowState state={state} />}
+      {!["ready", "success"].includes(state) && (
+        <RequestLinkForm
+          requestLink={requestSecureNewsletterUnsubscribeLink}
+          actionLabel="Request unsubscribe link"
+        />
+      )}
     </SecurePageShell>
   );
 };
 
 export const SecureNewsletterReactivationPage = () => {
-  const token = useCapturedToken();
-  const [state, setState] = useState(token ? "ready" : "invalid");
+  const linkState = useCapturedToken();
+  const token = linkState.token;
+  const [state, setState] = useState(
+    linkState.retired ? "retired" : token ? "ready" : "invalid",
+  );
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [selectionConfirmed, setSelectionConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -350,6 +451,12 @@ export const SecureNewsletterReactivationPage = () => {
         />
       )}
       {!["ready", "success"].includes(state) && <FlowState state={state} />}
+      {!["ready", "success"].includes(state) && (
+        <RequestLinkForm
+          requestLink={requestSecureNewsletterReactivationLink}
+          actionLabel="Request reactivation link"
+        />
+      )}
     </SecurePageShell>
   );
 };

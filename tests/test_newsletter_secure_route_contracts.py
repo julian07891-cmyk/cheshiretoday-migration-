@@ -100,12 +100,14 @@ SECURE_ROUTES = (
 LEGACY_ROUTES = (
     ("POST", "/api/subscribe", server.subscribe_newsletter),
     ("POST", "/api/newsletter/subscribe", server.subscribe_newsletter),
-    ("GET", "/api/newsletter/preferences/{email}", server.get_newsletter_preferences),
-    ("PUT", "/api/newsletter/preferences", server.update_newsletter_preferences),
-    ("POST", "/api/newsletter/email-preferences", None),
-    ("PUT", "/api/newsletter/email-preferences", None),
-    ("GET", "/api/newsletter/email-preferences/{email}", server.get_email_preferences),
-    ("POST", "/api/newsletter/unsubscribe", server.unsubscribe_newsletter),
+)
+RETIRED_ROUTES = (
+    ("GET", "/api/newsletter/preferences/{email}"),
+    ("PUT", "/api/newsletter/preferences"),
+    ("POST", "/api/newsletter/email-preferences"),
+    ("PUT", "/api/newsletter/email-preferences"),
+    ("GET", "/api/newsletter/email-preferences/{email}"),
+    ("POST", "/api/newsletter/unsubscribe"),
 )
 
 
@@ -162,7 +164,7 @@ def test_existing_newsletter_routes_remain_registered(method, path, endpoint):
         assert routes[0].endpoint is endpoint
 
 
-def test_existing_newsletter_request_and_response_contracts_are_preserved():
+def test_signup_contracts_are_preserved_and_email_only_routes_are_retired():
     openapi = server.app.openapi()
 
     subscribe = openapi["paths"]["/api/subscribe"]["post"]
@@ -173,15 +175,8 @@ def test_existing_newsletter_request_and_response_contracts_are_preserved():
         "$ref"
     ].endswith("/SubscribeResponse")
 
-    preferences = openapi["paths"]["/api/newsletter/preferences"]["put"]
-    assert preferences["requestBody"]["content"]["application/json"]["schema"][
-        "$ref"
-    ].endswith("/UpdatePreferencesRequest")
-
-    unsubscribe = openapi["paths"]["/api/newsletter/unsubscribe"]["post"]
-    assert unsubscribe["requestBody"]["content"]["application/json"]["schema"][
-        "$ref"
-    ].endswith("/UnsubscribeRequest")
+    for _method, path in RETIRED_ROUTES:
+        assert path not in openapi["paths"]
 
 
 @pytest.mark.parametrize("model", (server.NewsletterTokenRequest,))

@@ -446,21 +446,12 @@ class EmailService:
         """
         
 
-        # Personalise + track footer links (one-click)
-        from urllib.parse import quote
-        prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(to_email)}"
-        unsub_url = f"{self.base_url}/unsubscribe?email={quote(to_email)}"
-        tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-        tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-        html_content = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
-        # Personalize prefs/unsub links per-recipient (one-click) + track
-        from urllib.parse import quote
+        # Management entry links are deliberately recipient-neutral and untracked.
+        prefs_url = f"{self.base_url}/newsletter/preferences"
+        unsub_url = f"{self.base_url}/unsubscribe"
+        html_content = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
         tracking_id = self._generate_tracking_id("welcome")
-        prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(to_email)}"
-        unsub_url = f"{self.base_url}/unsubscribe?email={quote(to_email)}"
-        tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-        tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-        html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+        html_personal = html_content
 
         return self._send_email(to_email, subject, html_personal, text_content)
 
@@ -1170,19 +1161,15 @@ Cheshire Today Jobs Team
         # Send to all subscribers with daily_brief preference.
         # Build personalised messages in small chunks instead of holding all 2,000
         # rendered HTML bodies in memory at once.
-        from urllib.parse import quote
-
         def build_recipient_message(email: str) -> dict:
             recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(recipient_tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(recipient_tracking_id, unsub_url)
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = f"{self.base_url}/unsubscribe"
             html_personal = (
                 html_content
                 .replace(tracking_id, recipient_tracking_id)
-                .replace("__PREFS_URL__", tracked_prefs)
-                .replace("__UNSUB_URL__", tracked_unsub)
+                .replace("__PREFS_URL__", prefs_url)
+                .replace("__UNSUB_URL__", unsub_url)
             )
             return {
                 "to": email,
@@ -1311,13 +1298,9 @@ Cheshire Today Jobs Team
         # Send to all subscribers with breaking_news preference
         success_count = 0
         for email in to_emails:
-            # Personalize prefs/unsub links per-recipient (one-click)
-            from urllib.parse import quote
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = f"{self.base_url}/unsubscribe"
+            html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             if self._send_email(email, subject, html_personal):
                 success_count += 1
         
@@ -1491,18 +1474,14 @@ Cheshire Today Jobs Team
         
         batch_messages = []
         for email in to_emails:
-            # Personalize prefs/unsub links per-recipient (one-click)
-            from urllib.parse import quote
             recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(recipient_tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(recipient_tracking_id, unsub_url)
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = f"{self.base_url}/unsubscribe"
             html_personal = (
                 html_content
                 .replace(tracking_id, recipient_tracking_id)
-                .replace("__PREFS_URL__", tracked_prefs)
-                .replace("__UNSUB_URL__", tracked_unsub)
+                .replace("__PREFS_URL__", prefs_url)
+                .replace("__UNSUB_URL__", unsub_url)
             )
             batch_messages.append({
                 "to": email,
@@ -1608,13 +1587,9 @@ Cheshire Today Jobs Team
         
         success_count = 0
         for email in to_emails:
-            # Personalize prefs/unsub links per-recipient (one-click)
-            from urllib.parse import quote
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = f"{self.base_url}/unsubscribe"
+            html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             if self._send_email(email, subject, html_personal):
                 success_count += 1
         
@@ -1646,12 +1621,9 @@ Cheshire Today Jobs Team
 
         success_count = 0
         for email in to_emails:
-            from urllib.parse import quote
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = f"{self.base_url}/unsubscribe"
+            html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             if self._send_email(email, subject, html_personal):
                 success_count += 1
 
@@ -1679,12 +1651,9 @@ Cheshire Today Jobs Team
 
         success_count = 0
         for email in to_emails:
-            from urllib.parse import quote
-            prefs_url = f"{self.base_url}/newsletter/preferences?email={quote(email)}"
-            unsub_url = f"{self.base_url}/unsubscribe?email={quote(email)}"
-            tracked_prefs = self._get_tracked_url(tracking_id, prefs_url)
-            tracked_unsub = self._get_tracked_url(tracking_id, unsub_url)
-            html_personal = html_content.replace("__PREFS_URL__", tracked_prefs).replace("__UNSUB_URL__", tracked_unsub)
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = f"{self.base_url}/unsubscribe"
+            html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             if self._send_email(email, subject, html_personal):
                 success_count += 1
 
@@ -1692,4 +1661,3 @@ Cheshire Today Jobs Team
         return success_count
 
 email_service = EmailService()
-

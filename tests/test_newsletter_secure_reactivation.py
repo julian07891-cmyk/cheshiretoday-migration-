@@ -864,7 +864,7 @@ def test_three_request_link_routes_remain_dormant(monkeypatch):
         assert response.json() == {"detail": GENERIC_503}
 
 
-def test_earlier_secure_and_legacy_routes_remain_singly_registered():
+def test_earlier_secure_and_signup_routes_remain_singly_registered():
     expected = (
         ("POST", "/api/newsletter/preferences/verify"),
         ("PUT", "/api/newsletter/preferences/secure"),
@@ -872,12 +872,6 @@ def test_earlier_secure_and_legacy_routes_remain_singly_registered():
         ("POST", "/api/newsletter/unsubscribe/one-click"),
         ("POST", "/api/subscribe"),
         ("POST", "/api/newsletter/subscribe"),
-        ("GET", "/api/newsletter/preferences/{email}"),
-        ("PUT", "/api/newsletter/preferences"),
-        ("POST", "/api/newsletter/email-preferences"),
-        ("PUT", "/api/newsletter/email-preferences"),
-        ("GET", "/api/newsletter/email-preferences/{email}"),
-        ("POST", "/api/newsletter/unsubscribe"),
     )
 
     for method, path in expected:

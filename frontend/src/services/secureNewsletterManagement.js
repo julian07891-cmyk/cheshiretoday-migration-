@@ -6,13 +6,16 @@ const JSON_HEADERS = {
   "Content-Type": "application/json",
 };
 
-export const captureNewsletterFragmentToken = (
+export const captureNewsletterLinkState = (
   browserWindow = window,
 ) => {
   const fragment = browserWindow.location.hash;
+  const legacyEmailQuery = /(?:^|[?&])email(?:=|&|$)/.test(
+    browserWindow.location.search,
+  );
   let token = null;
 
-  if (fragment) {
+  if (!legacyEmailQuery && fragment) {
     const prefix = "#token=";
     if (fragment.startsWith(prefix)) {
       const encodedToken = fragment.slice(prefix.length);
@@ -29,10 +32,13 @@ export const captureNewsletterFragmentToken = (
       }
     }
 
+  }
+
+  if (fragment || legacyEmailQuery) {
     browserWindow.history.replaceState(
       browserWindow.history.state,
       "",
-      `${browserWindow.location.pathname}${browserWindow.location.search}`,
+      browserWindow.location.pathname,
     );
   }
 
@@ -41,11 +47,17 @@ export const captureNewsletterFragmentToken = (
     token.trim().length === 0 ||
     token.length > NEWSLETTER_TOKEN_MAX_LENGTH
   ) {
-    return null;
+    token = null;
   }
 
-  return token;
+  return Object.freeze({
+    token: legacyEmailQuery ? null : token,
+    retired: legacyEmailQuery,
+  });
 };
+
+export const captureNewsletterFragmentToken = (browserWindow = window) =>
+  captureNewsletterLinkState(browserWindow).token;
 
 const secureRequest = async (path, method, body) => {
   let response;
@@ -106,6 +118,29 @@ export const confirmSecureNewsletterReactivation = (
     "/api/newsletter/reactivate/confirm",
     "POST",
     { token, ...preferences },
+  );
+
+const requestSecureNewsletterLink = (path, email) =>
+  secureRequest(path, "POST", {
+    email: email.trim().toLowerCase(),
+  });
+
+export const requestSecureNewsletterPreferencesLink = (email) =>
+  requestSecureNewsletterLink(
+    "/api/newsletter/preferences/request-link",
+    email,
+  );
+
+export const requestSecureNewsletterUnsubscribeLink = (email) =>
+  requestSecureNewsletterLink(
+    "/api/newsletter/unsubscribe/request-link",
+    email,
+  );
+
+export const requestSecureNewsletterReactivationLink = (email) =>
+  requestSecureNewsletterLink(
+    "/api/newsletter/reactivate/request-link",
+    email,
   );
 
 export const secureNewsletterStateForFailure = (
