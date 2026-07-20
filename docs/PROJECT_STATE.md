@@ -22745,3 +22745,13 @@ After the activated request-link path exposed MongoDB's prohibition on `$expr` i
 ## 20 July 2026 — Newsletter request-link reactivation
 
 After the corrected request-limit reservation was deployed healthy, `NEWSLETTER_REQUEST_LINKS_ENABLED` was restored to literal `True` for controlled production verification. Challenge enforcement remains enabled; no migration, index or configuration change was performed in this step.
+
+---
+
+## 20 July 2026 — Newsletter Security Phase 1 completed
+
+Newsletter Security Phase 1 is complete and operational in production. All 14,265 subscriber records were migrated successfully with valid management IDs and token versions; the unique management-ID index and all four reviewed challenge and request-limit indexes were created and verified without conflicts. `NEWSLETTER_LINK_SECRET` is configured, MongoDB transaction capability was confirmed, and both `NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED` and `NEWSLETTER_REQUEST_LINKS_ENABLED` are enabled.
+
+Controlled production testing verified secure preferences retrieval and updates, secure unsubscribe, secure reactivation, single-use challenge consumption, replay rejection, privacy-safe non-enumerating responses, fragment-token handling and management-email delivery. The request-limit `$expr` upsert incompatibility was corrected and deployed, after which challenge creation and provider delivery succeeded. Legacy public email-only management routes remain retired, signup cannot reactivate existing inactive subscribers, and routine management links contain no recipient email or click-tracking wrapper.
+
+Outbound RFC one-click unsubscribe headers remain deferred pending a safe per-recipient provider/header lifecycle. Minor unsubscribe/reactivation success-state presentation improvements are tracked as optional UX polish and do not block the completed secure production operation.
