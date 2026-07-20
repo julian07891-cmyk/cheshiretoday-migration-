@@ -84,8 +84,21 @@ const AdvertisingPaymentSuccess = lazy(() => import("./components/AdvertisingPay
 const AdvertisingPayLater = lazy(() => import("./components/AdvertisingPayLater"));
 const MobileSearch = lazy(() => import("./components/MobileSearch"));
 const MobileMenu = lazy(() => import("./components/MobileMenu"));
-const UnsubscribePage = lazy(() => import("./components/UnsubscribePage"));
-const PreferencesPage = lazy(() => import("./components/PreferencesPage"));
+const SecureNewsletterPreferencesPage = lazy(() =>
+  import("./components/SecureNewsletterManagementPages").then((module) => ({
+    default: module.SecureNewsletterPreferencesPage,
+  })),
+);
+const SecureNewsletterUnsubscribePage = lazy(() =>
+  import("./components/SecureNewsletterManagementPages").then((module) => ({
+    default: module.SecureNewsletterUnsubscribePage,
+  })),
+);
+const SecureNewsletterReactivationPage = lazy(() =>
+  import("./components/SecureNewsletterManagementPages").then((module) => ({
+    default: module.SecureNewsletterReactivationPage,
+  })),
+);
 
 // Lazy load affiliate widgets
 const AffiliateWidgetSidebar = lazy(() =>
@@ -299,7 +312,7 @@ function App() {
               path="/unsubscribe"
               element={
                 <Suspense fallback={<LoadingFallback />}>
-                  <UnsubscribePage />
+                  <SecureNewsletterUnsubscribePage />
                 </Suspense>
               }
             />
@@ -307,7 +320,15 @@ function App() {
               path="/newsletter/preferences"
               element={
                 <Suspense fallback={<LoadingFallback />}>
-                  <PreferencesPage />
+                  <SecureNewsletterPreferencesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/newsletter/reactivate"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <SecureNewsletterReactivationPage />
                 </Suspense>
               }
             />

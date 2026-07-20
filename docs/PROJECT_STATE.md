@@ -22709,3 +22709,9 @@ Phase 1 Stage 4F1 added lazy production collaborator wiring over the existing ap
 ## 20 July 2026 — Newsletter ownership Stage 4F2 guarded index tooling
 
 Phase 1 Stage 4F2 added one isolated synchronous provisioning script for the four reviewed challenge and request-limit indexes, with read-only dry-run, interactive exact-confirmation apply, strict existing-definition conflict rejection, post-create rediscovery, full final verification and privacy-safe aggregate output. The script is not imported by runtime code and no database, production index, collection document, gate, secret, route, scheduler, migration or production behavior changed; offline tests were added. The indexes have not been created and activation readiness is not complete.
+
+---
+
+## 20 July 2026 — Newsletter ownership Stage 4F3 frontend fragment consumers
+
+Phase 1 Stage 4F3 added the three frontend consumers for secure preferences, human unsubscribe and reactivation links. Each captures only the canonical fragment token into component memory, immediately removes the fragment from browser history, never renders or persists it, uses the reviewed secure endpoints, requires explicit user action before mutation and presents privacy-safe accessible failure states; the browser never invokes RFC one-click unsubscribe. Backend code, gates, secrets, email, migration and indexes remain unchanged, no production endpoint was invoked, and focused offline frontend tests were added. Production activation and Phase 1 remain incomplete.
