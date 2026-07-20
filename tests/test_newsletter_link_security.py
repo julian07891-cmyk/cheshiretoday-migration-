@@ -136,6 +136,7 @@ class FakeRateLimitCollection:
         self.lock = asyncio.Lock()
         self.last_filter = None
         self.last_pipeline = None
+        self.last_upsert = None
         self.duplicate_conflicts = 0
 
     async def find_one_and_update(
@@ -145,25 +146,34 @@ class FakeRateLimitCollection:
             raise RuntimeError("raw database payload should never escape")
         self.last_filter = deepcopy(query)
         self.last_pipeline = deepcopy(update)
+        self.last_upsert = upsert
         identity = tuple(query[key] for key in ("dimension", "hash", "operation"))
         async with self.lock:
             document = self.documents.get(identity)
-            base = deepcopy(document) if document else {
-                "dimension": query["dimension"],
-                "hash": query["hash"],
-                "operation": query["operation"],
-            }
-            if not evaluate_mongo_expression(query["$expr"], base):
-                if upsert and document is not None:
-                    self.duplicate_conflicts += 1
-                    raise security.DuplicateKeyError(
-                        "simulated unique-index conflict"
-                    )
+            if document is None:
                 return None
-            stored = apply_mongo_pipeline(base, update)
+            if not evaluate_mongo_expression(query["$expr"], document):
+                return None
+            stored = apply_mongo_pipeline(document, update)
             self.documents[identity] = stored
             self.writes += 1
             return deepcopy(stored)
+
+    async def insert_one(self, document):
+        if self.fail:
+            raise RuntimeError("raw database payload should never escape")
+        identity = tuple(
+            document[key] for key in ("dimension", "hash", "operation")
+        )
+        async with self.lock:
+            if identity in self.documents:
+                self.duplicate_conflicts += 1
+                raise security.DuplicateKeyError(
+                    "simulated unique-index conflict"
+                )
+            self.documents[identity] = deepcopy(document)
+            self.writes += 1
+            return Result(1)
 
     async def find_one(self, query, projection=None):
         if self.fail:
@@ -666,7 +676,7 @@ def test_required_index_validator_rejects_missing_definition():
 
 
 @async_test
-async def test_generated_filter_and_pipeline_are_exercised_for_first_insert():
+async def test_first_insert_uses_no_expr_upsert_and_preserves_contract():
     collection = FakeRateLimitCollection()
     repository = security.NewsletterRateLimitRepository(collection)
     subject_hash = security.hash_normalized_email(EMAIL)
@@ -684,6 +694,7 @@ async def test_generated_filter_and_pipeline_are_exercised_for_first_insert():
         "$expr": security._mongo_rate_limit_expression("email", NOW),
     }
     assert collection.last_pipeline == security._mongo_rate_limit_pipeline(NOW)
+    assert collection.last_upsert is False
     stored = next(iter(collection.documents.values()))
     assert stored["accepted_at"] == [NOW]
     assert stored["last_accepted_at"] == NOW
@@ -691,7 +702,7 @@ async def test_generated_filter_and_pipeline_are_exercised_for_first_insert():
 
 
 @async_test
-async def test_blocked_upsert_uses_duplicate_key_conflict_then_classifies():
+async def test_blocked_reservation_uses_unique_conflict_then_classifies():
     collection = FakeRateLimitCollection()
     repository = security.NewsletterRateLimitRepository(collection)
     arguments = {
@@ -1412,7 +1423,7 @@ def test_runtime_import_is_narrow_and_creates_no_repository_at_startup():
     assert "NewsletterChallengeRepository" not in startup_names
     assert "NewsletterRateLimitRepository" not in startup_names
     assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in server_source
-    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in server_source
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in server_source
     for relative in (
         "backend/app/email_service.py",
         "backend/scheduler/tasks.py",

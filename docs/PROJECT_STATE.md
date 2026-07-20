@@ -22733,3 +22733,9 @@ After the approved subscriber migration, newsletter index provisioning and signi
 ## 20 July 2026 — Newsletter request-link activation
 
 After challenge enforcement was deployed and verified healthy, `NEWSLETTER_REQUEST_LINKS_ENABLED` was changed to literal `True`. Both newsletter activation gates are now enabled in source. No migration, index, email or production-data operation was performed in this step.
+
+---
+
+## 20 July 2026 — Newsletter request-limit reservation correction
+
+After the activated request-link path exposed MongoDB's prohibition on `$expr` in an upsert predicate, request-link issuance was disabled again while challenge enforcement remained enabled. The rate-limit repository now reserves an eligible existing record with a non-upsert conditional update and creates only a genuinely absent record with an insert protected by the existing compound unique index; duplicate insert races are classified from the stored rolling-window state. Quotas, rolling-window pruning, indexes, privacy-safe fail-closed behavior and request-link orchestration are unchanged. This correction was verified locally only; no deployment or production operation occurred.

@@ -48,9 +48,9 @@ def test_gates_remain_literal_false_and_startup_needs_no_collaborator(
 ):
     source = open(server.__file__, encoding="utf-8").read()
     assert "NEWSLETTER_REQUEST_LINKS_ENABLED = False" in source
-    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in source
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in source
     assert server.NEWSLETTER_REQUEST_LINKS_ENABLED is False
-    assert server.NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is False
+    assert server.NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is True
 
     monkeypatch.setattr(
         server,
@@ -316,7 +316,7 @@ def test_readiness_is_value_safe_and_performs_no_io(monkeypatch):
         "transaction_client_bound": True,
         "email_transport_configured": True,
         "request_links_enabled": False,
-        "challenge_enforcement_enabled": False,
+        "challenge_enforcement_enabled": True,
     }
     assert all(type(value) is bool for value in result.values())
 

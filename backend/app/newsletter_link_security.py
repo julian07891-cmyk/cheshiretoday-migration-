@@ -442,16 +442,29 @@ class NewsletterRateLimitRepository:
             document = await self._collection.find_one_and_update(
                 atomic_filter,
                 _mongo_rate_limit_pipeline(current),
-                upsert=True,
+                upsert=False,
                 return_document=ReturnDocument.AFTER,
             )
-        except DuplicateKeyError:
-            document = None
         except Exception:
             return RateLimitDecision(False, RateLimitReason.STORAGE_ERROR)
 
         if document is not None:
             return RateLimitDecision(True, RateLimitReason.ALLOWED, current)
+
+        try:
+            await self._collection.insert_one(
+                {
+                    **identity,
+                    "accepted_at": [current],
+                    "last_accepted_at": current,
+                    "expires_at": current + ROLLING_DAY,
+                }
+            )
+            return RateLimitDecision(True, RateLimitReason.ALLOWED, current)
+        except DuplicateKeyError:
+            pass
+        except Exception:
+            return RateLimitDecision(False, RateLimitReason.STORAGE_ERROR)
 
         try:
             current_document = await self._collection.find_one(
