@@ -13,6 +13,7 @@ import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import HeroMonetisationStrip from "../components/homepage/HeroMonetisationStrip";
 import SponsoredPlacement from "../components/SponsoredPlacement";
 import LeadSection from "../components/homepage/LeadSection";
+import SectionHeader from "../components/homepage/SectionHeader";
 import NewsFooter from "../components/NewsFooter";
 import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
@@ -1174,10 +1175,16 @@ return (
             {/* Latest */}
             {Array.isArray(latestFeed) && latestFeed.length > 0 && (
               <section className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">{selectedCategory === "All" ? "Latest" : selectedCategory}</h2>
-                  <span className="text-xs text-slate-500 dark:text-gray-400">({latestFeed.length})</span>
-                  </div>
+                <SectionHeader
+                  title={selectedCategory === "All" ? "Latest" : selectedCategory}
+                  description={
+                    selectedCategory === "All"
+                      ? "The newest stories from across Cheshire and the wider UK."
+                      : `The latest ${selectedCategory} stories.`
+                  }
+                  meta={`${latestFeed.length} stories`}
+                  compact
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {latestSplit.firstCards.map((a, idx) => (
@@ -1185,6 +1192,7 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
+                        variant="editorial"
                       />
                     </div>
                   ))}
@@ -1226,10 +1234,12 @@ return (
             {/* AI & Business */}
             {Array.isArray(aiBizFeed) && aiBizFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">Business & Finance</h2>
-                  <span className="text-xs text-slate-500 dark:text-gray-400">({aiBizFeed.length})</span>
-                </div>
+                <SectionHeader
+                  title="Business & Finance"
+                  description="Business, markets, property and money developments that matter."
+                  meta={`${aiBizFeed.length} stories`}
+                  compact
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {aiBizSplit.firstCards.map((a, i) => (
@@ -1237,6 +1247,7 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
+                        variant="editorial"
                       />
                     </div>
                   ))}
@@ -1254,6 +1265,7 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
+                        variant="editorial"
                       />
                     </div>
                   ))}
@@ -1273,9 +1285,11 @@ return (
                         {/* More stories */}
             {Array.isArray(moreStoriesFeed) && moreStoriesFeed.length > 0 && (
               <section className="mt-6 rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-extrabold tracking-tight">More stories</h2>
-                  </div>
+                <SectionHeader
+                  title="More stories"
+                  description="Further reporting and useful stories from Cheshire Today."
+                  compact
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {moreStoriesSplit.firstCards.map((a, i) => (
@@ -1283,6 +1297,7 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
+                        variant="editorial"
                       />
                     </div>
                   ))}
@@ -1300,6 +1315,7 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
+                        variant="editorial"
                       />
                     </div>
                   ))}

@@ -1,7 +1,13 @@
 import React from 'react';
 import { Clock, BookOpen } from 'lucide-react';
 
-const CompactArticleCard = ({ article, onClick, horizontal = false, priority = false }) => {
+const CompactArticleCard = ({
+  article,
+  onClick,
+  horizontal = false,
+  priority = false,
+  variant = "default",
+}) => {
   const [imageError, setImageError] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
   
@@ -45,6 +51,80 @@ const formatDate = (dateString) => {
     }
     return url;
   };
+
+  if (variant === "editorial") {
+    const category =
+      String(article?.displayCategory || article?.category || "").trim();
+    const location =
+      String(article?.town || article?.location || "").trim();
+
+    return (
+      <article
+        className="group cursor-pointer overflow-hidden rounded-xl border border-slate-200/70 bg-white transition-colors hover:border-slate-300 dark:border-gray-700 dark:bg-gray-800/70 dark:hover:border-gray-600"
+        onClick={() => onClick(article)}
+        data-testid={`article-card-${article.id}`}
+      >
+        {article.image ? (
+          <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-gray-700">
+            {!imageLoaded && (
+              <div className="absolute inset-0 animate-pulse bg-slate-200 dark:bg-gray-700" />
+            )}
+            <img
+              src={imageError ? fallbackImage : getOptimizedImageUrl(article.image, 640)}
+              alt={article.title}
+              onError={handleImageError}
+              onLoad={() => setImageLoaded(true)}
+              loading={priority ? "eager" : "lazy"}
+              fetchpriority={priority ? "high" : "auto"}
+              width="640"
+              height="400"
+              decoding="async"
+              className={`h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025] ${
+                imageLoaded ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          </div>
+        ) : null}
+
+        <div className="p-4">
+          {(category || location) ? (
+            <div className="mb-2 flex flex-wrap items-center gap-x-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
+              {category ? (
+                <span className="text-emerald-700 dark:text-emerald-400">
+                  {category}
+                </span>
+              ) : null}
+              {category && location ? (
+                <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">
+                  •
+                </span>
+              ) : null}
+              {location ? (
+                <span className="text-slate-500 dark:text-gray-400">
+                  {location}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          <h3 className="font-headline text-xl font-semibold leading-[1.18] tracking-[-0.02em] text-slate-950 transition-colors line-clamp-3 group-hover:text-[#1E3A8A] dark:text-white dark:group-hover:text-blue-300">
+            {article.title}
+          </h3>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-gray-400">
+            <span className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+              {formatDate(article.publishedDate)}
+            </span>
+            <span className="flex items-center gap-1">
+              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+              {readTime} min read
+            </span>
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   if (horizontal) {
     return (
