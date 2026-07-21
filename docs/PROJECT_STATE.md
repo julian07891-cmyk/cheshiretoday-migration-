@@ -22809,24 +22809,46 @@ Verification completed:
 - Facebook crawler output was verified live for article `6a5e5434ff602e15f40d4225`.
 - Live metadata now returns the article-specific canonical URL, title, description and the source-provided 1200 × 630 Newsquest Open Graph image.
 
+### Article-body reader experience
+
+Commit `6a350f0` refined the active `ArticlePageV2` reading experience after a read-only review of the existing helper history, prior article-flow fixes and current live article data.
+
+The review confirmed that many current articles contain both an editorial summary and a complete body whose opening paragraph already covers the same facts in different wording. The previous exact-text comparison could not recognise that semantic overlap and therefore prepended the visible intro to the full body, producing duplicated openings.
+
+The correction is deterministic:
+
+- when full body content exists, it is rendered unchanged
+- the visible intro is used only when no body content exists
+- SEO description and visible standfirst generation remain unchanged
+- stored article content is not modified
+- mobile preview, attribution, guides, adverts, newsletter and related-story logic are preserved
+
+The full body was also changed from an application-style rounded card to a restrained editorial reading column with subtle horizontal rules, a `max-w-3xl` measure, small mobile-only horizontal padding and tighter mobile paragraph rhythm. Desktop spacing remains unchanged.
+
+Verification completed:
+
+- historical commit `eba2db9` and the current chat-source state history were reviewed before changing body-flow logic
+- live summary and body fields were compared across a sample of current articles
+- the duplicate opening was removed on the farm-shop test article
+- mobile body width, paragraph spacing, article ending, source attribution and More Stories flow were reviewed on a real iPhone
+- the production frontend build compiled successfully
+- `frontend/.env.production.local` was restored after local testing
+
 ### Current repository checkpoint
 
 - Branch: `full-scrape-prod`
-- Current commit: `93d78b3`
-- Remote aligned with local
+- Current local commit: `6a350f0`
+- Remote commit before the next push: `b9ec93e`
 - `AGENTS.md` remains intentionally untracked
 - Newsletter Security Phase 1 remains complete and operational
 
 ### Next approved Phase 2 focus
 
-Continue with article-body reader experience, beginning with a read-only audit of:
+Push and verify commit `6a350f0`, then continue only with confirmed reader-experience findings. Likely audit areas include:
 
-- body line length
-- paragraph rhythm
-- mobile and desktop font sizing
-- subheading styling
-- list and link presentation
-- body container borders and spacing
-- image captions and credits where supported
+- subheading, list and inline-link presentation
+- image captions and credits where supported by article data
+- desktop article/sidebar balance
+- remaining homepage and cross-site editorial consistency
 
-Preserve existing article content, SEO, attribution, advertising, guide, newsletter and monetisation logic unless a confirmed reader-experience issue requires a narrowly scoped change.
+Do not reintroduce semantic or fuzzy duplicate-intro detection. Preserve existing article content, SEO, attribution, advertising, guide, newsletter and monetisation logic unless a confirmed issue requires a narrowly scoped change.
