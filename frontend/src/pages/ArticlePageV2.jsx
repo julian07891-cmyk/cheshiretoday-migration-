@@ -16,6 +16,7 @@ import SubscribeSection from "../components/SubscribeSection";
 import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
 import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
+import SectionHeader from "../components/homepage/SectionHeader";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import SponsoredPlacement from "../components/SponsoredPlacement";
 import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
@@ -1158,26 +1159,53 @@ export default function ArticlePageV2({ categories }) {
         />
 
         <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-          <div className="mb-6">
-            <button onClick={() => navigate(-1)} className="text-sm text-slate-700 hover:underline underline-offset-2 dark:text-slate-200">
-              ← Back
-            </button>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <article className="lg:col-span-8">
-              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-                {String(article?.category || "Article")}
-              </div>
-              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">{displayTitle || safeTitle}</h1>
+              <header className="border-b border-slate-300 pb-6 dark:border-gray-700">
+                <div className="mb-3 flex flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                  <span className="text-emerald-700 dark:text-emerald-400">
+                    {String(article?.category || "Article")}
+                  </span>
+                  {article?.location ? (
+                    <>
+                      <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">
+                        •
+                      </span>
+                      <span className="text-slate-500 dark:text-gray-400">
+                        {article.location}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
 
-              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-3">
-                <span>{published}</span>
-                <span>• {readingTime} min read</span>
-                <button onClick={handleShare} className="ml-auto text-slate-700 hover:underline underline-offset-2 text-sm dark:text-slate-200 dark:hover:text-white">
-                  Share
-                </button>
-              </div>
+                <h1 className="font-headline max-w-5xl text-[2.35rem] font-bold leading-[1.04] tracking-[-0.03em] text-slate-950 sm:text-5xl lg:text-[3.5rem] dark:text-white">
+                  {displayTitle || safeTitle}
+                </h1>
+
+                <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+                  <div className="min-w-0 text-sm text-slate-500 dark:text-gray-400">
+                    <div className="font-semibold text-slate-800 dark:text-slate-100">
+                      Cheshire Today
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span>{published}</span>
+                      <span className="text-slate-300 dark:text-gray-600" aria-hidden="true">
+                        •
+                      </span>
+                      <span>{readingTime} min read</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-[#1E3A8A] hover:text-[#1E3A8A] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] focus-visible:ring-offset-2 dark:border-gray-600 dark:text-slate-200 dark:hover:border-blue-300 dark:hover:text-blue-300 dark:focus-visible:ring-offset-gray-900"
+                  >
+                    Share
+                  </button>
+                </div>
+              </header>
 
               {visibleIntro && (
                 <div className="hidden sm:block mt-4">
@@ -1210,7 +1238,7 @@ export default function ArticlePageV2({ categories }) {
                   decoding="async"
                   width="1200"
                   height="630"
-                  className="w-full rounded-xl mt-6 mb-6 object-cover"
+                  className="mt-3 mb-6 w-full rounded-xl object-cover"
                 />
               )}
 
@@ -1317,9 +1345,6 @@ export default function ArticlePageV2({ categories }) {
               </section>
               )}
 
-              <div className="mt-6">
-                <SubscribeInlineBanner />
-              </div>
               {/* More stories — match homepage layout */}
               
               {/* More stories (publisher-style) — collapsed shows only one row */}
@@ -1327,11 +1352,11 @@ export default function ArticlePageV2({ categories }) {
               {/* More stories (homepage card style) — collapsed shows only one row */}
               {Array.isArray(moreStories) && moreStories.length > 0 && (
                 <section className="mt-10">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-extrabold tracking-tight text-neutral-900 dark:text-white">
-                      More stories
-                    </h2>
-                  </div>
+                  <SectionHeader
+                    title="More stories"
+                    description="Continue reading the latest reporting from Cheshire Today."
+                    compact
+                  />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {moreStoriesFirstCards.map((a, idx) => (
@@ -1349,6 +1374,7 @@ export default function ArticlePageV2({ categories }) {
                             readTime: a?.readTime || 3,
                             url: a?.url || buildArticleUrl(a),
                           }}
+                          variant="editorial"
                         />
                       </div>
                     ))}
@@ -1381,6 +1407,7 @@ export default function ArticlePageV2({ categories }) {
                             readTime: a?.readTime || 3,
                             url: a?.url || buildArticleUrl(a),
                           }}
+                          variant="editorial"
                         />
                       </div>
                     ))}
@@ -1400,6 +1427,9 @@ export default function ArticlePageV2({ categories }) {
                 </section>
               )}
 
+              <div className="mt-10">
+                <SubscribeInlineBanner />
+              </div>
                         
 
 
