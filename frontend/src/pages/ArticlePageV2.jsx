@@ -869,27 +869,10 @@ export default function ArticlePageV2({ categories }) {
 
 
   const articleBodyContent = useMemo(() => {
-    const intro = safeText(visibleIntro).trim();
     const body = String(mainContent || "").trim();
+    if (body) return body;
 
-    if (!intro) return body;
-    if (!body) return intro;
-
-    const normalise = (value) =>
-      String(value || "")
-        .replace(/\s+/g, " ")
-        .replace(/[.…]+$/g, "")
-        .trim()
-        .toLowerCase();
-
-    const introNorm = normalise(intro);
-    const bodyStartNorm = normalise(body.slice(0, Math.max(intro.length + 120, 260)));
-
-    if (bodyStartNorm.startsWith(introNorm) || bodyStartNorm.includes(introNorm)) {
-      return body;
-    }
-
-    return `${intro}\n\n${body}`;
+    return safeText(visibleIntro).trim();
   }, [visibleIntro, mainContent]);
 
 
@@ -1263,8 +1246,8 @@ export default function ArticlePageV2({ categories }) {
               )}
 
 {(!isMobileView || !mobileRemainingContent || articleExpanded) && (
-<div ref={articleBodyRef} className="rounded-2xl bg-[#FBFAF7] dark:bg-transparent border border-[#E6E1D8] dark:border-border p-5 md:p-8">
-                <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-7 prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-7 [&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
+<div ref={articleBodyRef} className="mx-auto w-full max-w-3xl border-y border-slate-200 px-2 py-6 sm:px-0 sm:py-8 dark:border-gray-800">
+                <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-6 md:prose-p:my-7 prose-p:leading-[2.1rem] md:prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-6 md:[&>div>p]:my-7 [&>div>p]:leading-[2.1rem] md:[&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
                 <div dangerouslySetInnerHTML={{ __html: autoLinkContent(articleBodyContent, pillarLabel) }} />
               </div>
