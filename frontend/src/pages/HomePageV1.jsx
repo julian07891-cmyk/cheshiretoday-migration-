@@ -1143,24 +1143,13 @@ return (
                 />
               )}
 
-              <div className="mt-3 w-full">
-                <SubscribeInlineBanner />
-              </div>
-
-              <div className="mt-3 w-full lg:hidden">
-                <SponsoredPlacement placement="homepage_mobile" compact />
-              </div>
-
-              <div className="mt-3 w-full">
-                <HeroMonetisationStrip limit={2} compact focus="finance" />
-              </div>
             </div>
             </section>
 
-            <section className="mb-4 lg:hidden space-y-4">
+            <section className="mb-4 lg:hidden">
               {topStories.length > 0 && (
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-base font-extrabold tracking-tight">Top stories</h2>
                     <span className="text-[11px] text-slate-500 dark:text-gray-400">Updated live</span>
                   </div>
@@ -1168,6 +1157,18 @@ return (
                 </div>
               )}
             </section>
+
+            <div className="mb-4 w-full">
+              <SubscribeInlineBanner />
+            </div>
+
+            <div className="mb-4 w-full lg:hidden">
+              <SponsoredPlacement placement="homepage_mobile" compact />
+            </div>
+
+            <div className="mb-4 w-full">
+              <HeroMonetisationStrip limit={2} compact focus="finance" />
+            </div>
 
 
             {/* Latest */}

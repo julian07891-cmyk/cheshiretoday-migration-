@@ -3,88 +3,106 @@ import { Link } from "react-router-dom";
 import { Clock, BookOpen } from "lucide-react";
 import { buildArticleUrl } from "../../utils/articleUrl";
 
-const safeText = (v) => (typeof v === "string" ? v : "");
-
+const safeText = (value) => (typeof value === "string" ? value : "");
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
+
   const normalized =
-    typeof dateString === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)
+    typeof dateString === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(dateString)
       ? `${dateString}Z`
       : dateString;
+
   const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return "";
+
   const now = new Date();
-  const diffMs = now - date;
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffHours = Math.floor((now - date) / (1000 * 60 * 60));
 
   if (diffHours < 1) return "Just now";
   if (diffHours < 24) return `${diffHours}h ago`;
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
 };
 
 const calculateReadTime = (content) => {
   if (!content) return 1;
-  const words = String(content).split(/\s+/).length;
-  const minutes = Math.ceil(words / 200);
-  return minutes < 1 ? 1 : minutes;
+  return Math.max(1, Math.ceil(String(content).split(/\s+/).length / 200));
 };
 
 export default function TopStoriesGrid({ stories = [] }) {
   if (!Array.isArray(stories) || stories.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-3">
-      {stories.slice(0, 8).map((story, idx) => {
+    <div className="divide-y divide-slate-200 dark:divide-gray-800">
+      {stories.slice(0, 4).map((story, index) => {
         const href = story.url || buildArticleUrl(story);
         const title = safeText(story.title) || "Untitled";
-        const summary =
-          safeText(story.summary).trim() ||
-          safeText(story.content).trim() ||
-          "";
+        const category =
+          safeText(story.displayCategory).trim() ||
+          safeText(story.category).trim() ||
+          "Top story";
+        const location = safeText(story.location).trim();
         const published = formatDate(story.publishedDate);
         const readTime = calculateReadTime(story.content || story.summary || "");
 
         return (
           <Link
-            key={story.id || story.url || story.title || idx}
+            key={story.id || story._id || story.url || story.title || index}
             to={href}
-            className="group flex w-full gap-4 overflow-hidden rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 min-h-[156px] hover:border-emerald-300 transition-colors"
+            className="group grid grid-cols-[7rem_minmax(0,1fr)] gap-4 py-5 first:pt-1 last:pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
           >
-            {story.image ? (
-              <div className="h-28 w-36 flex-none overflow-hidden rounded-md bg-slate-100 dark:bg-gray-800">
+            <div className="aspect-[4/3] w-28 overflow-hidden rounded-lg bg-slate-100 dark:bg-gray-800">
+              {story.image ? (
                 <img
                   src={story.image}
                   alt={title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
                   loading="lazy"
+                  decoding="async"
+                  width="224"
+                  height="168"
                 />
+              ) : null}
+            </div>
+
+            <div className="min-w-0 self-center">
+              <div className="mb-2 flex flex-wrap items-center gap-x-2 text-[10px] font-semibold uppercase tracking-[0.11em]">
+                <span className="text-emerald-700 dark:text-emerald-400">
+                  {category}
+                </span>
+                {location ? (
+                  <>
+                    <span
+                      className="text-slate-300 dark:text-gray-600"
+                      aria-hidden="true"
+                    >
+                      •
+                    </span>
+                    <span className="text-slate-500 dark:text-gray-400">
+                      {location}
+                    </span>
+                  </>
+                ) : null}
               </div>
-            ) : (
-              <div className="h-28 w-36 flex-none rounded-md bg-slate-100 dark:bg-gray-800" />
-            )}
 
-            <div className="min-w-0 flex-1">
-
-              <h3 className="text-[15px] font-semibold text-slate-900 dark:text-white leading-snug line-clamp-3 group-hover:underline underline-offset-2">
+              <h3 className="font-headline text-[1.05rem] font-semibold leading-[1.2] tracking-[-0.015em] text-slate-950 transition-colors group-hover:text-[#1E3A8A] dark:text-white dark:group-hover:text-blue-300">
                 {title}
               </h3>
 
-              {summary ? (
-                <p className="mt-1 text-xs text-slate-600 dark:text-gray-400 line-clamp-1">
-                  {summary}
-                </p>
-              ) : null}
-
-              <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500 dark:text-gray-400">
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-gray-400">
                 {published ? (
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
+                    <Clock className="h-3 w-3" aria-hidden="true" />
                     {published}
                   </span>
                 ) : null}
                 <span className="flex items-center gap-1">
-                  <BookOpen className="h-3 w-3" />
+                  <BookOpen className="h-3 w-3" aria-hidden="true" />
                   {readTime} min read
                 </span>
               </div>
