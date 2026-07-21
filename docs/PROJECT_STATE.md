@@ -22755,3 +22755,78 @@ Newsletter Security Phase 1 is complete and operational in production. All 14,26
 Controlled production testing verified secure preferences retrieval and updates, secure unsubscribe, secure reactivation, single-use challenge consumption, replay rejection, privacy-safe non-enumerating responses, fragment-token handling and management-email delivery. The request-limit `$expr` upsert incompatibility was corrected and deployed, after which challenge creation and provider delivery succeeded. Legacy public email-only management routes remain retired, signup cannot reactivate existing inactive subscribers, and routine management links contain no recipient email or click-tracking wrapper.
 
 Outbound RFC one-click unsubscribe headers remain deferred pending a safe per-recipient provider/header lifecycle. Minor unsubscribe/reactivation success-state presentation improvements are tracked as optional UX polish and do not block the completed secure production operation.
+
+---
+
+## 21 July 2026 — Cheshire Today Design System v2 progress
+
+Phase 2 began from the completed `newsletter-security-v1.0` baseline using the existing React/Tailwind/component architecture rather than rebuilding the website. Work followed the approved small-change workflow with local production builds and real iPhone review before each checkpoint.
+
+### Homepage editorial redesign
+
+Commit `bb925f1` redesigned the homepage hero and Top Stories presentation and reordered the opening reader flow to:
+
+1. Hero
+2. Top Stories
+3. Newsletter
+4. Sponsored placement
+5. Practical monetisation strip
+6. Latest
+
+The hero now uses stronger editorial typography, improved metadata hierarchy, responsive image proportions and accessible focus styling. Top Stories was reduced to four curated items and converted from boxed cards to a cleaner publisher-style list.
+
+Commit `3c1ce55` added the reusable `SectionHeader` component and an isolated `editorial` variant for `CompactArticleCard`. Latest, Business & Finance and More Stories now share the same editorial section language and card presentation. Article-page sidebars, horizontal cards and existing `LeadSection` usage were left unchanged.
+
+### Article page editorial redesign
+
+Commit `a529791` redesigned the active `ArticlePageV2` header and reader flow. Changes include:
+
+- Playfair editorial headline typography
+- category and optional location hierarchy
+- Cheshire Today organisational byline
+- clearer date and reading-time metadata
+- accessible Share control
+- removal of the redundant Back link
+- improved hero-image spacing
+- shared editorial `SectionHeader` and card styling for main-column More Stories
+- newsletter signup moved below the complete More Stories section
+
+Existing SEO schema, source attribution, body content processing, guides, adverts, sidebar modules and article business logic were preserved.
+
+The redesigned homepage and article page were verified through successful production frontend builds and real iPhone testing before commits and deployment.
+
+### Facebook and Open Graph image correction
+
+Commit `93d78b3` corrected Newsquest social-preview images for article crawler HTML. For recognised Newsquest source pages whose stored article image is a generic `/resources/images/` asset, the crawler path now retrieves and uses the source page's declared Open Graph image where available.
+
+A focused isolated regression test was added in `tests/test_article_social_metadata.py`. It uses no real database or network access and confirms that the generated `og:image` and `og:image:secure_url` use the source Open Graph image rather than the smaller generic resource URL.
+
+Verification completed:
+
+- `backend/server.py` passed Python compilation.
+- Focused regression test passed.
+- Production remained healthy.
+- Facebook crawler output was verified live for article `6a5e5434ff602e15f40d4225`.
+- Live metadata now returns the article-specific canonical URL, title, description and the source-provided 1200 × 630 Newsquest Open Graph image.
+
+### Current repository checkpoint
+
+- Branch: `full-scrape-prod`
+- Current commit: `93d78b3`
+- Remote aligned with local
+- `AGENTS.md` remains intentionally untracked
+- Newsletter Security Phase 1 remains complete and operational
+
+### Next approved Phase 2 focus
+
+Continue with article-body reader experience, beginning with a read-only audit of:
+
+- body line length
+- paragraph rhythm
+- mobile and desktop font sizing
+- subheading styling
+- list and link presentation
+- body container borders and spacing
+- image captions and credits where supported
+
+Preserve existing article content, SEO, attribution, advertising, guide, newsletter and monetisation logic unless a confirmed reader-experience issue requires a narrowly scoped change.
