@@ -22852,3 +22852,9 @@ Push and verify commit `6a350f0`, then continue only with confirmed reader-exper
 - remaining homepage and cross-site editorial consistency
 
 Do not reintroduce semantic or fuzzy duplicate-intro detection. Preserve existing article content, SEO, attribution, advertising, guide, newsletter and monetisation logic unless a confirmed issue requires a narrowly scoped change.
+
+---
+
+## 21 July 2026 — Newsquest historical image backfill tooling
+
+An isolated guarded migration script was added locally for historical Chester Standard and Warrington Guardian articles that still reference legacy `/resources/images/` assets. It reuses the reviewed Newsquest resolver, provides deterministic read-only dry-run and interactive expected-count apply modes, conditionally updates only the `image` field, verifies each successful update and emits aggregate JSON only. Offline tests cover zero-write dry runs, CLI safeguards, lookup and image failures, idempotency, field preservation and verification. The script has not been run against production, and no article or production state changed.
