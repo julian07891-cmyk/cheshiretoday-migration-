@@ -22837,24 +22837,43 @@ Verification completed:
 ### Current repository checkpoint
 
 - Branch: `full-scrape-prod`
-- Current local commit: `6a350f0`
-- Remote commit before the next push: `b9ec93e`
+- Current local and remote commit: `c1356ea`
 - `AGENTS.md` remains intentionally untracked
 - Newsletter Security Phase 1 remains complete and operational
 
 ### Next approved Phase 2 focus
 
-Push and verify commit `6a350f0`, then continue only with confirmed reader-experience findings. Likely audit areas include:
+Continue only with confirmed reader-experience findings. The next priority is a read-only desktop editorial typography and sidebar audit covering:
 
+- article body line length and paragraph rhythm
 - subheading, list and inline-link presentation
+- desktop article and sidebar balance
+- sidebar density and sticky behaviour
 - image captions and credits where supported by article data
-- desktop article/sidebar balance
 - remaining homepage and cross-site editorial consistency
 
 Do not reintroduce semantic or fuzzy duplicate-intro detection. Preserve existing article content, SEO, attribution, advertising, guide, newsletter and monetisation logic unless a confirmed issue requires a narrowly scoped change.
 
 ---
 
-## 21 July 2026 — Newsquest historical image backfill tooling
+## 21 July 2026 — Newsquest image pipeline and historical backfill completed
 
-An isolated guarded migration script was added locally for historical Chester Standard and Warrington Guardian articles that still reference legacy `/resources/images/` assets. It reuses the reviewed Newsquest resolver, provides deterministic read-only dry-run and interactive expected-count apply modes, conditionally updates only the `image` field, verifies each successful update and emits aggregate JSON only. Offline tests cover zero-write dry runs, CLI safeguards, lookup and image failures, idempotency, field preservation and verification. The script has not been run against production, and no article or production state changed.
+Commit `3f4ab10` added an isolated Newsquest image resolver and wired it only into future local Chester Standard and Warrington Guardian RSS imports. Recognised legacy `/resources/images/` assets are now resolved once from the source page's declared Open Graph image, stored as the canonical article image and reused by the website, article pages, cards, newsletters, RSS output and social publishing. Non-Newsquest images and all lookup failures preserve the original URL.
+
+Commit `c1356ea` added a guarded historical backfill tool with deterministic dry-run, exact expected-count apply, interactive confirmation, conditional image-only updates, post-write verification and aggregate privacy-safe output.
+
+Production execution completed successfully:
+
+- initial candidate count: `320`
+- dry-run scanned: `320`
+- images resolved: `320`
+- updates planned: `320`
+- lookup failures: `0`
+- conditional conflicts: `0`
+- verification failures: `0`
+- records updated: `320`
+- apply status: `verified`
+
+A post-migration dry-run returned `updates_planned: 0`, confirming the operation is idempotent. Live API checks verified previously affected Chester Standard articles now return source Open Graph image URLs, including the publisher's own crop parameters where supplied.
+
+Only the `image` field changed. Article content, metadata, IDs, timestamps, SEO, attribution, newsletter, advertising and monetisation logic were preserved.
