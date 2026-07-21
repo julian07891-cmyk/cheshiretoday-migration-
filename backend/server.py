@@ -44,6 +44,7 @@ LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
 from app.news_feed_service import news_feed_service
+from app.article_image_resolver import resolve_imported_article_image
 from app.newsletter_token_service import (
     ExpiredNewsletterTokenError,
     InvalidNewsletterTokenError,
@@ -2452,6 +2453,33 @@ async def _import_hybrid_news_internal(
             if is_weak_generic_image(rss_image):
                 logger.info(f"Skipping weak generic RSS image: {title[:40]}...")
                 continue
+
+            def fetch_source_page(page_url: str) -> str:
+                import urllib.request
+
+                request_obj = urllib.request.Request(
+                    page_url,
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                return (
+                    urllib.request.urlopen(request_obj, timeout=8)
+                    .read()
+                    .decode("utf-8", errors="ignore")
+                )
+
+            resolved_rss_image = await asyncio.to_thread(
+                resolve_imported_article_image,
+                rss_image,
+                article.get("source_url", ""),
+                fetch_page=fetch_source_page,
+            )
+            if resolved_rss_image != rss_image:
+                logger.info(
+                    "Upgraded Newsquest RSS image from source Open Graph metadata: "
+                    f"{title[:60]}..."
+                )
+                rss_image = resolved_rss_image
+                article["image"] = resolved_rss_image
 
             
             # Exclude Manchester sources entirely
