@@ -14223,6 +14223,51 @@ async def serve_article_html(article_id: str, request=None):
         if "/ALTERNATES/s810/" in img:
             img = img.replace("/ALTERNATES/s810/", "/ALTERNATES/s1200/")
 
+        # Newsquest sites such as Chester Standard expose a dedicated
+        # 1200x630 social image on the source page. Prefer that declared
+        # og:image over the smaller generic resources/images URL.
+        newsquest_hosts = (
+            "chesterstandard.co.uk",
+            "warringtonguardian.co.uk",
+            "knutsfordguardian.co.uk",
+            "northwichguardian.co.uk",
+            "wilmslowguardian.co.uk",
+            "crewechronicle.co.uk",
+        )
+        if (
+            "/resources/images/" in img
+            and source_url
+            and any(host in str(source_url).lower() for host in newsquest_hosts)
+        ):
+            try:
+                import urllib.request
+
+                req = urllib.request.Request(
+                    str(source_url),
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                source_html = (
+                    urllib.request.urlopen(req, timeout=8)
+                    .read()
+                    .decode("utf-8", errors="ignore")
+                )
+                match = re.search(
+                    r"<meta[^>]+property=[\"\x27]og:image[\"\x27]"
+                    r"[^>]+content=[\"\x27]([^\"\x27]+)[\"\x27]",
+                    source_html,
+                    re.I,
+                )
+                if match:
+                    candidate = (
+                        match.group(1)
+                        .replace("&amp;", "&")
+                        .strip()
+                    )
+                    if candidate.startswith(("https://", "http://")):
+                        return candidate
+            except Exception:
+                pass
+
         # Guardian signed image URLs cannot be resized by editing width=...
         # If we have a small signed thumbnail, fetch the valid large signed og:image
         # from the Guardian source page instead.
