@@ -22823,7 +22823,7 @@ The correction is deterministic:
 - stored article content is not modified
 - mobile preview, attribution, guides, adverts, newsletter and related-story logic are preserved
 
-The full body was also changed from an application-style rounded card to a restrained editorial reading column with subtle horizontal rules, a `max-w-3xl` measure, small mobile-only horizontal padding and tighter mobile paragraph rhythm. Desktop spacing remains unchanged.
+The full body was also changed from an application-style rounded card to a restrained editorial reading column with subtle horizontal rules, small mobile-only horizontal padding and tighter mobile paragraph rhythm. The desktop reading measure was subsequently refined from `max-w-3xl` to `max-w-2xl` after production builds and localhost visual review.
 
 Verification completed:
 
@@ -22837,18 +22837,18 @@ Verification completed:
 ### Current repository checkpoint
 
 - Branch: `full-scrape-prod`
-- Current local and remote commit: `c1356ea`
+- Current local and remote commit: `7195e8c`
 - `AGENTS.md` remains intentionally untracked
 - Newsletter Security Phase 1 remains complete and operational
 
 ### Next approved Phase 2 focus
 
-Continue only with confirmed reader-experience findings. The next priority is a read-only desktop editorial typography and sidebar audit covering:
+Continue only with confirmed reader-experience findings. The next priority is a read-only editorial typography and content-format audit covering:
 
-- article body line length and paragraph rhythm
-- subheading, list and inline-link presentation
-- desktop article and sidebar balance
-- sidebar density and sticky behaviour
+- subheading presentation
+- ordered and unordered lists
+- inline-link presentation
+- blockquotes where present
 - image captions and credits where supported by article data
 - remaining homepage and cross-site editorial consistency
 
@@ -22877,3 +22877,23 @@ Production execution completed successfully:
 A post-migration dry-run returned `updates_planned: 0`, confirming the operation is idempotent. Live API checks verified previously affected Chester Standard articles now return source Open Graph image URLs, including the publisher's own crop parameters where supplied.
 
 Only the `image` field changed. Article content, metadata, IDs, timestamps, SEO, attribution, newsletter, advertising and monetisation logic were preserved.
+
+---
+
+## 22 July 2026 — Desktop article layout and sidebar advertising refinement
+
+Commit `cc092bc` removed ineffective sticky positioning from the complete desktop article sidebar. The sidebar stack includes related reporting, guides, advertising, Latest, affiliate content and newsletter modules and was substantially taller than the viewport, so normal page scrolling now provides more predictable behaviour.
+
+Commit `7195e8c` refined the desktop article composition:
+
+- article body reading measure reduced from `max-w-3xl` to `max-w-2xl`
+- existing `article_sidebar` sponsored placement moved to the top of the sidebar
+- optional `prominent` presentation added to the shared `SponsoredPlacement` component
+- article advertising retains separate `article_sidebar` inventory, API lookup, campaign tracking and analytics
+- prominent presentation reuses the homepage sidebar card scale without sharing homepage inventory
+- temporary sidebar top padding was removed after final alignment review
+- only one desktop article sponsored placement remains
+
+Verification completed through successful production frontend builds, repeated localhost desktop review, aligned local and remote commit `7195e8c`, and a healthy production service.
+
+Article content, SEO, attribution, guides, newsletter logic, advert inventory, campaign tracking and monetisation behaviour were preserved.
