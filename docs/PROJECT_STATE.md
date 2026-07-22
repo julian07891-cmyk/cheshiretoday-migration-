@@ -22897,3 +22897,45 @@ Commit `7195e8c` refined the desktop article composition:
 Verification completed through successful production frontend builds, repeated localhost desktop review, aligned local and remote commit `7195e8c`, and a healthy production service.
 
 Article content, SEO, attribution, guides, newsletter logic, advert inventory, campaign tracking and monetisation behaviour were preserved.
+
+---
+
+## 22 July 2026 — Facebook Contentful social preview correction
+
+Commit `387d157` permanently corrected Facebook/Open Graph previews for articles using Contentful-hosted images.
+
+Investigation followed the QA-first workflow and deliberately avoided introducing new image proxy endpoints or broad crawler changes. Live verification established that crawler HTML, canonical URLs and Open Graph metadata were already functioning correctly. The remaining Facebook warning was isolated to the Contentful image transformation used for social metadata.
+
+Root cause:
+
+- Facebook Sharing Debugger intermittently rejected the previous transformed Contentful image (`w=800&h=600`) with an "Image Too Small" warning despite the decoded image exceeding the documented minimum dimensions.
+- Independent verification confirmed the Contentful Images API could generate a valid dedicated social image at `1200 × 630`.
+
+Production correction:
+
+- only Contentful-hosted social images are rewritten during crawler HTML generation
+- Contentful images now request:
+  `?fm=jpg&w=1200&h=630&fit=fill&q=85`
+- BBC, Guardian, Reach, Newsquest and all other image normalisation logic remains unchanged
+- no proxy endpoint, database migration or frontend change was introduced
+
+Regression protection:
+
+- added focused regression coverage in `tests/test_article_social_metadata.py`
+- existing Newsquest regression retained
+- new regression confirms Contentful social metadata emits the dedicated `1200 × 630` image URL
+
+Verification completed:
+
+- `backend/server.py` compiled successfully
+- focused regression suite passed (`2 passed`)
+- commit deployed successfully to production
+- live crawler output verified using the Facebook crawler user-agent
+- Facebook Sharing Debugger confirmed the previous "Image Too Small" warning was resolved
+- remaining `fb:app_id` advisory intentionally left unchanged because Cheshire Today does not currently use a Meta App ID
+
+Repository checkpoint:
+
+- branch: `full-scrape-prod`
+- production commit: `387d157`
+
