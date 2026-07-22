@@ -9,6 +9,7 @@ import smtplib
 import os
 import uuid
 import hashlib
+import html
 import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -19,6 +20,16 @@ import httpx
 from app.newsletter_management_email import NewsletterManagementEmailMessage
 
 logger = logging.getLogger(__name__)
+
+
+def _email_html_text(value) -> str:
+    """Escape dynamic email content for a text node."""
+    return html.escape("" if value is None else str(value), quote=False)
+
+
+def _email_html_attr(value) -> str:
+    """Escape dynamic email content for a quoted HTML attribute."""
+    return html.escape("" if value is None else str(value), quote=True)
 
 
 class EmailService:
@@ -1006,12 +1017,14 @@ Cheshire Today Jobs Team
                 art_id = article.get('id', article.get('_id', ''))
                 art_url_original = self._article_url(article)
                 art_url = self._get_tracked_url(tracking_id, art_url_original)
+                safe_art_url = _email_html_attr(art_url)
+                safe_art_title = _email_html_text(article.get('title'))
 
                 rows += f'''
                 <tr>
                     <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
-                        <a href="{art_url}" style="color: #1E3A8A; text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.4;">
-                            {article.get('title')}
+                        <a href="{safe_art_url}" style="color: #1E3A8A; text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.4;">
+                            {safe_art_title}
                         </a>
                     </td>
                 </tr>
@@ -1026,6 +1039,7 @@ Cheshire Today Jobs Team
                 <table width="100%" cellpadding="0" cellspacing="0">
                     {rows}
                 </table>
+                </div>
             </div>
             '''
 
@@ -1041,17 +1055,20 @@ Cheshire Today Jobs Team
             '''
             
             if weather:
+                weather_temp = _email_html_text(weather.get('temp', 'N/A'))
+                weather_condition = _email_html_text(weather.get('condition', 'N/A'))
+                weather_location = _email_html_text(weather.get('location', 'Cheshire'))
                 utility_html += f'''
                     <tr>
                         <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                            <strong>🌤️ Weather:</strong> {weather.get('temp', 'N/A')}°C, {weather.get('condition', 'N/A')} in {weather.get('location', 'Cheshire')}
+                            <strong>🌤️ Weather:</strong> {weather_temp}°C, {weather_condition} in {weather_location}
                         </td>
                     </tr>
                 '''
             
             if travel:
-                m6_status = travel.get('m6_status', 'No major incidents reported')
-                rail_status = travel.get('rail_status', 'Services running normally')
+                m6_status = _email_html_text(travel.get('m6_status', 'No major incidents reported'))
+                rail_status = _email_html_text(travel.get('rail_status', 'Services running normally'))
                 utility_html += f'''
                     <tr>
                         <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
@@ -1073,17 +1090,20 @@ Cheshire Today Jobs Team
         # Community block (Photo of the Day)
         community_html = ""
         if photo_of_day and photo_of_day.get('image_url'):
+            photo_url = _email_html_attr(photo_of_day.get('image_url'))
+            photo_caption = _email_html_text(photo_of_day.get('caption', ''))
+            photo_credit = _email_html_text(photo_of_day.get('credit', 'Reader submission'))
             community_html = f'''
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
                 <h3 style="color: #92400e; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                     📸 Photo of the Day
                 </h3>
-                <img src="{photo_of_day.get('image_url')}" alt="Photo of the Day" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;" />
+                <img src="{photo_url}" alt="Photo of the Day" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;" />
                 <p style="color: #78350f; font-size: 14px; margin: 0; font-style: italic;">
-                    {photo_of_day.get('caption', '')}
+                    {photo_caption}
                 </p>
                 <p style="color: #92400e; font-size: 12px; margin: 5px 0 0 0;">
-                    📷 {photo_of_day.get('credit', 'Reader submission')}
+                    📷 {photo_credit}
                 </p>
             </div>
             '''
@@ -1117,12 +1137,12 @@ Cheshire Today Jobs Team
                 <div style="background: #ffffff; padding: 25px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <!-- Hero Section -->
                     <div style="margin-bottom: 25px;">
-                        {f'<a href="{hero_url}"><img src="{hero_image}" alt="" style="width: 100%; height: 280px; object-fit: cover; border-radius: 10px; margin-bottom: 15px;" /></a>' if hero_image else ''}
+                        {f'<a href="{_email_html_attr(hero_url)}"><img src="{_email_html_attr(hero_image)}" alt="" style="width: 100%; height: 280px; object-fit: cover; border-radius: 10px; margin-bottom: 15px;" /></a>' if hero_image else ''}
                         <h2 style="color: #1E3A8A; margin: 0 0 10px 0; font-size: 22px; line-height: 1.3;">
-                            <a href="{hero_url}" style="color: #1E3A8A; text-decoration: none;">{hero.get('title', 'Top Story')}</a>
+                            <a href="{_email_html_attr(hero_url)}" style="color: #1E3A8A; text-decoration: none;">{_email_html_text(hero.get('title', 'Top Story'))}</a>
                         </h2>
                         <p style="color: #374151; font-size: 15px; margin: 0 0 15px 0; line-height: 1.6;">
-                            {hero_summary}
+                            {_email_html_text(hero_summary)}
                         </p>
                     </div>
                     
@@ -1352,14 +1372,16 @@ Cheshire Today Jobs Team
             art_id = article.get('id', article.get('_id', ''))
             art_url_original = self._article_url(article)
             art_url = self._get_tracked_url(tracking_id, art_url_original)
+            safe_art_url = _email_html_attr(art_url)
+            safe_art_title = _email_html_text(article.get('title', 'Untitled'))
             icymi_html += f'''
             <tr>
                 <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
                     <span style="background: #1E3A8A; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 10px;">
                         {i}
                     </span>
-                    <a href="{art_url}" style="color: #1f2937; text-decoration: none; font-size: 15px; font-weight: 500;">
-                        {article.get('title', 'Untitled')}
+                    <a href="{safe_art_url}" style="color: #1f2937; text-decoration: none; font-size: 15px; font-weight: 500;">
+                        {safe_art_title}
                     </a>
                 </td>
             </tr>
@@ -1369,16 +1391,20 @@ Cheshire Today Jobs Team
         property_html = ""
         if property_of_week and property_of_week.get('title'):
             property_url = self._get_tracked_url(tracking_id, property_of_week.get("url", "")) if property_of_week.get('url') else ""
+            property_image = _email_html_attr(property_of_week.get('image_url'))
+            property_title = _email_html_text(property_of_week.get('title'))
+            property_price = _email_html_text(property_of_week.get('price', 'Price on application'))
+            property_location = _email_html_text(property_of_week.get('location', 'Cheshire'))
             property_html = f'''
             <div style="background: #f0fdf4; border-radius: 12px; padding: 20px; margin: 25px 0;">
                 <h3 style="color: #166534; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                     🏠 Property of the Week
                 </h3>
-                {f'<img src="{property_of_week.get("image_url")}" alt="" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />' if property_of_week.get('image_url') else ''}
-                <h4 style="color: #1f2937; margin: 0 0 5px 0; font-size: 16px;">{property_of_week.get('title')}</h4>
-                <p style="color: #166534; font-weight: 600; margin: 0 0 5px 0;">{property_of_week.get('price', 'Price on application')}</p>
-                <p style="color: #6b7280; font-size: 13px; margin: 0 0 10px 0;">📍 {property_of_week.get('location', 'Cheshire')}</p>
-                {f'<a href="{property_url}" style="color: #166534; font-size: 13px;">View Details →</a>' if property_url else ''}
+                {f'<img src="{property_image}" alt="" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />' if property_of_week.get('image_url') else ''}
+                <h4 style="color: #1f2937; margin: 0 0 5px 0; font-size: 16px;">{property_title}</h4>
+                <p style="color: #166534; font-weight: 600; margin: 0 0 5px 0;">{property_price}</p>
+                <p style="color: #6b7280; font-size: 13px; margin: 0 0 10px 0;">📍 {property_location}</p>
+                {f'<a href="{_email_html_attr(property_url)}" style="color: #166534; font-size: 13px;">View Details →</a>' if property_url else ''}
             </div>
             '''
         
@@ -1386,16 +1412,20 @@ Cheshire Today Jobs Team
         food_html = ""
         if food_review and food_review.get('title'):
             stars = '⭐' * int(food_review.get('rating', 4))
+            food_image = _email_html_attr(food_review.get('image_url'))
+            food_title = _email_html_text(food_review.get('title'))
+            food_venue = _email_html_text(food_review.get('venue', ''))
+            food_url = _email_html_attr(food_review.get('url'))
             food_html = f'''
             <div style="background: #fef3c7; border-radius: 12px; padding: 20px; margin: 25px 0;">
                 <h3 style="color: #92400e; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                     🍽️ Food & Drink
                 </h3>
-                {f'<img src="{food_review.get("image_url")}" alt="" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />' if food_review.get('image_url') else ''}
-                <h4 style="color: #1f2937; margin: 0 0 5px 0; font-size: 16px;">{food_review.get('title')}</h4>
-                <p style="color: #92400e; margin: 0 0 5px 0;">{food_review.get('venue', '')}</p>
+                {f'<img src="{food_image}" alt="" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />' if food_review.get('image_url') else ''}
+                <h4 style="color: #1f2937; margin: 0 0 5px 0; font-size: 16px;">{food_title}</h4>
+                <p style="color: #92400e; margin: 0 0 5px 0;">{food_venue}</p>
                 <p style="margin: 0 0 10px 0;">{stars}</p>
-                {f'<a href="{food_review.get("url")}" style="color: #92400e; font-size: 13px;">Read Review →</a>' if food_review.get('url') else ''}
+                {f'<a href="{food_url}" style="color: #92400e; font-size: 13px;">Read Review →</a>' if food_review.get('url') else ''}
             </div>
             '''
         
@@ -1410,7 +1440,9 @@ Cheshire Today Jobs Team
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                 <!-- Header -->
                 <div style="background: linear-gradient(135deg, #1E3A8A 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
-                    <img src="https://cheshiretoday.co.uk/logo-white.png" alt="Cheshire Today" style="height: 35px; margin-bottom: 15px;" onerror="this.style.display='none'" />
+                    <div style="font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-bottom: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        CHESHIRE TODAY
+                    </div>
                     <h1 style="margin: 0; font-size: 28px; font-weight: 400; font-family: Georgia, serif;">The Weekly Roundup</h1>
                     <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9; font-family: sans-serif;">Your Sunday digest of Cheshire's best stories</p>
                 </div>
@@ -1423,14 +1455,14 @@ Cheshire Today Jobs Team
                         <p style="color: #1E3A8A; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 15px 0; font-family: sans-serif;">
                             ✦ The Big Read
                         </p>
-                        {f'<a href="{big_read_url}"><img src="{big_read_image}" alt="" style="width: 100%; height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px;" /></a>' if big_read_image else ''}
+                        {f'<a href="{_email_html_attr(big_read_url)}"><img src="{_email_html_attr(big_read_image)}" alt="" style="width: 100%; height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px;" /></a>' if big_read_image else ''}
                         <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 26px; line-height: 1.3; font-weight: 400;">
-                            <a href="{big_read_url}" style="color: #1f2937; text-decoration: none;">{big_read.get('title', 'Featured Story')}</a>
+                            <a href="{_email_html_attr(big_read_url)}" style="color: #1f2937; text-decoration: none;">{_email_html_text(big_read.get('title', 'Featured Story'))}</a>
                         </h2>
                         <p style="color: #4b5563; font-size: 16px; margin: 0 0 20px 0; line-height: 1.7;">
-                            {big_read_excerpt}
+                            {_email_html_text(big_read_excerpt)}
                         </p>
-                        <a href="{big_read_url}" style="display: inline-block; background: #1E3A8A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: sans-serif;">
+                        <a href="{_email_html_attr(big_read_url)}" style="display: inline-block; background: #1E3A8A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: sans-serif;">
                             Continue Reading
                         </a>
                     </div>
