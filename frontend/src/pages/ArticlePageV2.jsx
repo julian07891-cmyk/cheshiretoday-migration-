@@ -1246,7 +1246,7 @@ export default function ArticlePageV2({ categories }) {
               )}
 
 {(!isMobileView || !mobileRemainingContent || articleExpanded) && (
-<div ref={articleBodyRef} className="mx-auto w-full max-w-3xl border-y border-slate-200 px-2 py-6 sm:px-0 sm:py-8 dark:border-gray-800">
+<div ref={articleBodyRef} className="mx-auto w-full max-w-2xl border-y border-slate-200 px-2 py-6 sm:px-0 sm:py-8 dark:border-gray-800">
                 <div className="prose prose-lg md:prose-xl prose-slate max-w-none text-slate-800 dark:text-slate-100 dark:prose-invert prose-p:my-6 md:prose-p:my-7 prose-p:leading-[2.1rem] md:prose-p:leading-9 prose-li:my-3 prose-a:text-slate-700 prose-a:underline-offset-2 dark:prose-a:text-slate-200 [&>div>p]:my-6 md:[&>div>p]:my-7 [&>div>p]:leading-[2.1rem] md:[&>div>p]:leading-9 [&>div>p]:text-[1.08rem] md:[&>div>p]:text-[1.12rem] [&>div>p]:tracking-[0.01em] [&>div>p]:text-slate-800 dark:[&>div>p]:text-slate-100">
                 {/* auto-linked content (safe) */}
                 <div dangerouslySetInnerHTML={{ __html: autoLinkContent(articleBodyContent, pillarLabel) }} />
@@ -1420,6 +1420,8 @@ export default function ArticlePageV2({ categories }) {
 
             <aside className="hidden lg:block lg:col-span-4 space-y-3 [overflow-anchor:none]">
               <div className="space-y-6 md:space-y-8">
+                <SponsoredPlacement placement="article_sidebar" prominent />
+
                 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold">More in {pillarLabel}</h3>
@@ -1469,7 +1471,6 @@ export default function ArticlePageV2({ categories }) {
                   <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
                 </section>
 
-                <SponsoredPlacement placement="article_sidebar" />
 
                 {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}                {/* Latest (fills sidebar height, compact) */}
                 {Array.isArray(moreStories) && moreStories.length > 0 && (

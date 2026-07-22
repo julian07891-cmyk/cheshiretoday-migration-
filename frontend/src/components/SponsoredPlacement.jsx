@@ -9,7 +9,7 @@ const fallbackCopy = {
   cta: "View advertising options",
 };
 
-const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) => {
+const SponsoredPlacement = ({ placement = "article_sidebar", compact = false, prominent = false }) => {
   const [ad, setAd] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const impressionTrackedRef = useRef(null);
@@ -97,9 +97,13 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false }) 
   const sponsor = isPaidPlacement ? (ad.sponsor_name || "Sponsor") : fallbackCopy.eyebrow;
   const anchorKey = isPaidPlacement ? (ad.campaign_id || ad.slug || "advert") : "advertise";
   const anchorId = `sponsored-advert-${placement}-${anchorKey}`;
-  const isHomepageSidebar = placement === "homepage_sidebar" && compact === false;
-  const cardSizeClass = isHomepageSidebar ? "p-5 lg:min-h-[300px] lg:flex lg:flex-col lg:justify-center" : "p-4";
-  const showHomepageFallbackExtras = !isPaidPlacement && isHomepageSidebar;
+  const usesProminentSidebarStyle =
+    compact === false && (placement === "homepage_sidebar" || prominent);
+  const cardSizeClass = usesProminentSidebarStyle
+    ? "p-5 lg:min-h-[300px] lg:flex lg:flex-col lg:justify-center"
+    : "p-4";
+  const showHomepageFallbackExtras =
+    !isPaidPlacement && usesProminentSidebarStyle;
 
   useEffect(() => {
     if (!isPaidPlacement || ad?.preview || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
