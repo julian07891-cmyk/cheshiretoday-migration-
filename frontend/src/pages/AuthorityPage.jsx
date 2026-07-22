@@ -1,10 +1,12 @@
 import { Helmet } from "react-helmet-async";
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { getApiUrl } from "../utils/api";
 import { trackEvent } from "../utils/trackEvent";
 import HomepageLayout from "../components/homepage/HomepageLayout";
+import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
+import { categories } from "../mockData";
 
 function safeText(v) {
   if (v == null) return "";
@@ -499,6 +501,7 @@ function QuickComparison({ tools = [] }) {
 
 export default function AuthorityPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const guideUrl = slug ? `https://cheshiretoday.co.uk/guides/${slug}` : "https://cheshiretoday.co.uk/guides";
 
   const [page, setPage] = useState(null);
@@ -535,8 +538,13 @@ export default function AuthorityPage() {
   }, [slug]);
 
   const title = page?.title || "Guide";
-  const category = page?.category || "AI";
-  const monetisation = page?.monetisation || "affiliate";
+  const category = page?.category || "";
+  const monetisation = page?.monetisation || "";
+  const displayCategory = (() => {
+    const value = String(category || "").trim();
+    if (!value || /^(none|null|undefined|n\/a|unknown)$/i.test(value)) return "";
+    return value;
+  })();
   const sections = Array.isArray(page?.sections) ? page.sections : [];
 
   const intro = sections.find((s) => s?.type === "intro")?.content || "";
@@ -546,6 +554,11 @@ export default function AuthorityPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
+      <NewsHeader
+        categories={categories}
+        activeCategory="all"
+        onCategoryChange={() => navigate("/")}
+      />
       <HomepageLayout>
         <Helmet>
           <title>{title} | Cheshire Today</title>
@@ -601,15 +614,14 @@ export default function AuthorityPage() {
                   <span className="text-[11px] uppercase tracking-wide px-3 py-1 rounded-full bg-slate-950 text-white dark:bg-sky-700 font-black">
                     Cheshire Today guide
                   </span>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
-                    {category}
-                  </span>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
-                    {monetisation === "affiliate" ? "Affiliate supported" : monetisation}
-                  </span>
-                  {page?.status && (
+                  {displayCategory && (
                     <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
-                      {String(page.status).toUpperCase()}
+                      {displayCategory}
+                    </span>
+                  )}
+                  {monetisation === "affiliate" && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
+                      Affiliate supported
                     </span>
                   )}
                 </div>
@@ -800,13 +812,6 @@ export default function AuthorityPage() {
 
             {tools.length > 1 && <RelatedGuidesBlock currentSlug={slug} category={category} />}
 
-            {tools.length === 0 && (
-              <div className="mt-6 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
-                <div className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
-                  This guide is live, but tools are still being filled in.
-                </div>
-              </div>
-            )}
           </>
         )}
         </div>
