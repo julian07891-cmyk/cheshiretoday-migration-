@@ -22939,3 +22939,89 @@ Repository checkpoint:
 - branch: `full-scrape-prod`
 - production commit: `387d157`
 
+---
+
+## 22 July 2026 — Reader experience, guide completion and RSS paragraph preservation
+
+### Stored editorial paragraph rendering
+
+Commit `1c594f6` removed the frontend's artificial three-sentence regrouping and restored preservation of the paragraph structure already stored in each article.
+
+The live article-detail audit confirmed that current articles contain meaningful blank-line paragraph boundaries. `ArticlePageV2` now renders those boundaries directly rather than making editorial decisions in the presentation layer.
+
+Verification completed:
+
+- production frontend build passed
+- manual/rewrite article reviewed locally and in production
+- imported Business article reviewed in production
+- one-sentence transition paragraphs remained separate
+- article ending and source attribution remained correctly positioned
+- SEO, guides, newsletter, advertising and monetisation behaviour were preserved
+
+### Public guide-page completion
+
+Commit `cb8ecb6` corrected the public `AuthorityPage` presentation without redesigning the guide architecture.
+
+Changes:
+
+- added the existing Cheshire Today `NewsHeader`
+- stopped displaying raw workflow status such as `PUBLISHED`
+- stopped displaying null-like category values such as `none`
+- stopped inventing default `AI` or `Affiliate supported` labels when metadata is absent
+- removed the unfinished reader-facing placeholder stating that tools were still being filled in
+- retained `Affiliate supported` only for genuine affiliate-mode guides
+
+Production verification completed on:
+
+- `/guides/best-savings-accounts-uk`
+- `/guides/best-accounting-software-uk`
+
+Verified preserved behaviour:
+
+- guide titles, introductions and editorial sections
+- valid Best Pick and provider modules
+- affiliate destinations and disclosures
+- related guides
+- newsletter
+- footer
+- canonical, Open Graph and JSON-LD metadata
+- responsive and dark-mode behaviour
+
+### Phase 3A RSS paragraph preservation
+
+Commit `0aa8eea` refined `sanitize_rss_text()` so successful Perplexity rewrites retain meaningful upstream paragraph boundaries.
+
+Current contract:
+
+- recognised source URLs and source-link tails are still removed
+- summaries use explicit compact single-block mode
+- bodies containing two or more meaningful paragraphs preserve those paragraphs
+- only genuinely single-block RSS text receives deterministic fallback paragraph construction
+- common abbreviations, initials, decimal figures and conventional quotation attribution are protected from obvious false sentence boundaries
+- applying the sanitizer repeatedly produces the same result
+
+All ten active callers now explicitly distinguish body and summary sanitation.
+
+Regression coverage:
+
+- new focused suite in `tests/test_rss_text_sanitization.py`
+- sanitizer suite passed: `25 passed`
+- existing OpenAI/editorial guard suite passed: `29 passed`
+- combined directly related backend verification: `54 passed`
+- Python compilation passed
+- `git diff --check` passed
+
+Production status:
+
+- service health confirmed after deployment
+- scheduler confirmed running normally
+- no existing stored articles were migrated or rewritten
+- no article created after the deployment has yet passed through the updated sanitizer
+- final end-to-end verification remains pending on the first acceptable post-deployment RSS import, expected from a normal scheduled run
+
+### Repository checkpoint
+
+- branch: `full-scrape-prod`
+- latest production commit: `0aa8eea`
+- `AGENTS.md` remains intentionally untracked
+
