@@ -48,8 +48,11 @@ def _email_story_excerpt(article: dict, limit: int = 150) -> str:
     if len(sentence) <= limit:
         return sentence
 
-    shortened = sentence[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-")
-    return f"{shortened or sentence[:limit].rstrip()}…"
+    words = list(re.finditer(r"\S+(?=\s|$)", sentence))
+    complete_words = [match for match in words if match.end() <= limit]
+    cutoff = complete_words[-1].end() if complete_words else words[0].end()
+    shortened = sentence[:cutoff].rstrip(" ,;:.-–—…")
+    return f"{shortened}…"
 
 
 def _email_preheader(text: str) -> str:
@@ -1216,7 +1219,7 @@ Cheshire Today Jobs Team
                     <!-- Hero Section -->
                     <div style="margin-bottom:20px;">
                         {f'<a href="{_email_html_attr(hero_url)}"><img src="{_email_html_attr(hero_image)}" width="576" height="220" alt="{_email_html_attr(hero_title)}" style="display:block;width:100%;height:220px;object-fit:cover;border:0;margin-bottom:14px;" /></a>' if hero_image else ''}
-                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:29px;font-weight:700;">
+                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:700;">
                             <a href="{_email_html_attr(hero_url)}" style="color:#111827;text-decoration:none;">{_email_html_text(hero_title)}</a>
                         </h1>
                         <p style="color:#4b5563;font-size:15px;margin:0 0 14px 0;line-height:22px;">
@@ -1567,7 +1570,7 @@ Cheshire Today Jobs Team
                             The Big Read
                         </p>
                         {f'<a href="{_email_html_attr(big_read_url)}"><img src="{_email_html_attr(big_read_image)}" width="576" height="220" alt="{_email_html_attr(big_read_title)}" style="display:block;width:100%;height:220px;object-fit:cover;border:0;margin-bottom:14px;" /></a>' if big_read_image else ''}
-                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:29px;font-weight:700;">
+                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:700;">
                             <a href="{_email_html_attr(big_read_url)}" style="color:#111827;text-decoration:none;">{_email_html_text(big_read_title)}</a>
                         </h1>
                         <p style="color:#4b5563;font-size:15px;margin:0 0 14px 0;line-height:22px;">

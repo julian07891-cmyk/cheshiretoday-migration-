@@ -8,7 +8,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.email_service import EmailService
+from app.email_service import EmailService, _email_story_excerpt
 
 
 class _BalancedHTMLParser(HTMLParser):
@@ -207,7 +207,7 @@ def test_digest_identity_preheaders_and_logo_asset_are_shared(monkeypatch):
         assert 'src="https://cheshiretoday.co.uk/cheshire-today-email-logo.png"' in rendered
         assert 'width="150" height="51" alt="Cheshire Today"' in rendered
         assert 'font-size:23px;font-weight:700;line-height:27px;' in rendered
-        assert "font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:29px;font-weight:700;" in rendered
+        assert "font-family:Georgia,'Times New Roman',serif;font-size:22px;line-height:28px;font-weight:700;" in rendered
         assert "logo-white.png" not in rendered
         assert "Local · Business · Finance" in rendered
         assert "https://cheshiretoday.co.uk/newsletter/preferences" in rendered
@@ -251,6 +251,16 @@ def test_weekly_icymi_excerpts_are_escaped_tracked_and_keep_order(monkeypatch):
     assert "Weekly <strong>excerpt 1</strong>." not in message["text"]
     assert "ICYMI story 5" in message["text"]
     assert "ICYMI story 6" not in message["text"]
+
+
+def test_story_excerpts_truncate_at_complete_words_with_one_clean_ellipsis():
+    assert _email_story_excerpt({"summary": "Alpha beta gamma delta"}, limit=12) == "Alpha beta…"
+    assert _email_story_excerpt({"summary": "Alpha beta… gamma delta"}, limit=11) == "Alpha beta…"
+    assert _email_story_excerpt({"summary": "Alpha beta; gamma delta"}, limit=11) == "Alpha beta…"
+    assert _email_story_excerpt({"summary": "Extraordinarilylongfirsttoken second"}, limit=10) == "Extraordinarilylongfirsttoken…"
+
+    natural = "A concise sentence ends naturally."
+    assert _email_story_excerpt({"summary": natural}) == natural
 
 
 def test_phase_4b_cta_and_daily_secondary_contracts_are_unchanged(monkeypatch):
