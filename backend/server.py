@@ -2739,6 +2739,32 @@ async def _import_hybrid_news_internal(
                 article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''), is_summary=False)
 
                 article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
+                article = apply_ai_manual_review_guard(
+                    article,
+                    article.get('content', ''),
+                    ai_rewrite_used=True,
+                    title=title,
+                )
+
+                if len((article.get('content') or '').strip()) < 1000:
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    short_fallback_reason = (
+                        "Perplexity Cheshire fallback article needs manual review: "
+                        "content remained below the 1000-character public threshold."
+                    )
+                    article["manual_review_hidden_from_public"] = True
+                    existing_reason = str(article.get("manual_review_reason") or "").strip()
+                    article["manual_review_reason"] = " ".join(
+                        value for value in [existing_reason, short_fallback_reason] if value
+                    )
+                    article["manual_review_created_at"] = now_iso
+                    article["verification_status"] = "needs_manual_review"
+                    if article.get("rewrite_status") == "ai_rewritten":
+                        article["rewrite_status"] = "manual_review_required"
+                    article["archive_reason"] = "needs_manual_review"
+                    if article.get("archived") is not True:
+                        article["archived"] = False
+
                 article = apply_public_import_cap(article, title)
                 try:
                     await db.articles.insert_one(article)
