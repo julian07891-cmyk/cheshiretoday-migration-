@@ -22,8 +22,8 @@ from app.newsletter_management_email import NewsletterManagementEmailMessage
 logger = logging.getLogger(__name__)
 
 _EMAIL_LOGO_URL = "https://cheshiretoday.co.uk/cheshire-today-email-logo.png"
-_EMAIL_LOGO_WIDTH = 180
-_EMAIL_LOGO_HEIGHT = 61
+_EMAIL_LOGO_WIDTH = 150
+_EMAIL_LOGO_HEIGHT = 51
 _EMAIL_CONTENT_WIDTH = 620
 
 
@@ -73,7 +73,7 @@ def _email_masthead(edition_name: str, edition_date: str) -> str:
         </tr>
         <tr>
             <td align="center" style="padding:2px 20px 12px 20px;font-family:Arial,sans-serif;">
-                <div style="color:#111827;font-size:21px;font-weight:700;line-height:26px;">{_email_html_text(edition_name)}</div>
+                <div style="color:#111827;font-size:23px;font-weight:700;line-height:27px;">{_email_html_text(edition_name)}</div>
                 <div style="margin-top:2px;color:#6b7280;font-size:12px;line-height:17px;">{_email_html_text(edition_date)}</div>
                 <div style="margin-top:3px;color:#1E3A8A;font-size:10px;font-weight:700;letter-spacing:1.3px;line-height:14px;text-transform:uppercase;">Local · Business · Finance</div>
             </td>
@@ -1216,7 +1216,7 @@ Cheshire Today Jobs Team
                     <!-- Hero Section -->
                     <div style="margin-bottom:20px;">
                         {f'<a href="{_email_html_attr(hero_url)}"><img src="{_email_html_attr(hero_image)}" width="576" height="220" alt="{_email_html_attr(hero_title)}" style="display:block;width:100%;height:220px;object-fit:cover;border:0;margin-bottom:14px;" /></a>' if hero_image else ''}
-                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:31px;font-weight:700;">
+                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:29px;font-weight:700;">
                             <a href="{_email_html_attr(hero_url)}" style="color:#111827;text-decoration:none;">{_email_html_text(hero_title)}</a>
                         </h1>
                         <p style="color:#4b5563;font-size:15px;margin:0 0 14px 0;line-height:22px;">
@@ -1475,6 +1475,12 @@ Cheshire Today Jobs Team
             art_url = self._get_tracked_url(tracking_id, art_url_original)
             safe_art_url = _email_html_attr(art_url)
             safe_art_title = _email_html_text(article.get('title', 'Untitled'))
+            excerpt = _email_story_excerpt(article)
+            excerpt_html = (
+                f'<p style="color:#4b5563;font-size:13px;line-height:18px;margin:4px 0 0 20px;">'
+                f'{_email_html_text(excerpt)}</p>'
+                if excerpt else ""
+            )
             icymi_html += f'''
             <tr>
                 <td style="padding:11px 0;border-bottom:1px solid #e5e7eb;">
@@ -1484,6 +1490,7 @@ Cheshire Today Jobs Team
                     <a href="{safe_art_url}" style="color:#111827;text-decoration:none;font-size:15px;font-weight:700;line-height:20px;">
                         {safe_art_title}
                     </a>
+                    {excerpt_html}
                 </td>
             </tr>
             '''
@@ -1560,7 +1567,7 @@ Cheshire Today Jobs Team
                             The Big Read
                         </p>
                         {f'<a href="{_email_html_attr(big_read_url)}"><img src="{_email_html_attr(big_read_image)}" width="576" height="220" alt="{_email_html_attr(big_read_title)}" style="display:block;width:100%;height:220px;object-fit:cover;border:0;margin-bottom:14px;" /></a>' if big_read_image else ''}
-                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:31px;font-weight:700;">
+                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:29px;font-weight:700;">
                             <a href="{_email_html_attr(big_read_url)}" style="color:#111827;text-decoration:none;">{_email_html_text(big_read_title)}</a>
                         </h1>
                         <p style="color:#4b5563;font-size:15px;margin:0 0 14px 0;line-height:22px;">

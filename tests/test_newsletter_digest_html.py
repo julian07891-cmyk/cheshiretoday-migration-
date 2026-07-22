@@ -205,7 +205,9 @@ def test_digest_identity_preheaders_and_logo_asset_are_shared(monkeypatch):
         assert 'data-email-masthead="cheshire-today"' in rendered
         assert 'data-email-footer="cheshire-today"' in rendered
         assert 'src="https://cheshiretoday.co.uk/cheshire-today-email-logo.png"' in rendered
-        assert 'width="180" height="61" alt="Cheshire Today"' in rendered
+        assert 'width="150" height="51" alt="Cheshire Today"' in rendered
+        assert 'font-size:23px;font-weight:700;line-height:27px;' in rendered
+        assert "font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:29px;font-weight:700;" in rendered
         assert "logo-white.png" not in rendered
         assert "Local · Business · Finance" in rendered
         assert "https://cheshiretoday.co.uk/newsletter/preferences" in rendered
@@ -215,6 +217,74 @@ def test_digest_identity_preheaders_and_logo_asset_are_shared(monkeypatch):
     assert "The biggest Cheshire stories, business updates and ideas from the week." in weekly["html"]
     assert "display:none;max-height:0;overflow:hidden" in daily["html"]
     assert "display:none;max-height:0;overflow:hidden" in weekly["html"]
+
+
+def test_weekly_icymi_excerpts_are_escaped_tracked_and_keep_order(monkeypatch):
+    service = EmailService()
+    icymi_articles = [
+        {
+            "id": f"icymi-{index}",
+            "title": f"ICYMI story {index}",
+            "content": f"Weekly <strong>excerpt {index}</strong>. Additional detail.",
+        }
+        for index in range(1, 7)
+    ]
+    message = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_weekly_roundup",
+        ["reader@example.com"],
+        {"id": "weekly-lead", "title": "Weekly lead", "content": "Lead summary"},
+        icymi_articles,
+    )
+
+    rendered = message["html"]
+    positions = [rendered.index(f"ICYMI story {index}") for index in range(1, 6)]
+    assert positions == sorted(positions)
+    assert "ICYMI story 6" not in rendered
+    for index in range(1, 6):
+        assert f"Weekly &lt;strong&gt;excerpt {index}&lt;/strong&gt;." in rendered
+        story_position = rendered.index(f"ICYMI story {index}")
+        assert "/api/email/track/click/" in rendered[max(0, story_position - 500):story_position]
+
+    assert "Weekly <strong>excerpt 1</strong>." not in rendered
+    assert "Weekly <strong>excerpt 1</strong>." not in message["text"]
+    assert "ICYMI story 5" in message["text"]
+    assert "ICYMI story 6" not in message["text"]
+
+
+def test_phase_4b_cta_and_daily_secondary_contracts_are_unchanged(monkeypatch):
+    service = EmailService()
+    daily = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_daily_brief",
+        ["reader@example.com"],
+        [
+            {"id": "daily-lead", "title": "Daily lead", "content": "Lead summary", "category": "Local"},
+            {"id": "daily-local", "title": "Daily secondary", "content": "Secondary excerpt. More detail.", "category": "Local"},
+            {"id": "daily-tech", "title": "Technology secondary", "content": "Technology excerpt.", "category": "Technology"},
+        ],
+    )
+    weekly = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_weekly_roundup",
+        ["reader@example.com"],
+        {"id": "weekly-lead", "title": "Weekly lead", "content": "Weekly summary"},
+        [],
+    )
+
+    cta_style = (
+        'data-email-cta="primary" href="https://cheshiretoday.co.uk/api/email/track/click/'
+    )
+    assert cta_style in daily["html"]
+    assert cta_style in weekly["html"]
+    assert "Read the full story →" in daily["html"]
+    assert "Read the full story →" in weekly["html"]
+    assert "Daily secondary" in daily["html"]
+    assert "Secondary excerpt." in daily["html"]
+    assert "https://cheshiretoday.co.uk/article/daily-local/daily-secondary" in daily["text"]
 
 
 def test_email_logo_asset_has_verified_dimensions_and_modest_size():
