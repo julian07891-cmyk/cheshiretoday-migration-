@@ -3700,7 +3700,7 @@ const handleDeleteArticle = async (articleId) => {
               </CardHeader>
               <CardContent>
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       type="text"
                       placeholder="your@email.com"
@@ -3747,6 +3747,47 @@ const handleDeleteArticle = async (articleId) => {
                         <>
                           <Send className="h-4 w-4 mr-2" />
                           Send Test
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        const testEmail = document.getElementById('test-digest-email').value;
+                        if (!testEmail) {
+                          toast({ title: "Enter email", description: "Please enter an email address", variant: "destructive" });
+                          return;
+                        }
+                        setActionLoading('test-weekly-roundup');
+                        try {
+                          const res = await fetch(`${getApiUrl()}/api/send-weekly-roundup-test?test_email=${encodeURIComponent(testEmail)}`, {
+                            method: 'POST',
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' }
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            toast({
+                              title: "✅ Weekly Test Sent",
+                              description: `Sent to ${testEmail}. Check your inbox!`
+                            });
+                          } else {
+                            toast({ title: "❌ Failed", description: data.detail || data.message || "Failed to send", variant: "destructive" });
+                          }
+                        } catch (error) {
+                          toast({ title: "❌ Error", description: error.message, variant: "destructive" });
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                      disabled={actionLoading === 'test-weekly-roundup'}
+                      variant="outline"
+                      data-testid="send-test-weekly-roundup-button"
+                    >
+                      {actionLoading === 'test-weekly-roundup' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Send Weekly Test
                         </>
                       )}
                     </Button>

@@ -21,6 +21,11 @@ from app.newsletter_management_email import NewsletterManagementEmailMessage
 
 logger = logging.getLogger(__name__)
 
+_EMAIL_LOGO_URL = "https://cheshiretoday.co.uk/cheshire-today-email-logo.png"
+_EMAIL_LOGO_WIDTH = 180
+_EMAIL_LOGO_HEIGHT = 61
+_EMAIL_CONTENT_WIDTH = 620
+
 
 def _email_html_text(value) -> str:
     """Escape dynamic email content for a text node."""
@@ -30,6 +35,70 @@ def _email_html_text(value) -> str:
 def _email_html_attr(value) -> str:
     """Escape dynamic email content for a quoted HTML attribute."""
     return html.escape("" if value is None else str(value), quote=True)
+
+
+def _email_story_excerpt(article: dict, limit: int = 150) -> str:
+    """Return a compact deterministic excerpt without changing story selection."""
+    raw = article.get("summary") or article.get("content") or ""
+    compact = re.sub(r"\s+", " ", str(raw)).strip()
+    if not compact:
+        return ""
+
+    sentence = re.split(r"(?<=[.!?])\s+", compact, maxsplit=1)[0]
+    if len(sentence) <= limit:
+        return sentence
+
+    shortened = sentence[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return f"{shortened or sentence[:limit].rstrip()}…"
+
+
+def _email_preheader(text: str) -> str:
+    return (
+        '<div style="display:none;max-height:0;overflow:hidden;opacity:0;'
+        'color:transparent;mso-hide:all;font-size:1px;line-height:1px;">'
+        f'{_email_html_text(text)}'
+        '</div>'
+    )
+
+
+def _email_masthead(edition_name: str, edition_date: str) -> str:
+    """Shared compact, image-safe identity for newsletter digests."""
+    return f'''
+    <table role="presentation" data-email-masthead="cheshire-today" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-bottom:4px solid #1E3A8A;">
+        <tr>
+            <td align="center" style="padding:12px 20px 4px 20px;">
+                <img src="{_EMAIL_LOGO_URL}" width="{_EMAIL_LOGO_WIDTH}" height="{_EMAIL_LOGO_HEIGHT}" alt="Cheshire Today" style="display:block;width:{_EMAIL_LOGO_WIDTH}px;height:{_EMAIL_LOGO_HEIGHT}px;border:0;" />
+                <div style="margin-top:2px;color:#1E3A8A;font-family:Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:1.8px;line-height:14px;">CHESHIRE TODAY</div>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="padding:2px 20px 12px 20px;font-family:Arial,sans-serif;">
+                <div style="color:#111827;font-size:21px;font-weight:700;line-height:26px;">{_email_html_text(edition_name)}</div>
+                <div style="margin-top:2px;color:#6b7280;font-size:12px;line-height:17px;">{_email_html_text(edition_date)}</div>
+                <div style="margin-top:3px;color:#1E3A8A;font-size:10px;font-weight:700;letter-spacing:1.3px;line-height:14px;text-transform:uppercase;">Local · Business · Finance</div>
+            </td>
+        </tr>
+    </table>
+    '''
+
+
+def _email_footer(edition_name: str) -> str:
+    """Shared digest footer. Management-link placeholders are resolved per send."""
+    return f'''
+    <div data-email-footer="cheshire-today" style="margin-top:24px;padding-top:18px;border-top:1px solid #dbe3ee;text-align:center;font-family:Arial,sans-serif;">
+        <p style="color:#6b7280;font-size:12px;line-height:18px;margin:0 0 8px 0;">
+            You're receiving {_email_html_text(edition_name)} from Cheshire Today.
+        </p>
+        <p style="margin:0;">
+            <a href="__PREFS_URL__" style="color:#1E3A8A;font-size:12px;text-decoration:underline;">Manage preferences</a>
+            <span style="color:#9ca3af;">&nbsp;·&nbsp;</span>
+            <a href="__UNSUB_URL__" style="color:#1E3A8A;font-size:12px;text-decoration:underline;">Unsubscribe</a>
+        </p>
+        <p style="color:#9ca3af;font-size:11px;margin:10px 0 0 0;">
+            © {datetime.now().year} Cheshire Today. All rights reserved.
+        </p>
+    </div>
+    '''
 
 
 class EmailService:
@@ -1008,7 +1077,7 @@ Cheshire Today Jobs Team
                 pass
 
 
-        def build_section(title_label, emoji, section_articles):
+        def build_section(title_label, section_articles):
             if not section_articles:
                 return ""
 
@@ -1019,24 +1088,31 @@ Cheshire Today Jobs Team
                 art_url = self._get_tracked_url(tracking_id, art_url_original)
                 safe_art_url = _email_html_attr(art_url)
                 safe_art_title = _email_html_text(article.get('title'))
+                excerpt = _email_story_excerpt(article)
+                excerpt_html = (
+                    f'<p style="color:#4b5563;font-size:13px;line-height:18px;margin:4px 0 0 0;">'
+                    f'{_email_html_text(excerpt)}</p>'
+                    if excerpt else ""
+                )
 
                 rows += f'''
                 <tr>
-                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
-                        <a href="{safe_art_url}" style="color: #1E3A8A; text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.4;">
+                    <td style="padding:11px 0;border-bottom:1px solid #e5e7eb;">
+                        <a href="{safe_art_url}" style="color:#1E3A8A;text-decoration:none;font-size:15px;font-weight:700;line-height:20px;">
                             {safe_art_title}
                         </a>
+                        {excerpt_html}
                     </td>
                 </tr>
                 '''
 
             return f'''
-            <div style="margin: 30px 0;">
-                <div style="border-top:1px solid #e5e7eb; margin-top:30px; padding-top:20px;">
-                <h3 style="color:#111827; font-size:12px; text-transform:uppercase; letter-spacing:1.5px; font-weight:700; margin:0 0 12px 0;">
+            <div style="margin:22px 0;">
+                <div style="border-top:1px solid #dbe3ee;padding-top:16px;">
+                <h3 style="color:#111827;font-size:11px;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;margin:0 0 6px 0;">
                     {title_label.upper()}
                 </h3>
-                <table width="100%" cellpadding="0" cellspacing="0">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                     {rows}
                 </table>
                 </div>
@@ -1047,9 +1123,9 @@ Cheshire Today Jobs Team
         utility_html = ""
         if weather or travel:
             utility_html = '''
-            <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 25px 0;">
-                <h3 style="color: #1E3A8A; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
-                    📍 Cheshire At A Glance
+            <div style="background:#f8fafc;border-left:3px solid #1E3A8A;padding:16px;margin:20px 0;">
+                <h3 style="color:#1E3A8A;font-size:12px;margin:0 0 10px 0;text-transform:uppercase;letter-spacing:1px;">
+                    Cheshire at a glance
                 </h3>
                 <table width="100%" cellpadding="0" cellspacing="0">
             '''
@@ -1061,7 +1137,7 @@ Cheshire Today Jobs Team
                 utility_html += f'''
                     <tr>
                         <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                            <strong>🌤️ Weather:</strong> {weather_temp}°C, {weather_condition} in {weather_location}
+                            <strong>Weather:</strong> {weather_temp}°C, {weather_condition} in {weather_location}
                         </td>
                     </tr>
                 '''
@@ -1072,12 +1148,12 @@ Cheshire Today Jobs Team
                 utility_html += f'''
                     <tr>
                         <td style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
-                            <strong>🚗 M6:</strong> {m6_status}
+                            <strong>M6:</strong> {m6_status}
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 0;">
-                            <strong>🚆 Rail:</strong> {rail_status}
+                            <strong>Rail:</strong> {rail_status}
                         </td>
                     </tr>
                 '''
@@ -1094,20 +1170,33 @@ Cheshire Today Jobs Team
             photo_caption = _email_html_text(photo_of_day.get('caption', ''))
             photo_credit = _email_html_text(photo_of_day.get('credit', 'Reader submission'))
             community_html = f'''
-            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; margin: 25px 0; text-align: center;">
-                <h3 style="color: #92400e; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
-                    📸 Photo of the Day
+            <div style="background:#fffbeb;border-left:3px solid #d97706;padding:16px;margin:20px 0;text-align:center;">
+                <h3 style="color:#92400e;font-size:12px;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:1px;">
+                    Photo of the day
                 </h3>
                 <img src="{photo_url}" alt="Photo of the Day" style="max-width: 100%; border-radius: 8px; margin-bottom: 10px;" />
                 <p style="color: #78350f; font-size: 14px; margin: 0; font-style: italic;">
                     {photo_caption}
                 </p>
                 <p style="color: #92400e; font-size: 12px; margin: 5px 0 0 0;">
-                    📷 {photo_credit}
+                    Photo: {photo_credit}
                 </p>
             </div>
             '''
         
+        daily_sections = [
+            ("Local Developments", local_articles, build_section("Local Developments", local_articles)),
+            ("Business & Finance", business_articles, build_section("Business & Finance", business_articles)),
+            ("AI & Technology", tech_articles, build_section("AI & Technology", tech_articles)),
+            ("National Context", other_articles, build_section("National Context", other_articles)),
+        ]
+        preheader_html = _email_preheader(
+            "Today's top Cheshire stories, business updates and market intelligence."
+        )
+        masthead_html = _email_masthead("The Daily Brief", today)
+        footer_html = _email_footer("The Daily Brief")
+        hero_title = hero.get('title', 'Top Story')
+
         html_content = f'''
         <!DOCTYPE html>
         <html>
@@ -1117,59 +1206,36 @@ Cheshire Today Jobs Team
             <meta name="color-scheme" content="light">
             <meta name="supported-color-schemes" content="light">
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f3f4f6;">
-            <div style="max-width: 680px; margin: 0 auto; padding: 20px;">
-                <!-- Header with Text Logo -->
-                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%); color: white; padding: 25px; text-align: center; border-radius: 12px 12px 0 0;">
-                    <div style="font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 5px;">
-                        CHESHIRE TODAY
-                    </div>
-                    <div style="font-size: 12px; letter-spacing: 2px; opacity: 0.9; margin-bottom: 15px;">
-                        Local · Business · Finance
-                    </div>
-                    <div style="background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; display: inline-block;">
-                        <h1 style="margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.3px;">📈 Cheshire Market &amp; Local Briefing</h1>
-                        <p style="margin: 5px 0 0 0; font-size: 13px; opacity: 0.95;">{today}</p>
-                    </div>
-                </div>
+        <body style="font-family:Arial,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#1f2937;margin:0;padding:0;background-color:#f3f4f6;">
+            {preheader_html}
+            <div data-email-shell="cheshire-today" style="max-width:{_EMAIL_CONTENT_WIDTH}px;margin:0 auto;padding:12px;">
+                {masthead_html}
                 
                 <!-- Main Content -->
-                <div style="background: #ffffff; padding: 25px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="background:#ffffff;padding:22px;border-radius:0 0 8px 8px;">
                     <!-- Hero Section -->
-                    <div style="margin-bottom: 25px;">
-                        {f'<a href="{_email_html_attr(hero_url)}"><img src="{_email_html_attr(hero_image)}" alt="" style="width: 100%; height: 280px; object-fit: cover; border-radius: 10px; margin-bottom: 15px;" /></a>' if hero_image else ''}
-                        <h2 style="color: #1E3A8A; margin: 0 0 10px 0; font-size: 22px; line-height: 1.3;">
-                            <a href="{_email_html_attr(hero_url)}" style="color: #1E3A8A; text-decoration: none;">{_email_html_text(hero.get('title', 'Top Story'))}</a>
-                        </h2>
-                        <p style="color: #374151; font-size: 15px; margin: 0 0 15px 0; line-height: 1.6;">
+                    <div style="margin-bottom:20px;">
+                        {f'<a href="{_email_html_attr(hero_url)}"><img src="{_email_html_attr(hero_image)}" width="576" height="220" alt="{_email_html_attr(hero_title)}" style="display:block;width:100%;height:220px;object-fit:cover;border:0;margin-bottom:14px;" /></a>' if hero_image else ''}
+                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:31px;font-weight:700;">
+                            <a href="{_email_html_attr(hero_url)}" style="color:#111827;text-decoration:none;">{_email_html_text(hero_title)}</a>
+                        </h1>
+                        <p style="color:#4b5563;font-size:15px;margin:0 0 14px 0;line-height:22px;">
                             {_email_html_text(hero_summary)}
                         </p>
+                        <a data-email-cta="primary" href="{_email_html_attr(hero_url)}" style="display:inline-block;background:#1E3A8A;color:#ffffff;padding:11px 18px;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;line-height:18px;">
+                            Read the full story →
+                        </a>
                     </div>
                     
-                    
-                    {build_section("Local Developments", "📰", local_articles)}
-                    {build_section("Business & Finance", "💼", business_articles)}
-                    {build_section("AI & Technology", "🤖", tech_articles)}
-                    {build_section("National Context", "🇬🇧", other_articles)}
-
+                    {daily_sections[0][2]}
+                    {daily_sections[1][2]}
+                    {daily_sections[2][2]}
+                    {daily_sections[3][2]}
                     
                     {utility_html}
                     {community_html}
                     
-                    <!-- Footer -->
-                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-                        <p style="color: #6b7280; font-size: 12px; margin: 0 0 10px 0;">
-                            You're receiving this because you subscribed to The Daily Brief.
-                        </p>
-                        <p style="margin: 0;">
-                            <a href="__PREFS_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Manage Preferences</a>
-                            &nbsp;|&nbsp;
-                            <a href="__UNSUB_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Unsubscribe</a>
-                        </p>
-                        <p style="color: #9ca3af; font-size: 11px; margin: 15px 0 0 0;">
-                            © {datetime.now().year} Cheshire Today. All rights reserved.
-                        </p>
-                    </div>
+                    {footer_html}
                     <!-- Tracking Pixel -->
                     {self._get_tracking_pixel(tracking_id)}
                 </div>
@@ -1177,6 +1243,36 @@ Cheshire Today Jobs Team
         </body>
         </html>
         '''
+
+        plain_lines = [
+            "CHESHIRE TODAY",
+            "THE DAILY BRIEF",
+            today,
+            "Local · Business · Finance",
+            "",
+            "TOP STORY",
+            str(hero_title),
+        ]
+        if hero_summary:
+            plain_lines.extend([hero_summary, ""])
+        plain_lines.extend([hero_url_original, ""])
+        for section_name, section_articles, _ in daily_sections:
+            if not section_articles:
+                continue
+            plain_lines.extend([section_name.upper(), ""])
+            for article in section_articles:
+                plain_lines.append(str(article.get("title") or "Untitled"))
+                excerpt = _email_story_excerpt(article)
+                if excerpt:
+                    plain_lines.append(excerpt)
+                plain_lines.extend([self._article_url(article), ""])
+        plain_lines.extend(
+            [
+                "Manage preferences: __PREFS_URL__",
+                "Unsubscribe: __UNSUB_URL__",
+            ]
+        )
+        text_content = "\n".join(plain_lines).strip()
         
         # Send to all subscribers with daily_brief preference.
         # Build personalised messages in small chunks instead of holding all 2,000
@@ -1191,11 +1287,16 @@ Cheshire Today Jobs Team
                 .replace("__PREFS_URL__", prefs_url)
                 .replace("__UNSUB_URL__", unsub_url)
             )
+            text_personal = (
+                text_content
+                .replace("__PREFS_URL__", prefs_url)
+                .replace("__UNSUB_URL__", unsub_url)
+            )
             return {
                 "to": email,
                 "subject": subject,
                 "html": html_personal,
-                "text": None,
+                "text": text_personal,
             }
 
         success_count = 0
@@ -1376,11 +1477,11 @@ Cheshire Today Jobs Team
             safe_art_title = _email_html_text(article.get('title', 'Untitled'))
             icymi_html += f'''
             <tr>
-                <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                    <span style="background: #1E3A8A; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-right: 10px;">
+                <td style="padding:11px 0;border-bottom:1px solid #e5e7eb;">
+                    <span style="color:#1E3A8A;font-size:12px;font-weight:700;margin-right:8px;">
                         {i}
                     </span>
-                    <a href="{safe_art_url}" style="color: #1f2937; text-decoration: none; font-size: 15px; font-weight: 500;">
+                    <a href="{safe_art_url}" style="color:#111827;text-decoration:none;font-size:15px;font-weight:700;line-height:20px;">
                         {safe_art_title}
                     </a>
                 </td>
@@ -1396,9 +1497,9 @@ Cheshire Today Jobs Team
             property_price = _email_html_text(property_of_week.get('price', 'Price on application'))
             property_location = _email_html_text(property_of_week.get('location', 'Cheshire'))
             property_html = f'''
-            <div style="background: #f0fdf4; border-radius: 12px; padding: 20px; margin: 25px 0;">
-                <h3 style="color: #166534; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
-                    🏠 Property of the Week
+            <div style="background:#f0fdf4;border-left:3px solid #166534;padding:16px;margin:20px 0;">
+                <h3 style="color:#166534;font-size:12px;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:1px;">
+                    Property of the week
                 </h3>
                 {f'<img src="{property_image}" alt="" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />' if property_of_week.get('image_url') else ''}
                 <h4 style="color: #1f2937; margin: 0 0 5px 0; font-size: 16px;">{property_title}</h4>
@@ -1417,9 +1518,9 @@ Cheshire Today Jobs Team
             food_venue = _email_html_text(food_review.get('venue', ''))
             food_url = _email_html_attr(food_review.get('url'))
             food_html = f'''
-            <div style="background: #fef3c7; border-radius: 12px; padding: 20px; margin: 25px 0;">
-                <h3 style="color: #92400e; font-size: 14px; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
-                    🍽️ Food & Drink
+            <div style="background:#fffbeb;border-left:3px solid #92400e;padding:16px;margin:20px 0;">
+                <h3 style="color:#92400e;font-size:12px;margin:0 0 12px 0;text-transform:uppercase;letter-spacing:1px;">
+                    Food &amp; drink
                 </h3>
                 {f'<img src="{food_image}" alt="" style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />' if food_review.get('image_url') else ''}
                 <h4 style="color: #1f2937; margin: 0 0 5px 0; font-size: 16px;">{food_title}</h4>
@@ -1429,52 +1530,55 @@ Cheshire Today Jobs Team
             </div>
             '''
         
+        preheader_html = _email_preheader(
+            "The biggest Cheshire stories, business updates and ideas from the week."
+        )
+        masthead_html = _email_masthead("The Weekly Roundup", f"Week of {today}")
+        footer_html = _email_footer("The Weekly Roundup")
+        big_read_title = big_read.get('title', 'Featured Story')
+
         html_content = f'''
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="color-scheme" content="light">
+            <meta name="supported-color-schemes" content="light">
         </head>
-        <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.7; color: #333; margin: 0; padding: 0; background-color: #f9fafb;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <!-- Header -->
-                <div style="background: linear-gradient(135deg, #1E3A8A 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
-                    <div style="font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-bottom: 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                        CHESHIRE TODAY
-                    </div>
-                    <h1 style="margin: 0; font-size: 28px; font-weight: 400; font-family: Georgia, serif;">The Weekly Roundup</h1>
-                    <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9; font-family: sans-serif;">Your Sunday digest of Cheshire's best stories</p>
-                </div>
+        <body style="font-family:Arial,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#1f2937;margin:0;padding:0;background-color:#f3f4f6;">
+            {preheader_html}
+            <div data-email-shell="cheshire-today" style="max-width:{_EMAIL_CONTENT_WIDTH}px;margin:0 auto;padding:12px;">
+                {masthead_html}
                 
                 <!-- Content -->
-                <div style="background: white; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div style="background:#ffffff;padding:22px;border-radius:0 0 8px 8px;">
                     
                     <!-- The Big Read -->
-                    <div style="margin-bottom: 35px;">
-                        <p style="color: #1E3A8A; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 15px 0; font-family: sans-serif;">
-                            ✦ The Big Read
+                    <div style="margin-bottom:22px;">
+                        <p style="color:#1E3A8A;font-size:11px;text-transform:uppercase;letter-spacing:1.4px;margin:0 0 10px 0;font-weight:700;">
+                            The Big Read
                         </p>
-                        {f'<a href="{_email_html_attr(big_read_url)}"><img src="{_email_html_attr(big_read_image)}" alt="" style="width: 100%; height: 250px; object-fit: cover; border-radius: 10px; margin-bottom: 20px;" /></a>' if big_read_image else ''}
-                        <h2 style="color: #1f2937; margin: 0 0 15px 0; font-size: 26px; line-height: 1.3; font-weight: 400;">
-                            <a href="{_email_html_attr(big_read_url)}" style="color: #1f2937; text-decoration: none;">{_email_html_text(big_read.get('title', 'Featured Story'))}</a>
-                        </h2>
-                        <p style="color: #4b5563; font-size: 16px; margin: 0 0 20px 0; line-height: 1.7;">
+                        {f'<a href="{_email_html_attr(big_read_url)}"><img src="{_email_html_attr(big_read_image)}" width="576" height="220" alt="{_email_html_attr(big_read_title)}" style="display:block;width:100%;height:220px;object-fit:cover;border:0;margin-bottom:14px;" /></a>' if big_read_image else ''}
+                        <h1 style="color:#111827;margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:25px;line-height:31px;font-weight:700;">
+                            <a href="{_email_html_attr(big_read_url)}" style="color:#111827;text-decoration:none;">{_email_html_text(big_read_title)}</a>
+                        </h1>
+                        <p style="color:#4b5563;font-size:15px;margin:0 0 14px 0;line-height:22px;">
                             {_email_html_text(big_read_excerpt)}
                         </p>
-                        <a href="{_email_html_attr(big_read_url)}" style="display: inline-block; background: #1E3A8A; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; font-family: sans-serif;">
-                            Continue Reading
+                        <a data-email-cta="primary" href="{_email_html_attr(big_read_url)}" style="display:inline-block;background:#1E3A8A;color:#ffffff;padding:11px 18px;text-decoration:none;border-radius:4px;font-weight:700;font-size:14px;line-height:18px;">
+                            Read the full story →
                         </a>
                     </div>
                     
-                    <hr style="border: none; border-top: 2px solid #e5e7eb; margin: 30px 0;" />
+                    <hr style="border:none;border-top:1px solid #dbe3ee;margin:22px 0;" />
                     
                     <!-- ICYMI -->
-                    <div style="margin: 30px 0;">
-                        <h3 style="color: #1E3A8A; font-size: 14px; margin: 0 0 20px 0; text-transform: uppercase; letter-spacing: 2px; font-family: sans-serif;">
-                            📌 In Case You Missed It
+                    <div style="margin:22px 0;">
+                        <h3 style="color:#1E3A8A;font-size:11px;margin:0 0 6px 0;text-transform:uppercase;letter-spacing:1.4px;">
+                            In Case You Missed It
                         </h3>
-                        <table width="100%" cellpadding="0" cellspacing="0" style="font-family: -apple-system, sans-serif;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                             {icymi_html}
                         </table>
                     </div>
@@ -1482,20 +1586,7 @@ Cheshire Today Jobs Team
                     {property_html}
                     {food_html}
                     
-                    <!-- Footer -->
-                    <div style="margin-top: 35px; padding-top: 25px; border-top: 2px solid #e5e7eb; text-align: center; font-family: sans-serif;">
-                        <p style="color: #6b7280; font-size: 12px; margin: 0 0 10px 0;">
-                            You're receiving The Weekly Roundup every Sunday.
-                        </p>
-                        <p style="margin: 0;">
-                            <a href="__PREFS_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Manage Preferences</a>
-                            &nbsp;|&nbsp;
-                            <a href="__UNSUB_URL__" style="color: #3B82F6; font-size: 12px; text-decoration: none;">Unsubscribe</a>
-                        </p>
-                        <p style="color: #9ca3af; font-size: 11px; margin: 15px 0 0 0;">
-                            © {datetime.now().year} Cheshire Today. All rights reserved.
-                        </p>
-                    </div>
+                    {footer_html}
                     <!-- Tracking Pixel -->
                     {self._get_tracking_pixel(tracking_id)}
                 </div>
@@ -1503,6 +1594,34 @@ Cheshire Today Jobs Team
         </body>
         </html>
         '''
+
+        plain_lines = [
+            "CHESHIRE TODAY",
+            "THE WEEKLY ROUNDUP",
+            f"Week of {today}",
+            "Local · Business · Finance",
+            "",
+            "THE BIG READ",
+            str(big_read_title),
+        ]
+        if big_read_excerpt:
+            plain_lines.extend([big_read_excerpt, ""])
+        plain_lines.extend([big_read_url_original, "", "IN CASE YOU MISSED IT", ""])
+        for article in icymi_articles[:5]:
+            plain_lines.extend(
+                [
+                    str(article.get("title") or "Untitled"),
+                    self._article_url(article),
+                    "",
+                ]
+            )
+        plain_lines.extend(
+            [
+                "Manage preferences: __PREFS_URL__",
+                "Unsubscribe: __UNSUB_URL__",
+            ]
+        )
+        text_content = "\n".join(plain_lines).strip()
         
         batch_messages = []
         for email in to_emails:
@@ -1515,11 +1634,16 @@ Cheshire Today Jobs Team
                 .replace("__PREFS_URL__", prefs_url)
                 .replace("__UNSUB_URL__", unsub_url)
             )
+            text_personal = (
+                text_content
+                .replace("__PREFS_URL__", prefs_url)
+                .replace("__UNSUB_URL__", unsub_url)
+            )
             batch_messages.append({
                 "to": email,
                 "subject": subject,
                 "html": html_personal,
-                "text": None,
+                "text": text_personal,
             })
 
         if getattr(self, "resend_enabled", False):

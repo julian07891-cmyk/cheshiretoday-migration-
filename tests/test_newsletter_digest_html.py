@@ -1,5 +1,6 @@
 from html.parser import HTMLParser
 from pathlib import Path
+import struct
 import sys
 
 
@@ -94,9 +95,9 @@ def test_daily_brief_renders_balanced_html_and_escapes_dynamic_content(monkeypat
             "image": 'https://images.example.com/hero.jpg" onerror="alert(1)',
             "category": "Local",
         },
-        {"id": "local-1", "title": "Chester <strong>update</strong>", "category": "Local"},
-        {"id": "business-1", "title": "Business & finance", "category": "Business"},
-        {"id": "tech-1", "title": "OpenAI <news>", "category": "Technology"},
+        {"id": "local-1", "title": "Chester <strong>update</strong>", "content": "A concise local update. More detail follows.", "category": "Local"},
+        {"id": "business-1", "title": "Business & finance", "content": "Markets moved in early trading.", "category": "Business"},
+        {"id": "tech-1", "title": "OpenAI <news>", "content": "A technology briefing for Cheshire firms.", "category": "Technology"},
         {"id": "other-1", "title": "National > local", "category": "UK"},
     ]
 
@@ -128,6 +129,8 @@ def test_daily_brief_renders_balanced_html_and_escapes_dynamic_content(monkeypat
     assert "/api/email/track/open/" in rendered
     assert "https://cheshiretoday.co.uk/newsletter/preferences" in rendered
     assert "https://cheshiretoday.co.uk/unsubscribe" in rendered
+    assert "A concise local update." in rendered
+    assert 'data-email-cta="primary" href="https://cheshiretoday.co.uk/api/email/track/click/' in rendered
 
 
 def test_weekly_roundup_uses_verified_text_masthead_and_balanced_html(monkeypatch):
@@ -173,6 +176,99 @@ def test_weekly_roundup_uses_verified_text_masthead_and_balanced_html(monkeypatc
     assert "Cafe &lt;Review&gt;" in rendered
     assert "&quot; onclick=&quot;alert(" in rendered
     assert "/api/email/track/open/" in rendered
+
+
+def test_digest_identity_preheaders_and_logo_asset_are_shared(monkeypatch):
+    service = EmailService()
+    daily = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_daily_brief",
+        ["reader@example.com"],
+        [
+            {"id": "daily-1", "title": "Daily lead", "content": "Daily summary", "category": "Local"},
+            {"id": "tech-1", "title": "Tech brief", "content": "Technology update", "category": "Technology"},
+        ],
+    )
+    weekly = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_weekly_roundup",
+        ["reader@example.com"],
+        {"id": "weekly-1", "title": "Weekly lead", "content": "Weekly summary"},
+        [],
+    )
+
+    for message in (daily, weekly):
+        rendered = message["html"]
+        assert 'data-email-shell="cheshire-today"' in rendered
+        assert 'data-email-masthead="cheshire-today"' in rendered
+        assert 'data-email-footer="cheshire-today"' in rendered
+        assert 'src="https://cheshiretoday.co.uk/cheshire-today-email-logo.png"' in rendered
+        assert 'width="180" height="61" alt="Cheshire Today"' in rendered
+        assert "logo-white.png" not in rendered
+        assert "Local · Business · Finance" in rendered
+        assert "https://cheshiretoday.co.uk/newsletter/preferences" in rendered
+        assert "https://cheshiretoday.co.uk/unsubscribe" in rendered
+
+    assert "Today's top Cheshire stories, business updates and market intelligence." in daily["html"]
+    assert "The biggest Cheshire stories, business updates and ideas from the week." in weekly["html"]
+    assert "display:none;max-height:0;overflow:hidden" in daily["html"]
+    assert "display:none;max-height:0;overflow:hidden" in weekly["html"]
+
+
+def test_email_logo_asset_has_verified_dimensions_and_modest_size():
+    logo_path = Path(__file__).resolve().parents[1] / "frontend/public/cheshire-today-email-logo.png"
+    image = logo_path.read_bytes()
+    assert image[:8] == b"\x89PNG\r\n\x1a\n"
+    assert struct.unpack(">II", image[16:24]) == (360, 122)
+    assert len(image) < 100_000
+
+
+def test_daily_and_weekly_plain_text_use_clean_canonical_links(monkeypatch):
+    service = EmailService()
+    daily = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_daily_brief",
+        ["reader@example.com"],
+        [
+            {"id": "daily-1", "title": "Daily lead", "content": "Daily summary", "category": "Local"},
+            {"id": "tech-1", "title": "Tech brief", "content": "Technology update", "category": "Technology"},
+        ],
+    )
+    weekly = _capture_single_email(
+        monkeypatch,
+        service,
+        "send_weekly_roundup",
+        ["reader@example.com"],
+        {"id": "weekly-1", "title": "Weekly lead", "content": "Weekly summary"},
+        [{"id": "weekly-2", "title": "Another weekly story"}],
+    )
+
+    assert "https://cheshiretoday.co.uk/article/daily-1/daily-lead" in daily["text"]
+    assert "https://cheshiretoday.co.uk/article/tech-1/tech-brief" in daily["text"]
+    assert "https://cheshiretoday.co.uk/article/weekly-1/weekly-lead" in weekly["text"]
+    assert "https://cheshiretoday.co.uk/article/weekly-2/another-weekly-story" in weekly["text"]
+    for message in (daily, weekly):
+        assert message["text"]
+        assert "/api/email/track/" not in message["text"]
+        assert "Manage preferences: https://cheshiretoday.co.uk/newsletter/preferences" in message["text"]
+        assert "Unsubscribe: https://cheshiretoday.co.uk/unsubscribe" in message["text"]
+        assert "reader@example.com" not in message["text"]
+
+
+def test_admin_weekly_control_reuses_existing_authenticated_endpoint():
+    repository = Path(__file__).resolve().parents[1]
+    admin_source = (repository / "frontend/src/components/AdminDashboard.jsx").read_text()
+    server_source = (repository / "backend/server.py").read_text()
+
+    assert 'data-testid="send-test-weekly-roundup-button"' in admin_source
+    assert "/api/send-weekly-roundup-test?test_email=${encodeURIComponent(testEmail)}" in admin_source
+    assert 'method: \'POST\'' in admin_source
+    assert "getAuthHeaders()" in admin_source
+    assert '@api_router.post("/send-weekly-roundup-test")' in server_source
+    assert admin_source.count("/api/send-weekly-roundup-test?") == 1
 
 
 def test_digest_rendering_is_offline_and_preserves_send_contract(monkeypatch):
