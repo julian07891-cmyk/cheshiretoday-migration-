@@ -185,22 +185,13 @@ function autoLinkContent(rawText, pillarLabel) {
     html = html.replaceAll(token, url);
   }
 
-  // 6) Convert plain text into real paragraphs for improved article typography.
-  const sentences = html.split(/(?<=[.!?])\s+/);
-  const paragraphs = [];
-  let buf = [];
-
-  for (const s of sentences) {
-    buf.push(s);
-    if (buf.length >= 3) {
-      paragraphs.push(`<p>${buf.join(" ")}</p>`);
-      buf = [];
-    }
-  }
-
-  if (buf.length) {
-    paragraphs.push(`<p>${buf.join(" ")}</p>`);
-  }
+  // 6) Preserve the editorial paragraph structure stored with the article.
+  // Blank lines separate paragraphs; single line breaks remain within them.
+  const paragraphs = html
+    .split(/\n\s*\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br/>")}</p>`);
 
   return paragraphs.join("");
 }
