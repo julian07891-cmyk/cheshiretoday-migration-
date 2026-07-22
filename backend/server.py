@@ -1835,8 +1835,8 @@ async def import_real_news(
             
             # Insert into database
             # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
-            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
-            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''), is_summary=False)
+            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
 
             from datetime import datetime
 
@@ -2284,7 +2284,7 @@ async def _import_hybrid_news_internal(
                     
                     # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
                     
-                    article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+                    article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''), is_summary=False)
                     article = apply_ai_manual_review_guard(
                         article,
                         article.get('content', ''),
@@ -2314,7 +2314,7 @@ async def _import_hybrid_news_internal(
                             article["archive_reason"] = "needs_manual_review"
 
                     article = apply_public_import_cap(article, title)
-                    article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+                    article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
                     try:
                         await db.articles.insert_one(article)
                     except DuplicateKeyError:
@@ -2409,8 +2409,8 @@ async def _import_hybrid_news_internal(
             review_doc["id"] = str(uuid4())
             review_doc["image"] = review_doc.get("image") or article.get("image") or ""
             review_doc["image_source"] = "rss_feed"
-            review_doc["content"] = sanitize_rss_text(detailed_content or review_doc.get("content", ""), review_doc.get("source_url", ""))
-            review_doc["summary"] = sanitize_rss_text(review_doc.get("summary", ""), review_doc.get("source_url", ""))
+            review_doc["content"] = sanitize_rss_text(detailed_content or review_doc.get("content", ""), review_doc.get("source_url", ""), is_summary=False)
+            review_doc["summary"] = sanitize_rss_text(review_doc.get("summary", ""), review_doc.get("source_url", ""), is_summary=True)
             review_doc["scope"] = "cheshire"
             review_doc["category"] = "Local News"
             review_doc["is_local_source"] = True
@@ -2599,7 +2599,7 @@ async def _import_hybrid_news_internal(
             
             # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
             
-            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''), is_summary=False)
             article = apply_ai_manual_review_guard(
                 article,
                 article.get('content', ''),
@@ -2607,7 +2607,7 @@ async def _import_hybrid_news_internal(
                 title
             )
             article = apply_public_import_cap(article, title)
-            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
             try:
                 await db.articles.insert_one(article)
             except DuplicateKeyError:
@@ -2736,9 +2736,9 @@ async def _import_hybrid_news_internal(
 
                 # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
 
-                article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''))
+                article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''), is_summary=False)
 
-                article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''))
+                article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
                 article = apply_public_import_cap(article, title)
                 try:
                     await db.articles.insert_one(article)
@@ -16344,7 +16344,7 @@ def is_digest_excluded(article):
 # - Strip naked URLs (esp. the original source_url) from RSS content/summary
 # - Strip "Read more / Continue reading" tails
 # =====================================================================================
-def sanitize_rss_text(text: str, source_url: str = "") -> str:
+def sanitize_rss_text(text: str, source_url: str = "", *, is_summary: bool = False) -> str:
     if text is None:
         return ""
     t = str(text)
@@ -16362,12 +16362,64 @@ def sanitize_rss_text(text: str, source_url: str = "") -> str:
     # Remove leftover "Read more:" without URL (sometimes after replacement)
     t = re.sub(r'(?im)^\s*(read\s+more|continue\s+reading|full\s+story)\s*[:\-]?\s*$', '', t)
 
-    # Light readability formatting: keep content length, improve paragraph spacing
-    sentences = re.split(r'(?<=[.!?])\s+', t)
-    if len(sentences) >= 4:
-        chunks = [' '.join(sentences[i:i+2]).strip() for i in range(0, len(sentences), 2)]
-        t = '\n\n'.join([c for c in chunks if c])
+    t = t.replace('\r\n', '\n').replace('\r', '\n')
     t = re.sub(r'\n{3,}', '\n\n', t).strip()
+
+    if is_summary:
+        return re.sub(r'\s+', ' ', t).strip()
+
+    paragraphs = [part.strip() for part in re.split(r'\n\s*\n+', t) if part.strip()]
+    if len(paragraphs) >= 2:
+        return '\n\n'.join(paragraphs)
+
+    # Raw RSS descriptions are commonly flattened into one block upstream.
+    # Protect common non-terminal periods before applying the established
+    # deterministic two-sentence fallback formatting.
+    protected = t
+    period_marker = "\ue000"
+    while period_marker in protected:
+        period_marker += "\ue000"
+
+    protected = re.sub(
+        r'\b(?:Mr|Mrs|Ms|Dr|Prof|Ltd|No)\.',
+        lambda match: match.group(0).replace('.', period_marker),
+        protected,
+        flags=re.IGNORECASE,
+    )
+    protected = re.sub(
+        r'\b(?:[A-Z]\.){1,}(?=\s*[A-Z])',
+        lambda match: match.group(0).replace('.', period_marker),
+        protected,
+    )
+    protected = re.sub(r'(?<=\d)\.(?=\d)', period_marker, protected)
+
+    sentences = re.split(
+        r'(?<=[.!?])\s+|(?<=[.!?]["\'’”])\s+',
+        protected,
+    )
+    sentences = [sentence.replace(period_marker, '.').strip() for sentence in sentences if sentence.strip()]
+
+    attribution_pattern = re.compile(
+        r'^(?:(?:Mr|Mrs|Ms|Dr|Prof)\.\s+)?'
+        r'(?:[A-Z][A-Za-z\'’\-]+(?:\s+[A-Z][A-Za-z\'’\-]+){0,3}|[Hh]e|[Ss]he|[Tt]hey)\s+'
+        r'(?:said|added|told|stated|explained|confirmed|continued|replied)\b'
+    )
+    merged_sentences = []
+    for sentence in sentences:
+        if (
+            merged_sentences
+            and merged_sentences[-1].endswith(('"', '\'', '’', '”'))
+            and attribution_pattern.match(sentence)
+        ):
+            merged_sentences[-1] = f"{merged_sentences[-1]} {sentence}"
+        else:
+            merged_sentences.append(sentence)
+    sentences = merged_sentences
+
+    if len(sentences) >= 4:
+        chunks = [' '.join(sentences[i:i + 2]) for i in range(0, len(sentences), 2)]
+        return '\n\n'.join(chunks)
+
     return t
 
 
