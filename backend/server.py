@@ -15709,6 +15709,23 @@ async def sync_rss_now(authorized: bool = Depends(get_admin_auth)):
                     'created_at': datetime.now(timezone.utc).isoformat(),
                     'archived': False
                 }
+
+                article_doc['content'] = sanitize_rss_text(
+                    article_doc.get('content', ''),
+                    article_doc.get('source_url', ''),
+                    is_summary=False,
+                )
+                article_doc['summary'] = sanitize_rss_text(
+                    article_doc.get('summary', ''),
+                    article_doc.get('source_url', ''),
+                    is_summary=True,
+                )
+                article_doc = apply_ai_manual_review_guard(
+                    article_doc,
+                    article_doc.get('content', ''),
+                    ai_rewrite_used=True,
+                    title=title,
+                )
                 
                 await db.articles.insert_one(article_doc)
                 imported_count += 1
