@@ -72,3 +72,51 @@ def test_newsquest_article_uses_source_open_graph_image(monkeypatch):
         )
 
     asyncio.run(run())
+
+def test_contentful_article_uses_facebook_sized_social_image(monkeypatch):
+    async def run():
+        article = {
+            "id": "article-contentful",
+            "title": "Council tax refund confirmed",
+            "summary": (
+                "A Cheshire homeowner successfully challenged the council "
+                "tax band on their property."
+            ),
+            "content": "Article body.",
+            "category": "Finance",
+            "image": (
+                "https://images.ctfassets.net/example/image/hero.jpg"
+                "?fm=jpg&w=800&h=600&q=70&fl=progressive"
+            ),
+            "source_url": "https://example.com/story",
+            "publishedDate": "2026-07-22T08:00:00",
+        }
+
+        async def fake_find_article(article_id):
+            assert article_id == "article-contentful"
+            return article
+
+        monkeypatch.setattr(
+            server,
+            "_find_article_by_any_id",
+            fake_find_article,
+        )
+
+        response = await server.serve_article_html("article-contentful")
+        html = response.body.decode("utf-8")
+
+        expected = (
+            "https://images.ctfassets.net/example/image/hero.jpg"
+            "?fm=jpg&amp;w=1200&amp;h=630&amp;fit=fill&amp;q=85"
+        )
+
+        assert f'<meta property="og:image" content="{expected}">' in html
+        assert (
+            f'<meta property="og:image:secure_url" content="{expected}">'
+            in html
+        )
+        assert f'<meta name="twitter:image" content="{expected}">' in html
+        assert "w=800" not in html
+
+    asyncio.run(run())
+

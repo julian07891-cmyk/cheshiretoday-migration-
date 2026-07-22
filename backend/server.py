@@ -14243,6 +14243,13 @@ async def serve_article_html(article_id: str, request=None):
         if not img:
             return "https://cheshiretoday.co.uk/social-share.jpg"
 
+        # Contentful: request a genuine Facebook-sized social image.
+        # The source asset may be smaller, while the Contentful Images API
+        # can safely produce a valid 1200x630 JPEG using fill mode.
+        if "images.ctfassets.net" in img:
+            img = img.split("?", 1)[0]
+            img += "?fm=jpg&w=1200&h=630&fit=fill&q=85"
+
         # Reach / Cheshire Live
         if "/ALTERNATES/s615/" in img:
             img = img.replace("/ALTERNATES/s615/", "/ALTERNATES/s1200/")
