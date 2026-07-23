@@ -3654,6 +3654,44 @@ def _apply_public_category_hub_filter(query: dict, config: dict) -> None:
     }
 
 
+def _article_matches_public_category_hub(article: dict, config: dict) -> bool:
+    category = str(article.get("category") or "").strip().casefold()
+    accepted = {
+        str(value).casefold()
+        for value in (config["canonical_category"], *config["aliases"])
+    }
+    if category not in accepted:
+        return False
+
+    if config["canonical_category"] != "Local News":
+        return True
+
+    scope = str(article.get("scope") or "").strip().casefold()
+    location = str(article.get("location") or "").strip().casefold()
+    return (
+        article.get("is_local_source") is True
+        or scope in {"cheshire", "local"}
+        or location in (PUBLIC_LOCATION_HUBS - {"cheshire-general"})
+    )
+
+
+def _article_matches_public_location_hub(article: dict, location: str) -> bool:
+    if location == "cheshire-general":
+        has_general_location = (
+            "location" not in article
+            or article.get("location") is None
+        )
+        return has_general_location and (
+            article.get("is_cheshire_related") is True
+            or article.get("is_local_source") is True
+        )
+
+    return (
+        str(article.get("location") or "").strip().casefold()
+        == str(location).casefold()
+    )
+
+
 @api_router.get("/articles/location/cheshire-general")
 async def get_cheshire_general_articles(
     skip: int = 0,
@@ -13409,6 +13447,80 @@ async def api_sitemap():
     """Sitemap accessible via /api/sitemap.xml"""
     return await generate_sitemap()
 
+
+def _parse_sitemap_datetime(value, *, now: Optional[datetime] = None):
+    if not value:
+        return None
+
+    parsed = None
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        try:
+            parsed = datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            return None
+    else:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    else:
+        parsed = parsed.astimezone(timezone.utc)
+
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    else:
+        current = current.astimezone(timezone.utc)
+
+    if parsed > current:
+        return None
+    return parsed
+
+
+def _article_sitemap_datetime(article: dict, *, now: Optional[datetime] = None):
+    for field in (
+        "updated_at",
+        "modified_at",
+        "manual_edited_at",
+        "updatedAt",
+        "publishedDate",
+        "created_at",
+    ):
+        parsed = _parse_sitemap_datetime(article.get(field), now=now)
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _sitemap_lastmod_value(value, *, now: Optional[datetime] = None):
+    parsed = _parse_sitemap_datetime(value, now=now)
+    return parsed.strftime("%Y-%m-%d") if parsed is not None else None
+
+
+def _newest_article_sitemap_lastmod(
+    articles: List[dict],
+    *,
+    now: Optional[datetime] = None,
+):
+    dates = [
+        parsed
+        for article in articles
+        if (parsed := _article_sitemap_datetime(article, now=now)) is not None
+    ]
+    return max(dates).strftime("%Y-%m-%d") if dates else None
+
+
+def _append_sitemap_lastmod(xml_content: str, lastmod: Optional[str]) -> str:
+    if lastmod:
+        xml_content += f"    <lastmod>{lastmod}</lastmod>\n"
+    return xml_content
+
+
 @app.get("/sitemap.xml")
 async def generate_sitemap():
     """Generate dynamic sitemap.xml for Google Search Console"""
@@ -13431,7 +13543,14 @@ async def generate_sitemap():
                     {"force_live": True},
                 ],
             },
-            {'_id': 1, 'id': 1, 'publishedDate': 1, 'category': 1, 'image': 1, 'title': 1, 'scope': 1, 'source': 1, 'source_url': 1, 'force_live': 1, 'archived': 1}
+            {
+                '_id': 1, 'id': 1, 'publishedDate': 1, 'created_at': 1,
+                'updated_at': 1, 'modified_at': 1, 'manual_edited_at': 1,
+                'updatedAt': 1, 'category': 1, 'image': 1, 'title': 1,
+                'scope': 1, 'source': 1, 'source_url': 1, 'force_live': 1,
+                'archived': 1, 'location': 1, 'priority_location': 1,
+                'is_local_source': 1, 'is_cheshire_related': 1,
+            }
         ).sort('publishedDate', -1).limit(500).to_list(500)
 
         strategic_article_categories = {
@@ -13595,6 +13714,39 @@ async def generate_sitemap():
 
             return False
 
+        now_utc = datetime.now(timezone.utc)
+        sitemap_articles = [
+            article for article in articles if include_article_in_sitemap(article)
+        ]
+        newest_article_lastmod = _newest_article_sitemap_lastmod(
+            sitemap_articles,
+            now=now_utc,
+        )
+
+        category_lastmods = {}
+        for category_slug, category_config in PUBLIC_CATEGORY_HUBS.items():
+            matching = [
+                article
+                for article in sitemap_articles
+                if _article_matches_public_category_hub(article, category_config)
+            ]
+            category_lastmods[category_slug] = _newest_article_sitemap_lastmod(
+                matching,
+                now=now_utc,
+            )
+
+        location_lastmods = {}
+        for location in PUBLIC_LOCATION_HUBS:
+            matching = [
+                article
+                for article in sitemap_articles
+                if _article_matches_public_location_hub(article, location)
+            ]
+            location_lastmods[location] = _newest_article_sitemap_lastmod(
+                matching,
+                now=now_utc,
+            )
+
         # Start building XML with image namespace
         xml_content = '<?xml version="1.0" encoding="UTF-8"?>\n'
         xml_content += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
@@ -13602,7 +13754,7 @@ async def generate_sitemap():
         # Add homepage
         xml_content += '  <url>\n'
         xml_content += f'    <loc>{base_url}/</loc>\n'
-        xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
+        xml_content = _append_sitemap_lastmod(xml_content, newest_article_lastmod)
         xml_content += '    <changefreq>daily</changefreq>\n'
         xml_content += '    <priority>1.0</priority>\n'
         xml_content += '  </url>\n'
@@ -13610,7 +13762,7 @@ async def generate_sitemap():
         # Add plain HTML article-index crawl path for search engines
         xml_content += '  <url>\n'
         xml_content += f'    <loc>{base_url}/article-index</loc>\n'
-        xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
+        xml_content = _append_sitemap_lastmod(xml_content, newest_article_lastmod)
         xml_content += '    <changefreq>daily</changefreq>\n'
         xml_content += '    <priority>0.9</priority>\n'
         xml_content += '  </url>\n'
@@ -13619,7 +13771,10 @@ async def generate_sitemap():
         for loc in sorted(PUBLIC_LOCATION_HUBS):
             xml_content += '  <url>\n'
             xml_content += f'    <loc>{base_url}/{loc}</loc>\n'
-            xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
+            xml_content = _append_sitemap_lastmod(
+                xml_content,
+                location_lastmods[loc],
+            )
             xml_content += '    <changefreq>daily</changefreq>\n'
             xml_content += '    <priority>0.9</priority>\n'
             xml_content += '  </url>\n'
@@ -13628,7 +13783,10 @@ async def generate_sitemap():
         for category_slug in PUBLIC_CATEGORY_HUBS:
             xml_content += '  <url>\n'
             xml_content += f'    <loc>{base_url}/category/{category_slug}</loc>\n'
-            xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
+            xml_content = _append_sitemap_lastmod(
+                xml_content,
+                category_lastmods[category_slug],
+            )
             xml_content += '    <changefreq>daily</changefreq>\n'
             xml_content += '    <priority>0.8</priority>\n'
             xml_content += '  </url>\n'
@@ -13656,37 +13814,25 @@ async def generate_sitemap():
             if guide_content_len < 700:
                 continue
 
-            updated_at = page.get("updatedAt")
-            guide_lastmod = datetime.utcnow().strftime("%Y-%m-%d")
-            if isinstance(updated_at, str):
-                try:
-                    guide_lastmod = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).strftime("%Y-%m-%d")
-                except Exception:
-                    guide_lastmod = datetime.utcnow().strftime("%Y-%m-%d")
-            elif hasattr(updated_at, "strftime"):
-                guide_lastmod = updated_at.strftime("%Y-%m-%d")
+            guide_lastmod = _sitemap_lastmod_value(
+                page.get("updatedAt"),
+                now=now_utc,
+            )
 
             xml_content += '  <url>\n'
             xml_content += f'    <loc>{saxutils.escape(base_url)}/guides/{saxutils.escape(guide_slug)}</loc>\n'
-            xml_content += f'    <lastmod>{guide_lastmod}</lastmod>\n'
+            xml_content = _append_sitemap_lastmod(xml_content, guide_lastmod)
             xml_content += '    <changefreq>weekly</changefreq>\n'
             xml_content += '    <priority>0.7</priority>\n'
             xml_content += '  </url>\n'
 
         # Add only strategic, index-worthy articles with images
-        for article in articles:
-            if not include_article_in_sitemap(article):
-                continue
+        for article in sitemap_articles:
             article_id = str(article.get("_id") or article.get("id") or "")
             raw_title = str(article.get("title") or "Cheshire Today Article")
             slug = re.sub(r"[^a-z0-9]+","-", raw_title.lower()).strip("-")
             slug = (slug[:80] if slug else "article")
-            published_date = article.get('publishedDate', datetime.utcnow())
-            if isinstance(published_date, str):
-                try:
-                    published_date = datetime.fromisoformat(published_date.replace('Z', '+00:00'))
-                except:
-                    published_date = datetime.utcnow()
+            article_lastmod = _article_sitemap_datetime(article, now=now_utc)
             
             # Get article image and title
             article_image = article.get('image', '')
@@ -13694,7 +13840,12 @@ async def generate_sitemap():
             
             xml_content += '  <url>\n'
             xml_content += f'    <loc>{saxutils.escape(base_url)}/article/{article_id}/{slug}</loc>\n'
-            xml_content += f'    <lastmod>{published_date.strftime("%Y-%m-%d")}</lastmod>\n'
+            xml_content = _append_sitemap_lastmod(
+                xml_content,
+                article_lastmod.strftime("%Y-%m-%d")
+                if article_lastmod is not None
+                else None,
+            )
             xml_content += '    <changefreq>weekly</changefreq>\n'
             xml_content += '    <priority>0.6</priority>\n'
             
