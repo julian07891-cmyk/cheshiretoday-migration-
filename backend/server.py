@@ -1833,15 +1833,30 @@ async def import_real_news(
                     used_photo_ids=used_photo_ids
                 )
             
-            # Insert into database
-            # Strip RSS trailing URLs from body/summary so the frontend never prints raw source links
-            article['content'] = sanitize_rss_text(article.get('content',''), article.get('source_url',''), is_summary=False)
-            article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
+            # Prepare the complete candidate before the single database insert.
+            # Strip RSS trailing URLs from body/summary so the frontend never
+            # prints raw source links.
+            sanitized_content = sanitize_rss_text(
+                article.get('content', ''),
+                article.get('source_url', ''),
+                is_summary=False,
+            )
+            sanitized_summary = sanitize_rss_text(
+                article.get('summary', ''),
+                article.get('source_url', ''),
+                is_summary=True,
+            )
+            if not sanitized_content.strip():
+                skipped += 1
+                logger.info(f"Skipped empty real-news article: {title[:60]}...")
+                continue
 
             from datetime import datetime
 
             article_doc = {
                 **article,
+                "content": sanitized_content,
+                "summary": sanitized_summary,
                 "publishedDate": (
                     article.get("publishedDate")
                     if isinstance(article.get("publishedDate"), datetime)
@@ -1852,6 +1867,61 @@ async def import_real_news(
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "archived": False
             }
+
+            article_doc = apply_ai_manual_review_guard(
+                article_doc,
+                sanitized_content,
+                ai_rewrite_used=False,
+                title=title,
+            )
+
+            risk_hits = find_ai_manual_review_hits(sanitized_content)
+            editorial_quality_reasons = find_ai_editorial_quality_reasons(
+                sanitized_content,
+                title,
+            )
+            route_review_reasons = []
+            shared_review_reason = str(
+                article_doc.get("manual_review_reason") or ""
+            ).strip()
+            shared_quality_floor_applied = (
+                "below the public quality floor" in shared_review_reason.lower()
+            )
+            if (
+                len(sanitized_content) < 1000
+                and not shared_quality_floor_applied
+            ):
+                route_review_reasons.append(
+                    "Imported RSS article is below the 1000-character public "
+                    "quality threshold and needs manual review."
+                )
+            if risk_hits:
+                route_review_reasons.append(
+                    "Imported RSS content contained risky unsupported-detail "
+                    "wording that requires source verification."
+                )
+            route_review_reasons.extend(editorial_quality_reasons)
+
+            if route_review_reasons:
+                now_iso = datetime.now(timezone.utc).isoformat()
+                article_doc["manual_review_hidden_from_public"] = True
+                article_doc["manual_review_reason"] = " ".join(
+                    value
+                    for value in [
+                        shared_review_reason,
+                        *route_review_reasons,
+                    ]
+                    if value
+                )
+                article_doc["manual_review_created_at"] = now_iso
+                article_doc["verification_status"] = "needs_manual_review"
+                article_doc["rewrite_status"] = "manual_review_required"
+                article_doc["archive_reason"] = "needs_manual_review"
+
+                if risk_hits or editorial_quality_reasons:
+                    article_doc["archived"] = True
+                    article_doc["archived_at"] = now_iso
+                    article_doc["manual_review_hits"] = risk_hits
 
             try:
                 await db.articles.insert_one(article_doc)
