@@ -3030,6 +3030,11 @@ async def regenerate_recent_article_content(authorized: bool = Depends(get_admin
         ).sort("publishedDate", -1).limit(25).to_list(25)
 
         regenerated = 0
+        safe_regenerated = 0
+        manual_review_routed = 0
+        skipped_empty = 0
+        skipped_too_short = 0
+        processing_failures = 0
         cost_estimate = 0.0
 
         for article in articles:
@@ -3040,33 +3045,100 @@ async def regenerate_recent_article_content(authorized: bool = Depends(get_admin
 
             logger.info(f"Regenerating recent content for: {title[:60]}...")
 
-            detailed_content = await perplexity_service.generate_article_content(
-                title=title,
-                summary=original_content,
-                source=source,
-                source_url=source_url
-            )
-            cost_estimate += 0.005
+            try:
+                detailed_content = await perplexity_service.generate_article_content(
+                    title=title,
+                    summary=original_content,
+                    source=source,
+                    source_url=source_url
+                )
+                cost_estimate += 0.005
 
-            if detailed_content and len(detailed_content) >= max(len(original_content), 1200):
+                if not (detailed_content or "").strip():
+                    skipped_empty += 1
+                    logger.warning(f"Skipped recent article - empty rewrite: {title[:60]}...")
+                    continue
+
+                sanitized_content = sanitize_rss_text(
+                    detailed_content,
+                    source_url,
+                    is_summary=False,
+                )
+                if len(sanitized_content) < max(len(original_content), 1200):
+                    skipped_too_short += 1
+                    logger.warning(f"Skipped recent article - no safe length improvement: {title[:60]}...")
+                    continue
+
+                proposed_article = {
+                    **article,
+                    "content": sanitized_content,
+                }
+                guarded_article = apply_ai_manual_review_guard(
+                    proposed_article,
+                    sanitized_content,
+                    ai_rewrite_used=True,
+                    title=title,
+                )
+
+                update_fields = {
+                    'content': sanitized_content,
+                    'original_summary': article.get('summary', '') or original_content,
+                    'content_generated': True,
+                    'content_regenerated_at': datetime.now(timezone.utc).isoformat(),
+                }
+                guard_fields = (
+                    "ai_rewritten",
+                    "is_rewritten",
+                    "verification_status",
+                    "rewrite_status",
+                    "manual_review_hidden_from_public",
+                    "manual_review_reason",
+                    "manual_review_created_at",
+                    "manual_review_hits",
+                    "archived",
+                    "archived_at",
+                    "archive_reason",
+                )
+                for field in guard_fields:
+                    if (
+                        field in guarded_article
+                        and guarded_article.get(field) != article.get(field)
+                    ):
+                        update_fields[field] = guarded_article[field]
+
                 await db.articles.update_one(
                     {'_id': article['_id']},
-                    {'$set': {
-                        'content': detailed_content,
-                        'original_summary': article.get('summary', '') or original_content,
-                        'content_generated': True,
-                        'content_regenerated_at': datetime.now(timezone.utc).isoformat()
-                    }}
+                    {'$set': update_fields}
                 )
                 regenerated += 1
-                logger.info(f"✅ Regenerated recent article ({len(detailed_content)} chars): {title[:60]}...")
-            else:
-                logger.warning(f"Skipped recent article - no improvement: {title[:60]}...")
+                if guarded_article.get("manual_review_hidden_from_public") is True:
+                    manual_review_routed += 1
+                    logger.info(
+                        f"Regenerated recent article into Manual Review "
+                        f"({len(sanitized_content)} chars): {title[:60]}..."
+                    )
+                else:
+                    safe_regenerated += 1
+                    logger.info(
+                        f"✅ Regenerated recent article "
+                        f"({len(sanitized_content)} chars): {title[:60]}..."
+                    )
+            except Exception as regeneration_error:
+                processing_failures += 1
+                logger.error(
+                    f"Recent article regeneration failed safely for "
+                    f"{title[:60]}: {str(regeneration_error)}"
+                )
 
         return {
             "success": True,
             "recent_articles_found": len(articles),
             "regenerated": regenerated,
+            "safe_regenerated": safe_regenerated,
+            "manual_review_routed": manual_review_routed,
+            "skipped_empty": skipped_empty,
+            "skipped_too_short": skipped_too_short,
+            "processing_failures": processing_failures,
             "estimated_cost_usd": round(cost_estimate, 4)
         }
 
