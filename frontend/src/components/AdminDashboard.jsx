@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Calendar } from './ui/calendar';
 import { buildArticleUrl } from '../utils/articleUrl';
+import { runBulkArchive } from '../services/adminBulkArchive';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -1311,26 +1312,43 @@ const AdminDashboard = ({ onBack }) => {
   };
 
   const handleBulkArchive = async (daysOld) => {
-    if (!confirm(`Archive all articles older than ${daysOld} days?`)) return;
-    setActionLoading('bulk-archive');
+    let requestStarted = false;
     try {
-      const response = await fetch(`${getApiUrl()}/api/admin/articles/bulk-archive?days_old=${daysOld}`, {
-        method: 'POST',
-        headers: getAuthHeaders()
+      const result = await runBulkArchive({
+        daysOld,
+        apiUrl: getApiUrl(),
+        authHeaders: getAuthHeaders(),
+        confirmAction: window.confirm,
+        fetchImpl: fetch,
+        onConfirmed: () => {
+          requestStarted = true;
+          setActionLoading('bulk-archive');
+        },
       });
-      const data = await response.json();
-      if (data.success) {
-        toast({ title: "✅ Bulk Archive Complete", description: data.message });
+
+      if (result.status === 'cancelled') {
+        return;
+      }
+
+      if (result.status === 'success') {
+        toast({
+          title: "✅ Bulk Archive Complete",
+          description: result.message,
+        });
         fetchAllData();
         fetchArchivedArticles();
         fetchArticleStats();
       } else {
-        toast({ title: "❌ Error", description: data.detail || "Failed to bulk archive", variant: "destructive" });
+        toast({
+          title: "❌ Bulk Archive Failed",
+          description: result.message,
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      toast({ title: "❌ Error", description: error.message, variant: "destructive" });
     } finally {
-      setActionLoading(null);
+      if (requestStarted) {
+        setActionLoading(null);
+      }
     }
   };
 
