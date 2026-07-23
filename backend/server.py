@@ -16369,6 +16369,68 @@ def _spa_index_or_500():
         return _spa_file_response(_INDEX_HTML)
     raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
 
+
+PUBLIC_SPA_EXACT_PATHS = {
+    "admin",
+    "jobs",
+    "jobs/post",
+    "jobs/payment-success",
+    "advertise",
+    "advertise/pay",
+    "advertise/payment-success",
+    "privacy",
+    "terms",
+    "cookies",
+    "affiliate-disclosure",
+    "contact",
+    "unsubscribe",
+    "newsletter/preferences",
+    "newsletter/reactivate",
+}
+
+
+def _is_supported_public_spa_path(full_path: str) -> bool:
+    clean_path = str(full_path or "").strip("/")
+    if clean_path in PUBLIC_SPA_EXACT_PATHS:
+        return True
+    if clean_path in PUBLIC_LOCATION_HUBS:
+        return True
+    if clean_path.startswith("category/"):
+        parts = clean_path.split("/")
+        return len(parts) == 2 and parts[1] in PUBLIC_CATEGORY_HUBS
+    return False
+
+
+def _public_not_found_response(full_path: str):
+    from fastapi.responses import HTMLResponse
+    import html as _html
+
+    safe_path = _html.escape(f"/{str(full_path or '').strip('/')}")
+    content = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page not found | Cheshire Today</title>
+  <meta name="robots" content="noindex, follow">
+  <meta name="description" content="The requested Cheshire Today page could not be found.">
+</head>
+<body>
+  <main>
+    <p>Cheshire Today</p>
+    <h1>Page not found</h1>
+    <p>The requested page <code>{safe_path}</code> could not be found.</p>
+    <p><a href="/">Return to the Cheshire Today homepage</a></p>
+  </main>
+</body>
+</html>"""
+    return HTMLResponse(
+        content=content,
+        status_code=404,
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @app.get("/")
 async def serve_spa_root(request: Request):
     if _is_crawler_request(request):
@@ -16387,17 +16449,17 @@ async def serve_react_spa(full_path: str, request: Request):
     if candidate.is_file():
         return _spa_file_response(candidate)
     if _is_crawler_request(request):
-        hub_paths = {"article-index", "latest-articles"}
         if (
-            full_path in hub_paths
-            or full_path in PUBLIC_LOCATION_HUBS
+            full_path in PUBLIC_LOCATION_HUBS
             or (
                 full_path.startswith("category/")
                 and full_path.split("/", 1)[1] in PUBLIC_CATEGORY_HUBS
             )
         ):
             return await serve_public_hub_html(full_path)
-    return _spa_index_or_500()
+    if _is_supported_public_spa_path(full_path):
+        return _spa_index_or_500()
+    return _public_not_found_response(full_path)
 
 @app.head("/{full_path:path}")
 async def head_react_spa(full_path: str):
@@ -16406,7 +16468,9 @@ async def head_react_spa(full_path: str):
     candidate = (_FRONTEND_DIR / full_path)
     if candidate.is_file():
         return _spa_file_response(candidate)
-    return _spa_index_or_500()
+    if _is_supported_public_spa_path(full_path):
+        return _spa_index_or_500()
+    return _public_not_found_response(full_path)
 
 
 # Add GZip compression middleware for faster response delivery
