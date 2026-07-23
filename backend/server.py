@@ -14255,9 +14255,6 @@ async def serve_article_html(article_id: str, request=None):
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
-    # Preserve the requested article ID for social canonical URLs after lookup succeeds.
-    public_id = str(article_id or article.get("id") or "").strip()
-
     title = str(article.get("title") or "Cheshire Today")
     summary = str(article.get("summary") or "").strip()
     content = str(article.get("content") or "").strip()
@@ -14364,11 +14361,8 @@ async def serve_article_html(article_id: str, request=None):
 
     img = normalize_social_image(article.get("image"), article.get("source_url"))
 
-    # Canonical/OG should point at the real domain (not Render)
-    slug = re.sub(r"[^a-z0-9]+","-", title.lower()).strip("-")
-    slug = (slug[:80] if slug else "article")
-
-    canonical = f"https://cheshiretoday.co.uk/article/{urllib.parse.quote(public_id)}/{urllib.parse.quote(slug)}"
+    # Canonical/OG should point at the one public Mongo-ID article identity.
+    canonical = _canonical_article_url(article)
 
     # Escape to avoid breaking HTML
     import json as _json
@@ -14551,6 +14545,28 @@ async def _find_article_by_any_id(article_id: str):
 def _article_slug_from_title(title: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", str(title or "").lower()).strip("-")
     return slug[:80] if slug else "article"
+
+
+def _is_uuid_article_id(article_id: str) -> bool:
+    value = str(article_id or "").strip()
+    try:
+        return str(uuid.UUID(value)) == value.lower()
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
+def _canonical_article_url(article: dict) -> str:
+    """Build the canonical Mongo-ID article URL for a resolved article."""
+    import urllib.parse
+
+    mongo_id = str(article.get("_id") or "").strip()
+    if not re.fullmatch(r"[0-9a-fA-F]{24}", mongo_id):
+        raise HTTPException(status_code=404, detail="Article not found")
+    slug = _article_slug_from_title(article.get("title") or "article")
+    return (
+        "https://cheshiretoday.co.uk/article/"
+        f"{urllib.parse.quote(mongo_id)}/{urllib.parse.quote(slug)}"
+    )
 
 
 LEGACY_ARTICLE_REDIRECTS = {
@@ -14865,6 +14881,19 @@ async def serve_article_for_production_slug(article_id: str, slug: str, request:
     if manual_redirect:
         return manual_redirect
 
+    article = await _find_article_by_any_id(article_id)
+    if article:
+        canonical_url = _canonical_article_url(article)
+        canonical_id = canonical_url.split("/article/", 1)[1].split("/", 1)[0]
+        canonical_slug = _article_slug_from_title(article.get("title") or "article")
+        if article_id != canonical_id or slug != canonical_slug:
+            return RedirectResponse(url=canonical_url, status_code=301)
+
+    # A syntactically valid but unknown internal UUID is not an old slug.
+    # Keep the not-found contract instead of title-matching it to another story.
+    if _is_uuid_article_id(article_id):
+        raise HTTPException(status_code=404, detail="Article not found")
+
     stale_redirect = await _redirect_stale_article_slug_if_needed(article_id, slug)
     if stale_redirect:
         return stale_redirect
@@ -14887,32 +14916,14 @@ async def serve_article_for_production_head(article_id: str):
 
 @app.get("/article/{article_id}")
 async def serve_article_for_production(article_id: str):
-    """301 /article/{id} -> /article/{uuid}/{slug} (uses PUBLIC_URL)."""
+    """301 /article/{id} -> the canonical Mongo-ID slug URL."""
     manual_redirect = _manual_legacy_article_redirect(article_id)
     if manual_redirect:
         return manual_redirect
 
     from fastapi.responses import RedirectResponse
 
-    base_url = (os.environ.get("PUBLIC_URL", "https://cheshiretoday.co.uk") or "").rstrip("/") or "https://cheshiretoday.co.uk"
-
-    # Lookup article by Mongo _id (24-hex) or public UUID
-    article = None
-    try:
-        if isinstance(article_id, str) and re.fullmatch(r"[0-9a-fA-F]{24}", article_id):
-            try:
-                from bson import ObjectId
-                article = await db.articles.find_one({"_id": ObjectId(article_id)})
-            except Exception:
-                article = None
-    except Exception:
-        article = None
-
-    if not article:
-        try:
-            article = await db.articles.find_one({"id": article_id})
-        except Exception:
-            article = None
+    article = await _find_article_by_any_id(article_id)
 
     if not article:
         # Backward compatibility for historical Facebook links that used
@@ -14929,12 +14940,7 @@ async def serve_article_for_production(article_id: str):
         # If missing, keep crawler HTML behaviour (no redirect)
         return await serve_article_html(article_id)
 
-    public_id = str(article.get("_id") or article.get("id") or article_id)
-    raw_title = str(article.get("title") or "article")
-    slug = re.sub(r"[^a-z0-9]+", "-", raw_title.lower()).strip("-")
-    slug = (slug[:80] if slug else "article")
-
-    target = f"{base_url}/article/{public_id}/{slug}"
+    target = _canonical_article_url(article)
     return RedirectResponse(url=target, status_code=301)
 @api_router.get("/article/{article_id}")
 async def serve_article_for_api(article_id: str):

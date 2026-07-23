@@ -1,6 +1,8 @@
 import asyncio
 import os
 
+from bson import ObjectId
+
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DB_NAME", "cheshire_test")
 os.environ.setdefault("LOCAL_DEV_NO_DB", "1")
@@ -12,6 +14,7 @@ from backend import server
 def test_newsquest_article_uses_source_open_graph_image(monkeypatch):
     async def run():
         article = {
+            "_id": ObjectId("6a619fe3d25f3963602b219b"),
             "id": "article-123",
             "title": "Farm shop submits new licence plans",
             "summary": "A Cheshire farm shop has submitted plans to expand its customer offering.",
@@ -76,6 +79,7 @@ def test_newsquest_article_uses_source_open_graph_image(monkeypatch):
 def test_contentful_article_uses_facebook_sized_social_image(monkeypatch):
     async def run():
         article = {
+            "_id": ObjectId("6a619fe3d25f3963602b219c"),
             "id": "article-contentful",
             "title": "Council tax refund confirmed",
             "summary": (
@@ -119,4 +123,3 @@ def test_contentful_article_uses_facebook_sized_social_image(monkeypatch):
         assert "w=800" not in html
 
     asyncio.run(run())
-
