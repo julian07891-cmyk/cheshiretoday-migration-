@@ -300,6 +300,7 @@ const navigate = useNavigate();
   /* ---------- ALL homepage slots with shared dedupe ---------- */
   const home = useMemo(() => {
     const used = new Set();
+    const usedTitles = new Set();
 
     // Editorial policy pool (filters out pure crime/sensational unless public-interest)
     const pool = (Array.isArray(newestFirst) ? newestFirst : []).filter(isAllowedByPolicy);
@@ -554,9 +555,12 @@ const navigate = useNavigate();
 
     const mark = (a) => {
       const k = articleKey(a);
+      const titleKey = String(a?.title || "").trim().toLowerCase();
       if (!k) return false;
       if (used.has(k)) return false;
+      if (titleKey && usedTitles.has(titleKey)) return false;
       used.add(k);
+      if (titleKey) usedTitles.add(titleKey);
       return true;
     };
 
@@ -619,16 +623,6 @@ const navigate = useNavigate();
       return true;
     };
 
-
-    // Reserve scarce AI/Tech so Most Read doesn't consume it before the sidebar.
-    // Reserve 5 = 1 for Top Stories AI slot + 4 for AI sidebar.
-    const reservedAiKeys = new Set();
-    for (const a of poolRanked) {
-      if (reservedAiKeys.size >= 5) break;
-      if (!isAiTech(a)) continue;
-      const k = articleKey(a);
-      if (k) reservedAiKeys.add(k);
-    }
 
     const topStoryScore = (a) => {
       let score = 0;
@@ -733,24 +727,6 @@ const navigate = useNavigate();
       if (topStoriesCards.length >= 5) break;
       if (isAiTech(a)) continue;
       pushTop(a);
-    }
-
-// 3) Most Read (5) — use view_count when present, exclude used
-    const mostReadCards = [];
-
-    const byViewsThenNewest = [...poolAll].sort((a, b) => {
-      const av = Number(a?.view_count || a?.views || 0);
-      const bv = Number(b?.view_count || b?.views || 0);
-      if (bv !== av) return bv - av;
-      return safeDateMs(b?.publishedDate || b?.created_at) - safeDateMs(a?.publishedDate || a?.created_at);
-    });
-
-    for (const a of byViewsThenNewest) {
-      if (mostReadCards.length >= 5) break;
-      const k = articleKey(a);
-      if (k && reservedAiKeys.has(k)) continue; // protect AI/Tech reserve
-      if (!mark(a)) continue;
-      mostReadCards.push(toCard(a, `most-${mostReadCards.length}`));
     }
 
 // 3) AI feed (6) — exclude used (exclusive; no duplicates)
@@ -933,17 +909,24 @@ const isMoney = (a) => {
 
 
 
-// 5) Latest feed (12) — true newest-first for reader trust
+// 5) Latest feed (36) — true newest-first, non-exclusive, initially displays 12
     // Keep the wider homepage strategy untouched. Latest alone uses the full eligible basePool.
     const latestCards = [];
     const latestSeen = new Set();
 
     const pushLatest = (a, overrideCategory = null) => {
-      if (latestCards.length >= 12) return;
+      if (latestCards.length >= 36) return;
 
       const k = articleKey(a);
       if (!k) return;
       if (latestSeen.has(k)) return;
+      const titleKey = String(a?.title || "").trim().toLowerCase();
+      if (
+        titleKey &&
+        latestCards.some(
+          (item) => String(item?.title || "").trim().toLowerCase() === titleKey
+        )
+      ) return;
       latestSeen.add(k);
 
       // Latest should not consume the shared homepage dedupe pool.
@@ -957,19 +940,9 @@ const isMoney = (a) => {
     );
 
     for (const a of latestNewestFirst) {
-      if (latestCards.length >= 12) break;
+      if (latestCards.length >= 36) break;
       pushLatest(a);
     }
-
-    const latestKeys = new Set(latestCards.map((a) => a?.id).filter(Boolean));
-
-    const sidebarKeys = new Set([
-      ...aiArticles.map((a) => a?.id).filter(Boolean),
-      ...businessFeed.map((a) => a?.id).filter(Boolean),
-      ...financeArticles.map((a) => a?.id).filter(Boolean),
-      ...moneyFeed.map((a) => a?.id).filter(Boolean),
-    ]);
-
 
 // 5b) AI & Business feed (dedupe-safe, 36 max)
     const aiBizFeedCards = [];
@@ -1007,7 +980,6 @@ const isMoney = (a) => {
 return {
       hero: heroArticle,
       topStories: topStoriesCards,
-      mostReadFeed: mostReadCards,
       aiFeed: aiArticles,
       aiBizFeed: aiBizFeedCards,
       financeFeed: financeArticles,
@@ -1033,9 +1005,10 @@ return {
 
   const aiBizFeed = Array.isArray(home?.aiBizFeed) ? home.aiBizFeed : [];
 
-  const latestSplit = splitFeedForCardsAndHeadlines(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, isMobileView ? 4 : 12), isMobileView ? 2 : 3, 2);
-  const aiBizSplit = splitFeedForCardsAndHeadlines(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, isMobileView ? 4 : 12), isMobileView ? 2 : 3, 2);
-  const moreStoriesSplit = splitFeedForCardsAndHeadlines(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, isMobileView ? 4 : 12), isMobileView ? 2 : 3, 2);
+  const initialSectionLimit = isMobileView ? 4 : 12;
+  const latestSplit = splitFeedForCardsAndHeadlines(showLatest ? latestFeed.slice(0, 36) : latestFeed.slice(0, initialSectionLimit), isMobileView ? 2 : 3, 2);
+  const aiBizSplit = splitFeedForCardsAndHeadlines(showAiBiz ? aiBizFeed.slice(0, 36) : aiBizFeed.slice(0, initialSectionLimit), isMobileView ? 2 : 3, 2);
+  const moreStoriesSplit = splitFeedForCardsAndHeadlines(showMoreStories ? moreStoriesFeed.slice(0, 36) : moreStoriesFeed.slice(0, initialSectionLimit), isMobileView ? 2 : 3, 2);
 
   // AI & Business feed (filtered) — keep cards relevant and avoid dumping all articles here
 return (
@@ -1219,15 +1192,17 @@ return (
                 </div>
 
 
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowLatest(v => !v)}
-                    className="text-sm font-semibold hover:underline underline-offset-2"
-                  >
-                    {showLatest ? "Show less" : "Show more"}
-                  </button>
-                </div>
+                {latestFeed.length > initialSectionLimit && (
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowLatest(v => !v)}
+                      className="text-sm font-semibold hover:underline underline-offset-2"
+                    >
+                      {showLatest ? "Show less" : "Show more"}
+                    </button>
+                  </div>
+                )}
 </section>
             )}
 
@@ -1270,15 +1245,17 @@ return (
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowAiBiz(v => !v)}
-                    className="text-sm font-semibold hover:underline underline-offset-2"
-                  >
-                    {showAiBiz ? "Show less" : "Show more"}
-                  </button>
-                </div>
+                {aiBizFeed.length > initialSectionLimit && (
+                  <div className="mt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowAiBiz(v => !v)}
+                      className="text-sm font-semibold hover:underline underline-offset-2"
+                    >
+                      {showAiBiz ? "Show less" : "Show more"}
+                    </button>
+                  </div>
+                )}
               </section>
             )}
 
@@ -1322,15 +1299,17 @@ return (
                 </div>
 
 
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowMoreStories(v => !v)}
-                    className="text-sm font-semibold hover:underline underline-offset-2"
-                  >
-                    {showMoreStories ? "Show less" : "Show more"}
-                  </button>
-                </div>
+                {moreStoriesFeed.length > initialSectionLimit && (
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreStories(v => !v)}
+                      className="text-sm font-semibold hover:underline underline-offset-2"
+                    >
+                      {showMoreStories ? "Show less" : "Show more"}
+                    </button>
+                  </div>
+                )}
 </section>
             )}
           </main>
