@@ -156,6 +156,8 @@ import { toast } from "./hooks/use-toast";
 import { Toaster } from "./components/ui/toaster";
 import { articleService } from "./services/api";
 import LocationPage from "./components/LocationPage";
+import CategoryPage from "./components/CategoryPage";
+import { CATEGORY_HUBS, findLocationHub } from "./config/publicHubs";
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-20 w-full"></div>
@@ -200,18 +202,10 @@ const AdminPage = () => {
     </AdminRouteErrorBoundary>
   );
 };
-// Valid location slugs
-const VALID_LOCATIONS = [
-  "chester",
-  "warrington",
-  "macclesfield",
-  "knutsford",
-];
-
 // Wrapper to validate location routes
 const LocationRouteWrapper = () => {
   const { location } = useParams();
-  if (VALID_LOCATIONS.includes(location?.toLowerCase())) {
+  if (findLocationHub(location)) {
     return <LocationPage />;
   }
   // If not a valid location, redirect to home
@@ -333,6 +327,13 @@ function App() {
             <Route path="/advertise" element={<AdvertisePage />} />
             <Route path="/contact" element={<ContactPage />} />
 
+            {CATEGORY_HUBS.map(({ slug }) => (
+              <Route
+                key={slug}
+                path={`/category/${slug}`}
+                element={<CategoryPage categorySlug={slug} />}
+              />
+            ))}
             <Route path="/:location" element={<LocationRouteWrapper />} />
           </Routes>
         </BrowserRouter>

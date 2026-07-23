@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { newsletterService } from '../services/api';
 import NewsletterPreferences from './NewsletterPreferences';
 import { trackEvent } from '../utils/trackEvent';
+import { LOCATION_HUBS } from "../config/publicHubs";
 
 const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
@@ -21,16 +22,7 @@ const NewsFooter = () => {
     'Company': ['Contact', 'Advertise']
   };
 
-  const localAreas = [
-    { name: 'All Cheshire', slug: 'cheshire-general' },
-    { name: 'Macclesfield', slug: 'macclesfield' },
-    { name: 'Wilmslow', slug: 'wilmslow' },
-    { name: 'Knutsford', slug: 'knutsford' },
-    { name: 'Chester', slug: 'chester' },
-    { name: 'Warrington', slug: 'warrington' },
-    { name: 'Crewe', slug: 'crewe' },
-    { name: 'Northwich', slug: 'northwich' }
-  ];
+  const localAreas = LOCATION_HUBS;
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
@@ -155,11 +147,11 @@ const NewsFooter = () => {
                 {links.map((link) => {
                   // Map specific links to their routes
                   const linkMap = {
-                    'Local': '/?category=Local',
-                    'Business': '/?category=Business',
-                    'UK': '/?category=UK',
-                    'AI & Tech': '/?category=AI%20%26%20Tech',
-                    'Finance': '/?category=Finance',
+                    'Local': '/category/local-news',
+                    'Business': '/category/business',
+                    'UK': '/category/uk-news',
+                    'AI & Tech': '/category/ai-tech',
+                    'Finance': '/category/finance',
                     'Privacy': '/privacy',
                     'Terms': '/terms',
                     'Affiliates': '/affiliate-disclosure',

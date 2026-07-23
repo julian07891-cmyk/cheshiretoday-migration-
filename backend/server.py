@@ -3569,6 +3569,91 @@ LOCATION_KEYWORDS = {
     'cheshire-general': ['cheshire']  # For general Cheshire articles
 }
 
+PUBLIC_CATEGORY_HUBS = {
+    "local-news": {
+        "label": "Local",
+        "canonical_category": "Local News",
+        "aliases": ("Local",),
+        "title": "Local news and updates",
+        "description": "Latest local reporting from across Cheshire and its communities.",
+    },
+    "uk-news": {
+        "label": "UK",
+        "canonical_category": "UK News",
+        "aliases": ("UK",),
+        "title": "UK news and updates",
+        "description": "Important UK news and developments affecting Cheshire readers.",
+    },
+    "business": {
+        "label": "Business",
+        "canonical_category": "Business",
+        "aliases": ("Economy", "Economic"),
+        "title": "Business news and updates",
+        "description": "Cheshire business, investment, jobs and economic news.",
+    },
+    "finance": {
+        "label": "Finance",
+        "canonical_category": "Finance",
+        "aliases": ("Tax", "Property", "Property & Tax", "Money"),
+        "title": "Finance news and updates",
+        "description": "Personal finance, tax, markets and money news for Cheshire readers.",
+    },
+    "ai-tech": {
+        "label": "AI & Tech",
+        "canonical_category": "AI & Tech",
+        "aliases": ("AI", "Tech", "Technology"),
+        "title": "AI & Tech news and updates",
+        "description": "Practical artificial intelligence and technology coverage.",
+    },
+}
+
+PUBLIC_LOCATION_HUBS = {
+    "cheshire-general",
+    "chester",
+    "warrington",
+    "crewe",
+    "macclesfield",
+    "wilmslow",
+    "knutsford",
+    "northwich",
+}
+
+
+def _public_category_hub_for_value(value: str):
+    candidate = str(value or "").strip().casefold()
+    for config in PUBLIC_CATEGORY_HUBS.values():
+        accepted = (
+            config["canonical_category"],
+            config["label"],
+            *config["aliases"],
+        )
+        if candidate in {str(item).casefold() for item in accepted}:
+            return config
+    return None
+
+
+def _apply_public_category_hub_filter(query: dict, config: dict) -> None:
+    canonical = config["canonical_category"]
+    if canonical == "Local News":
+        query.setdefault("$and", []).extend(
+            [
+                {"category": {"$in": [canonical, *config["aliases"]]}},
+                {
+                    "$or": [
+                        {"is_local_source": True},
+                        {"scope": {"$in": ["cheshire", "local"]}},
+                        {"location": {"$in": sorted(PUBLIC_LOCATION_HUBS - {"cheshire-general"})}},
+                    ]
+                },
+            ]
+        )
+        return
+
+    query["category"] = {
+        "$in": [canonical, *config["aliases"]],
+    }
+
+
 @api_router.get("/articles/location/cheshire-general")
 async def get_cheshire_general_articles(
     skip: int = 0,
@@ -3584,6 +3669,11 @@ async def get_cheshire_general_articles(
         # 2. Article is Cheshire-related (is_cheshire_related or from local source)
         query = {
             '$and': [
+                {'$or': [
+                    {'archived': {'$exists': False}},
+                    {'archived': False}
+                ]},
+                {'manual_review_hidden_from_public': {'$ne': True}},
                 {'$or': [
                     {'location': None},
                     {'location': {'$exists': False}}
@@ -3777,13 +3867,9 @@ async def get_articles(
         
         # Category filtering
         if category and category != 'all':
-            # Special handling for Local - support both new display label and legacy stored label
-            if category in ['Local', 'Local News']:
-                query['is_local_source'] = True
-            # Special handling for UK - support both new display label and legacy stored label
-            elif category in ['UK', 'UK News']:
-                query['is_local_source'] = False
-                query['category'] = {'$in': ['UK News', 'Finance', 'Tax', 'Property', 'Tech', 'AI', 'Science']}
+            public_hub = _public_category_hub_for_value(category)
+            if public_hub:
+                _apply_public_category_hub_filter(query, public_hub)
             else:
                 query['category'] = category
         
@@ -13530,8 +13616,7 @@ async def generate_sitemap():
         xml_content += '  </url>\n'
 
         # Add location pages for Local SEO
-        locations = ['chester', 'warrington', 'crewe', 'wirral', 'macclesfield', 'stockport', 'runcorn', 'northwich']
-        for loc in locations:
+        for loc in sorted(PUBLIC_LOCATION_HUBS):
             xml_content += '  <url>\n'
             xml_content += f'    <loc>{base_url}/{loc}</loc>\n'
             xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
@@ -13540,10 +13625,9 @@ async def generate_sitemap():
             xml_content += '  </url>\n'
         
         # Add category pages
-        categories_list = ['Local News', 'UK News', 'Business', 'Finance']
-        for category in categories_list:
+        for category_slug in PUBLIC_CATEGORY_HUBS:
             xml_content += '  <url>\n'
-            xml_content += f'    <loc>{base_url}/category/{category.lower().replace(" ", "-")}</loc>\n'
+            xml_content += f'    <loc>{base_url}/category/{category_slug}</loc>\n'
             xml_content += f'    <lastmod>{datetime.utcnow().strftime("%Y-%m-%d")}</lastmod>\n'
             xml_content += '    <changefreq>daily</changefreq>\n'
             xml_content += '    <priority>0.8</priority>\n'
@@ -16048,22 +16132,8 @@ async def serve_public_hub_html(full_path: str = ""):
     clean_path = str(full_path or "").strip().strip("/")
     path_parts = [p for p in clean_path.split("/") if p]
 
-    category_slug_map = {
-        "local-news": "Local News",
-        "uk-news": "UK News",
-        "business": "Business",
-        "finance": "Finance",
-        "tech": "Tech",
-        "ai": "AI",
-        "ai-tech": "AI & Tech",
-        "tax": "Tax",
-        "property": "Property",
-    }
-
-    locations = {
-        "chester", "warrington", "crewe", "wirral", "macclesfield",
-        "stockport", "runcorn", "northwich"
-    }
+    category_slug_map = PUBLIC_CATEGORY_HUBS
+    locations = PUBLIC_LOCATION_HUBS
 
     page_kind = "home"
     page_title = "Cheshire Today | Local News, Business, AI & Tech, Finance"
@@ -16079,18 +16149,15 @@ async def serve_public_hub_html(full_path: str = ""):
 
     if len(path_parts) >= 2 and path_parts[0] == "category":
         category_slug = path_parts[1]
-        category = category_slug_map.get(category_slug)
-        if not category:
+        category_config = category_slug_map.get(category_slug)
+        if not category_config:
             raise HTTPException(status_code=404, detail="Not Found")
 
         page_kind = "category"
         canonical_path = f"/category/{category_slug}"
-        page_title = f"{category} news and updates | Cheshire Today"
-        page_desc = f"Latest {category.lower()} stories, updates and guides from Cheshire Today."
-        if category == "UK News":
-            article_query["category"] = {"$in": ["UK News", "Finance", "Tax", "Property", "Tech", "AI", "AI & Tech"]}
-        else:
-            article_query["category"] = category
+        page_title = f"{category_config['title']} | Cheshire Today"
+        page_desc = category_config["description"]
+        _apply_public_category_hub_filter(article_query, category_config)
 
     elif len(path_parts) == 1 and path_parts[0] in locations:
         location = path_parts[0]
@@ -16099,14 +16166,19 @@ async def serve_public_hub_html(full_path: str = ""):
         canonical_path = f"/{location}"
         page_title = f"{location_label} news | Cheshire Today"
         page_desc = f"Latest news and updates for {location_label} and the wider Cheshire area."
-        article_query["$and"] = article_query.get("$and", []) + [
-            {"$or": [
-                {"location": {"$regex": location, "$options": "i"}},
-                {"priority_location": {"$regex": location, "$options": "i"}},
-                {"title": {"$regex": location_label, "$options": "i"}},
-                {"summary": {"$regex": location_label, "$options": "i"}},
-            ]}
-        ]
+        if location == "cheshire-general":
+            article_query["$and"] = article_query.get("$and", []) + [
+                {"$or": [
+                    {"location": None},
+                    {"location": {"$exists": False}},
+                ]},
+                {"$or": [
+                    {"is_cheshire_related": True},
+                    {"is_local_source": True},
+                ]},
+            ]
+        else:
+            article_query["location"] = location
 
     elif clean_path in ("", "latest-articles", "article-index"):
         page_kind = "home"
@@ -16173,6 +16245,10 @@ async def serve_public_hub_html(full_path: str = ""):
         category = _html.escape(str(article.get("category") or "News"))
         desc = _html.escape(re.sub(r"\s+", " ", str(article.get("summary") or "")).strip()[:180])
         article_items.append(f'<li><a href="{url}">{title}</a><p>{category}</p><p>{desc}</p></li>')
+    if not article_items:
+        article_items.append(
+            "<li>No public articles are currently available for this section.</li>"
+        )
 
     guide_items = []
     for guide in category_guides:
@@ -16185,10 +16261,11 @@ async def serve_public_hub_html(full_path: str = ""):
         guide_items.append(f'<li><a href="{url}">{title}</a><p>{category}</p></li>')
 
     category_links = []
-    for slug, label in category_slug_map.items():
-        if label in {"Tech", "AI"}:
-            continue
-        category_links.append(f'<li><a href="{base_url}/category/{slug}">{_html.escape(label)}</a></li>')
+    for slug, config in category_slug_map.items():
+        category_links.append(
+            f'<li><a href="{base_url}/category/{slug}">'
+            f'{_html.escape(config["label"])}</a></li>'
+        )
 
     location_links = []
     for loc in sorted(locations):
@@ -16311,9 +16388,14 @@ async def serve_react_spa(full_path: str, request: Request):
         return _spa_file_response(candidate)
     if _is_crawler_request(request):
         hub_paths = {"article-index", "latest-articles"}
-        if full_path in hub_paths or full_path.startswith("category/") or full_path in {
-            "chester", "warrington", "crewe", "wirral", "macclesfield", "stockport", "runcorn", "northwich"
-        }:
+        if (
+            full_path in hub_paths
+            or full_path in PUBLIC_LOCATION_HUBS
+            or (
+                full_path.startswith("category/")
+                and full_path.split("/", 1)[1] in PUBLIC_CATEGORY_HUBS
+            )
+        ):
             return await serve_public_hub_html(full_path)
     return _spa_index_or_500()
 

@@ -182,26 +182,29 @@ export function isUkPillar(article) {
 }
 
 export function getPrimaryPillar(article) {
+  const category = norm(article?.category);
+
+  if (["finance", "tax", "property", "property & tax", "money"].includes(category)) return "Finance";
+  if (["business", "economy", "economic"].includes(category)) return "Business";
+  if (["ai & tech", "ai", "tech", "technology"].includes(category)) return "AI & Tech";
+  if (["local news", "local"].includes(category)) return "Local";
+  if (["uk news", "uk"].includes(category)) return "UK";
+
   if (isLocalPillar(article)) return "Local";
-  if (isUkPillar(article)) return "UK";
   if (isFinancePillar(article)) return "Finance";
   if (isBusinessPillar(article)) return "Business";
   if (isAiTechPillar(article)) return "AI & Tech";
+  if (isUkPillar(article)) return "UK";
   return "Local";
 }
 
 export function getDisplayCategoryForPillar(article) {
-  const category = norm(article?.category);
-  const section = norm(article?.section);
-
-  if (category.includes("tax") || section === "tax") return "Tax";
-
   const pillar = getPrimaryPillar(article);
-  if (pillar === "Local") return "Local News";
+  if (pillar === "Local") return "Local";
   if (pillar === "Business") return "Business";
   if (pillar === "AI & Tech") return "AI & Tech";
   if (pillar === "Finance") return "Finance";
-  if (pillar === "UK") return "UK News";
+  if (pillar === "UK") return "UK";
 
-  return article?.category || "Local News";
+  return article?.category || "Local";
 }

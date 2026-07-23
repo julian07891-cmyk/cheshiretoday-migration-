@@ -7,6 +7,7 @@ import DarkModeToggle from './DarkModeToggle';
 import { articleService } from '../services/api';
 import { buildArticleUrl } from '../utils/articleUrl';
 import { trackEvent } from '../utils/trackEvent';
+import { LOCATION_HUBS } from "../config/publicHubs";
 
 const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
@@ -19,9 +20,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(() => {
     try {
-      const allowed = new Set([
-        'chester','warrington','crewe','macclesfield','wilmslow','knutsford','nantwich','northwich','ellesmere-port','winsford'
-      ]);
+      const allowed = new Set(LOCATION_HUBS.map(({ slug }) => slug));
       const seg = (window.location.pathname || '/').split('/').filter(Boolean)[0] || '';
       return allowed.has(seg) ? seg : '';
     } catch (e) {
@@ -168,13 +167,9 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                   className={`w-44 appearance-none pr-9 h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 ${selectedLocation ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-gray-400"}`}
                 >
                   <option value="">Cheshire towns</option>
-                  <option value="chester">Chester</option>
-                  <option value="warrington">Warrington</option>
-                  <option value="crewe">Crewe</option>
-                  <option value="macclesfield">Macclesfield</option>
-                  <option value="wilmslow">Wilmslow</option>
-                  <option value="knutsford">Knutsford</option>
-                  <option value="northwich">Northwich</option>
+                  {LOCATION_HUBS.map(({ slug, name }) => (
+                    <option key={slug} value={slug}>{name}</option>
+                  ))}
                 </select>
 </div>
               <div className="relative" ref={searchRef}>
@@ -296,13 +291,9 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                   className={`w-44 appearance-none pr-9 h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 ${selectedLocation ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-gray-400"}`}
                 >
                   <option value="">Cheshire towns</option>
-                  <option value="chester">Chester</option>
-                  <option value="warrington">Warrington</option>
-                  <option value="crewe">Crewe</option>
-                  <option value="macclesfield">Macclesfield</option>
-                  <option value="wilmslow">Wilmslow</option>
-                  <option value="knutsford">Knutsford</option>
-                  <option value="northwich">Northwich</option>
+                  {LOCATION_HUBS.map(({ slug, name }) => (
+                    <option key={slug} value={slug}>{name}</option>
+                  ))}
                 </select>
               </div>
 

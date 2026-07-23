@@ -11,70 +11,7 @@ import { Badge } from './ui/badge';
 import { Toaster } from './ui/toaster';
 import { categories } from '../mockData';
 import { filterEditorialPool } from "../utils/editorialPolicy";
-
-// Location metadata for SEO
-const LOCATION_DATA = {
-  'cheshire-general': {
-    name: 'Cheshire',
-    description: 'General news from across Cheshire that isn\'t specific to any particular town.',
-    keywords: 'Cheshire news, Cheshire today, Cheshire local news, Cheshire region',
-    image: '/cheshire-hero.jpg'
-  },
-  chester: {
-    name: 'Chester',
-    description: 'Latest news from Chester, Ellesmere Port, and surrounding areas in Cheshire.',
-    keywords: 'Chester news, Chester local news, Ellesmere Port news, Chester today, Cheshire news',
-    image: '/chester-hero.jpg'
-  },
-  warrington: {
-    name: 'Warrington',
-    description: 'Breaking news and updates from Warrington, Lymm, Runcorn, Widnes and the surrounding area.',
-    keywords: 'Warrington news, Warrington local news, Lymm news, Runcorn news, Widnes news, Warrington today',
-    image: '/warrington-hero.jpg'
-  },
-  crewe: {
-    name: 'Crewe',
-    description: 'Local news from Crewe, Nantwich, Sandbach and South Cheshire.',
-    keywords: 'Crewe news, Nantwich news, Sandbach news, South Cheshire news',
-    image: '/crewe-hero.jpg'
-  },
-  wirral: {
-    name: 'Wirral',
-    description: 'News and updates from across the Wirral Peninsula including Birkenhead and Wallasey.',
-    keywords: 'Wirral news, Birkenhead news, Wallasey news, Wirral today, Merseyside news',
-    image: '/wirral-hero.jpg'
-  },
-  macclesfield: {
-    name: 'Macclesfield',
-    description: 'Latest news from Macclesfield, Congleton, Bollington and East Cheshire.',
-    keywords: 'Macclesfield news, Congleton news, Bollington news, East Cheshire news',
-    image: '/macclesfield-hero.jpg'
-  },
-  wilmslow: {
-    name: 'Wilmslow',
-    description: 'Latest news from Wilmslow, Handforth, Styal and surrounding areas.',
-    keywords: 'Wilmslow news, Handforth news, Styal news, Cheshire news',
-    image: '/wilmslow-hero.jpg'
-  },
-  knutsford: {
-    name: 'Knutsford',
-    description: 'Local news from Knutsford, Tatton and the surrounding area.',
-    keywords: 'Knutsford news, Tatton news, Cheshire news',
-    image: '/knutsford-hero.jpg'
-  },
-  stockport: {
-    name: 'Stockport',
-    description: 'Breaking news and stories from Stockport, Cheadle, Bramhall and Greater Manchester.',
-    keywords: 'Stockport news, Cheadle news, Bramhall news, Greater Manchester news',
-    image: '/stockport-hero.jpg'
-  },
-  northwich: {
-    name: 'Northwich',
-    description: 'News from Northwich, Winsford, Middlewich and Mid Cheshire.',
-    keywords: 'Northwich news, Winsford news, Middlewich news, Mid Cheshire news',
-    image: '/northwich-hero.jpg'
-  }
-};
+import { LOCATION_HUBS, findLocationHub } from "../config/publicHubs";
 
 // Runtime URL detection - must work at runtime, not build time
 const LocationPage = () => {
@@ -88,11 +25,7 @@ const LocationPage = () => {
   // Get API URL at component level for proper runtime detection
   const API_URL = getApiUrl();
   
-  const locationData = LOCATION_DATA[location?.toLowerCase()] || {
-    name: location,
-    description: `Latest news from ${location}`,
-    keywords: `${location} news, ${location} local news`
-  };
+  const locationData = findLocationHub(location);
 
   const publicUrl = process.env.REACT_APP_PUBLIC_URL || 'https://cheshiretoday.co.uk';
 
@@ -184,7 +117,7 @@ const LocationPage = () => {
       <Helmet>
         <title>{`${locationData.name} News | Cheshire Today - Local News & Updates`}</title>
         <meta name="description" content={locationData.description} />
-        <meta name="keywords" content={locationData.keywords} />
+        <meta name="robots" content="index, follow" />
         <link rel="canonical" href={`${publicUrl}/${location}`} />
         
         {/* Open Graph */}
@@ -306,17 +239,17 @@ const LocationPage = () => {
               Explore Other Areas
             </h2>
             <div className="flex flex-wrap gap-3">
-              {Object.entries(LOCATION_DATA)
-                .filter(([key]) => key !== location?.toLowerCase())
-                .map(([key, data]) => (
+              {LOCATION_HUBS
+                .filter(({ slug }) => slug !== location?.toLowerCase())
+                .map(({ slug, name }) => (
                   <Button
-                    key={key}
+                    key={slug}
                     variant="outline"
-                    onClick={() => navigate(`/${key}`)}
+                    onClick={() => navigate(`/${slug}`)}
                     className="flex items-center gap-2"
                   >
                     <MapPin className="h-4 w-4" />
-                    {data.name}
+                    {name}
                   </Button>
                 ))}
             </div>
