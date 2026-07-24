@@ -23620,3 +23620,39 @@ Immediate production recovery must not use a broad archive restore. Any controll
 ### Immediate next step
 
 Review this state-file append, stage `docs/PROJECT_STATE.md`, rerun staged diff checks, then commit. Do not run the production repair before deployment and a separately approved dry-run.
+
+## Operational correction — 24 July 2026 — Self-healing article pool restoration
+
+Post-deployment production verification found:
+
+- production service healthy
+- `3,819` total article records
+- `19` database-visible records
+- `3,714` records archived with `archive_reason="auto_cap"`
+- public API returned `16` articles after public filtering
+- controlled repair dry-run found `197` eligible automatic-archive records
+- no production repair or other database write was performed
+
+A review of commit `be5c4ed` confirmed that `cap_visible_articles()` had been changed to inspect only currently unarchived records. It could archive excess eligible records but could not restore eligible records previously archived by `auto_cap` or `ratio_rebalance`.
+
+The earlier state-file wording that the next scheduled generation cycle would automatically restore eligible archived records was therefore inaccurate.
+
+The smallest corrective change now makes `cap_visible_articles()`:
+
+- inspect currently visible records plus records archived only by `auto_cap` or `ratio_rebalance`
+- continue excluding Admin and other intentional archive reasons
+- select the newest eligible records up to the configured `keep` value
+- restore only selected automatic archives
+- unset `archived_at` and `archive_reason` on restored records
+- continue archiving eligible, non-protected records outside the selected set
+- preserve owner-protected, Manual Review, safety and editorial archive boundaries
+
+Verification completed:
+
+- new restoration regression test first failed against the deployed implementation, confirming the omission
+- focused live-pool suite: `13 passed`
+- related article, canonical, image, social metadata, public hub and sitemap regressions: `82 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+The standalone repair utility remains unused. Production restoration should occur only after this self-healing correction is committed, deployed and verified.

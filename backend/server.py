@@ -17400,17 +17400,26 @@ async def cap_visible_articles(keep: int = 200):
                 "$or": [
                     {"archived": {"$exists": False}},
                     {"archived": False},
+                    {
+                        "archived": True,
+                        "archive_reason": {
+                            "$in": ["auto_cap", "ratio_rebalance"]
+                        },
+                    },
                 ]
             },
             {
                 "_id": 1,
                 "content": 1,
+                "summary": 1,
                 "publishedDate": 1,
                 "created_at": 1,
                 "source": 1,
                 "featured": 1,
                 "force_live": 1,
                 "is_priority_cheshire": 1,
+                "archived": 1,
+                "archive_reason": 1,
                 "manual_review_hidden_from_public": 1,
                 "verification_status": 1,
                 "rewrite_status": 1,
@@ -17471,6 +17480,32 @@ async def cap_visible_articles(keep: int = 200):
             if article.get("_id") is not None
             and article["_id"] not in protected_ids
         ]
+        restore_ids = [
+            article["_id"]
+            for article in eligible
+            if article.get("_id") in keep_ids
+            and article.get("archived") is True
+            and article.get("archive_reason")
+            in {"auto_cap", "ratio_rebalance"}
+        ]
+        if restore_ids:
+            await db.articles.update_many(
+                {
+                    "_id": {"$in": restore_ids},
+                    "archived": True,
+                    "archive_reason": {
+                        "$in": ["auto_cap", "ratio_rebalance"]
+                    },
+                },
+                {
+                    "$set": {"archived": False},
+                    "$unset": {
+                        "archived_at": "",
+                        "archive_reason": "",
+                    },
+                },
+            )
+
         await db.articles.update_many(
             {
                 "_id": {
@@ -17478,7 +17513,13 @@ async def cap_visible_articles(keep: int = 200):
                     "$nin": keep_ids,
                 },
             },
-            {"$set": {"archived": True, "archived_at": datetime.now(timezone.utc).isoformat(), "archive_reason": "auto_cap"}}
+            {
+                "$set": {
+                    "archived": True,
+                    "archived_at": datetime.now(timezone.utc).isoformat(),
+                    "archive_reason": "auto_cap",
+                }
+            },
         )
 
         logger.info(

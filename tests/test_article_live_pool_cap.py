@@ -25,9 +25,11 @@ class Cursor:
 class Articles:
     def __init__(self, records):
         self.records = deepcopy(records)
+        self.find_calls = []
         self.updates = []
 
-    def find(self, _query, _projection=None):
+    def find(self, query, projection=None):
+        self.find_calls.append((deepcopy(query), deepcopy(projection)))
         return Cursor(self.records)
 
     async def update_many(self, query, update):
@@ -90,6 +92,55 @@ def test_cap_protects_owner_records_and_ignores_metadata(monkeypatch):
     assert archive_query["_id"]["$in"] == [2]
     assert 1 in archive_query["_id"]["$nin"]
     assert 3 not in archive_query["_id"]["$in"]
+
+
+def test_cap_can_restore_selected_automatic_archives(monkeypatch):
+    records = [
+        article(
+            1,
+            archived=True,
+            archive_reason="auto_cap",
+            publishedDate="2026-07-24T12:00:00+00:00",
+        ),
+        article(
+            2,
+            archived=True,
+            archive_reason="ratio_rebalance",
+            publishedDate="2026-07-23T12:00:00+00:00",
+        ),
+        article(
+            3,
+            archived=True,
+            archive_reason="manual_admin",
+            publishedDate="2026-07-22T12:00:00+00:00",
+        ),
+    ]
+    collection = Articles(records)
+    monkeypatch.setattr(server, "db", SimpleNamespace(articles=collection))
+
+    asyncio.run(server.cap_visible_articles(keep=1))
+
+    find_query = collection.find_calls[0][0]
+    assert "auto_cap" in str(find_query)
+    assert "ratio_rebalance" in str(find_query)
+
+    restore_updates = [
+        (query, update)
+        for query, update in collection.updates
+        if update.get("$set", {}).get("archived") is False
+    ]
+    assert len(restore_updates) == 1
+
+    restore_query, restore_update = restore_updates[0]
+    assert restore_query["_id"]["$in"] == [1]
+    assert restore_query["archived"] is True
+    assert restore_query["archive_reason"] == {
+        "$in": ["auto_cap", "ratio_rebalance"]
+    }
+    assert restore_update["$unset"] == {
+        "archived_at": "",
+        "archive_reason": "",
+    }
 
 
 def test_ratio_rebalance_source_protects_owner_ids():
