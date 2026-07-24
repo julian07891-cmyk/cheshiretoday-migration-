@@ -77,7 +77,7 @@ def test_newsquest_article_uses_source_open_graph_image(monkeypatch):
     asyncio.run(run())
 
 
-def test_guardian_article_keeps_stored_clean_image(monkeypatch):
+def test_guardian_article_prefers_large_clean_signed_image(monkeypatch):
     async def run():
         article = {
             "_id": ObjectId("6a62489d6912e72b70d9620e"),
@@ -91,7 +91,7 @@ def test_guardian_article_keeps_stored_clean_image(monkeypatch):
             "category": "Business",
             "image": (
                 "https://i.guim.co.uk/img/media/example/master/2736.jpg"
-                "?width=140&quality=85&auto=format&fit=max&s=clean123"
+                "?width=140&quality=85&auto=format&fit=max&s=small123"
             ),
             "source_url": (
                 "https://www.theguardian.com/business/2026/jul/23/"
@@ -110,14 +110,32 @@ def test_guardian_article_keeps_stored_clean_image(monkeypatch):
             fake_find_article,
         )
 
+        branded = (
+            "https://i.guim.co.uk/img/media/branded/master/2698.jpg"
+            "?width=1200&height=630&overlay-base64=brand&s=branded123"
+        )
+        clean_620 = (
+            "https://i.guim.co.uk/img/media/clean/master/2698.jpg"
+            "?width=620&quality=85&auto=format&fit=max&s=clean620"
+        )
+        clean_1200 = (
+            "https://i.guim.co.uk/img/media/clean/master/2698.jpg"
+            "?width=1200&quality=85&auto=format&fit=max&s=clean1200"
+        )
+        clean_1920 = (
+            "https://i.guim.co.uk/img/media/clean/master/2698.jpg"
+            "?width=1920&quality=85&auto=format&fit=max&s=clean1920"
+        )
+
         class FakeResponse:
             def read(self):
-                return (
-                    b'<meta property="og:image" content="'
-                    b'https://i.guim.co.uk/img/media/branded/master/2698.jpg'
-                    b'?width=1200&amp;height=630&amp;overlay-base64='
-                    b'L2ltZy90Zy1kZWZhdWx0LnBuZw==&amp;s=branded123">'
+                html = (
+                    f'<meta property="og:image" content="{branded}">'
+                    f'<img src="{clean_620}" '
+                    f'srcset="{clean_620} 620w, {clean_1200} 1200w, '
+                    f'{clean_1920} 1920w">'
                 )
+                return html.encode("utf-8")
 
         import urllib.request
 
@@ -125,6 +143,7 @@ def test_guardian_article_keeps_stored_clean_image(monkeypatch):
 
         def fake_urlopen(request, timeout=8):
             fetch_calls.append(request.full_url)
+            assert timeout == 8
             return FakeResponse()
 
         monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
@@ -132,13 +151,9 @@ def test_guardian_article_keeps_stored_clean_image(monkeypatch):
         response = await server.serve_article_html("article-guardian")
         html = response.body.decode("utf-8")
 
-        expected = (
-            "https://i.guim.co.uk/img/media/example/master/2736.jpg"
-            "?width=140&amp;quality=85&amp;auto=format&amp;fit=max&amp;"
-            "s=clean123"
-        )
+        expected = clean_1200.replace("&", "&amp;")
 
-        assert fetch_calls == []
+        assert fetch_calls == [article["source_url"]]
         assert f'<meta property="og:image" content="{expected}">' in html
         assert (
             f'<meta property="og:image:secure_url" content="{expected}">'
@@ -146,6 +161,7 @@ def test_guardian_article_keeps_stored_clean_image(monkeypatch):
         )
         assert f'<meta name="twitter:image" content="{expected}">' in html
         assert "overlay-base64" not in html
+        assert "width=140" not in html
 
     asyncio.run(run())
 

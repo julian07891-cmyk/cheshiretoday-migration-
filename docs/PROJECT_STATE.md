@@ -23737,3 +23737,37 @@ After the correction:
 - `git diff --check`: passed
 
 Production verification remains required after deployment by checking the live crawler HTML and refreshing the Facebook preview.
+
+### Follow-up correction — Facebook minimum image size
+
+Post-deployment Facebook Sharing Debugger verification showed that the clean stored Guardian image was only `140×112`, below Facebook's minimum `200×200` requirement.
+
+Further read-only checks confirmed:
+
+- changing `width=140` to `width=1200` invalidated the Guardian signature and returned HTTP 401
+- removing the signed query also returned HTTP 401
+- the Guardian source page exposes clean, large, correctly signed responsive image URLs
+- these clean image candidates do not contain the branded `overlay-base64` parameter
+
+The Guardian social-image handling was therefore refined again.
+
+For small signed Guardian thumbnails only, Cheshire Today now:
+
+- fetches the Guardian source page
+- scans normal image markup for clean signed `i.guim.co.uk` candidates
+- rejects every candidate containing `overlay-base64`
+- ignores candidates below `620px`
+- prefers an exact `1200px` clean image
+- otherwise selects the clean candidate closest to `1200px`
+- falls back to the stored image if source retrieval or extraction fails
+
+This supersedes the earlier statement that Guardian source pages are never fetched. The source page is now fetched narrowly to obtain a large clean responsive image, never to reuse its branded page-level Open Graph image.
+
+Verification:
+
+- focused large-clean-Guardian regression: passed
+- complete article social-metadata test file: `3 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+Production verification remains required after deployment using crawler HTML and Facebook Sharing Debugger. The expected outcome is a clean Guardian image with no branding overlay and no minimum-size warning.

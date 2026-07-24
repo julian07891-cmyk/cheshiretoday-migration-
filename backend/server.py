@@ -14810,9 +14810,83 @@ async def serve_article_html(article_id: str, request=None):
             except Exception:
                 pass
 
-        # Guardian image URLs are signed. Keep the stored clean source image
-        # rather than replacing it with the Guardian page-level branded og:image.
+        # Guardian image URLs are signed. For small stored thumbnails, inspect
+        # the source page for a larger clean signed image from normal image
+        # markup, while rejecting the branded page-level Open Graph image.
         if "i.guim.co.uk" in img and "s=" in img:
+            is_small_guardian_image = (
+                "width=140" in img or "width=240" in img
+            )
+            is_guardian_source = (
+                source_url
+                and "theguardian.com" in str(source_url).lower()
+            )
+
+            if is_small_guardian_image and is_guardian_source:
+                try:
+                    import html as _source_html
+                    import urllib.request
+
+                    req = urllib.request.Request(
+                        str(source_url),
+                        headers={"User-Agent": "Mozilla/5.0"},
+                    )
+                    source_html = (
+                        urllib.request.urlopen(req, timeout=8)
+                        .read()
+                        .decode("utf-8", errors="ignore")
+                    )
+                    source_html = _source_html.unescape(source_html)
+
+                    candidates = re.findall(
+                        r"https://i\.guim\.co\.uk/img/media/"
+                        r"[^\"'<>\s,]+",
+                        source_html,
+                        re.I,
+                    )
+
+                    clean_candidates = []
+                    for candidate in candidates:
+                        candidate = candidate.strip()
+                        if "overlay-base64" in candidate:
+                            continue
+
+                        width_match = re.search(
+                            r"(?:[?&])width=(\d+)",
+                            candidate,
+                            re.I,
+                        )
+                        if not width_match:
+                            continue
+
+                        width = int(width_match.group(1))
+                        if width < 620:
+                            continue
+
+                        clean_candidates.append((width, candidate))
+
+                    preferred = next(
+                        (
+                            candidate
+                            for width, candidate in clean_candidates
+                            if width == 1200
+                        ),
+                        None,
+                    )
+                    if preferred:
+                        return preferred
+
+                    if clean_candidates:
+                        clean_candidates.sort(
+                            key=lambda item: (
+                                abs(item[0] - 1200),
+                                item[0],
+                            )
+                        )
+                        return clean_candidates[0][1]
+                except Exception:
+                    pass
+
             return img
 
         if "i.guim.co.uk" in img and "width=140" in img:
