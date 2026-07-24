@@ -14810,22 +14810,9 @@ async def serve_article_html(article_id: str, request=None):
             except Exception:
                 pass
 
-        # Guardian signed image URLs cannot be resized by editing width=...
-        # If we have a small signed thumbnail, fetch the valid large signed og:image
-        # from the Guardian source page instead.
+        # Guardian image URLs are signed. Keep the stored clean source image
+        # rather than replacing it with the Guardian page-level branded og:image.
         if "i.guim.co.uk" in img and "s=" in img:
-            if ("width=140" in img or "width=240" in img) and source_url and "theguardian.com" in str(source_url):
-                try:
-                    import urllib.request
-                    req = urllib.request.Request(str(source_url), headers={"User-Agent": "Mozilla/5.0"})
-                    source_html = urllib.request.urlopen(req, timeout=8).read().decode("utf-8", errors="ignore")
-                    m = re.search(r"<meta[^>]+property=[\"\x27]og:image[\"\x27][^>]+content=[\"\x27]([^\"\x27]+)[\"\x27]", source_html, re.I)
-                    if m:
-                        candidate = m.group(1).replace("&amp;", "&").strip()
-                        if "i.guim.co.uk" in candidate and "width=140" not in candidate and "width=240" not in candidate:
-                            return candidate
-                except Exception:
-                    pass
             return img
 
         if "i.guim.co.uk" in img and "width=140" in img:

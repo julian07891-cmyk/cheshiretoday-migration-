@@ -76,6 +76,79 @@ def test_newsquest_article_uses_source_open_graph_image(monkeypatch):
 
     asyncio.run(run())
 
+
+def test_guardian_article_keeps_stored_clean_image(monkeypatch):
+    async def run():
+        article = {
+            "_id": ObjectId("6a62489d6912e72b70d9620e"),
+            "id": "article-guardian",
+            "title": "Centrica to cut 1,300 jobs",
+            "summary": (
+                "Centrica plans to reduce its workforce as it expands "
+                "digital and AI-led customer services."
+            ),
+            "content": "Article body.",
+            "category": "Business",
+            "image": (
+                "https://i.guim.co.uk/img/media/example/master/2736.jpg"
+                "?width=140&quality=85&auto=format&fit=max&s=clean123"
+            ),
+            "source_url": (
+                "https://www.theguardian.com/business/2026/jul/23/"
+                "centrica-jobs-ai"
+            ),
+            "publishedDate": "2026-07-23T16:45:56",
+        }
+
+        async def fake_find_article(article_id):
+            assert article_id == "article-guardian"
+            return article
+
+        monkeypatch.setattr(
+            server,
+            "_find_article_by_any_id",
+            fake_find_article,
+        )
+
+        class FakeResponse:
+            def read(self):
+                return (
+                    b'<meta property="og:image" content="'
+                    b'https://i.guim.co.uk/img/media/branded/master/2698.jpg'
+                    b'?width=1200&amp;height=630&amp;overlay-base64='
+                    b'L2ltZy90Zy1kZWZhdWx0LnBuZw==&amp;s=branded123">'
+                )
+
+        import urllib.request
+
+        fetch_calls = []
+
+        def fake_urlopen(request, timeout=8):
+            fetch_calls.append(request.full_url)
+            return FakeResponse()
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+        response = await server.serve_article_html("article-guardian")
+        html = response.body.decode("utf-8")
+
+        expected = (
+            "https://i.guim.co.uk/img/media/example/master/2736.jpg"
+            "?width=140&amp;quality=85&amp;auto=format&amp;fit=max&amp;"
+            "s=clean123"
+        )
+
+        assert fetch_calls == []
+        assert f'<meta property="og:image" content="{expected}">' in html
+        assert (
+            f'<meta property="og:image:secure_url" content="{expected}">'
+            in html
+        )
+        assert f'<meta name="twitter:image" content="{expected}">' in html
+        assert "overlay-base64" not in html
+
+    asyncio.run(run())
+
 def test_contentful_article_uses_facebook_sized_social_image(monkeypatch):
     async def run():
         article = {

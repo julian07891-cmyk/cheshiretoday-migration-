@@ -23696,3 +23696,44 @@ After the correction:
 - `git diff --check`: passed
 
 Production log behaviour must be reviewed after deployment and the next scheduled RSS generation cycle.
+
+## Operational update — 24 July 2026 — Guardian social-preview image consistency
+
+### Production finding
+
+Facebook sharing verification found that a Guardian-sourced Cheshire Today article displayed a Guardian-branded social image even though the public article page used a clean unbranded stored image.
+
+Read-only inspection confirmed:
+
+- the article record stored the clean Guardian image used on the website
+- the crawler HTML path detected the small signed Guardian thumbnail
+- Cheshire Today then fetched the Guardian source page
+- the Guardian page-level `og:image` contained a branded Guardian overlay
+- Facebook correctly rendered the branded image Cheshire Today supplied
+
+This was not a Facebook cache issue.
+
+### Correction
+
+The Guardian-specific source-page substitution was removed from `serve_article_html()`.
+
+The crawler path now:
+
+- keeps the stored signed Guardian image
+- does not fetch the Guardian source page for social-image replacement
+- avoids Guardian-branded overlay parameters such as `overlay-base64`
+- keeps existing Newsquest, Contentful, Reach and BBC social-image handling unchanged
+- keeps article-page, Facebook and Twitter image selection consistent
+
+### Verification
+
+A dedicated regression test first reproduced the previous behaviour by returning a branded Guardian source-page `og:image`.
+
+After the correction:
+
+- focused Guardian regression: passed
+- self-contained social/image metadata suite: `34 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+Production verification remains required after deployment by checking the live crawler HTML and refreshing the Facebook preview.
