@@ -120,7 +120,9 @@ def test_guardian_article_prefers_large_clean_signed_image(monkeypatch):
         )
         clean_1200 = (
             "https://i.guim.co.uk/img/media/clean/master/2698.jpg"
-            "?width=1200&quality=85&auto=format&fit=max&s=clean1200"
+            "?width=1200&height=630&quality=85&auto=format&fit=crop"
+            "&precrop=40:21,offset-x50,offset-y0"
+            "&enable=upscale&s=clean1200"
         )
         clean_1920 = (
             "https://i.guim.co.uk/img/media/clean/master/2698.jpg"

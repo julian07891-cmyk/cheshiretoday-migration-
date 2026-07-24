@@ -23771,3 +23771,21 @@ Verification:
 - `git diff --check`: passed
 
 Production verification remains required after deployment using crawler HTML and Facebook Sharing Debugger. The expected outcome is a clean Guardian image with no branding overlay and no minimum-size warning.
+
+### Final Guardian signed-URL correction
+
+Production Facebook Sharing Debugger verification found that the selected clean `1200×630` Guardian image returned HTTP 401 with `text/html`, causing an `Invalid Image Content Type` warning.
+
+The extracted URL had been truncated at the first comma within Guardian's signed `precrop` parameter because the candidate regex excluded commas. This removed trailing crop parameters and the final signature.
+
+The extractor now preserves commas inside Guardian image URLs, retaining the complete signed query including crop offsets, upscale controls and the `s=` signature.
+
+Verification:
+
+- strengthened regression reproduced the truncated signed URL failure
+- focused signed-URL regression: passed
+- complete article social-metadata file: `3 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+Production verification remains required after deployment. The final image must return HTTP 200 with an image content type and pass Facebook Sharing Debugger without branding, minimum-size or invalid-content-type warnings.

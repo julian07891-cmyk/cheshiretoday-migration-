@@ -14840,7 +14840,7 @@ async def serve_article_html(article_id: str, request=None):
 
                     candidates = re.findall(
                         r"https://i\.guim\.co\.uk/img/media/"
-                        r"[^\"'<>\s,]+",
+                        r"[^\"'<>\s]+",
                         source_html,
                         re.I,
                     )
