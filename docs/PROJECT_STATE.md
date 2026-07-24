@@ -23025,3 +23025,450 @@ Production status:
 - latest production commit: `0aa8eea`
 - `AGENTS.md` remains intentionally untracked
 
+---
+
+## 23–24 July 2026 — Editorial safety, newsletter presentation, indexing recovery and Admin operational safety
+
+This update consolidates all verified work completed after the `0aa8eea` checkpoint. Work continued on `full-scrape-prod` using the QA-first workflow: read the operational state, inspect the current branch and diff, make one narrow change at a time, run focused regressions before broader verification, inspect the final diff, then commit, push and allow the production deployment to complete. No production mutation was used to validate code-only changes unless explicitly recorded below.
+
+### Operational workflow and repository state
+
+The following workflow decisions remained in force:
+
+- `docs/PROJECT_STATE.md` remains the operational source of truth.
+- `AGENTS.md` remains intentionally untracked and was excluded from every commit.
+- OpenAI remains Admin-only, draft-only and never auto-publishes.
+- Article sanitation, factual safeguards, Manual Review, image handling, SEO, newsletter, advertising, guides and monetisation contracts were preserved unless a narrowly identified defect required a change.
+- Production-sensitive changes were verified locally before commit and push.
+- Frontend production builds were used instead of `npm start`.
+- Read-only shadow tools remained isolated from production imports, MongoDB writes and live source configuration.
+- Current local `HEAD` and `origin/full-scrape-prod` are aligned at `a2421d6ea735cc3b372ec3bb93d1a8b407fa59a7`.
+
+### Project-state reconciliation
+
+Commit `86a971d` recorded the already approved guide-completion and RSS paragraph-preservation work in this operational file. It did not change runtime behavior.
+
+### Editorial publication safety
+
+Commit `4860158` — `Guard Admin RSS sync before publication`
+
+The authenticated `POST /api/sync-rss-now` insertion path was brought under the existing article sanitation and AI/manual-review guard immediately before insertion.
+
+Verified behavior:
+
+- body content uses `sanitize_rss_text(..., is_summary=False)`
+- summaries use compact `is_summary=True` sanitation
+- the existing 1,000-character floor remains in force
+- `apply_ai_manual_review_guard(..., ai_rewrite_used=True)` runs before insertion
+- safe articles retain the existing public insertion behavior
+- flagged articles are retained in the established hidden Manual Review state rather than discarded or published
+- title, source, source URL, image, category, scope, location and publication metadata remain unchanged
+- duplicate handling, scheduler and hybrid-import behavior remain unchanged
+- no OpenAI call was introduced
+
+Focused offline coverage was added in `tests/test_sync_rss_editorial_guard.py`.
+
+Commit `b1d0923` — `Guard short Cheshire fallback imports`
+
+The Perplexity Cheshire-search fallback inside `_import_hybrid_news_internal()` had been able to publish a two-sentence article with an empty summary and no guard metadata. The affected production article was moved to Manual Review using the existing Admin workflow before the correction.
+
+The fallback branch now:
+
+- preserves body and summary sanitation
+- applies the existing AI/manual-review guard
+- sends short, repetitive, invention-risk or otherwise weak fallback output to Manual Review
+- retains useful weak records rather than silently discarding them
+- preserves image, source, source URL, category, scope, publication date and duplicate handling
+- accounts for `public_imported` and `manual_review_imported` from the final guarded visibility state
+- introduces no OpenAI call or prompt change
+
+Focused offline coverage was added in `tests/test_hybrid_perplexity_fallback_guard.py`.
+
+### Newsletter HTML foundation and visual system
+
+Commit `7b1aeef` — `Repair newsletter digest HTML foundations`
+
+A read-only Daily Brief and Weekly Roundup rendering audit identified malformed HTML, unsafe unescaped dynamic content and unreliable Weekly logo handling. The repair:
+
+- balanced the existing newsletter HTML structure
+- replaced the broken/unreliable Weekly logo reference with the verified Cheshire Today text masthead
+- added explicit HTML escaping helpers for dynamic text and attributes
+- retained article URLs, tracking URLs, preferences links, unsubscribe links and tracking pixels
+- changed no scheduling, recipient selection, sending, batching or analytics logic
+
+Offline HTML regression coverage was added in `tests/test_newsletter_digest_html.py`.
+
+Commit `5099ddb` — `Refresh Daily Brief and Weekly Roundup design`
+
+Newsletter Phase 4B refreshed presentation without changing newsletter operations.
+
+Implemented:
+
+- derived `frontend/public/cheshire-today-email-logo.png` from the official logo without replacing the source artwork
+- optimised email logo size: 38,904 bytes
+- shared Daily/Weekly masthead, shell, content width, blue palette, spacing, typography, CTA language and footer treatment
+- compact editorial headers with edition name, date and `Local · Business · Finance`
+- hidden inbox preheaders for Daily and Weekly
+- refined Daily hero image/headline/excerpt and added the existing tracked `Read the full story →` CTA
+- converted sparse Daily secondary rows into linked headline/excerpt rows
+- aligned Weekly Big Read and ICYMI presentation without changing story selection or order
+- added deterministic plain-text Daily and Weekly versions with clean canonical article URLs plus preferences/unsubscribe URLs
+- added the smallest Admin control for the already existing authenticated Weekly test endpoint
+
+The Admin control did not expose batch testing or create a new endpoint. Scheduling, send locks, ledgers, provider behavior, tracking, subscriber selection and article ranking remained unchanged.
+
+Commit `1c78345` — `Polish newsletter masthead and weekly story summaries`
+
+Newsletter Phase 4C applied final presentation-only refinements:
+
+- displayed the existing email logo at approximately `150 × 51`
+- increased Daily/Weekly edition-title prominence without materially increasing header height
+- reduced Daily and Weekly hero headline size and line-height for cleaner mobile wrapping
+- added compact escaped excerpts beneath the existing five Weekly ICYMI headlines
+- preserved ICYMI ordering, tracked links, Big Read selection, CTA markup and plain-text output
+
+Commit `06830ab` — `Refine newsletter headlines and excerpt truncation`
+
+Newsletter readability was refined further:
+
+- Daily hero and Weekly Big Read headlines now use `22px/28px`
+- `_email_story_excerpt()` now truncates at a complete word
+- truncated excerpts end with exactly one Unicode ellipsis
+- trailing spaces, commas, semicolons, colons, full stops, hyphens/dashes and existing ellipsis characters are removed before the terminal ellipsis
+- an unusually long first token returns that complete token plus one ellipsis rather than only `…`
+- naturally completed excerpts remain unchanged
+- HTML escaping, plain-text behavior and tracking links remain unchanged
+
+Focused regressions cover existing ellipses, terminal punctuation, long first tokens, normal word-safe truncation and naturally completed text.
+
+### Read-only Cheshire source and ranking evaluation
+
+Commit `9d56c76` — `Add read-only Cheshire RSS ranking evaluators`
+
+Two isolated offline/read-only tools were added:
+
+1. `backend/scripts/evaluate_cheshire_rss_shadow.py`
+2. `backend/scripts/evaluate_story_ranking_shadow.py`
+
+The Cheshire RSS shadow evaluator:
+
+- evaluates candidate Nantwich News and Newsquest feeds without changing production source configuration
+- reports fetch/XML status, freshness, town relevance, image availability, acceptance and grouped rejection reasons
+- validates content type/body before parsing and safely rejects HTML error pages
+- canonicalises URLs and compares configured-feed baselines
+- allows only accepted candidate items to influence later candidate deduplication
+- records concise aggregate diagnostics without publisher bodies or private data
+- supports module CLI execution
+- guarantees zero database writes
+
+The story-ranking shadow evaluator:
+
+- groups related candidate stories without changing the importer
+- scores transparent configurable factors such as locality, original reporting, business value, image quality, freshness and syndication
+- compares current stable-order selection with the shadow preferred story
+- records factor breakdown, assessment provenance, input position and ordering tie-break effects
+- uses stable group IDs
+- prevents transitive probable-headline chains from over-clustering unrelated A/B/C candidates
+- distinguishes hard grouping evidence from heuristic grouping
+- rejects article-body fields and unknown/overlong assessment provenance
+- performs no network or database work
+
+Comprehensive synthetic offline suites were added for both evaluators. No live feed run, production import, source-config change or database operation occurred as part of implementation.
+
+### Article canonical identity and indexing recovery
+
+Commit `98d582f` — `Consolidate article canonical identity`
+
+Mongo ObjectId is now the single canonical public article identity:
+
+`/article/{mongo_id}/{canonical_slug}`
+
+Compatibility behavior:
+
+- full internal-UUID article URLs redirect permanently to the Mongo-ID canonical URL
+- UUID ID-only and UUID stale-slug URLs redirect to the same current Mongo canonical
+- Mongo-ID ID-only and stale-slug URLs retain their canonical redirects
+- unknown UUIDs retain not-found behavior and never redirect to the homepage
+- sensitive or tracking query values are not forwarded
+- crawler and ordinary-browser routes converge on the same canonical destination
+- archived URLs preserve reachable `noindex,follow`
+- force-live articles remain indexable
+- Manual Review records remain protected
+- the sitemap continues to emit Mongo-ID URLs only
+
+Focused canonical-route coverage was added without migrating article data or stored identifiers.
+
+Commit `608ed7b` — `Align public hub taxonomy and routing`
+
+The public category/location inventory was aligned across React routes, navigation, crawler hubs and sitemap output.
+
+Stable category URLs remain:
+
+- `/category/local-news`
+- `/category/uk-news`
+- `/category/business`
+- `/category/finance`
+- `/category/ai-tech`
+
+Reader-facing labels are:
+
+- Local
+- UK
+- Business
+- Finance
+- AI & Tech
+
+Canonical stored/read mapping:
+
+- Local News accepts Local, with genuine Cheshire/local evidence still required
+- UK News accepts UK and does not absorb specialist categories merely because `scope=uk`
+- Business accepts Economy and Economic
+- Finance accepts Tax, Property, Property & Tax and Money
+- AI & Tech accepts AI, Tech and Technology, but not generic Science
+
+Specialist category precedence now prevents Finance, Business and AI & Tech stories with UK scope from being misclassified into UK. Public hub retrieval deduplicates article IDs, displays counts from the filtered visible collection and uses article titles as image alt text. Empty supported hubs render an explicit empty state rather than homepage content. No Mongo category migration or public URL change was introduced; Admin write normalization and related-story normalization remain separate follow-up work.
+
+Commit `0cf67e9` — `Return real 404s for unsupported routes`
+
+Unsupported public routes now return genuine not-found behavior rather than masquerading as the homepage. Valid article, guide, category, location, Admin and secure-management routes were preserved. Focused reader/crawler regressions were added.
+
+Commit `13be6af` — `Use truthful sitemap lastmod dates`
+
+Sitemap `lastmod` values now come from truthful per-resource timestamps with strict parsing and safe omission when no reliable timestamp exists. The change removed misleading generated timestamps while preserving sitemap inventory, canonical URLs and visibility rules.
+
+Commit `ffd4a52` — `Fix homepage story allocation`
+
+Homepage allocation was corrected without redesign:
+
+- specialist category classification takes precedence over generic UK scope
+- section allocation better preserves the intended public taxonomy and 40/40/20 strategy
+- duplicated or conflicting section assignment was reduced
+- article ordering, cards and public route contracts remained stable
+
+Focused homepage regression coverage was added.
+
+### Legacy article-route hardening
+
+A read-only pipeline and route-usage audit distinguished trusted manual editing from automated publication risk. It confirmed:
+
+- the hybrid importer and Admin OpenAI draft workflow remain the preferred guarded paths
+- `POST /api/admin/regenerate-recent-content` has documented operational use but lacked modern sanitation/guarding
+- `POST /api/import-real-news` had no repository frontend, scheduler, script or internal caller but remained reachable through direct authenticated API use
+- unrelated legacy routes were not removed without usage evidence
+
+Commit `1034bb9` — `Guard recent article regeneration`
+
+The authenticated recent-regeneration route now:
+
+- rejects empty, too-short or shorter-than-existing output before mutation
+- sanitises accepted proposed body content
+- applies the existing AI/manual-review guard
+- calculates the complete outcome before one deliberate update
+- preserves article metadata and existing selection window/limit
+- updates regeneration metadata only for accepted updates
+- routes risky rewrites into the established Manual Review state
+- introduces no OpenAI call, prompt, new schema or retry
+
+Commit `50bf9c6` — `Guard legacy real-news import`
+
+The authenticated legacy `POST /api/import-real-news` compatibility route now:
+
+- sanitises body and compact summary before insertion
+- applies the shared guard with `ai_rewrite_used=False`
+- retains safe full-quality records publicly
+- retains short useful or risky records in Manual Review
+- skips empty/unusable content
+- preserves duplicate-title/source-URL handling and source/category/image/date/location metadata
+- performs one insertion maximum per retained candidate
+- introduces no new AI call, prompt or retry
+
+The route-specific short-content reason was removed after QA confirmed the shared guard already supplies the established public-quality-floor reason. Short records now contain exactly one floor reason, while separate invention/editorial checks remain present once where applicable.
+
+### Admin archive request and action safety
+
+Commit `4622edf` — `Fix Admin bulk archive thresholds`
+
+The Admin displayed 7-, 14- and 30-day Bulk Archive controls but sent `days_old` in the query string while the backend expected JSON, causing all actions to use the 30-day default.
+
+The frontend now:
+
+- sends `{ "days_old": 7 }`, `{ "days_old": 14 }` or `{ "days_old": 30 }` in the authenticated POST body
+- confirms the exact threshold before the request
+- sends no request on cancellation
+- reports the requested threshold and actual `articles_archived` count
+- consistently says archive rather than delete
+- exposes no private backend error detail
+
+Backend selection logic and archive behavior were unchanged.
+
+Commit `f8858ec` — `Correct Admin archive actions and import results`
+
+This commit was pushed to `origin/full-scrape-prod`, deployed and verified as part of the normal production workflow.
+
+Corrections:
+
+- Articles-tab `Archive Selected` now calls the existing authenticated single-article archive endpoint once per selected ID
+- cancellation preserves selection and sends no request
+- full and partial outcomes report archived/failed aggregate counts
+- successfully archived IDs are cleared; failed IDs remain selected
+- article, archive and statistics data refresh after accepted results
+- no DELETE endpoint or age-based bulk endpoint is used
+- archive actions now say Archive where the backend archives
+- genuine permanent-delete controls for unrelated resource types remain unchanged
+- hybrid import completion always produces a visible result for public-only, Manual-Review-only, mixed and zero-retained outcomes
+- retained count uses `public_imported + manual_review_imported` whenever valid detailed fields exist
+- `total_imported` is only a compatibility fallback when both detailed fields are absent/invalid
+- valid estimated cost is shown without inventing unsupported rejection counts
+- Fix Content now reads `articles_archived` and reports `Archived X legacy template-mismatch articles`
+
+Focused Admin action tests, the complete frontend suite, production build and diff checks passed before commit.
+
+### Admin wording, information architecture and mobile polish
+
+A read-only Admin dashboard audit mapped visible controls to their handlers/endpoints and identified stale labels, inaccurate import promises, clipped mobile text and ambiguous archive/delete language. It also confirmed that working controls should not be removed without usage evidence.
+
+Commit `8cda9b4` — `Align Admin dashboard wording and mobile layout`
+
+This commit was pushed to `origin/full-scrape-prod`, deployed and verified healthy.
+
+Visible quick-action labels now accurately describe behavior:
+
+- Generate → Run Hybrid Import
+- Daily Brief → Send Daily Brief
+- Facebook → Post to Facebook
+- Twitter → Post to Twitter
+- Cleanup → Remove Duplicates
+- Archive Legacy Content retained with wrap-safe layout
+- No Products → Remove Product Articles
+- Sync RSS → Run RSS Sync
+
+Mobile tabs now use Newsletter, Facebook, Email, Analytics and Affiliates while retaining order, icons, active state and horizontal scrolling.
+
+Additional wording corrections:
+
+- Import panel is now `Run News Import`
+- stale fixed-volume and sports-cap promises were removed
+- import copy describes RSS/research availability, duplicate/image/locality/quality checks and Manual Review outcomes
+- Archive & Refresh is now `Archive All & Run Fresh Import` with explicit broad-maintenance warning
+- Backfill Locations is now `Recalculate Article Locations`
+- Manual Review copy says articles are withheld from public publication pending editorial review
+- Open AI is now `Create OpenAI Draft`
+- Archived Articles is now `Article Archive`
+- stale Manchester, sports-quota and January 2026 source/strategy wording was removed
+
+Quick actions retain readable touch targets and wrap-safe mobile labels. Handlers, endpoints and backend behavior remained unchanged. Focused polish tests, the complete frontend suite and production build passed.
+
+### Subscriber lifecycle and manual-campaign safety
+
+A read-only subscriber lifecycle audit confirmed:
+
+- the ordinary Admin red trash control called authenticated `DELETE /api/admin/subscribers/{email}`
+- the backend hard-deleted one subscriber document with no suppression/audit replacement
+- preferences, consent-related lifecycle history and reactivation provenance could be lost
+- the hard delete was irreversible except by backup and a deleted email could later be recreated as a fresh subscriber
+- secure unsubscribe already provides the correct reversible lifecycle contract
+- Daily Brief, Weekly Roundup, Breaking News, onboarding and migration/site-update sends exclude literal inactive subscribers
+- manual campaign `Send to All` was the confirmed gap because it selected `find({})`
+- Facebook and browser push use separate stores and are not driven by newsletter subscriber state
+
+Design decision:
+
+- ordinary Admin removal must be a reversible soft unsubscribe
+- permanent privacy erasure is a separate future workflow and was not invented here
+- subscriber identity for the new Admin action must be the canonical management UUID, never email
+- repeat unsubscribe preserves the original inactive timestamp/method rather than rewriting lifecycle history
+- the legacy hard-delete route remains authenticated and unchanged for now but is no longer exposed by the ordinary subscriber list
+
+Commit `a2421d6` — `Add safe Admin subscriber unsubscribe`
+
+This commit was pushed successfully to `origin/full-scrape-prod`; local and remote-tracking branches are aligned on the full hash `a2421d6ea735cc3b372ec3bb93d1a8b407fa59a7`. The deployed production checkpoint for this chat is this commit.
+
+Backend:
+
+- added authenticated `POST /api/admin/subscribers/{newsletter_management_id}/unsubscribe`
+- validates canonical UUIDv4 before database access
+- finds one subscriber only by management ID
+- unknown/malformed IDs fail safely
+- active or legacy-active records set exactly:
+  - `active=False`
+  - `daily_brief=False`
+  - `weekly_roundup=False`
+  - `breaking_news=False`
+  - current UTC ISO `unsubscribed_at`
+  - `unsubscribe_method="admin"`
+- preserves email, preferences, provenance, management ID, token version, timestamps, reactivation history, onboarding/send history and priority flags
+- does not delete a subscriber or mutate challenges, rate limits, analytics, digest logs or send ledgers
+- does not increment `newsletter_token_version`
+- already inactive subscribers return success without another update, preserving the original unsubscribe timestamp/method
+- returns only success, management ID, inactive state and safe message
+
+Manual campaigns:
+
+- `mode=all` now includes literal `active=True` and legacy records where `active` is missing
+- literal `active=False` is excluded
+- test-send mode and provider/rendering behavior remain unchanged
+
+Admin UI:
+
+- replaced the ordinary trash control with `UserMinus`
+- exact confirmation explains that all newsletter emails stop while preferences/history are retained
+- success says `Subscriber unsubscribed.`
+- failures use privacy-safe generic wording
+- subscriber data/dashboard counts refresh after success
+- the row remains visible with Active or Unsubscribed state
+- inactive rows show `Reactivation requires a verified email link.` and no unsubscribe control
+- active rows receive an action only when `newsletter_management_id` is a canonical UUIDv4
+- active rows without a valid management ID show:
+  `Management ID unavailable — subscriber migration or repair is required.`
+- missing-ID rows have no clickable/network path and never fall back to email or hard delete
+
+Verification completed:
+
+- focused backend subscriber/campaign tests: `9 passed`
+- focused frontend subscriber lifecycle tests after the final missing-ID correction: `9 passed`
+- complete available frontend suite: `115 passed`
+- frontend production build: passed
+- Python compilation: passed
+- current-state newsletter regression selection: `581 passed`, with only obsolete pre-activation assertions excluded
+- `git diff --check`: passed
+- no production subscriber or email mutation was used for verification
+
+QA note:
+
+Some older newsletter tests still assert that request-link routes return HTTP 503 and that activation gates are literal `False`. Those assertions conflict with the authoritative 20 July production record showing both gates enabled. They were not changed during the subscriber lifecycle implementation because secure public routes and activation behavior were outside scope. Updating those obsolete test expectations remains a separate narrow maintenance task.
+
+### Deployment and health state
+
+All commits listed above were pushed in order to `origin/full-scrape-prod`. Production deployments used the established push/deploy workflow. Deployment checks performed throughout this work confirmed:
+
+- Render deployment returned to Live after deployment windows
+- `/health` returned HTTP 200 healthy
+- scheduler startup remained normal
+- morning, midday and evening article-generation jobs remained registered
+- Daily Brief remained registered
+- Weekly Roundup batches 1–4 remained registered
+- no database migration, index provisioning, secret change or unrelated production configuration change occurred during these code/UI stages
+- no production email was sent as part of local implementation verification
+
+### Deferred items and next follow-ups
+
+The following work is intentionally deferred:
+
+1. Correct obsolete newsletter test assertions that still describe the pre-activation literal-false/HTTP-503 state.
+2. Decide whether the legacy Admin hard-delete subscriber route should later be removed or replaced by a separately approved privacy-erasure workflow.
+3. Add Admin create/update canonical category validation and importer normalization as the planned taxonomy Stage 2B; no Mongo category migration is currently required.
+4. Review related-story category alias matching separately.
+5. Run read-only shadow evaluators against approved live/source snapshots only under a separately authorised evaluation step; they remain disconnected from production imports.
+6. Continue operational observation of article quality guards, Manual Review counts and the public 40/40/20 allocation.
+7. Keep RFC one-click outbound-header lifecycle work separate from the completed secure newsletter system.
+8. Perform Browserslist database maintenance separately; current build warnings are non-blocking.
+
+### Current repository checkpoint
+
+- branch: `full-scrape-prod`
+- local `HEAD`: `a2421d6ea735cc3b372ec3bb93d1a8b407fa59a7`
+- `origin/full-scrape-prod`: `a2421d6ea735cc3b372ec3bb93d1a8b407fa59a7`
+- latest completed work: safe Admin subscriber soft unsubscribe and inactive manual-campaign exclusion
+- tracked working tree: clean before this documentation-only append
+- `AGENTS.md`: intentionally untracked and excluded
+- immediate recommended next step: review this documentation append, then commit it separately only after approval
