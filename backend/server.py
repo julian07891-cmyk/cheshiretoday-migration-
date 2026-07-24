@@ -5041,7 +5041,7 @@ async def get_article_share_page(article_id: str, request: Request):
             <meta property="og:title" content="{title}">
             <meta property="og:description" content="{description}">
             <meta property="og:site_name" content="Cheshire Today">
-            <meta property="fb:app_id" content="2091422248085004">
+            <meta property="fb:app_id" content="1265742728765482">
             
             <!-- Twitter Card -->
             <meta name="twitter:card" content="summary_large_image">
@@ -15024,7 +15024,7 @@ async def serve_article_html(article_id: str, request=None):
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="Cheshire Today">
   <meta property="og:locale" content="en_GB">
-  <meta property="fb:app_id" content="2091422248085004">
+  <meta property="fb:app_id" content="1265742728765482">
   <meta property="og:url" content="{esc_canon}">
   <meta property="og:title" content="{esc_title}">
   <meta property="og:description" content="{esc_desc}">

@@ -23814,3 +23814,31 @@ Verification:
 - `git diff --check`: passed
 
 Production verification remains required after deployment by clicking `Scrape Again` in Facebook Sharing Debugger and confirming that no missing-property warning remains.
+
+### Facebook App ID identity correction
+
+Meta Developer settings confirmed that Cheshire Today's active application is:
+
+- app name: `Cheshire Today Auto Poster`
+- app ID: `1265742728765482`
+- app domain: `cheshiretoday.co.uk`
+
+The previously deployed value `2091422248085004` did not match any application available under the Cheshire Today Meta account.
+
+Active runtime references were corrected in:
+
+- the backend sharing template
+- the dedicated article crawler metadata
+- the frontend public HTML template
+- the article social-metadata regression test
+
+Historical documentation that records the previously deployed value was not rewritten.
+
+Verification:
+
+- article social-metadata tests: `3 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+- Meta App Domains now includes `cheshiretoday.co.uk`
+
+Production verification remains required after deployment by checking the live crawler HTML and clicking `Scrape Again` in Facebook Sharing Debugger.

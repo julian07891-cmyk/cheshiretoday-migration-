@@ -163,7 +163,7 @@ def test_guardian_article_prefers_large_clean_signed_image(monkeypatch):
         )
         assert f'<meta name="twitter:image" content="{expected}">' in html
         assert (
-            '<meta property="fb:app_id" content="2091422248085004">'
+            '<meta property="fb:app_id" content="1265742728765482">'
             in html
         )
         assert "overlay-base64" not in html
