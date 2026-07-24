@@ -23656,3 +23656,43 @@ Verification completed:
 - `git diff --check`: passed
 
 The standalone repair utility remains unused. Production restoration should occur only after this self-healing correction is committed, deployed and verified.
+
+## Operational update — 24 July 2026 — RSS feed concurrency hardening
+
+### Production log finding
+
+Render logs at approximately `11:00:21 BST` showed a near-simultaneous timeout burst across many unrelated sources, including BBC, Sky, Guardian, Cheshire Live, GOV.UK, HMRC, ONS, Companies House, TechCrunch and arXiv feeds.
+
+Read-only investigation confirmed:
+
+- `56` RSS feeds are configured
+- `fetch_all_feeds()` launched every configured feed simultaneously with `asyncio.gather()`
+- `fetch_category_feeds()` used the same unbounded concurrency pattern
+- every individual feed fetch created a separate `httpx.AsyncClient`
+- each request used a `15.0` second timeout
+- the near-identical timeout timestamps were consistent with shared outbound connection, DNS or resource pressure rather than independent failure of every source
+
+### Correction
+
+`NewsFeedService` now:
+
+- limits outbound feed fetch concurrency to `8`
+- uses one shared bounded batch helper
+- applies the same bounded behaviour to all-feed and category-feed retrieval
+- preserves existing per-feed parsing, source configuration, timeout, error handling and result ordering
+- continues returning partial successful results when individual feeds fail
+
+No timeout increase was introduced. The correction addresses resource pressure first rather than allowing 56 simultaneous clients to wait longer.
+
+### Verification
+
+A dedicated regression test first demonstrated the previous unbounded behaviour with a peak concurrency of `20` from `20` test feeds.
+
+After the correction:
+
+- focused concurrency test: `1 passed`
+- concurrency plus related RSS shadow, text sanitation and editorial-guard tests: `64 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+Production log behaviour must be reviewed after deployment and the next scheduled RSS generation cycle.

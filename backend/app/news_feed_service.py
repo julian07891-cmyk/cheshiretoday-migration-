@@ -901,6 +901,7 @@ class NewsFeedService:
         self.feeds = RSS_FEEDS
         self.feeds = _flatten_feed_groups(self.feeds)
         self.timeout = 15.0
+        self.max_concurrent_fetches = 8
     
     def _clean_html(self, text: str) -> str:
         """Remove HTML tags and clean up text"""
@@ -1446,13 +1447,22 @@ class NewsFeedService:
 
         return None
     
+    async def _fetch_feed_batch(self, feed_keys) -> List[Any]:
+        """Fetch a group of feeds with bounded outbound concurrency."""
+        semaphore = asyncio.Semaphore(self.max_concurrent_fetches)
+
+        async def fetch_bounded(feed_key):
+            async with semaphore:
+                return await self.fetch_feed(feed_key)
+
+        tasks = [fetch_bounded(feed_key) for feed_key in feed_keys]
+        return await asyncio.gather(*tasks, return_exceptions=True)
+
     async def fetch_all_feeds(self) -> List[Dict[str, Any]]:
         """Fetch articles from all configured RSS feeds"""
         all_articles = []
-        
-        # Fetch all feeds concurrently
-        tasks = [self.fetch_feed(feed_key) for feed_key in self.feeds.keys()]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        results = await self._fetch_feed_batch(self.feeds.keys())
         
         for result in results:
             if isinstance(result, list):
@@ -1477,8 +1487,7 @@ class NewsFeedService:
             return []
         
         all_articles = []
-        tasks = [self.fetch_feed(feed_key) for feed_key in category_feeds]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await self._fetch_feed_batch(category_feeds)
         
         for result in results:
             if isinstance(result, list):
