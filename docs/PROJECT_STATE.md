@@ -23472,3 +23472,29 @@ The following work is intentionally deferred:
 - tracked working tree: clean before this documentation-only append
 - `AGENTS.md`: intentionally untracked and excluded
 - immediate recommended next step: review this documentation append, then commit it separately only after approval
+
+
+## Operational update — 24 July 2026
+
+### Phase 3A status
+
+- Phase 3A implementation completed.
+- Full automated QA completed successfully.
+- Test suite result: **968 passed, 0 failed, 0 errors, 330 warnings**.
+- Deployment completed successfully.
+- Production health checks passed.
+- Service running normally.
+
+### Remaining production verification
+
+The only remaining validation is the first production RSS-generated article created after deployment. Verify that it:
+
+- was generated after deployment;
+- preserves the Perplexity paragraph structure;
+- retains quotes with correct attribution;
+- includes a compact summary;
+- removes source URL tails;
+- renders correctly on desktop and mobile; and
+- introduces no formatting regressions.
+
+Phase 3A will be marked fully complete once this live production verification has been successfully performed.
