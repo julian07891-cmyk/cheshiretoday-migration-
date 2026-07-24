@@ -23789,3 +23789,28 @@ Verification:
 - `git diff --check`: passed
 
 Production verification remains required after deployment. The final image must return HTTP 200 with an image content type and pass Facebook Sharing Debugger without branding, minimum-size or invalid-content-type warnings.
+
+### Facebook App ID crawler metadata correction
+
+After the Guardian image corrections passed Facebook Sharing Debugger, the remaining warning was a missing `fb:app_id`.
+
+Investigation confirmed:
+
+- Cheshire Today's established Facebook App ID is `2091422248085004`
+- the ID was already present in the homepage and another backend sharing template
+- the dedicated article crawler HTML omitted the tag
+- no new Meta application or identifier was created
+
+The crawler article template now emits:
+
+`<meta property="fb:app_id" content="2091422248085004">`
+
+A regression assertion was added to the article social-metadata tests.
+
+Verification:
+
+- article social-metadata tests: `3 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+Production verification remains required after deployment by clicking `Scrape Again` in Facebook Sharing Debugger and confirming that no missing-property warning remains.
