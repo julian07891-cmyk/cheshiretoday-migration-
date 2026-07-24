@@ -24,6 +24,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Calendar } from './ui/calendar';
 import { buildArticleUrl } from '../utils/articleUrl';
 import { runBulkArchive } from '../services/adminBulkArchive';
+import {
+  archiveSelectedArticles,
+  formatImportCompletion,
+  removeArchivedSelection,
+} from '../services/adminArticleActions';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -1133,6 +1138,54 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
+  const handleArchiveSelectedArticles = async () => {
+    let requestStarted = false;
+
+    try {
+      const result = await archiveSelectedArticles({
+        selectedIds: selectedArticles,
+        apiUrl: getApiUrl(),
+        authHeaders: getAuthHeaders(),
+        confirmAction: showConfirmation,
+        fetchImpl: fetch,
+        onConfirmed: () => {
+          requestStarted = true;
+          setActionLoading('archive-selected');
+        },
+      });
+
+      if (result.status === 'cancelled') {
+        return;
+      }
+
+      if (result.archivedIds?.length > 0) {
+        setSelectedArticles(previous => removeArchivedSelection(
+          previous,
+          result.archivedIds
+        ));
+        await Promise.all([
+          fetchAllData(),
+          fetchArchivedArticles(),
+          fetchArticleStats(),
+        ]);
+      }
+
+      toast({
+        title: result.status === 'success'
+          ? '✅ Articles Archived'
+          : result.status === 'partial'
+            ? '⚠️ Archive Partly Completed'
+            : '❌ Archive Failed',
+        description: result.message,
+        variant: result.status === 'success' ? undefined : 'destructive',
+      });
+    } finally {
+      if (requestStarted) {
+        setActionLoading(null);
+      }
+    }
+  };
+
   const handleMoveToManualReview = async (articleId) => {
     setActionLoading(`manual-review-${articleId}`);
     try {
@@ -1842,7 +1895,7 @@ const AdminDashboard = ({ onBack }) => {
   };
 
   const handleFixMismatchedContent = async () => {
-    if (!window.confirm('This will fix articles with mismatched template content (e.g., entertainment articles with emergency services text). Continue?')) {
+    if (!window.confirm('Archive legacy articles with mismatched template content? They will remain available in the archive.')) {
       return;
     }
     
@@ -1856,23 +1909,23 @@ const AdminDashboard = ({ onBack }) => {
       
       if (data.success) {
         toast({
-          title: "📝 Content Fixed",
-          description: `Fixed ${data.articles_fixed} articles with mismatched templates.`
+          title: "📦 Legacy Articles Archived",
+          description: `Archived ${data.articles_archived} legacy template-mismatch articles.`
         });
-        if (data.articles_fixed > 0) {
+        if (data.articles_archived > 0) {
           fetchAllData();
         }
       } else {
         toast({
           title: "Warning",
-          description: "Content fix failed",
+          description: "Could not archive legacy template-mismatch articles",
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fix mismatched content",
+        description: "Could not archive legacy template-mismatch articles",
         variant: "destructive"
       });
     } finally {
@@ -1995,9 +2048,10 @@ const AdminDashboard = ({ onBack }) => {
       
       const data = await response.json();
       setImportResult(data);
+      const completion = formatImportCompletion(data);
       toast({
         title: "Import Complete",
-        description: `Imported ${data.total_imported} articles successfully`
+        description: completion.message
       });
       fetchAllData(); // Refresh stats
     } catch (error) {
@@ -2511,8 +2565,6 @@ const AdminDashboard = ({ onBack }) => {
   };
 
 const handleDeleteArticle = async (articleId) => {
-    if (!window.confirm('Are you sure you want to delete this article?')) return;
-    
     setActionLoading(`delete-article-${articleId}`);
     try {
       const response = await fetch(`${getApiUrl()}/api/articles/${articleId}`, {
@@ -2522,8 +2574,8 @@ const handleDeleteArticle = async (articleId) => {
       
       if (response.ok) {
         toast({
-          title: "Article Deleted",
-          description: "Article has been removed"
+          title: "Article Archived",
+          description: "Article archived successfully."
         });
         setArticles(articles.filter(a => a.id !== articleId));
         setManualReviewArticles(prev => prev.filter(a => a.id !== articleId));
@@ -2531,12 +2583,12 @@ const handleDeleteArticle = async (articleId) => {
         fetchArchivedArticles();
         fetchAllData();
       } else {
-        throw new Error('Delete failed');
+        throw new Error('Archive failed');
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to delete article",
+        description: "Failed to archive article",
         variant: "destructive"
       });
     } finally {
@@ -2550,10 +2602,10 @@ const handleDeleteArticle = async (articleId) => {
     if (selectedIds.length === 0) return;
 
     const confirmed = await showConfirmation({
-      title: `Delete ${selectedIds.length} Manual Review Articles`,
+      title: `Archive ${selectedIds.length} Manual Review Articles`,
       description: `Move ${selectedIds.length} selected article(s) out of Manual Review and into the archive? Shared links will remain preserved.`,
       variant: 'destructive',
-      confirmText: 'Delete Selected',
+      confirmText: 'Archive Selected',
       cancelText: 'Cancel'
     });
 
@@ -2594,20 +2646,20 @@ const handleDeleteArticle = async (articleId) => {
 
       if (failedCount === 0) {
         toast({
-          title: "✅ Articles Deleted",
+          title: "✅ Articles Archived",
           description: `${deletedIds.size} selected article(s) moved to the archive`
         });
       } else {
         toast({
-          title: "⚠️ Bulk Delete Partly Completed",
-          description: `${deletedIds.size} deleted, ${failedCount} failed`,
+          title: "⚠️ Archive Partly Completed",
+          description: `${deletedIds.size} archived, ${failedCount} could not be archived`,
           variant: "destructive"
         });
       }
     } catch (error) {
       toast({
-        title: "❌ Bulk Delete Failed",
-        description: error.message || "Failed to delete selected articles",
+        title: "❌ Archive Failed",
+        description: "Could not archive the selected articles. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -2977,7 +3029,7 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <FileText className="h-4 w-4" />
                 )}
-                <span>Fix Content</span>
+                <span>Archive Legacy Content</span>
               </Button>
               
               <Button 
@@ -3217,24 +3269,16 @@ const handleDeleteArticle = async (articleId) => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={async () => {
-                          const confirmed = await showConfirmation({
-                            title: `Archive ${selectedArticles.size} Articles`,
-                            description: `Are you sure you want to archive ${selectedArticles.size} selected article(s)? They can be restored from the Archive tab.`,
-                            variant: 'warning',
-                            confirmText: 'Archive Selected',
-                            cancelText: 'Cancel'
-                          });
-                          if (confirmed) {
-                            // Bulk archive logic
-                            toast({ title: "Bulk Archive", description: `Archiving ${selectedArticles.size} articles...` });
-                            setSelectedArticles(new Set());
-                          }
-                        }}
+                        onClick={handleArchiveSelectedArticles}
+                        disabled={actionLoading === 'archive-selected'}
                         className="text-amber-600 border-amber-300"
                       >
-                        <Archive className="h-4 w-4 mr-1" />
-                        Archive ({selectedArticles.size})
+                        {actionLoading === 'archive-selected' ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Archive className="h-4 w-4 mr-1" />
+                        )}
+                        Archive Selected ({selectedArticles.size})
                       </Button>
                     )}
                   </div>
@@ -3422,10 +3466,10 @@ const handleDeleteArticle = async (articleId) => {
                           size="sm"
                           onClick={async () => {
                             const confirmed = await showConfirmation({
-                              title: 'Delete Article',
-                              description: `Are you sure you want to permanently delete "${article.title}"? This action cannot be undone.`,
+                              title: 'Archive Article',
+                              description: `Archive "${article.title}"? It will remain available in the archive.`,
                               variant: 'destructive',
-                              confirmText: 'Delete Permanently',
+                              confirmText: 'Archive Article',
                               cancelText: 'Cancel'
                             });
                             if (confirmed) {
@@ -3434,13 +3478,13 @@ const handleDeleteArticle = async (articleId) => {
                           }}
                           disabled={actionLoading === `delete-article-${article.id}`}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                          title="Delete article"
+                          title="Archive article"
                           data-testid={`delete-article-${article.id}`}
                         >
                           {actionLoading === `delete-article-${article.id}` ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4" />
+                            <Archive className="h-4 w-4" />
                           )}
                         </Button>
                       </div>
@@ -4579,7 +4623,7 @@ const handleDeleteArticle = async (articleId) => {
                         ) : (
                           <Trash2 className="h-4 w-4 mr-1" />
                         )}
-                        Delete Selected ({selectedManualReviewArticles.size})
+                        Archive Selected ({selectedManualReviewArticles.size})
                       </Button>
                     )}
 
@@ -4723,10 +4767,10 @@ const handleDeleteArticle = async (articleId) => {
                               size="sm"
                               onClick={async () => {
                                 const confirmed = await showConfirmation({
-                                  title: 'Delete Manual Review Article',
-                                  description: `Move "${article.title}" to archive as admin_delete? Shared links will still be preserved.`,
+                                  title: 'Archive Manual Review Article',
+                                  description: `Archive "${article.title}"? It will remain available in the archive and shared links will be preserved.`,
                                   variant: 'destructive',
-                                  confirmText: 'Delete',
+                                  confirmText: 'Archive Article',
                                   cancelText: 'Cancel'
                                 });
                                 if (confirmed) {
@@ -4739,7 +4783,7 @@ const handleDeleteArticle = async (articleId) => {
                               {actionLoading === `delete-article-${article.id}` ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                <Trash2 className="h-4 w-4" />
+                                <Archive className="h-4 w-4" />
                               )}
                             </Button>
                           </div>
@@ -6060,6 +6104,9 @@ const handleDeleteArticle = async (articleId) => {
 
                 {/* Import Results */}
                 {importResult && (
+                  (() => {
+                    const completion = formatImportCompletion(importResult);
+                    return (
                   <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
@@ -6068,26 +6115,41 @@ const handleDeleteArticle = async (articleId) => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
+                      <p className="mb-4 text-sm text-emerald-800 dark:text-emerald-200">
+                        {completion.message}
+                      </p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{importResult.total_imported || importResult.articles_imported || 0}</p>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400">Total Imported</p>
+                          <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{completion.publicImported}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Public Added</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{importResult.cheshire_articles || 0}</p>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400">Local/Cheshire</p>
+                          <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{completion.manualReviewImported}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Manual Review</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{importResult.uk_articles || 0}</p>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400">UK News</p>
+                          <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{completion.retained}</p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Total Retained</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{(importResult.business_articles || 0) + (importResult.tech_articles || 0)}</p>
-                          <p className="text-xs text-muted-foreground dark:text-gray-400">Business + AI/Tech</p>
+                          <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                            {completion.estimatedCost === null
+                              ? '—'
+                              : `$${completion.estimatedCost.toFixed(4)}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground dark:text-gray-400">Estimated Cost</p>
                         </div>
                       </div>
-                                          </CardContent>
+                      <p className="mt-4 text-xs text-muted-foreground dark:text-gray-400">
+                        Category breakdown: {importResult.cheshire_articles || 0} Local/Cheshire
+                        {' · '}{importResult.uk_articles || 0} UK
+                        {' · '}{importResult.business_articles || 0} Business
+                        {' · '}{importResult.tech_articles || 0} AI/Tech
+                      </p>
+                    </CardContent>
                   </Card>
+                    );
+                  })()
                 )}
               </CardContent>
             </Card>
