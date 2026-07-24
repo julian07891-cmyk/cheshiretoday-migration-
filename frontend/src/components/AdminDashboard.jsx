@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { 
-  BarChart3, Users, FileText, Mail, RefreshCw, Trash2,
+  BarChart3, Users, FileText, Mail, RefreshCw, Trash2, UserMinus,
   Zap, 
   Send, Clock, AlertCircle, CheckCircle, Loader2, ArrowLeft,
   Newspaper, TrendingUp, Lock, LogOut, Facebook, Calendar as CalendarIcon,
@@ -51,6 +51,7 @@ StatCard.displayName = 'StatCard';
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
 const QUICK_ACTION_BUTTON_LAYOUT = 'min-h-12 h-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm text-center leading-tight whitespace-normal';
+const CANONICAL_NEWSLETTER_MANAGEMENT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const AdminDashboard = ({ onBack }) => {
   const [stats, setStats] = useState(null);
@@ -2668,30 +2669,35 @@ const handleDeleteArticle = async (articleId) => {
     }
   };
 
-  const handleDeleteSubscriber = async (email) => {
-    if (!window.confirm(`Remove subscriber ${email}?`)) return;
-    
-    setActionLoading(`delete-sub-${email}`);
+  const handleUnsubscribeSubscriber = async (newsletterManagementId) => {
+    const confirmed = window.confirm(
+      'Unsubscribe this subscriber? They will stop receiving all newsletter emails. Their preferences and subscription history will be retained.'
+    );
+    if (!confirmed) return;
+
+    setActionLoading(`unsubscribe-sub-${newsletterManagementId}`);
     try {
-      const response = await fetch(`${getApiUrl()}/api/admin/subscribers/${encodeURIComponent(email)}`, {
-        method: 'DELETE',
+      const response = await fetch(
+        `${getApiUrl()}/api/admin/subscribers/${encodeURIComponent(newsletterManagementId)}/unsubscribe`,
+        {
+        method: 'POST',
         headers: getAuthHeaders()
-      });
+        }
+      );
       
       if (response.ok) {
         toast({
-          title: "Subscriber Removed",
-          description: `${email} has been unsubscribed`
+          title: "Subscriber unsubscribed.",
+          description: "Reactivation requires a verified email link."
         });
-        setSubscribers(subscribers.filter(s => s.email !== email));
-        fetchAllData();
+        await fetchAllData();
       } else {
-        throw new Error('Delete failed');
+        throw new Error('Unsubscribe failed');
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to remove subscriber",
+        title: "Could not unsubscribe subscriber. Please try again.",
+        description: "No subscriber details were changed in this view.",
         variant: "destructive"
       });
     } finally {
@@ -3534,22 +3540,50 @@ const handleDeleteArticle = async (articleId) => {
                           <p className="text-xs text-muted-foreground">
                             Subscribed: {formatDate(subscriber.subscribed_at)}
                           </p>
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {subscriber.active === false ? 'Unsubscribed' : 'Active'}
+                          </p>
+                          {subscriber.active === false && (
+                            <p className="text-xs text-muted-foreground">
+                              Reactivation requires a verified email link.
+                            </p>
+                          )}
+                          {subscriber.active !== false
+                            && !CANONICAL_NEWSLETTER_MANAGEMENT_ID_PATTERN.test(
+                              subscriber.newsletter_management_id || ''
+                            ) && (
+                            <p
+                              className="text-xs text-amber-700 dark:text-amber-300"
+                              data-testid={`subscriber-management-id-guidance-${subscriber.email}`}
+                            >
+                              Management ID unavailable — subscriber migration or repair is required.
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteSubscriber(subscriber.email)}
-                        disabled={actionLoading === `delete-sub-${subscriber.email}`}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        data-testid={`delete-subscriber-${subscriber.email}`}
-                      >
-                        {actionLoading === `delete-sub-${subscriber.email}` ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      {subscriber.active !== false
+                        && CANONICAL_NEWSLETTER_MANAGEMENT_ID_PATTERN.test(
+                          subscriber.newsletter_management_id || ''
+                        ) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUnsubscribeSubscriber(
+                            subscriber.newsletter_management_id
+                          )}
+                          disabled={actionLoading === `unsubscribe-sub-${subscriber.newsletter_management_id}`}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Unsubscribe subscriber"
+                          aria-label="Unsubscribe subscriber"
+                          data-testid={`unsubscribe-subscriber-${subscriber.newsletter_management_id}`}
+                        >
+                          {actionLoading === `unsubscribe-sub-${subscriber.newsletter_management_id}` ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <UserMinus className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   ))}
                 </div>

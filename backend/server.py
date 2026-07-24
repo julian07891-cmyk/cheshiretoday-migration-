@@ -7425,6 +7425,76 @@ async def get_subscribers(authorized: bool = Depends(get_admin_auth)):
         logger.error(f"Error getting subscribers: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@api_router.post(
+    "/admin/subscribers/{newsletter_management_id}/unsubscribe"
+)
+async def admin_unsubscribe_subscriber(
+    newsletter_management_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Soft-unsubscribe one subscriber while preserving lifecycle history."""
+    if not _valid_newsletter_management_id(newsletter_management_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid subscriber management ID.",
+        )
+
+    try:
+        subscriber = await db.subscribers.find_one(
+            {"newsletter_management_id": newsletter_management_id},
+            {
+                "_id": 0,
+                "newsletter_management_id": 1,
+                "active": 1,
+            },
+        )
+        if not subscriber:
+            raise HTTPException(
+                status_code=404,
+                detail="Subscriber not found.",
+            )
+
+        if subscriber.get("active") is not False:
+            result = await db.subscribers.update_one(
+                {"newsletter_management_id": newsletter_management_id},
+                {
+                    "$set": {
+                        "active": False,
+                        "daily_brief": False,
+                        "weekly_roundup": False,
+                        "breaking_news": False,
+                        "unsubscribed_at": datetime.now(
+                            timezone.utc
+                        ).isoformat(),
+                        "unsubscribe_method": "admin",
+                    }
+                },
+            )
+            if (
+                type(getattr(result, "matched_count", None)) is not int
+                or result.matched_count != 1
+            ):
+                raise RuntimeError(
+                    "Subscriber lifecycle update did not match one record."
+                )
+
+        return {
+            "success": True,
+            "newsletter_management_id": newsletter_management_id,
+            "active": False,
+            "message": "Subscriber unsubscribed.",
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.error("Admin subscriber unsubscribe failed.")
+        raise HTTPException(
+            status_code=503,
+            detail="Could not unsubscribe subscriber.",
+        )
+
+
 @api_router.get("/admin/subscribers/cold-report")
 async def get_cold_subscriber_report(
     days: int = 30,
@@ -13490,7 +13560,15 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
                 raise HTTPException(status_code=400, detail="test_email is required for test mode")
             to_emails = [test_email]
         else:
-            subs = await db.subscribers.find({}, {"_id": 0, "email": 1}).to_list(10000)
+            subs = await db.subscribers.find(
+                {
+                    "$or": [
+                        {"active": True},
+                        {"active": {"$exists": False}},
+                    ]
+                },
+                {"_id": 0, "email": 1},
+            ).to_list(10000)
             to_emails = [x.get("email") for x in subs if x.get("email")]
             if not to_emails:
                 return {"success": False, "message": "No subscribers found"}
