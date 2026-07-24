@@ -50,6 +50,7 @@ const StatCard = memo(({ title, value, icon: Icon, color }) => (
 StatCard.displayName = 'StatCard';
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
+const QUICK_ACTION_BUTTON_LAYOUT = 'min-h-12 h-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm text-center leading-tight whitespace-normal';
 
 const AdminDashboard = ({ onBack }) => {
   const [stats, setStats] = useState(null);
@@ -1872,8 +1873,8 @@ const AdminDashboard = ({ onBack }) => {
       
       if (data.success) {
         toast({
-          title: "🧹 Cleanup Complete",
-          description: `Removed ${data.duplicates_removed} duplicates and ${data.short_articles_removed} short articles. ${data.remaining_articles} articles remaining.`
+          title: "🧹 Duplicate Cleanup Complete",
+          description: `Removed ${data.duplicates_removed} duplicates and ${data.short_articles_removed} very short articles. ${data.remaining_articles} articles remaining.`
         });
         fetchAllData();
       } else {
@@ -1934,7 +1935,7 @@ const AdminDashboard = ({ onBack }) => {
   };
 
   const handleRemoveProductArticles = async () => {
-    if (!window.confirm('This will PERMANENTLY DELETE all product/gadget/shopping articles (NutriBullet, air fryers, deals, etc.). Continue?')) {
+    if (!window.confirm('Permanently delete product, deal and shopping articles? This action cannot be undone.')) {
       return;
     }
     
@@ -1948,8 +1949,8 @@ const AdminDashboard = ({ onBack }) => {
       
       if (data.success) {
         toast({
-          title: "🗑️ Products Removed",
-          description: `Deleted ${data.articles_removed} product/gadget articles.`
+          title: "🗑️ Product Articles Removed",
+          description: `Deleted ${data.articles_removed} product/deal articles.`
         });
         if (data.articles_removed > 0) {
           fetchAllData();
@@ -2068,10 +2069,10 @@ const AdminDashboard = ({ onBack }) => {
 
   const handleClearAndRefresh = async () => {
     const confirmed = await showConfirmation({
-      title: 'Archive & Refresh All Articles',
-      description: 'This will move ALL existing articles to the Archive and import fresh news from RSS feeds. Archived articles can be restored later. This action may take a few minutes.',
+      title: 'Archive All & Run Fresh Import',
+      description: 'Archive the current active article pool, then run a fresh news import. Existing articles remain available in the archive.',
       variant: 'warning',
-      confirmText: 'Archive & Refresh',
+      confirmText: 'Archive All & Run Fresh Import',
       cancelText: 'Cancel'
     });
     
@@ -2105,7 +2106,7 @@ const AdminDashboard = ({ onBack }) => {
       const data = await response.json();
       setImportResult(data);
       toast({
-        title: "Archive & Refresh Complete",
+        title: "Archive & Fresh Import Complete",
         description: `Archived ${data.archived} articles and imported ${data.articles_imported} fresh articles`
       });
       fetchAllData(); // Refresh stats
@@ -2125,10 +2126,10 @@ const AdminDashboard = ({ onBack }) => {
   const [backfillLoading, setBackfillLoading] = useState(false);
   const handleBackfillLocations = async () => {
     const confirmed = await showConfirmation({
-      title: 'Backfill Article Locations',
-      description: 'This will scan all articles and automatically assign location tags (Chester, Warrington, Macclesfield, etc.) based on their content. Articles mentioning surrounding towns will also be tagged to their parent location.',
+      title: 'Recalculate Article Locations',
+      description: 'Review existing article text and update recognised location tags for Chester, Warrington, Crewe, Macclesfield, Wilmslow, Knutsford and Northwich.',
       variant: 'default',
-      confirmText: 'Run Backfill',
+      confirmText: 'Recalculate Locations',
       cancelText: 'Cancel'
     });
     
@@ -2934,14 +2935,14 @@ const handleDeleteArticle = async (articleId) => {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg">Quick Actions</CardTitle>
-            <CardDescription>Quick actions for content management</CardDescription>
+            <CardDescription>Editorial, distribution and maintenance actions</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
               {/* Add Article Button */}
               <Button 
                 onClick={handleAddArticle}
-                className="bg-blue-600 hover:bg-blue-700 h-12 flex items-center justify-center gap-2"
+                className={`bg-blue-600 hover:bg-blue-700 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="add-article-button"
               >
                 <PlusCircle className="h-4 w-4" />
@@ -2951,7 +2952,7 @@ const handleDeleteArticle = async (articleId) => {
               <Button 
                 onClick={handleGenerateArticles}
                 disabled={actionLoading === 'generate'}
-                className="bg-emerald-600 hover:bg-emerald-700 h-12 flex items-center justify-center gap-2"
+                className={`bg-emerald-600 hover:bg-emerald-700 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="generate-articles-button"
               >
                 {actionLoading === 'generate' ? (
@@ -2959,13 +2960,13 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <TrendingUp className="h-4 w-4" />
                 )}
-                <span>Generate</span>
+                <span>Run Hybrid Import</span>
               </Button>
               
               <Button 
                 onClick={handleSendDigest}
                 disabled={actionLoading === 'digest'}
-                className="bg-orange-600 hover:bg-orange-700 h-12 flex items-center justify-center gap-2"
+                className={`bg-orange-600 hover:bg-orange-700 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="send-digest-button"
               >
                 {actionLoading === 'digest' ? (
@@ -2973,13 +2974,13 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <Mail className="h-4 w-4" />
                 )}
-                <span>Daily Brief</span>
+                <span>Send Daily Brief</span>
               </Button>
               
               <Button 
                 onClick={handlePostToFacebook}
                 disabled={actionLoading === 'facebook'}
-                className="bg-blue-700 hover:bg-blue-800 h-12 flex items-center justify-center gap-2"
+                className={`bg-blue-700 hover:bg-blue-800 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="post-to-facebook-button"
               >
                 {actionLoading === 'facebook' ? (
@@ -2987,13 +2988,13 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <Facebook className="h-4 w-4" />
                 )}
-                <span>Facebook</span>
+                <span>Post to Facebook</span>
               </Button>
               
               <Button 
                 onClick={handlePostToTwitter}
                 disabled={actionLoading === 'twitter'}
-                className="bg-sky-500 hover:bg-sky-600 h-12 flex items-center justify-center gap-2"
+                className={`bg-sky-500 hover:bg-sky-600 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="post-to-twitter-button"
               >
                 {actionLoading === 'twitter' ? (
@@ -3001,13 +3002,13 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <Twitter className="h-4 w-4" />
                 )}
-                <span>Twitter</span>
+                <span>Post to Twitter</span>
               </Button>
               
               <Button 
                 onClick={handleCleanupDuplicates}
                 disabled={actionLoading === 'cleanup'}
-                className="bg-red-600 hover:bg-red-700 h-12 flex items-center justify-center gap-2"
+                className={`bg-red-600 hover:bg-red-700 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="cleanup-duplicates-button"
               >
                 {actionLoading === 'cleanup' ? (
@@ -3015,13 +3016,13 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <Trash2 className="h-4 w-4" />
                 )}
-                <span>Cleanup</span>
+                <span>Remove Duplicates</span>
               </Button>
               
               <Button 
                 onClick={handleFixMismatchedContent}
                 disabled={actionLoading === 'fix-content'}
-                className="bg-orange-500 hover:bg-orange-600 h-12 flex items-center justify-center gap-2"
+                className={`bg-orange-500 hover:bg-orange-600 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="fix-content-button"
               >
                 {actionLoading === 'fix-content' ? (
@@ -3035,7 +3036,7 @@ const handleDeleteArticle = async (articleId) => {
               <Button 
                 onClick={handleRemoveProductArticles}
                 disabled={actionLoading === 'remove-products'}
-                className="bg-purple-600 hover:bg-purple-700 h-12 flex items-center justify-center gap-2"
+                className={`bg-purple-600 hover:bg-purple-700 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="remove-products-button"
               >
                 {actionLoading === 'remove-products' ? (
@@ -3043,13 +3044,13 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <ShoppingBag className="h-4 w-4" />
                 )}
-                <span>No Products</span>
+                <span>Remove Product Articles</span>
               </Button>
               
               <Button 
                 onClick={handleSyncRSS}
                 disabled={actionLoading === 'sync-rss'}
-                className="bg-cyan-600 hover:bg-cyan-700 h-12 flex items-center justify-center gap-2"
+                className={`bg-cyan-600 hover:bg-cyan-700 ${QUICK_ACTION_BUTTON_LAYOUT}`}
                 data-testid="sync-rss-button"
               >
                 {actionLoading === 'sync-rss' ? (
@@ -3057,7 +3058,7 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <RefreshCw className="h-4 w-4" />
                 )}
-                <span>Sync RSS</span>
+                <span>Run RSS Sync</span>
               </Button>
             </div>
           </CardContent>
@@ -3096,8 +3097,7 @@ const handleDeleteArticle = async (articleId) => {
               data-testid="tab-subscribers"
             >
               <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Subscribers</span>
-              <span className="sm:hidden">Subs</span>
+              <span>Newsletter</span>
               <Badge variant="secondary" className="ml-1 text-xs hidden sm:inline-flex">{subscribers.length}</Badge>
             </Button>
             <Button 
@@ -3119,8 +3119,7 @@ const handleDeleteArticle = async (articleId) => {
               data-testid="tab-facebook"
             >
               <Facebook className="h-4 w-4" />
-              <span className="hidden sm:inline">Facebook</span>
-              <span className="sm:hidden">FB</span>
+              <span>Facebook</span>
             </Button>
             <Button 
               variant={activeTab === 'digest' ? 'default' : 'ghost'}
@@ -3130,7 +3129,7 @@ const handleDeleteArticle = async (articleId) => {
               data-testid="tab-digest"
             >
               <Mail className="h-4 w-4" />
-              <span>Digest</span>
+              <span>Email</span>
             </Button>
             <Button 
               variant={activeTab === 'analytics' ? 'default' : 'ghost'}
@@ -3143,8 +3142,7 @@ const handleDeleteArticle = async (articleId) => {
               data-testid="tab-analytics"
             >
               <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Analytics</span>
-              <span className="sm:hidden">Stats</span>
+              <span>Analytics</span>
             </Button>
             <Button 
               variant={activeTab === 'archive' ? 'default' : 'ghost'}
@@ -3173,8 +3171,7 @@ const handleDeleteArticle = async (articleId) => {
               data-testid="tab-affiliates"
             >
               <ShoppingBag className="h-4 w-4" />
-              <span className="hidden sm:inline">Affiliates</span>
-              <span className="sm:hidden">Affil</span>
+              <span>Affiliates</span>
             </Button>
             <Button 
               variant={activeTab === 'advertising' ? 'default' : 'ghost'}
@@ -3713,7 +3710,7 @@ const handleDeleteArticle = async (articleId) => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mail className="h-5 w-5 text-blue-600" />
-                  Email Strategy (January 2026)
+                  Email Programme
                 </CardTitle>
                 <CardDescription>
                   Quality over quantity - Daily Brief, Weekly Roundup, Breaking News Alerts
@@ -4575,7 +4572,7 @@ const handleDeleteArticle = async (articleId) => {
                   <div>
                     <CardTitle>Manual Review Articles</CardTitle>
                     <CardDescription>
-                      {manualReviewArticles.length} live articles hidden from public feeds until reviewed
+                      {manualReviewArticles.length} articles withheld from public publication pending editorial review
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -4753,7 +4750,7 @@ const handleDeleteArticle = async (articleId) => {
                               ) : (
                                 <AlertCircle className="h-4 w-4" />
                               )}
-                              <span className="ml-1">Open AI</span>
+                              <span className="ml-1">Create OpenAI Draft</span>
                             </Button>
                             <Button
                               variant="outline"
@@ -4801,7 +4798,7 @@ const handleDeleteArticle = async (articleId) => {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <CardTitle>Archived Articles</CardTitle>
+                      <CardTitle>Article Archive</CardTitle>
                       <CardDescription>
                         {archivedArticleTotal} matching article{archivedArticleTotal === 1 ? '' : 's'} in archive
                         {archivedArticleSearch.trim() ? ` for "${archivedArticleSearch.trim()}"` : ''}
@@ -4947,7 +4944,7 @@ const handleDeleteArticle = async (articleId) => {
                           ) : (
                             <AlertCircle className="h-4 w-4" />
                           )}
-                          <span className="ml-1">Open AI</span>
+                          <span className="ml-1">Create OpenAI Draft</span>
                         </Button>
                         <Button
                           variant="ghost"
@@ -5972,7 +5969,7 @@ const handleDeleteArticle = async (articleId) => {
                   News Import Controls
                 </CardTitle>
                 <CardDescription>
-                  Import fresh news articles from RSS feeds and AI sources
+                  Check current sources and review retained import outcomes
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -5986,16 +5983,17 @@ const handleDeleteArticle = async (articleId) => {
                           <PlusCircle className="h-6 w-6 text-emerald-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground dark:text-white">Import New Articles</h3>
+                          <h3 className="font-semibold text-foreground dark:text-white">Run News Import</h3>
                           <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
-                            Add new articles without removing existing ones
+                            Check current RSS and research sources for suitable Cheshire Today stories.
                           </p>
                         </div>
-                        <ul className="text-xs text-muted-foreground dark:text-gray-400 text-left space-y-1">
-                                                    <li>• ~8 Cheshire/Local articles (authority-first)</li>
-                          <li>• ~12 UK context articles (supporting coverage)</li>
-                          <li>• 2 Business + 2 AI/Tech articles (pillar mix)</li>
-                          <li>• Sports is capped (≤3) and not prioritised</li>
+                        <ul className="text-xs text-muted-foreground dark:text-gray-400 text-left space-y-1 break-words">
+                          <li>• Prioritises Cheshire local reporting</li>
+                          <li>• Includes business, finance and AI &amp; Tech coverage</li>
+                          <li>• Applies duplicate, image, locality and quality checks</li>
+                          <li>• Strong articles may publish; others are sent to Manual Review</li>
+                          <li>• Results depend on current source availability</li>
                         </ul>
                         <Button
                           onClick={handleImportNews}
@@ -6011,7 +6009,7 @@ const handleDeleteArticle = async (articleId) => {
                           ) : (
                             <>
                               <PlusCircle className="h-4 w-4 mr-2" />
-                              Import New Articles
+                              Run News Import
                             </>
                           )}
                         </Button>
@@ -6027,15 +6025,15 @@ const handleDeleteArticle = async (articleId) => {
                           <Archive className="h-6 w-6 text-amber-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground dark:text-white">Archive & Refresh</h3>
+                          <h3 className="font-semibold text-foreground dark:text-white">Archive All &amp; Run Fresh Import</h3>
                           <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
-                            Move all articles to archive and import fresh news
+                            Archive the current active article pool, then run a fresh news import.
                           </p>
                         </div>
                         <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
                           <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                             <Archive className="h-3 w-3" />
-                            Articles will be moved to Archive, not deleted
+                            This is a broad maintenance action. Existing articles remain available in the archive.
                           </p>
                         </div>
                         <Button
@@ -6052,7 +6050,7 @@ const handleDeleteArticle = async (articleId) => {
                           ) : (
                             <>
                               <Archive className="h-4 w-4 mr-2" />
-                              Archive & Refresh All
+                              Archive All &amp; Run Fresh Import
                             </>
                           )}
                         </Button>
@@ -6068,15 +6066,15 @@ const handleDeleteArticle = async (articleId) => {
                           <MapPin className="h-6 w-6 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground dark:text-white">Backfill Locations</h3>
+                          <h3 className="font-semibold text-foreground dark:text-white">Recalculate Article Locations</h3>
                           <p className="text-sm text-muted-foreground dark:text-gray-400 mt-1">
-                            Auto-tag articles with location categories
+                            Review existing article text and update recognised Cheshire location tags.
                           </p>
                         </div>
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
                           <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
-                            Scans content for Chester, Warrington, Macclesfield, etc.
+                            Supports Chester, Warrington, Crewe, Macclesfield, Wilmslow, Knutsford and Northwich.
                           </p>
                         </div>
                         <Button
@@ -6093,7 +6091,7 @@ const handleDeleteArticle = async (articleId) => {
                           ) : (
                             <>
                               <MapPin className="h-4 w-4 mr-2" />
-                              Run Location Backfill
+                              Recalculate Locations
                             </>
                           )}
                         </Button>
@@ -6167,17 +6165,17 @@ const handleDeleteArticle = async (articleId) => {
                   <div>
                     <h4 className="font-medium text-foreground dark:text-white mb-2">Local Cheshire Sources</h4>
                     <ul className="space-y-1 text-muted-foreground dark:text-gray-400">
-                      <li>• Cheshire Live (Macclesfield, Chester)</li>
-                      <li>• Warrington Guardian</li>
-                      <li>• Manchester Evening News</li>
+                      <li>• Cheshire Live</li>
+                      <li>• Chester Standard and Warrington Guardian</li>
+                      <li>• Filtered Cheshire town and council searches</li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-medium text-foreground dark:text-white mb-2">National UK Sources</h4>
                     <ul className="space-y-1 text-muted-foreground dark:text-gray-400">
-                      <li>• BBC News (UK, Sports, Business)</li>
-                      <li>• The Guardian (UK, Tech)</li>
-                      <li>• Sky News (UK News)</li>
+                      <li>• BBC News business and technology feeds</li>
+                      <li>• Guardian money and finance coverage</li>
+                      <li>• Sky News business and technology feeds</li>
                     </ul>
                   </div>
                 </div>
