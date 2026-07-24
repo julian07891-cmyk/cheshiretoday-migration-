@@ -31,12 +31,9 @@ CONFLICT_409 = "Your email preferences could not be updated. Please try again."
 VERIFY_PATH = "/api/newsletter/preferences/verify"
 UPDATE_PATH = "/api/newsletter/preferences/secure"
 
-DORMANT_ROUTES = (
-    ("POST", "/api/newsletter/preferences/request-link", {"email": "reader@example.com"}),
+FAIL_CLOSED_WITHOUT_SECRET_ROUTES = (
     ("POST", "/api/newsletter/unsubscribe/confirm", {"token": TOKEN}),
     ("POST", "/api/newsletter/unsubscribe/one-click", None),
-    ("POST", "/api/newsletter/unsubscribe/request-link", {"email": "reader@example.com"}),
-    ("POST", "/api/newsletter/reactivate/request-link", {"email": "reader@example.com"}),
     (
         "POST",
         "/api/newsletter/reactivate/confirm",
@@ -550,8 +547,11 @@ def test_conditional_update_conflict_returns_generic_409(monkeypatch):
     assert TOKEN not in response.text
 
 
-@pytest.mark.parametrize(("method", "path", "payload"), DORMANT_ROUTES)
-def test_other_six_secure_routes_remain_exact_generic_503(
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    FAIL_CLOSED_WITHOUT_SECRET_ROUTES,
+)
+def test_confirmation_routes_fail_closed_without_secret(
     monkeypatch,
     method,
     path,

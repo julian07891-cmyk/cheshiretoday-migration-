@@ -516,10 +516,10 @@ def _install_transactional_update(
     )
 
 
-def test_confirmation_enforcement_gate_is_literal_false_in_source():
+def test_confirmation_enforcement_gate_is_enabled():
     source = open(server.__file__, encoding="utf-8").read()
-    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in source
-    assert server.NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is False
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in source
+    assert server.NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED is True
 
 
 def test_disabled_gate_precedes_every_collaborator(monkeypatch):
@@ -1615,9 +1615,9 @@ def test_route_registration_and_unrelated_routes_are_preserved():
         assert routes.count(registration) == 1
 
 
-def test_runtime_collaborators_exist_but_activation_remains_disabled():
+def test_runtime_collaborators_exist_with_activation_enabled():
     source = open(server.__file__, encoding="utf-8").read()
-    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = False" in source
+    assert "NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True" in source
     factory_marker = (
         "def _create_newsletter_preference_challenge_repository():"
     )

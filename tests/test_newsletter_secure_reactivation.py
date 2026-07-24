@@ -844,26 +844,6 @@ def test_privacy_safe_failures(monkeypatch):
         assert private not in response.text
 
 
-def test_three_request_link_routes_remain_dormant(monkeypatch):
-    class FailOnAccess:
-        def __getattr__(self, name):
-            raise AssertionError(f"unexpected collaborator access: {name}")
-
-    monkeypatch.setattr(server, "db", FailOnAccess())
-    monkeypatch.setattr(server, "email_service", FailOnAccess())
-    client = TestClient(server.app)
-    routes = (
-        ("/api/newsletter/preferences/request-link", {"email": "reader@example.com"}),
-        ("/api/newsletter/unsubscribe/request-link", {"email": "reader@example.com"}),
-        ("/api/newsletter/reactivate/request-link", {"email": "reader@example.com"}),
-    )
-
-    for path, payload in routes:
-        response = client.post(path, json=payload)
-        assert response.status_code == 503
-        assert response.json() == {"detail": GENERIC_503}
-
-
 def test_earlier_secure_and_signup_routes_remain_singly_registered():
     expected = (
         ("POST", "/api/newsletter/preferences/verify"),

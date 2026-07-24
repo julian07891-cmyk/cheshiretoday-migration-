@@ -771,34 +771,26 @@ def test_one_click_does_not_depend_on_authorization_or_cookies(monkeypatch):
     assert response.json() == SUCCESS_BODY
 
 
-def test_four_remaining_secure_routes_stay_dormant(monkeypatch):
+def test_reactivation_confirmation_fails_closed_without_secret(monkeypatch):
     class FailOnAccess:
         def __getattr__(self, name):
             raise AssertionError(f"unexpected access: {name}")
 
     monkeypatch.setattr(server, "db", FailOnAccess())
     monkeypatch.setattr(server, "email_service", FailOnAccess())
-    client = TestClient(server.app)
-    routes = (
-        ("POST", "/api/newsletter/preferences/request-link", {"email": "reader@example.com"}),
-        ("POST", "/api/newsletter/unsubscribe/request-link", {"email": "reader@example.com"}),
-        ("POST", "/api/newsletter/reactivate/request-link", {"email": "reader@example.com"}),
-        (
-            "POST",
-            "/api/newsletter/reactivate/confirm",
-            {
-                "token": TOKEN,
-                "daily_brief": True,
-                "weekly_roundup": False,
-                "breaking_news": False,
-            },
-        ),
+
+    response = TestClient(server.app).post(
+        "/api/newsletter/reactivate/confirm",
+        json={
+            "token": TOKEN,
+            "daily_brief": True,
+            "weekly_roundup": False,
+            "breaking_news": False,
+        },
     )
 
-    for method, path, payload in routes:
-        response = client.request(method, path, json=payload)
-        assert response.status_code == 503
-        assert response.json() == {"detail": GENERIC_503}
+    assert response.status_code == 503
+    assert response.json() == {"detail": GENERIC_503}
 
 
 def test_stage_4b_and_signup_routes_remain_singly_registered():

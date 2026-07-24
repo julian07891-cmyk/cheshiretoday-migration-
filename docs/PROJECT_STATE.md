@@ -23498,3 +23498,125 @@ The only remaining validation is the first production RSS-generated article crea
 - introduces no formatting regressions.
 
 Phase 3A will be marked fully complete once this live production verification has been successfully performed.
+
+## Operational update — 24 July 2026 — Newsletter test alignment and article live-pool hardening
+
+### Repository baseline
+
+- branch: `full-scrape-prod`
+- work began from commit: `f4e5e6131dd66f153d85ebcdd142666521b042f1`
+- `AGENTS.md` remains intentionally untracked and excluded
+- no production mutation, deployment, push or database repair occurred during this work
+
+### Newsletter activation test alignment
+
+The production newsletter activation state was already:
+
+- `NEWSLETTER_REQUEST_LINKS_ENABLED = True`
+- `NEWSLETTER_CHALLENGE_ENFORCEMENT_ENABLED = True`
+
+Several older tests still described the former dormant state. Those obsolete assertions were corrected without changing newsletter runtime behaviour.
+
+Corrections:
+
+- challenge-enforcement tests now assert the enabled production state
+- request-link routes now expect the established privacy-safe HTTP 202 contract
+- confirmation routes continue to fail closed with generic HTTP 503 when the signing secret is unavailable
+- obsolete tests claiming that the three request-link routes remain dormant were removed
+- route-contract test naming now reflects both privacy-safe 202 request-link responses and fail-closed confirmation behaviour
+
+Verification:
+
+- complete newsletter suite: `968 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+
+Known Python 3.13 gzip/resource warnings and existing FastAPI deprecation warnings remain non-blocking and did not produce test failures.
+
+### Article live-pool root cause
+
+The configured visibility cap remained 100, but the usable public pool contracted because:
+
+- the cap previously selected recent records without requiring complete article content, an image or an eligible editorial state
+- metadata-only RSS records could consume live slots
+- later duplicate and quality cleanup archived invalid records without refilling vacated slots
+- valid records archived by automatic cap or ratio balancing were not reliably restored
+- the optional ratio rebalancer can restrict visibility further when enabled
+- public API editorial filters reduce the final public set beyond the database-visible count
+
+### Article live-pool correction
+
+The cap now:
+
+- requires a title, image and at least 1,000 characters of full article content
+- excludes metadata-only, Manual Review, unsafe, crime-heavy, sport, celebrity, entertainment and lifestyle records
+- restores only eligible records previously archived with `auto_cap` or `ratio_rebalance`
+- preserves intentional Admin, duplicate, short-content, Manual Review and other editorial archives
+- enforces a maximum of 100 eligible records
+- targets the established 40% Local, 40% Business/Finance/Property/Economy and 20% AI & Tech allocation when sufficient inventory exists
+- uses other suitable material only to fill genuine inventory shortages
+- runs again after duplicate and quality cleanup so removed metadata records no longer leave vacant live slots
+
+### Controlled repair utility
+
+Added `backend/scripts/repair_live_article_pool.py`.
+
+The utility is not an automatic or blind restoration tool. Safeguards include:
+
+- read-only `--dry-run`
+- mandatory `--expected-count` for apply
+- interactive TTY requirement
+- exact confirmation phrase
+- fresh eligibility scan immediately before writing
+- exact ordered ID-set comparison
+- count-drift rejection before writes
+- one guarded `update_many`
+- conditional archive preconditions
+- exact `matched_count` and `modified_count` validation
+- post-write verification requiring zero remaining eligible repair candidates
+
+The write is restricted to the exact eligible IDs that remain:
+
+- `archived=True`
+- `archive_reason` in `auto_cap` or `ratio_rebalance`
+
+No repair was run against production.
+
+### Article live-pool verification
+
+- focused repair and live-pool tests: `12 passed`
+- related article, canonical, hub and sitemap tests: `75 passed`
+- broader focused article/importer/SEO regression selection previously passed: `144 passed`
+- Python compilation: passed
+- CLI help: passed
+- `git diff --check`: passed
+
+A broader repository run reported `1,382 passed`, `21 failed` and `12 errors`. The failures and errors were production-coupled tests requiring configured API, Admin-login or live database collaborators and failed before exercising the live-pool change. No production POST request was made.
+
+### Expected production behaviour
+
+After deployment and the next normal scheduled generation cycle:
+
+- up to 100 eligible full-content articles may be visible
+- metadata-only records remain excluded
+- eligible records previously archived only by automatic cap or ratio balancing may refill the pool
+- intentional safety and editorial archives remain untouched
+- the visible count may remain below 100 when fewer than 100 safe full-content records exist
+
+Immediate production recovery must not use a broad archive restore. Any controlled repair invocation requires a separate explicit approval after deployment and a fresh dry-run review.
+
+### Files included in the pending commit
+
+- `backend/server.py`
+- `backend/scripts/repair_live_article_pool.py`
+- `tests/test_article_live_pool_cap.py`
+- `tests/test_newsletter_challenge_enforcement.py`
+- `tests/test_newsletter_secure_preferences.py`
+- `tests/test_newsletter_secure_reactivation.py`
+- `tests/test_newsletter_secure_route_contracts.py`
+- `tests/test_newsletter_secure_unsubscribe.py`
+- `docs/PROJECT_STATE.md`
+
+### Immediate next step
+
+Review this state-file append, stage `docs/PROJECT_STATE.md`, rerun staged diff checks, then commit. Do not run the production repair before deployment and a separately approved dry-run.

@@ -2865,7 +2865,20 @@ async def _import_hybrid_news_internal(
             active_filter = {"$or": [{"archived": {"$exists": False}}, {"archived": False}]}
             active = await db.articles.find(
                 active_filter,
-                {"_id": 1, "publishedDate": 1, "scope": 1, "category": 1}
+                {
+                    "_id": 1,
+                    "publishedDate": 1,
+                    "scope": 1,
+                    "category": 1,
+                    "source": 1,
+                    "manual_edited": 1,
+                    "manual_edit_protected": 1,
+                    "manual_review_hidden_from_public": 1,
+                    "verification_status": 1,
+                    "rewrite_status": 1,
+                    "editorial_status": 1,
+                    "moderation_status": 1,
+                }
             ).sort("publishedDate", -1).to_list(10000)
 
             local, business, ai, uk_other = [], [], [], []
@@ -2890,6 +2903,11 @@ async def _import_hybrid_news_internal(
             Q_AI = 6
             Q_UK = 9
 
+            owner_protected = [
+                article
+                for article in active
+                if _is_owner_protected_article(article)
+            ]
             keep = []
             keep += local[:Q_LOCAL]
             keep += business[:Q_BUSINESS]
@@ -2909,7 +2927,16 @@ async def _import_hybrid_news_internal(
                         break
 
             keep = keep[:MAX_VISIBLE]
-            keep_ids = [a["_id"] for a in keep]
+            owner_protected_ids = {
+                article.get("_id")
+                for article in owner_protected
+                if article.get("_id")
+            }
+            keep_ids = list(
+                owner_protected_ids.union(
+                    a["_id"] for a in keep if a.get("_id")
+                )
+            )
 
             archive_query = dict(active_filter)
             archive_query["_id"] = {"$nin": keep_ids}
@@ -3393,6 +3420,8 @@ async def _remove_duplicates_internal():
 
         for article in remaining:
             if article.get("manual_review_hidden_from_public") is True:
+                continue
+            if _is_owner_protected_article(article):
                 continue
             content = (article.get('content') or '').strip()
             summary = (article.get('summary') or '').strip()
@@ -17321,23 +17350,74 @@ async def cleanup_old_articles():
         logger.error(f"Error cleaning up old articles: {str(e)}")
 
 
+def _is_owner_protected_article(article: dict) -> bool:
+    """Recognise existing owner approval markers that automated caps must preserve."""
+    if article.get("manual_review_hidden_from_public") is True:
+        return False
+    if str(article.get("verification_status") or "").strip() == "needs_manual_review":
+        return False
+    if str(article.get("rewrite_status") or "").strip() in {
+        "manual_review_required",
+        "ai_rewrite_needs_review",
+    }:
+        return False
+    verification_status = str(article.get("verification_status") or "").strip()
+    rewrite_status = str(article.get("rewrite_status") or "").strip()
+    return bool(
+        article.get("manual_edited") is True
+        or article.get("manual_edit_protected") is True
+        or str(article.get("source") or "").strip() == "Manual Entry"
+        or verification_status
+        in {"manual_corrected_verified_limited", "manual_force_live"}
+        or rewrite_status in {"manual_corrected", "manual_force_live"}
+    )
+
+
+def _counts_towards_visible_cap(article: dict) -> bool:
+    """Exclude metadata and unpublished review records from the existing cap."""
+    content = str(article.get("content") or "").strip()
+    summary = str(article.get("summary") or "").strip()
+    return bool(
+        content
+        and article.get("manual_review_hidden_from_public") is not True
+        and str(article.get("verification_status") or "") != "needs_manual_review"
+        and str(article.get("rewrite_status") or "")
+        not in {"manual_review_required", "ai_rewrite_needs_review"}
+        and (
+            _is_owner_protected_article(article)
+            or len(f"{content} {summary}".strip()) >= 1000
+        )
+    )
+
+
 async def cap_visible_articles(keep: int = 200):
     """
-    Keep the newest `keep` articles visible (archived=False) and archive the rest (archived=True).
-    Also always keep priority/featured items visible.
-    This keeps the site lean during the build phase.
+    Keep the newest eligible records visible while protecting owner-approved work.
     """
     try:
-        # Always keep these unarchived
-        priority_ids_docs = await db.articles.find(
-            {"$or": [{"featured": True}, {"is_priority_cheshire": True}]},
-            {"_id": 1}
+        candidates = await db.articles.find(
+            {
+                "$or": [
+                    {"archived": {"$exists": False}},
+                    {"archived": False},
+                ]
+            },
+            {
+                "_id": 1,
+                "content": 1,
+                "publishedDate": 1,
+                "created_at": 1,
+                "source": 1,
+                "featured": 1,
+                "force_live": 1,
+                "is_priority_cheshire": 1,
+                "manual_review_hidden_from_public": 1,
+                "verification_status": 1,
+                "rewrite_status": 1,
+                "manual_edited": 1,
+                "manual_edit_protected": 1,
+            },
         ).to_list(10000)
-        priority_ids = [d.get("_id") for d in priority_ids_docs if d.get("_id")]
-
-        # Newest N ids by hybrid freshness: keep stories fresh for the site
-        # without losing original source publication dates elsewhere.
-        candidates = await db.articles.find({}, {"_id": 1, "publishedDate": 1, "created_at": 1}).to_list(10000)
 
         def _dt(v):
             if isinstance(v, datetime):
@@ -17350,32 +17430,67 @@ async def cap_visible_articles(keep: int = 200):
             except Exception:
                 return datetime.fromtimestamp(0, tz=timezone.utc)
 
-        candidates.sort(key=lambda d: max(_dt(d.get("publishedDate")), _dt(d.get("created_at"))), reverse=True)
-        newest_ids = [d.get("_id") for d in candidates[:keep] if d.get("_id")]
+        candidates.sort(
+            key=lambda article: (
+                1
+                if article.get("force_live") is True
+                or article.get("featured") is True
+                or article.get("is_priority_cheshire") is True
+                else 0,
+                max(
+                    _dt(article.get("publishedDate")),
+                    _dt(article.get("created_at")),
+                ),
+            ),
+            reverse=True,
+        )
+        protected_ids = {
+            article["_id"]
+            for article in candidates
+            if article.get("_id") is not None
+            and _is_owner_protected_article(article)
+        }
+        eligible = [
+            article
+            for article in candidates
+            if _counts_towards_visible_cap(article)
+        ]
+        newest_ids = [
+            article["_id"]
+            for article in eligible[:keep]
+            if article.get("_id") is not None
+        ]
+        keep_ids = list(protected_ids.union(newest_ids))
 
-        keep_ids = list({*priority_ids, *newest_ids})
-
-        # Archive everything else
+        # Metadata and unpublished review records do not consume cap slots.
+        # They retain their existing visibility/review state; only eligible
+        # non-protected records outside the cap are automatically archived.
+        eligible_ids = [
+            article["_id"]
+            for article in eligible
+            if article.get("_id") is not None
+            and article["_id"] not in protected_ids
+        ]
         await db.articles.update_many(
-            {"_id": {"$nin": keep_ids}},
+            {
+                "_id": {
+                    "$in": eligible_ids,
+                    "$nin": keep_ids,
+                },
+            },
             {"$set": {"archived": True, "archived_at": datetime.now(timezone.utc).isoformat(), "archive_reason": "auto_cap"}}
         )
 
-        # Ensure kept are visible
-        await db.articles.update_many(
-            {
-                "_id": {"$in": keep_ids},
-                "$or": [
-                    {"archived": {"$exists": False}},
-                    {"archived": False},
-                    {"archive_reason": "auto_cap"}
-                ]
-            },
-            {"$set": {"archived": False}, "$unset": {"archive_reason": "", "archived_at": ""}}
+        logger.info(
+            "✅ cap_visible_articles: "
+            f"keep={keep}, keep_ids={len(keep_ids)}, protected={len(protected_ids)}"
         )
-
-        logger.info(f"✅ cap_visible_articles: keep={keep}, keep_ids={len(keep_ids)}")
-        return {"success": True, "keep": keep, "keep_ids": len(keep_ids)}
+        return {
+            "success": True,
+            "keep": keep,
+            "keep_ids": len(keep_ids),
+            "protected": len(protected_ids),
+        }
     except Exception as e:
         logger.error(f"cap_visible_articles error: {str(e)}")
         return {"success": False, "error": str(e)}
@@ -17451,7 +17566,7 @@ async def daily_article_generation(count: int = 12):
         except Exception as dup_error:
             logger.error(f"Error during duplicate removal: {str(dup_error)}")
             pass
-        
+
         # Clean up old articles (independent of generation)
         # Automatic hard-delete cleanup disabled.
         # Old source publication dates can cause newly imported stories to be deleted.

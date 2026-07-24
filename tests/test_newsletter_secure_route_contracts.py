@@ -97,6 +97,12 @@ SECURE_ROUTES = (
     ),
 )
 
+REQUEST_LINK_PATHS = {
+    "/api/newsletter/preferences/request-link",
+    "/api/newsletter/unsubscribe/request-link",
+    "/api/newsletter/reactivate/request-link",
+}
+
 LEGACY_ROUTES = (
     ("POST", "/api/subscribe", server.subscribe_newsletter),
     ("POST", "/api/newsletter/subscribe", server.subscribe_newsletter),
@@ -274,7 +280,7 @@ class FailOnAccess:
     ("method", "path", "_endpoint", "payload", "_request_model", "_response_model"),
     SECURE_ROUTES,
 )
-def test_secure_routes_fail_closed_without_secret_or_business_access(
+def test_secure_routes_preserve_privacy_without_secret_or_business_access(
     monkeypatch,
     method,
     path,
@@ -299,8 +305,19 @@ def test_secure_routes_fail_closed_without_secret_or_business_access(
     else:
         response = client.request(method, path, json=payload)
 
-    assert response.status_code == 503
-    assert response.json() == {"detail": UNAVAILABLE_DETAIL}
+    if path in REQUEST_LINK_PATHS:
+        assert response.status_code == 202
+        assert response.json() == {
+            "success": True,
+            "message": (
+                "If the address is eligible, an email with the next step "
+                "will be sent shortly."
+            ),
+        }
+    else:
+        assert response.status_code == 503
+        assert response.json() == {"detail": UNAVAILABLE_DETAIL}
+
     assert database.touched is False
     assert email_service.touched is False
 
