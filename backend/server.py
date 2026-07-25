@@ -516,6 +516,138 @@ def is_weak_generic_image(url: str) -> bool:
         return True
     return any(pattern in img for pattern in WEAK_GENERIC_IMAGE_PATTERNS)
 
+def build_manual_review_editorial_metadata(article: dict) -> dict:
+    """Describe an existing Manual Review decision without influencing it."""
+    content = str(article.get("content") or "").strip()
+    reason = str(article.get("manual_review_reason") or "").strip()
+    reason_lower = reason.lower()
+    source = str(article.get("source") or "").strip().lower()
+
+    if source == "manual entry":
+        source_type = "manual_entry"
+    elif article.get("is_local_feed") is True:
+        source_type = "local_rss"
+    elif article.get("ai_rewritten") is True or article.get("is_rewritten") is True:
+        source_type = "ai_rewrite"
+    elif article.get("source_url"):
+        source_type = "rss_or_publisher"
+    else:
+        source_type = "unknown"
+
+    detected_locality = str(
+        article.get("location")
+        or article.get("priority_location")
+        or article.get("scope")
+        or "Not specified"
+    ).strip()
+
+    topic_labels = (
+        "Community feature",
+        "Human-interest",
+        "Lifestyle",
+        "Local attraction",
+        "Retail feature",
+        "Hospitality",
+        "Tourism",
+        "Entertainment",
+        "Soft local news",
+    )
+    editorial_topic = next(
+        (label for label in topic_labels if label.lower() in reason_lower),
+        str(article.get("category") or "Uncategorised").strip(),
+    )
+
+    published_at = article.get("publishedDate") or article.get("published_date")
+    review_at = article.get("manual_review_created_at")
+    freshness_bucket = "unknown"
+    try:
+        published_dt = (
+            published_at
+            if isinstance(published_at, datetime)
+            else datetime.fromisoformat(str(published_at).replace("Z", "+00:00"))
+        )
+        review_dt = (
+            review_at
+            if isinstance(review_at, datetime)
+            else datetime.fromisoformat(str(review_at).replace("Z", "+00:00"))
+        )
+        if published_dt.tzinfo is None:
+            published_dt = published_dt.replace(tzinfo=timezone.utc)
+        if review_dt.tzinfo is None:
+            review_dt = review_dt.replace(tzinfo=timezone.utc)
+        age_days = max(0, (review_dt - published_dt).days)
+        freshness_bucket = "fresh" if age_days == 0 else "recent" if age_days <= 7 else "older"
+    except (TypeError, ValueError):
+        pass
+
+    if "duplicate" in reason_lower:
+        duplicate_status = "flagged"
+    else:
+        duplicate_status = "not_flagged"
+
+    if "moved back to manual review" in reason_lower:
+        failed_public_gate = "editorial_review"
+    elif any(value in reason_lower for value in ("length", "short", "empty", "needs rewrite")):
+        failed_public_gate = "content_length"
+    elif any(value in reason_lower for value in ("invented", "unsupported", "repeated", "editorial")):
+        failed_public_gate = "editorial_safety"
+    elif "location" in reason_lower or "locality" in reason_lower:
+        failed_public_gate = "locality"
+    elif "fresh" in reason_lower or "older than" in reason_lower:
+        failed_public_gate = "freshness"
+    elif "topic cap" in reason_lower:
+        failed_public_gate = "topic_cap"
+    elif "public import cap" in reason_lower:
+        failed_public_gate = "public_import_cap"
+    elif any(label.lower() in reason_lower for label in topic_labels):
+        failed_public_gate = "editorial_relevance"
+    else:
+        failed_public_gate = "other"
+
+    image_status = (
+        "missing"
+        if not str(article.get("image") or "").strip()
+        else "weak"
+        if is_weak_generic_image(str(article.get("image") or ""))
+        else "available"
+    )
+
+    auto_publish_candidate = bool(
+        failed_public_gate in {"public_import_cap", "topic_cap", "freshness"}
+        and len(content) >= 1000
+        and image_status == "available"
+        and duplicate_status == "not_flagged"
+    )
+
+    if failed_public_gate in {"editorial_safety", "locality", "editorial_review"}:
+        recommendation = "Needs editorial review"
+    elif len(content) < 1000 or failed_public_gate == "content_length":
+        recommendation = "Needs rewrite"
+    elif auto_publish_candidate:
+        recommendation = "Strong candidate"
+    else:
+        recommendation = "Borderline"
+
+    return {
+        "routing_reason": reason or "Manual Review reason not recorded",
+        "source_type": source_type,
+        "detected_locality": detected_locality or "Not specified",
+        "editorial_topic": editorial_topic or "Uncategorised",
+        "rewrite_status": str(article.get("rewrite_status") or "unknown"),
+        "rewrite_length": len(content),
+        "image_status": image_status,
+        "freshness_bucket": freshness_bucket,
+        "duplicate_status": duplicate_status,
+        "auto_publish_candidate": auto_publish_candidate,
+        "failed_public_gate": failed_public_gate,
+        "publication_recommendation": recommendation,
+    }
+
+def attach_manual_review_editorial_metadata(article: dict) -> dict:
+    if article.get("manual_review_hidden_from_public") is True:
+        article["editorial_metadata"] = build_manual_review_editorial_metadata(article)
+    return article
+
 def extract_photo_id(url: str) -> str:
     """Return a stable ID for an image URL (strip query params only)."""
     if not url:
@@ -1923,6 +2055,7 @@ async def import_real_news(
                     article_doc["archived_at"] = now_iso
                     article_doc["manual_review_hits"] = risk_hits
 
+            article_doc = attach_manual_review_editorial_metadata(article_doc)
             try:
                 await db.articles.insert_one(article_doc)
             except DuplicateKeyError:
@@ -2451,6 +2584,7 @@ async def _import_hybrid_news_internal(
 
                     article = apply_public_import_cap(article, title)
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
+                    article = attach_manual_review_editorial_metadata(article)
                     try:
                         await db.articles.insert_one(article)
                     except DuplicateKeyError:
@@ -2596,6 +2730,7 @@ async def _import_hybrid_news_internal(
             review_doc["verification_status"] = "needs_manual_review"
             review_doc["rewrite_status"] = "manual_review_required"
             review_doc["archive_reason"] = "needs_manual_review"
+            review_doc = attach_manual_review_editorial_metadata(review_doc)
 
             try:
                 await db.articles.insert_one(review_doc)
@@ -2794,6 +2929,7 @@ async def _import_hybrid_news_internal(
             )
             article = apply_public_import_cap(article, title)
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
+            article = attach_manual_review_editorial_metadata(article)
             try:
                 await db.articles.insert_one(article)
             except DuplicateKeyError:
@@ -2952,6 +3088,7 @@ async def _import_hybrid_news_internal(
                         article["archived"] = False
 
                 article = apply_public_import_cap(article, title)
+                article = attach_manual_review_editorial_metadata(article)
                 try:
                     await db.articles.insert_one(article)
                 except DuplicateKeyError:
@@ -3307,6 +3444,7 @@ async def regenerate_recent_article_content(authorized: bool = Depends(get_admin
                     "manual_review_hidden_from_public",
                     "manual_review_reason",
                     "manual_review_created_at",
+                    "editorial_metadata",
                     "manual_review_hits",
                     "archived",
                     "archived_at",
@@ -8684,6 +8822,9 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
                     "verification_status": "needs_manual_review",
                     "rewrite_status": "manual_review_required",
                 })
+                update_doc["editorial_metadata"] = build_manual_review_editorial_metadata(
+                    {**existing, **update_doc}
+                )
                 restored_from_manual_review = False
             else:
                 restored_from_manual_review = True
@@ -8701,6 +8842,7 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
                     "manual_review_hits": "",
                     "manual_review_reason": "",
                     "manual_review_created_at": "",
+                    "editorial_metadata": "",
                 })
 
         update_operation = {"$set": update_doc}
@@ -8761,6 +8903,9 @@ async def move_article_to_manual_review(article_id: str, authorized: bool = Depe
             "force_live": False,
             "updated_at": now_iso,
         }
+        update_doc["editorial_metadata"] = build_manual_review_editorial_metadata(
+            {**existing, **update_doc}
+        )
 
         await db.articles.update_one(
             match_query,
@@ -8835,6 +8980,7 @@ async def toggle_force_live_article(article_id: str, authorized: bool = Depends(
                 "manual_review_hits": "",
                 "manual_review_reason": "",
                 "manual_review_created_at": "",
+                "editorial_metadata": "",
             })
 
         update_operation = {"$set": update_doc}
@@ -9029,6 +9175,7 @@ async def get_manual_review_articles(
             "priority_location": 1,
             "manual_review_reason": 1,
             "manual_review_created_at": 1,
+            "editorial_metadata": 1,
             "verification_status": 1,
             "rewrite_status": 1,
             "ai_review_status": 1,
@@ -9044,6 +9191,9 @@ async def get_manual_review_articles(
         articles = await db.articles.find(query, projection).sort("publishedDate", -1).skip(safe_skip).limit(safe_limit).to_list(safe_limit)
 
         for article in articles:
+            # Older Manual Review records predate persisted editorial metadata.
+            # Derive the same read-only contract so every Admin row is complete.
+            article["editorial_metadata"] = build_manual_review_editorial_metadata(article)
             article["id"] = str(article.get("_id") or article.get("id") or "")
             if "_id" in article:
                 del article["_id"]
@@ -16420,6 +16570,7 @@ async def sync_rss_now(authorized: bool = Depends(get_admin_auth)):
                     ai_rewrite_used=True,
                     title=title,
                 )
+                article_doc = attach_manual_review_editorial_metadata(article_doc)
                 
                 await db.articles.insert_one(article_doc)
                 imported_count += 1
@@ -17484,6 +17635,7 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
             f"Article hidden for manual review: {title[:80]} | "
             f"ai_hits={hits} | local_location_missing={bool(local_location_reason)}"
         )
+        article = attach_manual_review_editorial_metadata(article)
     elif ai_rewrite_used:
         article.setdefault("verification_status", "ai_rewrite_auto_screened")
         article.setdefault("rewrite_status", "ai_rewritten")

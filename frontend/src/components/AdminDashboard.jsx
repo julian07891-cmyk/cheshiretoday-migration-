@@ -29,6 +29,7 @@ import {
   formatImportCompletion,
   removeArchivedSelection,
 } from '../services/adminArticleActions';
+import ManualReviewEditorialMetadata from './ManualReviewEditorialMetadata';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -4754,6 +4755,7 @@ const handleDeleteArticle = async (articleId) => {
                               {article.manual_review_reason}
                             </p>
                           )}
+                          <ManualReviewEditorialMetadata metadata={article.editorial_metadata} />
                           <div className="flex flex-wrap gap-2 mt-3">
                             {article.source_url && (
                               <Button

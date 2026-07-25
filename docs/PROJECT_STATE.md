@@ -23885,3 +23885,24 @@ Verification:
 - no production import, database mutation, staging, commit or deployment was performed
 
 After deployment, the next scheduled import should allow obvious high-value Local investment and civic-improvement candidates to reach the existing strict automatic-publication path. Actual public counts remain dependent on current feed availability, successful full-length rewriting and every existing safety guard; soft stories should continue to appear only in Manual Review.
+
+### Manual Review editorial metadata
+
+Manual Review records now have a deterministic, non-scoring editorial metadata contract for Admin presentation. New guarded/imported records persist `editorial_metadata`; the authenticated Manual Review list derives the same contract in memory for historical records, so no database migration or read-time mutation is required.
+
+The metadata describes the decision already made: routing reason, source type, detected locality, editorial topic, rewrite status and length, image status, freshness relative to review time, duplicate flag, failed public gate, automatic-publication candidacy and one of four deterministic recommendations: Strong candidate, Borderline, Needs rewrite or Needs editorial review. Automatic-publication candidacy is true only for complete records with usable images and no duplicate concern that were retained by a non-quality operational gate: public import cap, topic cap or freshness limit. A Strong candidate recommendation always carries that same true candidacy value. It is descriptive only. No importer, publication gate, safety guard, counter, homepage query, live-pool rule or public route consumes it.
+
+The Admin Manual Review card now shows the recommendation and a compact responsive fact grid beneath the existing review reason. Existing Source, Edit, Create OpenAI Draft and Archive actions are unchanged.
+
+Verification:
+
+- focused backend metadata tests: `8 passed`
+- focused frontend presentation tests: `2 passed`
+- combined importer, Manual Review, public-route, canonical, sitemap, live-pool, editorial-guard, sanitizer, RSS shadow and Admin-auth regression verification: `200 passed`
+- complete available frontend suite: `117 passed`
+- production frontend build: passed
+- Python compilation: passed
+- `git diff --check`: passed
+- no import, production mutation, staging, commit or deployment was performed
+
+Deployment and authenticated Admin visual verification remain pending approval.
