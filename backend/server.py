@@ -2125,6 +2125,68 @@ async def _import_hybrid_news_internal(
             )
             return bool(useful_property_kw.search(text))
 
+        def local_editorial_text(article: dict) -> str:
+            tags = article.get("tags") or []
+            if not isinstance(tags, (list, tuple, set)):
+                tags = [tags]
+            return " ".join(
+                [
+                    str(article.get("category") or ""),
+                    " ".join(str(tag) for tag in tags),
+                    str(article.get("title") or ""),
+                    str(article.get("summary") or ""),
+                    str(article.get("content") or ""),
+                ]
+            ).lower()
+
+        def is_high_value_local_civic_economic_article(article: dict) -> bool:
+            """Recognise clear local investment/improvement stories without lowering the general gate."""
+            text = local_editorial_text(article)
+            if re.search(
+                r"\b(sponsored|advertorial|promotion|shopping\s+deal|gift\s+guide|"
+                r"review|best\s+(?:shops?|restaurants?|attractions?))\b",
+                text,
+                re.I,
+            ):
+                return False
+
+            material_change = re.search(
+                r"\b(new|open(?:s|ed|ing)?|reopen(?:s|ed|ing)?|investment|invests?|"
+                r"major\s+refurbishment|refurbish(?:es|ed|ment)?|redevelopment|"
+                r"regeneration|expansion|expand(?:s|ed|ing)?|upgrade(?:s|d)?|"
+                r"improvement(?:s)?|funding|jobs?)\b",
+                text,
+                re.I,
+            )
+            if not material_change:
+                return False
+
+            high_value_sector = re.search(
+                r"\b(supermarket|store|retail|restaurant|hotel|pub|hospitality|"
+                r"park|attraction|tourism|visitor|heritage|leisure\s+centre)\b",
+                text,
+                re.I,
+            )
+            return bool(high_value_sector)
+
+        def local_manual_review_editorial_reason(article: dict) -> str:
+            """Return a concise reader/editor-facing reason for a soft Local RSS candidate."""
+            text = local_editorial_text(article)
+            reason_patterns = (
+                ("Community feature", r"\b(community|charity|volunteer|neighbourhood|fundraiser)\b"),
+                ("Human-interest", r"\b(human[-\s]?interest|resident|family|personal\s+story)\b"),
+                ("Lifestyle", r"\b(lifestyle|best\s+places?|food|drink|restaurant\s+review|afternoon\s+tea)\b"),
+                ("Entertainment", r"\b(entertainment|concert|festival|theatre|cinema|music|show)\b"),
+                ("Tourism", r"\b(tourism|tourist|visitor)\b"),
+                ("Local attraction", r"\b(attraction|park|heritage|museum|zoo)\b"),
+                ("Hospitality", r"\b(restaurant|hotel|pub|hospitality)\b"),
+                ("Retail feature", r"\b(retail|supermarket|store|shop)\b"),
+            )
+            for label, pattern in reason_patterns:
+                if re.search(pattern, text, re.I):
+                    return f"Local RSS article needs manual review: {label}"
+            return "Local RSS article needs manual review: Soft local news"
+
         def is_useful_local_article(article: dict) -> bool:
             """Positive gate before spending Perplexity budget on local RSS articles."""
             title = (article.get("title") or "").lower()
@@ -2132,7 +2194,11 @@ async def _import_hybrid_news_internal(
             content = (article.get("content") or "").lower()
             text = " ".join([title, summary, content])
 
-            if is_low_utility_article(article) or is_crime_like(article) or is_obituary_like(article):
+            if is_crime_like(article) or is_obituary_like(article):
+                return False
+            if is_high_value_local_civic_economic_article(article):
+                return True
+            if is_low_utility_article(article):
                 return False
 
             useful_local_kw = re.compile(
@@ -2601,11 +2667,11 @@ async def _import_hybrid_news_internal(
 
             # Keep promotional/spam material rejected, but let suitable soft
             # lifestyle or borderline editorial candidates reach Manual Review.
-            if is_low_utility_article(article):
+            if is_low_utility_article(article) and not is_high_value_local_civic_economic_article(article):
                 if await queue_local_rss_manual_review(
                     article,
                     title,
-                    "Local RSS article needs manual review: lifestyle or borderline editorial value is outside automatic publication criteria",
+                    local_manual_review_editorial_reason(article),
                 ):
                     continue
                 continue
@@ -2620,7 +2686,11 @@ async def _import_hybrid_news_internal(
             # This keeps budget focused on planning, housing, council, business, schools,
             # health, energy, infrastructure and other public/economic impact stories.
             if not is_useful_local_article(article):
-                if await queue_local_rss_manual_review(article, title, "Local RSS article needs manual review: failed useful-local relevance gate before AI rewrite"):
+                if await queue_local_rss_manual_review(
+                    article,
+                    title,
+                    local_manual_review_editorial_reason(article),
+                ):
                     continue
                 logger.info(f"Skipping low-impact local RSS article before Perplexity: {title[:60]}...")
                 continue

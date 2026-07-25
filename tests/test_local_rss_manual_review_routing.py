@@ -4,12 +4,37 @@ import os
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import pytest
+
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DB_NAME", "cheshire_test")
 os.environ.setdefault("LOCAL_DEV_NO_DB", "1")
 os.environ.setdefault("STRIPE_API_KEY", "sk_test_dummy")
 
 from backend import server
+
+FULL_REWRITE = (
+    "The Cheshire project represents a substantial local investment with a published "
+    "delivery timetable. Confirmed plans explain the work, its purpose and the expected "
+    "benefits for residents, visitors and the wider local economy. The first phase will "
+    "begin after the remaining routine preparations are complete.\n\n"
+    "Project representatives said the programme would improve the existing site and "
+    "support its long-term operation. Contractors will carry out the main construction "
+    "and refurbishment work, while normal services will continue wherever practical. "
+    "Further updates will be issued as milestones are reached.\n\n"
+    "Local suppliers will be able to compete for suitable work packages during delivery. "
+    "The investment is also expected to support employment and training opportunities, "
+    "with recruitment details published through established channels. No unsupported "
+    "job total has been announced.\n\n"
+    "Planning and access arrangements are covered by the documents released for the "
+    "scheme. Those records describe how deliveries, traffic and public access will be "
+    "managed during the work. Any additional approvals will follow the normal public "
+    "process before the relevant phase starts.\n\n"
+    "The completed improvements are intended to strengthen the destination and provide "
+    "a better service for the surrounding community. Financial information beyond the "
+    "confirmed programme has not been published, and future phases remain subject to "
+    "the timetable and approvals set out by the organisations involved."
+)
 
 
 class Cursor:
@@ -143,9 +168,61 @@ def test_low_impact_non_crime_local_story_is_queued(monkeypatch):
     assert result["manual_review_imported"] == 1
     assert len(inserted) == 1
     assert_hidden_manual_review(inserted[0])
-    assert "relevance gate" in inserted[0]["manual_review_reason"]
+    assert "Community feature" in inserted[0]["manual_review_reason"]
     for field in ("title", "source_url", "image", "location"):
         assert inserted[0][field] == story[field]
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Lidl confirms new Ellesmere Port supermarket opening",
+        "Chester restaurant opens after major refurbishment",
+        "Warrington park attraction reopens after major improvements",
+    ],
+)
+def test_high_value_local_investment_stories_use_strict_public_path(
+    monkeypatch,
+    title,
+):
+    story = candidate(title)
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={title: FULL_REWRITE},
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert result["cheshire_from_rss"] == 1
+    assert len(inserted) == 1
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
+
+
+@pytest.mark.parametrize(
+    ("story", "expected_reason"),
+    [
+        (
+            candidate("Chester volunteers create a neighbourhood garden"),
+            "Community feature",
+        ),
+        (
+            candidate("Ten best places to live near Chester"),
+            "Lifestyle",
+        ),
+    ],
+)
+def test_manual_review_reason_is_editorially_specific(
+    monkeypatch,
+    story,
+    expected_reason,
+):
+    result, inserted = run_import(monkeypatch, [story])
+
+    assert result["manual_review_imported"] == 1
+    assert expected_reason in inserted[0]["manual_review_reason"]
+    assert "failed useful-local relevance gate" not in inserted[0]["manual_review_reason"]
 
 
 def test_short_local_rewrite_is_queued(monkeypatch):

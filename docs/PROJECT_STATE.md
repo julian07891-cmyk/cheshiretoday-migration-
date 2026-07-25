@@ -23867,3 +23867,21 @@ Verification:
 - no production import or database mutation was used
 
 Manual production verification remains required after deployment: run one authenticated Admin news import, confirm suitable non-crime Local candidates can appear in Manual Review with preserved metadata and clear reasons, confirm live Cheshire counts include only strict public imports, and confirm crime, duplicate, invalid-source and unusable-image candidates remain absent. Do not approve or publish any queued article without normal editorial review.
+
+### Local RSS civic/economic relevance refinement
+
+Production verification confirmed that the Manual Review fallback fixed the silent-discard defect, but the positive useful-local gate remained too conservative for clear civic and economic stories. Major retail or hospitality openings and investment, and material park, attraction or tourism improvements, could be diverted to Manual Review before reaching the existing strict rewrite and publication safeguards.
+
+The Local RSS classifier now recognises only clear combinations of a relevant local sector and a material opening, investment, refurbishment, expansion, funding, employment or improvement signal. Those candidates proceed through the unchanged Perplexity rewrite, 1,000-character floor, locality check and AI/editorial guard; the general relevance threshold was not lowered. Sponsored, advertorial, review, shopping-deal and “best of” material cannot use this refinement.
+
+Soft candidates continue to be retained in hidden Manual Review, but their reason now uses a concise editorial classification where evidence is available: Community feature, Human-interest, Lifestyle, Local attraction, Retail feature, Hospitality, Tourism, Entertainment or Soft local news. Existing hard rejection of crime/court, duplicates, Manchester material, invalid sources, missing or weak images, promotional/spam filler and unsafe content is unchanged.
+
+Verification:
+
+- focused Local RSS Manual Review and classifier regressions: `12 passed`
+- combined importer, Manual Review, public-route, canonical, sitemap, live-pool, editorial-guard, sanitizer and RSS shadow verification: `182 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+- no production import, database mutation, staging, commit or deployment was performed
+
+After deployment, the next scheduled import should allow obvious high-value Local investment and civic-improvement candidates to reach the existing strict automatic-publication path. Actual public counts remain dependent on current feed availability, successful full-length rewriting and every existing safety guard; soft stories should continue to appear only in Manual Review.
