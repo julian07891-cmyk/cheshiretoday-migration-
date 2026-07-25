@@ -23964,3 +23964,32 @@ Verification:
 - `git diff --check`: passed
 - no database write, production import, publication, Manual Review insertion,
   staging, commit, push or deployment was performed
+
+### Knutsford Guardian single-feed activation preparation
+
+The smallest production-source change has been prepared for the Knutsford
+Guardian RSS feed only. Northwich Guardian, Runcorn & Widnes World, Nantwich
+News and every other proposed source remain inactive.
+
+The feed is appended to the existing lower-priority dedicated Local publisher
+group and retains the current RSS parsing, embedded-image handling,
+title/source duplicate checks, shared Local editorial policy, strict rewrite
+and publication guards, Manual Review routing, scheduler, batch safeguards and
+public import caps. A feed-specific word-bounded locality allowlist admits only
+articles whose title, summary or available feed content identifies Knutsford,
+Wilmslow, Alderley Edge or Handforth. Matches map to the existing `knutsford`
+or `wilmslow` public locations; county-wide syndicated items without one of
+those place signals are discarded before entering the Local candidate list.
+
+Verification:
+
+- focused Knutsford feed activation tests: `4 passed`
+- combined offline RSS, Newsquest shadow, Local importer, Manual Review,
+  editorial guard, image, duplicate, concurrency and public-route regressions:
+  `168 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+- the production-coupled scheduler test file was not run against a live URL;
+  without its required API URL it produced only baseline missing-URL failures
+- no feed fetch, production import, database mutation, staging, commit, push or
+  deployment was performed

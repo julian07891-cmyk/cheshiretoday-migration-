@@ -406,6 +406,19 @@ RSS_FEEDS = {
         'is_local': True,
         'location': 'chester'
     },
+    'knutsford_guardian': {
+        'url': 'https://www.knutsfordguardian.co.uk/news/rss/',
+        'source': 'Knutsford Guardian',
+        'category': 'Local News',
+        'priority': 0,
+        'is_local': True,
+        'allowed_location_terms': {
+            'knutsford': 'knutsford',
+            'wilmslow': 'wilmslow',
+            'alderley edge': 'wilmslow',
+            'handforth': 'wilmslow',
+        },
+    },
     # --- Business/Finance/Tech (extra via RSS sources expansion) ---
     'companies_house_atom': {
         'url': 'https://www.gov.uk/government/organisations/companies-house.atom',
@@ -914,6 +927,21 @@ class NewsFeedService:
         # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text).strip()
         return text
+
+    @staticmethod
+    def _match_allowed_feed_location(
+        article: Dict[str, Any],
+        allowed_location_terms: Dict[str, str],
+    ) -> Optional[str]:
+        """Return the configured public location for a genuine feed-area match."""
+        text = " ".join(
+            str(article.get(field) or "")
+            for field in ("title", "summary", "content")
+        ).lower()
+        for term, location in allowed_location_terms.items():
+            if re.search(rf"\b{re.escape(term.lower())}\b", text):
+                return location
+        return None
     
     def _extract_image_from_item(self, item: ET.Element, namespaces: dict) -> Optional[str]:
         """Extract image URL from RSS item"""
@@ -1596,14 +1624,31 @@ class NewsFeedService:
                 cheshire_live_articles.extend(articles)
         
         # Fetch other local feeds
-        for feed_key in ['warrington_guardian', 'chester_standard']:
+        for feed_key in [
+            'warrington_guardian',
+            'chester_standard',
+            'knutsford_guardian',
+        ]:
             if feed_key in self.feeds:
                 articles = await self.fetch_feed(feed_key)
+                allowed_location_terms = self.feeds[feed_key].get(
+                    'allowed_location_terms'
+                )
+                eligible_articles = []
                 for article in articles:
+                    if allowed_location_terms:
+                        matched_location = self._match_allowed_feed_location(
+                            article,
+                            allowed_location_terms,
+                        )
+                        if not matched_location:
+                            continue
+                        article['location'] = matched_location
                     article['is_cheshire_related'] = True
                     article['is_local_feed'] = True
                     article['feed_priority'] = 1  # Lower priority
-                other_local_articles.extend(articles)
+                    eligible_articles.append(article)
+                other_local_articles.extend(eligible_articles)
         
         # Remove duplicates from Cheshire Live articles
         seen_titles = set()
