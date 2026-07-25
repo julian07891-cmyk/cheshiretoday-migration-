@@ -45,6 +45,15 @@ LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 from app.email_service import email_service
 from app.news_feed_service import news_feed_service
 from app.article_image_resolver import resolve_imported_article_image
+from app.local_rss_editorial_policy import (
+    is_crime_like as classify_local_crime,
+    is_high_value_local_civic_economic_article as classify_high_value_local,
+    is_low_utility_article as classify_low_utility_local,
+    is_obituary_like as classify_local_obituary,
+    is_useful_local_article as classify_useful_local,
+    local_editorial_text as build_local_editorial_text,
+    local_manual_review_editorial_reason as classify_local_manual_review_reason,
+)
 from app.newsletter_token_service import (
     ExpiredNewsletterTokenError,
     InvalidNewsletterTokenError,
@@ -2199,49 +2208,13 @@ async def _import_hybrid_news_internal(
             return ("manchester" in s) or ("manchester" in t) or ("manchestereveningnews" in u) or ("men." in u)
 
         def is_crime_like(article: dict) -> bool:
-            """Strict crime filter: only clear violence/courts/sentencing.
-            Avoid broad matches like 'police', 'incident', podcasts, politics, etc.
-            """
-            cat = (article.get("category") or "").lower()
-            title = (article.get("title") or "").lower()
-            summary = (article.get("summary") or "").lower()
-            content = (article.get("content") or "").lower()
-            text = " ".join([title, summary, content])
-
-            url = (article.get("source_url") or "").lower()
-            # Hard skip obvious non-article formats
-            if "/audio/" in url or "podcast" in title:
-                return False
-
-            # Category signals (keep tight)
-            if "court" in cat or "crime" in cat:
-                return True
-
-            # Strict keywords: violence / prosecution / sentencing (NO generic 'police' / 'incident')
-            crime_kw = re.compile(
-                r"(cops?|police|officer|mugshot|murder(?:s)?|kill(?:ed|s)?|manslaughter|homicide|stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|rape(?:d)?|sexual assault|sex(?:ual)? offence|indecent|pervert|predator|groom(?:ed|ing)?|paedophile|pedophile|child\s+sex|online\s+predator|cctv\s+appeal|stolen|theft|shoplift(?:ing|ed)?|\bassault(?:ed|s)?\b|\battack(?:ed|s)?\b|robber(?:y|ies)|burglar(?:y|ies)|arson|charged|arrest(?:ed)?|raid|drug raid|cannabis plants?|prosecut(?:ed|ion)|trial|guilty|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|inquest(?:s)?)", re.I, )
-            return bool(crime_kw.search(text))
+            return classify_local_crime(article)
 
         def is_obituary_like(article: dict) -> bool:
-            title = (article.get("title") or "").lower()
-            obituary_kw = re.compile(
-                r"(death notices?|funeral notices?|funeral arrangements|in memoriam|death announcements?|passed away peacefully|loving memory|beloved husband|beloved wife|beloved mum|beloved mom|beloved dad|family announcement)",
-                re.I,
-            )
-            return bool(obituary_kw.search(title))
+            return classify_local_obituary(article)
 
         def is_low_utility_article(article: dict) -> bool:
-            cat = (article.get("category") or "").lower()
-            title = (article.get("title") or "").lower()
-            summary = (article.get("summary") or "").lower()
-            content = (article.get("content") or "").lower()
-            text = " ".join([cat, title, summary, content])
-
-            low_utility_kw = re.compile(
-                r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|movie|film|album|concert|music\s*video|book\s*launch|novel|brit awards|baftas|royal fashion|gift guide|black friday|cyber monday|shopping deal|must-have buys?|restaurant review|afternoon tea|food\s+festival|arts\s+festival|music\s+festival|traffic\s+updates?|live\s+updates?|rush[-\s]?hour\s+gridlock|gridlock|breakdowns?|crash\s+shuts?|road\s+closed|road\s+closure|recap:|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|stunning\s+home|property\s+of\s+the\s+week|inside\s+this\s+home|listed\s+for\s+sale)\b",
-                re.I,
-            )
-            return bool(low_utility_kw.search(text))
+            return classify_low_utility_local(article)
 
         def is_useful_property_article(article: dict) -> bool:
             title = (article.get("title") or "").lower()
@@ -2259,95 +2232,16 @@ async def _import_hybrid_news_internal(
             return bool(useful_property_kw.search(text))
 
         def local_editorial_text(article: dict) -> str:
-            tags = article.get("tags") or []
-            if not isinstance(tags, (list, tuple, set)):
-                tags = [tags]
-            return " ".join(
-                [
-                    str(article.get("category") or ""),
-                    " ".join(str(tag) for tag in tags),
-                    str(article.get("title") or ""),
-                    str(article.get("summary") or ""),
-                    str(article.get("content") or ""),
-                ]
-            ).lower()
+            return build_local_editorial_text(article)
 
         def is_high_value_local_civic_economic_article(article: dict) -> bool:
-            """Recognise clear local investment/improvement stories without lowering the general gate."""
-            text = local_editorial_text(article)
-            if re.search(
-                r"\b(sponsored|advertorial|promotion|shopping\s+deal|gift\s+guide|"
-                r"review|best\s+(?:shops?|restaurants?|attractions?))\b",
-                text,
-                re.I,
-            ):
-                return False
-
-            material_change = re.search(
-                r"\b(new|open(?:s|ed|ing)?|reopen(?:s|ed|ing)?|investment|invests?|"
-                r"major\s+refurbishment|refurbish(?:es|ed|ment)?|redevelopment|"
-                r"regeneration|expansion|expand(?:s|ed|ing)?|upgrade(?:s|d)?|"
-                r"improvement(?:s)?|funding|jobs?)\b",
-                text,
-                re.I,
-            )
-            if not material_change:
-                return False
-
-            high_value_sector = re.search(
-                r"\b(supermarket|store|retail|restaurant|hotel|pub|hospitality|"
-                r"park|attraction|tourism|visitor|heritage|leisure\s+centre)\b",
-                text,
-                re.I,
-            )
-            return bool(high_value_sector)
+            return classify_high_value_local(article)
 
         def local_manual_review_editorial_reason(article: dict) -> str:
-            """Return a concise reader/editor-facing reason for a soft Local RSS candidate."""
-            text = local_editorial_text(article)
-            reason_patterns = (
-                ("Community feature", r"\b(community|charity|volunteer|neighbourhood|fundraiser)\b"),
-                ("Human-interest", r"\b(human[-\s]?interest|resident|family|personal\s+story)\b"),
-                ("Lifestyle", r"\b(lifestyle|best\s+places?|food|drink|restaurant\s+review|afternoon\s+tea)\b"),
-                ("Entertainment", r"\b(entertainment|concert|festival|theatre|cinema|music|show)\b"),
-                ("Tourism", r"\b(tourism|tourist|visitor)\b"),
-                ("Local attraction", r"\b(attraction|park|heritage|museum|zoo)\b"),
-                ("Hospitality", r"\b(restaurant|hotel|pub|hospitality)\b"),
-                ("Retail feature", r"\b(retail|supermarket|store|shop)\b"),
-            )
-            for label, pattern in reason_patterns:
-                if re.search(pattern, text, re.I):
-                    return f"Local RSS article needs manual review: {label}"
-            return "Local RSS article needs manual review: Soft local news"
+            return classify_local_manual_review_reason(article)
 
         def is_useful_local_article(article: dict) -> bool:
-            """Positive gate before spending Perplexity budget on local RSS articles."""
-            title = (article.get("title") or "").lower()
-            summary = (article.get("summary") or "").lower()
-            content = (article.get("content") or "").lower()
-            text = " ".join([title, summary, content])
-
-            if is_crime_like(article) or is_obituary_like(article):
-                return False
-            if is_high_value_local_civic_economic_article(article):
-                return True
-            if is_low_utility_article(article):
-                return False
-
-            useful_local_kw = re.compile(
-                r"\b("
-                r"planning|application|approved|refused|development|homes?|housing|green\s+belt|brownfield|affordable\s+homes?|"
-                r"council|councillors?|committee|consultation|public\s+meeting|local\s+plan|regeneration|town\s+centre|high\s+street|"
-                r"business|jobs?|employer|investment|funding|grant|factory|warehouse|retail|startup|expansion|relocat(?:e|es|ed|ion)|"
-                r"school|academy|college|ofsted|education|pupils?|students?|"
-                r"nhs|hospital|gp|health|care\s+home|social\s+care|"
-                r"energy|bills?|water|transport|rail|bus|roadworks?|infrastructure|"
-                r"tax|rent|mortgage|landlord|tenant|cost\s+of\s+living|economy|economic|"
-                r"charity|community\s+fund|inequality|public\s+interest"
-                r")\b",
-                re.I,
-            )
-            return bool(useful_local_kw.search(text))
+            return classify_useful_local(article)
 
         def is_useful_category_article(article: dict, target_category: str) -> bool:
             """Positive category gate for UK RSS imports before publish."""

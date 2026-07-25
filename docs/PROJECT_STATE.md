@@ -23906,3 +23906,61 @@ Verification:
 - no import, production mutation, staging, commit or deployment was performed
 
 Deployment and authenticated Admin visual verification remain pending approval.
+
+### Newsquest Local RSS shadow evaluation
+
+A standalone read-only shadow evaluator now measures the proposed Northwich
+Guardian, Knutsford Guardian and Runcorn & Widnes World feeds without adding
+them to `RSS_FEEDS`, importing articles, publishing content or inserting Manual
+Review records. It reuses the existing safe RSS/XML parsing, Newsquest image
+extraction, canonical URL normalisation, spam screening, configured-local-feed
+sampling and duplicate primitives. The deterministic Local crime, obituary,
+low-utility, civic/economic, usefulness and Manual Review-reason policy now
+lives in one database-free module used by both the production importer and the
+evaluator, preventing independently copied shadow rules from drifting. The
+Newsquest-specific layer reports town relevance, image
+availability, existing/configured/cross-Newsquest duplicates and three
+descriptive outcomes: existing strict automatic-publication path candidate,
+Manual Review candidate or hard reject. Automatic-publication-path results
+remain only pre-rewrite candidates and would still have to pass every existing
+rewrite, length, locality, factual and editorial guard if the feeds are later
+activated.
+
+The evaluator has no MongoDB import, write method, activation flag, scheduler
+hook or production-import hook. An optional existing-article JSON snapshot is
+strictly limited to `title` and `source_url`. Rejected candidate items do not
+suppress a later usable version, while cross-feed syndication remains visible
+in the diagnostics.
+
+The 25 July 2026 read-only live-feed evaluation found:
+
+- all three feeds succeeded and supplied 50 items with images each
+- Northwich Guardian: 50 raw, 11 town-relevant, 4 strict-path candidates,
+  5 Manual Review candidates and 41 hard rejects
+- Knutsford Guardian: 50 raw, 14 town-relevant, 5 strict-path candidates,
+  6 Manual Review candidates and 39 hard rejects
+- Runcorn & Widnes World: 50 raw, 30 town-relevant, 8 strict-path candidates,
+  13 Manual Review candidates and 29 hard rejects
+- combined: 150 raw, 150 with images, 55 town-relevant, 17 strict-path
+  candidates, 24 Manual Review candidates, 109 hard rejects and 41 unique
+  usable leads
+- the comparison sampled all 17 configured Local feeds and a read-only
+  192-record public/API snapshot
+- exact cross-Newsquest title diagnostics affected 18 Northwich items,
+  18 Knutsford items and 7 Runcorn/Widnes items; configured-feed duplication
+  affected 15, 10 and 12 items respectively
+
+The result supports a cautious activation order of Runcorn & Widnes World
+first, then Knutsford Guardian, then Northwich Guardian. No feed has been
+activated and production behaviour is unchanged.
+
+Verification:
+
+- focused Newsquest shadow tests: `16 passed`
+- combined RSS shadow, Local importer, Manual Review, editorial guard, RSS
+  sanitation, Newsquest image, feed concurrency, public-hub and duplicate-auth
+  regressions: `174 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+- no database write, production import, publication, Manual Review insertion,
+  staging, commit, push or deployment was performed
