@@ -23993,3 +23993,70 @@ Verification:
   without its required API URL it produced only baseline missing-URL failures
 - no feed fetch, production import, database mutation, staging, commit, push or
   deployment was performed
+
+### Operational update — 25 July 2026
+
+The Local RSS editorial rules were extracted into the database-free
+`backend/app/local_rss_editorial_policy.py` module and are now shared by the
+production Local importer and the read-only Newsquest shadow evaluator. This
+keeps the crime, obituary, low-utility, civic/economic, useful-local and Manual
+Review-reason classifications aligned without importing `backend.server` into
+the evaluator or introducing any database or application-startup dependency.
+Production publication thresholds, safety guards and Manual Review routing
+were not weakened.
+
+The Newsquest shadow evaluator was completed for Northwich Guardian, Knutsford
+Guardian and Runcorn & Widnes World. The verified evaluation produced 150 raw
+items, all with images, of which 55 were town-relevant; 17 were strict-path
+candidates, 24 were Manual Review candidates, 109 were hard rejects and 41
+were unique usable leads. The evidence-based rollout order was Runcorn &
+Widnes World first, Knutsford Guardian second and Northwich Guardian third.
+The operational decision was nevertheless to activate Knutsford Guardian
+alone as the first controlled production source; the other evaluated feeds
+remain inactive pending separate approval.
+
+Knutsford Guardian was activated through commit
+`6d87817d2020ca3a4519cb120f988cc179dfa1b0` and pushed and deployed on
+`full-scrape-prod`. The activation retains the existing RSS parsing, image
+validation, duplicate detection, shared Local editorial policy, strict
+automatic-publication path, Manual Review routing, scheduler behaviour and
+public import caps. Its locality gate accepts word-bounded evidence for
+Knutsford, Wilmslow, Alderley Edge or Handforth and does not admit generic
+county-wide Newsquest stories without one of those place signals. Northwich
+Guardian, Runcorn & Widnes World, Nantwich News and all other proposed sources
+remain inactive. The production `/health` endpoint was verified after
+deployment and returned HTTP 200 with `{"status":"healthy","service":"cheshire-news"}`.
+
+The next normal Knutsford import requires a read-only operational verification:
+
+- confirm the feed fetch succeeds through the scheduled/import workflow
+- confirm accepted candidates contain genuine Knutsford, Wilmslow, Alderley
+  Edge or Handforth evidence and map to the existing supported locations
+- confirm county-wide stories without an allowed place signal are excluded
+- confirm duplicate, crime/court, promotional, invalid-source and
+  missing/unusable-image records remain hard rejected
+- confirm soft but suitable stories remain hidden in Manual Review and strict
+  candidates publish only after all existing rewrite, length, locality,
+  factual and editorial guards pass
+- confirm import counts, public caps and scheduler behaviour remain unchanged
+- confirm Northwich Guardian, Runcorn & Widnes World and Nantwich News remain
+  inactive
+
+Facebook, Instagram and Meta Insights were reviewed as part of the current
+audience workflow. The agreed social strategy keeps editorial selection and
+human approval ahead of social copy generation: first recommend the Cheshire
+Today article, wait for approval, and only then prepare the Facebook and
+Instagram posts for that approved article. Social publishing remains an
+explicit editorial action; no automatic posting or change to article
+publication behaviour was introduced.
+
+Current priorities and remaining work are:
+
+1. complete the post-import verification checklist for the first live
+   Knutsford Guardian import without weakening any publication guard
+2. monitor unique Local yield, duplicate overlap, Manual Review quality and
+   town relevance before approving another Newsquest feed
+3. consider Runcorn & Widnes World and Northwich Guardian only as separate,
+   evidence-led activation changes; keep all unapproved sources inactive
+4. follow the approve-article-first social workflow and use subsequent Meta
+   Insights reviews to assess outcomes without automating editorial decisions
