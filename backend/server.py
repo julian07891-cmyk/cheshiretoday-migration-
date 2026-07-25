@@ -2459,16 +2459,50 @@ async def _import_hybrid_news_internal(
         # by one topic type such as planning/housing applications.
         local_topic_counts = {}
 
-        priority_town_review_locations = {
-            "crewe", "nantwich", "macclesfield", "congleton", "northwich",
-            "winsford", "middlewich", "wilmslow", "alderley edge", "knutsford",
-            "ellesmere port", "runcorn", "widnes"
-        }
+        def is_hard_reject_local_review_candidate(article: dict) -> bool:
+            """Keep unsafe, promotional and unusable records out of Manual Review."""
+            from urllib.parse import urlparse
 
-        async def queue_town_rss_manual_review(article: dict, title: str, reason: str, detailed_content: str = "") -> bool:
-            """Queue non-public town-feed RSS candidates for human review instead of silently dropping them."""
-            location = str(article.get("location") or article.get("priority_location") or "").strip().lower()
-            if location not in priority_town_review_locations:
+            source_url_value = str(article.get("source_url") or "").strip()
+            try:
+                parsed_source = urlparse(source_url_value)
+                valid_source = (
+                    parsed_source.scheme in {"http", "https"}
+                    and bool(parsed_source.netloc)
+                )
+            except Exception:
+                valid_source = False
+
+            text = " ".join(
+                str(article.get(field) or "")
+                for field in ("title", "summary", "content", "category")
+            )
+            promotional_or_spam = re.search(
+                r"\b(sponsored|advertorial|affiliate|casino|gambling|betting|"
+                r"shopping deal|gift guide|black friday|cyber monday|"
+                r"must-have buys?|product review|celebrity|showbiz|love island)\b",
+                text,
+                re.IGNORECASE,
+            )
+            return bool(
+                not valid_source
+                or not str(article.get("image") or "").strip()
+                or is_weak_generic_image(str(article.get("image") or ""))
+                or is_manchester_source(article)
+                or is_obituary_like(article)
+                or is_crime_like(article)
+                or promotional_or_spam
+                or find_ai_manual_review_hits(
+                    str(article.get("content") or "")
+                )
+            )
+
+        async def queue_local_rss_manual_review(article: dict, title: str, reason: str, detailed_content: str = "") -> bool:
+            """Queue suitable non-public local RSS candidates for human review."""
+            safety_candidate = dict(article)
+            if detailed_content:
+                safety_candidate["content"] = detailed_content
+            if is_hard_reject_local_review_candidate(safety_candidate):
                 return False
 
             source_url_local = (article.get("source_url") or "").strip().lower()
@@ -2479,7 +2513,12 @@ async def _import_hybrid_news_internal(
             review_doc["id"] = str(uuid4())
             review_doc["image"] = review_doc.get("image") or article.get("image") or ""
             review_doc["image_source"] = "rss_feed"
-            review_doc["content"] = sanitize_rss_text(detailed_content or review_doc.get("content", ""), review_doc.get("source_url", ""), is_summary=False)
+            available_source_text = (
+                detailed_content
+                or review_doc.get("content", "")
+                or review_doc.get("summary", "")
+            )
+            review_doc["content"] = sanitize_rss_text(available_source_text, review_doc.get("source_url", ""), is_summary=False)
             review_doc["summary"] = sanitize_rss_text(review_doc.get("summary", ""), review_doc.get("source_url", ""), is_summary=True)
             review_doc["scope"] = "cheshire"
             review_doc["category"] = "Local News"
@@ -2495,7 +2534,7 @@ async def _import_hybrid_news_internal(
             try:
                 await db.articles.insert_one(review_doc)
             except DuplicateKeyError:
-                logger.info(f"⏭️ Duplicate skipped (town RSS manual review): {title[:60]}...")
+                logger.info(f"⏭️ Duplicate skipped (local RSS manual review): {title[:60]}...")
                 return False
 
             existing_titles.add(title.lower())
@@ -2503,7 +2542,7 @@ async def _import_hybrid_news_internal(
                 existing_source_urls.add(source_url_local)
             imported_articles.append(review_doc)
             count_inserted_article_visibility(review_doc)
-            logger.info(f"📝 Queued town RSS article for manual review: {title[:60]}... | {reason}")
+            logger.info(f"📝 Queued local RSS article for manual review: {title[:60]}... | {reason}")
             return True
         
         for article in cheshire_with_images:
@@ -2560,8 +2599,15 @@ async def _import_hybrid_news_internal(
             if is_obituary_like(article):
                 continue
 
-            # Hard block obvious low-utility lifestyle / promo / entertainment filler
+            # Keep promotional/spam material rejected, but let suitable soft
+            # lifestyle or borderline editorial candidates reach Manual Review.
             if is_low_utility_article(article):
+                if await queue_local_rss_manual_review(
+                    article,
+                    title,
+                    "Local RSS article needs manual review: lifestyle or borderline editorial value is outside automatic publication criteria",
+                ):
+                    continue
                 continue
 
             # Hard block crime / police / court / mugshot-style content from going live.
@@ -2574,7 +2620,7 @@ async def _import_hybrid_news_internal(
             # This keeps budget focused on planning, housing, council, business, schools,
             # health, energy, infrastructure and other public/economic impact stories.
             if not is_useful_local_article(article):
-                if await queue_town_rss_manual_review(article, title, "Town RSS article needs manual review: failed useful-local relevance gate before AI rewrite"):
+                if await queue_local_rss_manual_review(article, title, "Local RSS article needs manual review: failed useful-local relevance gate before AI rewrite"):
                     continue
                 logger.info(f"Skipping low-impact local RSS article before Perplexity: {title[:60]}...")
                 continue
@@ -2605,7 +2651,7 @@ async def _import_hybrid_news_internal(
 
             local_topic_cap = local_topic_caps.get(local_topic)
             if local_topic_cap is not None and local_topic_counts.get(local_topic, 0) >= local_topic_cap:
-                if await queue_town_rss_manual_review(article, title, f"Town RSS article needs manual review: per-run topic cap reached ({local_topic})"):
+                if await queue_local_rss_manual_review(article, title, f"Local RSS article needs manual review: per-run topic cap reached ({local_topic})"):
                     continue
                 logger.info(f"Skipping local RSS article due to per-run topic cap ({local_topic}): {title[:60]}...")
                 continue
@@ -2615,7 +2661,7 @@ async def _import_hybrid_news_internal(
             
             # Freshness gate: allow slower-moving local planning/council stories, but block stale local filler.
             if not is_source_fresh_enough(article, 7):
-                if await queue_town_rss_manual_review(article, title, "Town RSS article needs manual review: older than automatic local RSS freshness gate"):
+                if await queue_local_rss_manual_review(article, title, "Local RSS article needs manual review: older than automatic local RSS freshness gate"):
                     continue
                 logger.info(f"Skipping stale local RSS article before Perplexity/public import: {title[:60]}...")
                 continue
@@ -2652,7 +2698,7 @@ async def _import_hybrid_news_internal(
 
             # Strict quality gate: publish only full-length rewritten content.
             if not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
-                if await queue_town_rss_manual_review(article, title, "Town RSS article needs manual review: AI/RSS content remained below public length threshold", detailed_content):
+                if await queue_local_rss_manual_review(article, title, "Local RSS article needs manual review: AI/RSS content remained below public length threshold", detailed_content):
                     continue
                 logger.info(f"Skipping short-content local article after rewrite attempt: {title[:60]}...")
                 continue

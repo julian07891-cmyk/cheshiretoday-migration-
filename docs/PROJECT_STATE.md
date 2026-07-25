@@ -23842,3 +23842,28 @@ Verification:
 - Meta App Domains now includes `cheshiretoday.co.uk`
 
 Production verification remains required after deployment by checking the live crawler HTML and clicking `Scrape Again` in Facebook Sharing Debugger.
+
+## Operational update — 25 July 2026
+
+### Local RSS Manual Review fallback
+
+The 05:00 production import fetched 27 Cheshire/local RSS candidates with images but imported none. Strict automatic-publication gates correctly rejected crime, weak and short material, but the existing Manual Review fallback was limited to a fixed town allowlist and ran after an overly broad low-utility rejection. Suitable non-crime community, human-interest, lifestyle and borderline local candidates could therefore be discarded without editorial review.
+
+The local RSS path now retains strict public quality thresholds while routing suitable non-crime candidates that fail only the useful-local relevance gate, soft lifestyle/editorial-value classification, topic cap, freshness gate or post-rewrite public-length threshold into the existing hidden Manual Review workflow. The fallback:
+
+- has no one-candidate limit within the existing import batch safeguards
+- preserves title, source URL, image, location, Local News metadata and available source text
+- records a clear Manual Review reason
+- does not increment successful live Cheshire import counts
+- continues rejecting duplicates, crime/court content, obituary material, promotional/spam/product filler, missing or invalid source URLs, missing or unusable images and unsafe invention-risk wording
+- does not alter UK, Business, Finance, Tech, homepage, category, 40/40/20 or live-pool behaviour
+
+Verification:
+
+- focused Local RSS Manual Review regressions: `7 passed`
+- combined importer, Manual Review, public-route, canonical, sitemap, live-pool, editorial-guard, sanitizer and RSS shadow verification: `177 passed`
+- Python compilation: passed
+- `git diff --check`: passed
+- no production import or database mutation was used
+
+Manual production verification remains required after deployment: run one authenticated Admin news import, confirm suitable non-crime Local candidates can appear in Manual Review with preserved metadata and clear reasons, confirm live Cheshire counts include only strict public imports, and confirm crime, duplicate, invalid-source and unusable-image candidates remain absent. Do not approve or publish any queued article without normal editorial review.
