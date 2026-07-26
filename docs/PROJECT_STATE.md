@@ -24561,3 +24561,42 @@ The Brand Identity & Social Media System now contains:
 Recommended next project:
 
 - Facebook Template System v1.0
+
+## Brand asset update — Facebook Template System v1.0
+
+### Facebook Template System v1.0
+
+Nine permanent SVG masters were created under
+`docs/brand-assets/social/facebook/templates/`:
+
+- `breaking-news-facebook.svg`
+- `local-news-facebook.svg`
+- `business-facebook.svg`
+- `property-facebook.svg`
+- `ai-tech-facebook.svg`
+- `quote-facebook.svg`
+- `poll-facebook.svg`
+- `newsletter-facebook.svg`
+- `event-facebook.svg`
+
+Standards:
+
+- 1200 × 630 landscape canvas
+- 72 px safe margin on every side
+- critical content area `x=72–1128`, `y=72–558`
+- hidden editor-guide layer
+- shared `logo`, `image`, `category`, `headline` and CTA placeholders
+- additional `poll-options` placeholder in the poll master
+- additional `event-date` and `event-location` placeholders in the event master
+- Playfair Display editorial headlines and quotations
+- Public Sans labels, supporting text and calls to action
+- approved production website palette only
+- SVG-first workflow with no raster images, gradients, filters, shadows, external references or PNG exports in the permanent masters
+
+### Production-sample validation
+
+The Local News, Business and Newsletter masters were tested with the real Cheshire Today article “Councillors to rule on plans for 75-home estate in Cheshire countryside” and its source image.
+
+All three temporary production samples passed XML, exact output-dimension, safe-area, typography, palette, image-crop, logo, CTA, placeholder-removal and hidden-guide checks. Headline wrapping remained legible at Facebook feed size with no overflow. The Newsletter treatment used the approved inverse warm-paper logo on royal blue.
+
+The Facebook Template System v1.0 is ready for production use. No website, frontend, backend, Tailwind or production behaviour changed.
