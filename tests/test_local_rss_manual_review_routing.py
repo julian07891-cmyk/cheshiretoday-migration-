@@ -225,6 +225,86 @@ def test_manual_review_reason_is_editorially_specific(
     assert "failed useful-local relevance gate" not in inserted[0]["manual_review_reason"]
 
 
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Fire crews tackle routine kitchen fire in Nantwich",
+        "Best Cheshire restaurants according to TripAdvisor",
+        "The best picnic places to visit across Cheshire",
+        "Review of a local café in Nantwich",
+        "Inside the ordinary Cheshire house for sale this week",
+        "Short road closure announced for routine works in Nantwich",
+    ],
+)
+def test_low_value_local_rss_items_are_rejected_before_manual_review(
+    monkeypatch,
+    title,
+):
+    result, inserted = run_import(monkeypatch, [candidate(title)])
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 0
+    assert inserted == []
+
+
+def test_significant_transport_disruption_remains_retained(monkeypatch):
+    title = (
+        "Major Nantwich road closure for emergency utility works causes "
+        "significant disruption"
+    )
+    result, inserted = run_import(
+        monkeypatch,
+        [candidate(title)],
+        rewrites={title: FULL_REWRITE},
+    )
+
+    assert result["total_imported"] == 1
+    assert len(inserted) == 1
+
+
+def test_food_hygiene_enforcement_remains_publication_eligible(monkeypatch):
+    title = "Council takes food hygiene enforcement action at Nantwich restaurant"
+    result, inserted = run_import(
+        monkeypatch,
+        [candidate(title)],
+        rewrites={title: FULL_REWRITE},
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert len(inserted) == 1
+
+
+def test_care_home_community_story_does_not_use_planning_housing_topic_cap(
+    monkeypatch,
+):
+    planning = candidate("Chester council approves plans for 50 new homes")
+    community = candidate(
+        "Mum-of-two bringing generations of community together through music and movement",
+        content=(
+            "A community project delivers music and movement sessions in local care homes."
+        ),
+    )
+
+    result, inserted = run_import(
+        monkeypatch,
+        [planning, community],
+        rewrites={
+            planning["title"]: FULL_REWRITE,
+            community["title"]: FULL_REWRITE,
+        },
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 1
+    community_record = next(
+        item for item in inserted if item["title"] == community["title"]
+    )
+    assert "planning_housing" not in str(
+        community_record.get("manual_review_reason") or ""
+    )
+
+
 def test_short_local_rewrite_is_queued(monkeypatch):
     story = candidate("Chester council considers a new planning application")
     short = "The council is considering the application."

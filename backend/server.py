@@ -53,6 +53,7 @@ from app.local_rss_editorial_policy import (
     is_useful_local_article as classify_useful_local,
     local_editorial_text as build_local_editorial_text,
     local_manual_review_editorial_reason as classify_local_manual_review_reason,
+    should_reject_before_local_manual_review as classify_reject_before_local_review,
 )
 from app.newsletter_token_service import (
     ExpiredNewsletterTokenError,
@@ -2723,6 +2724,13 @@ async def _import_hybrid_news_internal(
                 )
                 continue
 
+            if classify_reject_before_local_review(article):
+                logger.info(
+                    "Skipping low-value Local RSS item before Manual Review: "
+                    f"{title[:60]}..."
+                )
+                continue
+
             # Keep promotional/spam material rejected, but let suitable soft
             # lifestyle or borderline editorial candidates reach Manual Review.
             if is_low_utility_article(article) and not is_high_value_local_civic_economic_article(article):
@@ -2760,7 +2768,7 @@ async def _import_hybrid_news_internal(
             ]).lower()
 
             local_topic = "other"
-            if re.search(r"\b(planning|application|approved|refused|development|homes?|housing|green\s+belt|brownfield|affordable\s+homes?)\b", local_text, re.I):
+            if re.search(r"\b(planning|application|approved|refused|development|housing|green\s+belt|brownfield|(?:new|affordable)\s+homes?|\d+\s+homes?)\b", local_text, re.I):
                 local_topic = "planning_housing"
             elif re.search(r"\b(school|academy|college|ofsted|education|pupils?|students?)\b", local_text, re.I):
                 local_topic = "education"

@@ -70,7 +70,8 @@ def test_zero_write_and_no_database_or_production_import_contract():
     assert "delete_one" not in source
     assert "RSS_FEEDS[" not in source
     assert "pymongo" not in policy_source
-    assert "motor" not in policy_source
+    assert "import motor" not in policy_source
+    assert "from motor" not in policy_source
     assert "insert_one" not in policy_source
     assert "update_one" not in policy_source
     assert "delete_one" not in policy_source

@@ -47,6 +47,34 @@ _PROMOTIONAL_RE = re.compile(
     r"review|best\s+(?:shops?|restaurants?|attractions?))\b",
     re.I,
 )
+_ROUTINE_FIRE_RE = re.compile(
+    r"\b(?:kitchen|shed|garage|bin|small)\s+(?:fire|blaze)\b|"
+    r"\broutine\s+(?:house\s+)?(?:fire|blaze)\b",
+    re.I,
+)
+_FIRE_PUBLIC_IMPACT_RE = re.compile(
+    r"\b(?:major|serious|fatal|evacuat(?:e|ed|ion)|hospital|injur(?:y|ed|ies)|"
+    r"school|care\s+home|industrial|factory|wildfire|public\s+safety)\b",
+    re.I,
+)
+_LOW_VALUE_FEATURE_RE = re.compile(
+    r"\bbest\s+(?:restaurants?|picnic\s+(?:places?|spots?))\b|"
+    r"\btripadvisor\b|\b(?:caf[eé]|restaurant)\s+review\b|"
+    r"\breview\s+of\s+(?:a|the)\s+(?:local\s+)?caf[eé]\b|"
+    r"\b(?:house|home|cottage|farmhouse|property)\s+for\s+sale\b|"
+    r"\bproperty\s+of\s+the\s+week\b",
+    re.I,
+)
+_ROUTINE_ROAD_CLOSURE_RE = re.compile(
+    r"\b(?:road\s+clos(?:ed|ure)|lane\s+closure)\b",
+    re.I,
+)
+_SIGNIFICANT_TRANSPORT_IMPACT_RE = re.compile(
+    r"\b(?:major|significant|severe|emergency|multi-day|weeks?|overnight|"
+    r"utility\s+works?|infrastructure|diversion|disruption|motorway|"
+    r"bridge|rail|bus)\b",
+    re.I,
+)
 _MATERIAL_CHANGE_RE = re.compile(
     r"\b(new|open(?:s|ed|ing)?|reopen(?:s|ed|ing)?|investment|invests?|"
     r"major\s+refurbishment|refurbish(?:es|ed|ment)?|redevelopment|"
@@ -127,6 +155,19 @@ def is_low_utility_article(article: dict) -> bool:
         for field in ("category", "title", "summary", "content")
     )
     return bool(_LOW_UTILITY_RE.search(text))
+
+
+def should_reject_before_local_manual_review(article: dict) -> bool:
+    """Reject narrow low-value formats without weakening public-interest gates."""
+    text = local_editorial_text(article)
+    if _ROUTINE_FIRE_RE.search(text) and not _FIRE_PUBLIC_IMPACT_RE.search(text):
+        return True
+    if _LOW_VALUE_FEATURE_RE.search(text):
+        return True
+    return bool(
+        _ROUTINE_ROAD_CLOSURE_RE.search(text)
+        and not _SIGNIFICANT_TRANSPORT_IMPACT_RE.search(text)
+    )
 
 
 def is_high_value_local_civic_economic_article(article: dict) -> bool:
