@@ -24600,3 +24600,35 @@ The Local News, Business and Newsletter masters were tested with the real Cheshi
 All three temporary production samples passed XML, exact output-dimension, safe-area, typography, palette, image-crop, logo, CTA, placeholder-removal and hidden-guide checks. Headline wrapping remained legible at Facebook feed size with no overflow. The Newsletter treatment used the approved inverse warm-paper logo on royal blue.
 
 The Facebook Template System v1.0 is ready for production use. No website, frontend, backend, Tailwind or production behaviour changed.
+
+## Brand asset update — Facebook logo treatment refinement
+
+The Facebook Template System v1.0 now uses the approved Cheshire Today logo contract rather than a visible placeholder treatment.
+
+Approved source artwork:
+
+`frontend/public/cheshire-today-email-logo.png`
+
+Approved variants:
+
+- standard: royal blue `#1E3A8A` for warm or light backgrounds
+- inverse: warm paper `#F7F4EE` for royal-blue or dark backgrounds
+
+The permanent SVG masters do not embed raster logo files. Each master retains a documented logo placeholder with an exact `159.34 × 54 px` artwork box at `x=72`, `y=72` and an explicit standard or inverse variant requirement. Final public exports must remove all placeholder text and placeholder boxes.
+
+Three temporary real-article Facebook samples were regenerated with the actual Cheshire Today logo and passed validation:
+
+- Local News
+- Business
+- Newsletter
+
+All nine Facebook masters remain valid XML and preserve:
+
+- 1200 × 630 canvas
+- 72 px safe frame
+- accessibility references
+- approved palette
+- approved typography
+- hidden editor guides
+
+No website, frontend, backend or production behaviour changed.

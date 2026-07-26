@@ -34,6 +34,32 @@ Every master contains reusable groups identified with `data-placeholder`:
 
 The poll master also contains `poll-options`. The event master also contains `event-date` and `event-location`. Replace every bracketed label and image frame before export. Use only approved editorial photography; permanent masters must not contain raster data or external resources.
 
+## Approved logo contract
+
+The approved production source for Facebook working assets is:
+
+```text
+frontend/public/cheshire-today-email-logo.png
+```
+
+It is a transparent `360 × 122 px` PNG containing the Cheshire Today symbol and wordmark. It is the source artwork for temporary working copies and final raster exports. Because the approved source is raster-only, it must not be embedded in the permanent SVG masters.
+
+Every Facebook master therefore retains a `data-placeholder="logo"` group with:
+
+- source metadata in `data-logo-source`;
+- the required `standard` or `inverse` value in `data-logo-variant`;
+- an exact artwork bounding box at `x=72`, `y=72`, `width=159.34`, `height=54`;
+- top-left alignment inside the common safe frame;
+- the source aspect ratio preserved without cropping or distortion.
+
+Use the **standard** treatment on warm paper, warm panel and other light backgrounds: recolour the approved source artwork to royal blue `#1E3A8A` while preserving its alpha mask and geometry.
+
+Use the **inverse** treatment on royal-blue, dark or breaking-red fields: recolour the same approved source artwork to warm paper `#F7F4EE`. The `breaking-news`, `property`, `ai-tech` and `newsletter` masters require the inverse treatment; the remaining masters require the standard treatment.
+
+The full wordmark must be at least `150 px` wide in a final Facebook graphic. Maintain at least `12 px` clear space around its artwork box; no photograph, border, label or other text may enter that space. If a future layout cannot meet the minimum size, it requires separate approval rather than a compressed or redrawn wordmark.
+
+Before export, replace the complete logo placeholder group with the correctly recoloured approved artwork. Never ship the placeholder text, dashed placeholder box, source metadata or a reconstructed text masthead in a public SVG or PNG.
+
 ## Typography
 
 - Editorial headlines and quotations: Playfair Display `700`, normally `48–62 px`.
