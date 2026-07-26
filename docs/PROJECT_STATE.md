@@ -24392,3 +24392,83 @@ The next brand deliverable is the Instagram Story Template System, followed by:
 4. Threads graphics
 5. Brand Guidelines PDF
 6. Media Kit
+
+## Brand asset update — Instagram Story and Feed Template Systems v1.0
+
+### Instagram Story Template System v1.0
+
+Eight permanent SVG master templates were created under
+`docs/brand-assets/social/stories/templates/`:
+
+- `breaking-news.svg`
+- `top-story.svg`
+- `business.svg`
+- `property.svg`
+- `ai-tech.svg`
+- `newsletter.svg`
+- `poll.svg`
+- `read-more.svg`
+
+Standards:
+
+- 1080 × 1920 canvas
+- 72 px side margins
+- 250 px top safe margin
+- 300 px bottom safe margin
+- hidden editor-guide layer
+- SVG-first workflow
+- no raster images, gradients, filters, shadows or AI artwork
+- Playfair Display headlines
+- Public Sans interface text
+- existing production website palette only
+
+### Instagram Feed Template System v1.0
+
+Eight permanent SVG master templates were created under
+`docs/brand-assets/social/feed/templates/`:
+
+- `breaking-news-square.svg`
+- `local-news-square.svg`
+- `business-square.svg`
+- `property-square.svg`
+- `ai-tech-square.svg`
+- `quote-square.svg`
+- `poll-square.svg`
+- `newsletter-square.svg`
+
+Standards:
+
+- 1080 × 1080 canvas
+- 72 px safe area
+- four-column editor grid
+- 24/48/72 px spacing rhythm
+- shared logo, image, category, headline and CTA placeholder contract
+- SVG-first workflow
+- no raster images, gradients, filters, shadows or AI artwork
+- Playfair Display headlines
+- Public Sans interface text
+- existing production website palette only
+
+### Validation
+
+- all sixteen SVG files are valid XML
+- exact canvas and `viewBox` values were verified
+- element IDs and accessibility references were validated
+- all critical content remains inside the approved safe areas
+- approved production colours and typography are used
+- no PNG exports were committed at this stage
+- Story and Feed README documentation was completed
+- website, frontend, backend, Tailwind and production behaviour were unchanged
+
+### Project status
+
+The Brand Identity & Social Media System now includes:
+
+- Brand Asset Library structure
+- Instagram Highlight Suite v1.0
+- Instagram Story Template System v1.0
+- Instagram Feed Template System v1.0
+
+Recommended next production asset:
+
+- Reels Cover Template System v1.0
