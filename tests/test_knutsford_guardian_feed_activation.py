@@ -5,6 +5,7 @@ from backend.app.news_feed_service import RSS_FEEDS, NewsFeedService
 
 
 KNUTSFORD_URL = "https://www.knutsfordguardian.co.uk/news/rss/"
+RUNCORN_WIDNES_URL = "https://www.runcornandwidnesworld.co.uk/news/rss/"
 
 
 def article(title, *, summary="", content="", image="https://img.test/story.jpg"):
@@ -17,9 +18,8 @@ def article(title, *, summary="", content="", image="https://img.test/story.jpg"
     }
 
 
-def test_only_knutsford_guardian_is_added_to_production_feed_registry():
-    config = RSS_FEEDS["knutsford_guardian"]
-    assert config == {
+def test_only_approved_newsquest_feeds_are_in_production_feed_registry():
+    assert RSS_FEEDS["knutsford_guardian"] == {
         "url": KNUTSFORD_URL,
         "source": "Knutsford Guardian",
         "category": "Local News",
@@ -32,8 +32,19 @@ def test_only_knutsford_guardian_is_added_to_production_feed_registry():
             "handforth": "wilmslow",
         },
     }
+    assert RSS_FEEDS["runcorn_widnes_world"] == {
+        "url": RUNCORN_WIDNES_URL,
+        "source": "Runcorn & Widnes World",
+        "category": "Local News",
+        "priority": 0,
+        "is_local": True,
+        "allowed_location_terms": {
+            "runcorn": "warrington",
+            "widnes": "warrington",
+            "halton": "warrington",
+        },
+    }
     assert "northwich_guardian" not in RSS_FEEDS
-    assert "runcorn_widnes_world" not in RSS_FEEDS
     assert "nantwich_news" not in RSS_FEEDS
 
 
@@ -86,7 +97,48 @@ def test_local_fetch_keeps_only_genuine_knutsford_feed_area_articles():
     assert all(item["feed_priority"] == 1 for item in result)
 
 
-def test_existing_local_feed_order_is_preserved_before_knutsford_addition():
+def test_runcorn_widnes_matching_is_word_bounded_and_maps_to_warrington():
+    match = NewsFeedService._match_allowed_feed_location
+    terms = RSS_FEEDS["runcorn_widnes_world"]["allowed_location_terms"]
+    assert match(article("Runcorn transport plans approved"), terms) == "warrington"
+    assert match(article("New investment announced in Widnes"), terms) == "warrington"
+    assert match(article("Halton schools receive funding"), terms) == "warrington"
+    assert match(article("County-wide Cheshire scheme announced"), terms) is None
+    assert match(article("A project by Haltonian Ltd"), terms) is None
+
+
+def test_local_fetch_keeps_only_genuine_runcorn_widnes_area_articles():
+    service = NewsFeedService()
+    calls = []
+    feed_items = [
+        article("Runcorn transport plans approved"),
+        article("New investment announced in Widnes"),
+        article("Halton schools receive funding"),
+        article("County-wide Cheshire scheme announced"),
+    ]
+
+    async def fake_fetch(feed_key):
+        calls.append(feed_key)
+        if feed_key == "runcorn_widnes_world":
+            return copy.deepcopy(feed_items)
+        return []
+
+    service.fetch_feed = fake_fetch
+    result = asyncio.run(service.fetch_local_feeds_only())
+
+    assert "runcorn_widnes_world" in calls
+    assert [item["title"] for item in result] == [
+        "Runcorn transport plans approved",
+        "New investment announced in Widnes",
+        "Halton schools receive funding",
+    ]
+    assert all(item["location"] == "warrington" for item in result)
+    assert all(item["is_cheshire_related"] is True for item in result)
+    assert all(item["is_local_feed"] is True for item in result)
+    assert all(item["feed_priority"] == 1 for item in result)
+
+
+def test_existing_local_feed_order_is_preserved_before_newsquest_additions():
     source = NewsFeedService.fetch_local_feeds_only.__code__.co_consts
     flattened = repr(source)
     assert flattened.index("warrington_guardian") < flattened.index(
@@ -94,4 +146,7 @@ def test_existing_local_feed_order_is_preserved_before_knutsford_addition():
     )
     assert flattened.index("chester_standard") < flattened.index(
         "knutsford_guardian"
+    )
+    assert flattened.index("knutsford_guardian") < flattened.index(
+        "runcorn_widnes_world"
     )

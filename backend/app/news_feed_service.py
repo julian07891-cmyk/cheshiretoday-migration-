@@ -419,6 +419,18 @@ RSS_FEEDS = {
             'handforth': 'wilmslow',
         },
     },
+    'runcorn_widnes_world': {
+        'url': 'https://www.runcornandwidnesworld.co.uk/news/rss/',
+        'source': 'Runcorn & Widnes World',
+        'category': 'Local News',
+        'priority': 0,
+        'is_local': True,
+        'allowed_location_terms': {
+            'runcorn': 'warrington',
+            'widnes': 'warrington',
+            'halton': 'warrington',
+        },
+    },
     # --- Business/Finance/Tech (extra via RSS sources expansion) ---
     'companies_house_atom': {
         'url': 'https://www.gov.uk/government/organisations/companies-house.atom',
@@ -1628,6 +1640,7 @@ class NewsFeedService:
             'warrington_guardian',
             'chester_standard',
             'knutsford_guardian',
+            'runcorn_widnes_world',
         ]:
             if feed_key in self.feeds:
                 articles = await self.fetch_feed(feed_key)
