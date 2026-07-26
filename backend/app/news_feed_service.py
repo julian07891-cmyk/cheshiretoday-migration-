@@ -431,6 +431,23 @@ RSS_FEEDS = {
             'halton': 'warrington',
         },
     },
+    'nantwich_news': {
+        'url': 'https://thenantwichnews.co.uk/feed/',
+        'source': 'Nantwich News',
+        'category': 'Local News',
+        'priority': 0,
+        'is_local': True,
+        'allowed_location_terms': {
+            'nantwich': 'crewe',
+        },
+        'allowed_county_review_terms': {
+            'cheshire east': 'cheshire_east',
+            'across cheshire': 'cheshire',
+            'across the county': 'cheshire',
+            'county-wide cheshire': 'cheshire',
+            'county wide cheshire': 'cheshire',
+        },
+    },
     # --- Business/Finance/Tech (extra via RSS sources expansion) ---
     'companies_house_atom': {
         'url': 'https://www.gov.uk/government/organisations/companies-house.atom',
@@ -1641,11 +1658,15 @@ class NewsFeedService:
             'chester_standard',
             'knutsford_guardian',
             'runcorn_widnes_world',
+            'nantwich_news',
         ]:
             if feed_key in self.feeds:
                 articles = await self.fetch_feed(feed_key)
                 allowed_location_terms = self.feeds[feed_key].get(
                     'allowed_location_terms'
+                )
+                allowed_county_review_terms = self.feeds[feed_key].get(
+                    'allowed_county_review_terms'
                 )
                 eligible_articles = []
                 for article in articles:
@@ -1655,8 +1676,17 @@ class NewsFeedService:
                             allowed_location_terms,
                         )
                         if not matched_location:
-                            continue
-                        article['location'] = matched_location
+                            county_scope = self._match_allowed_feed_location(
+                                article,
+                                allowed_county_review_terms or {},
+                            )
+                            if not county_scope:
+                                continue
+                            article.pop('location', None)
+                            article['county_wide_manual_review_candidate'] = True
+                            article['county_wide_scope'] = county_scope
+                        else:
+                            article['location'] = matched_location
                     article['is_cheshire_related'] = True
                     article['is_local_feed'] = True
                     article['feed_priority'] = 1  # Lower priority

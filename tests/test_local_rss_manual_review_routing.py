@@ -389,3 +389,110 @@ def test_manual_review_records_do_not_enter_public_or_live_counts(monkeypatch):
         in query.get("$and", [])
         for query in public_collection.queries
     )
+
+
+def test_county_wide_civic_candidate_is_hidden_manual_review_only(monkeypatch):
+    story = candidate(
+        "Cheshire East council approves major infrastructure investment",
+        location=None,
+        county_wide_manual_review_candidate=True,
+        county_wide_scope="cheshire_east",
+    )
+
+    result, inserted = run_import(monkeypatch, [story])
+
+    assert result["cheshire_from_rss"] == 0
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+    assert inserted[0]["county_wide_manual_review_candidate"] is True
+    assert inserted[0]["county_wide_scope"] == "cheshire_east"
+    assert inserted[0].get("location") is None
+    assert inserted[0]["manual_review_reason"] == (
+        "Local RSS article needs manual review: County-wide Cheshire story "
+        "without a qualifying town match"
+    )
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Families enjoy entertainment and lifestyle activities across Cheshire",
+        "Annual summer event takes place across the county",
+    ],
+)
+def test_low_value_county_wide_signal_is_not_retained(monkeypatch, title):
+    story = candidate(
+        title,
+        location=None,
+        county_wide_manual_review_candidate=True,
+        county_wide_scope="cheshire",
+    )
+
+    result, inserted = run_import(monkeypatch, [story])
+
+    assert result["cheshire_from_rss"] == 0
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 0
+    assert inserted == []
+
+
+def test_unsafe_county_wide_candidates_remain_rejected(monkeypatch):
+    weak_image = candidate(
+        "Across Cheshire councils announce a community programme",
+        county_wide_manual_review_candidate=True,
+        county_wide_scope="cheshire",
+    )
+    weak_image["image"] = (
+        "https://www.warringtonguardian.co.uk/resources/images/20771109.jpg"
+    )
+    candidates = [
+        candidate(
+            "Police investigate county-wide Cheshire incident",
+            county_wide_manual_review_candidate=True,
+            county_wide_scope="cheshire",
+        ),
+        candidate(
+            "Sponsored county-wide Cheshire shopping promotion",
+            county_wide_manual_review_candidate=True,
+            county_wide_scope="cheshire",
+        ),
+        candidate(
+            "County-wide Cheshire community service expands",
+            county_wide_manual_review_candidate=True,
+            county_wide_scope="cheshire",
+            image=False,
+        ),
+        candidate(
+            "Across Cheshire residents launch a public service project",
+            county_wide_manual_review_candidate=True,
+            county_wide_scope="cheshire",
+            source_url="",
+        ),
+        weak_image,
+    ]
+
+    result, inserted = run_import(monkeypatch, candidates)
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 0
+    assert inserted == []
+
+
+def test_duplicate_county_wide_candidate_remains_rejected(monkeypatch):
+    story = candidate(
+        "Across Cheshire councils approve service investment",
+        county_wide_manual_review_candidate=True,
+        county_wide_scope="cheshire",
+    )
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        existing=[{"title": story["title"], "source_url": story["source_url"]}],
+    )
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 0
+    assert inserted == []

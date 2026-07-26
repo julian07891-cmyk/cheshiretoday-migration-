@@ -6,6 +6,7 @@ from backend.app.news_feed_service import RSS_FEEDS, NewsFeedService
 
 KNUTSFORD_URL = "https://www.knutsfordguardian.co.uk/news/rss/"
 RUNCORN_WIDNES_URL = "https://www.runcornandwidnesworld.co.uk/news/rss/"
+NANTWICH_URL = "https://thenantwichnews.co.uk/feed/"
 
 
 def article(title, *, summary="", content="", image="https://img.test/story.jpg"):
@@ -44,8 +45,24 @@ def test_only_approved_newsquest_feeds_are_in_production_feed_registry():
             "halton": "warrington",
         },
     }
+    assert RSS_FEEDS["nantwich_news"] == {
+        "url": NANTWICH_URL,
+        "source": "Nantwich News",
+        "category": "Local News",
+        "priority": 0,
+        "is_local": True,
+        "allowed_location_terms": {
+            "nantwich": "crewe",
+        },
+        "allowed_county_review_terms": {
+            "cheshire east": "cheshire_east",
+            "across cheshire": "cheshire",
+            "across the county": "cheshire",
+            "county-wide cheshire": "cheshire",
+            "county wide cheshire": "cheshire",
+        },
+    }
     assert "northwich_guardian" not in RSS_FEEDS
-    assert "nantwich_news" not in RSS_FEEDS
 
 
 def test_feed_area_matching_is_word_bounded_and_maps_existing_locations():
@@ -138,6 +155,35 @@ def test_local_fetch_keeps_only_genuine_runcorn_widnes_area_articles():
     assert all(item["feed_priority"] == 1 for item in result)
 
 
+def test_nantwich_town_and_county_review_matching_are_kept_separate():
+    service = NewsFeedService()
+    items = [
+        article("Nantwich hospital investment approved"),
+        article("Cheshire East council approves infrastructure funding"),
+        article("Regional investment announced for Staffordshire"),
+        article("Nantwichian company announces a product launch"),
+    ]
+
+    async def fake_fetch(feed_key):
+        if feed_key == "nantwich_news":
+            return copy.deepcopy(items)
+        return []
+
+    service.fetch_feed = fake_fetch
+    result = asyncio.run(service.fetch_local_feeds_only())
+
+    assert [item["title"] for item in result] == [
+        "Nantwich hospital investment approved",
+        "Cheshire East council approves infrastructure funding",
+    ]
+    town, county = result
+    assert town["location"] == "crewe"
+    assert town.get("county_wide_manual_review_candidate") is not True
+    assert "location" not in county
+    assert county["county_wide_manual_review_candidate"] is True
+    assert county["county_wide_scope"] == "cheshire_east"
+
+
 def test_existing_local_feed_order_is_preserved_before_newsquest_additions():
     source = NewsFeedService.fetch_local_feeds_only.__code__.co_consts
     flattened = repr(source)
@@ -149,4 +195,7 @@ def test_existing_local_feed_order_is_preserved_before_newsquest_additions():
     )
     assert flattened.index("knutsford_guardian") < flattened.index(
         "runcorn_widnes_world"
+    )
+    assert flattened.index("runcorn_widnes_world") < flattened.index(
+        "nantwich_news"
     )

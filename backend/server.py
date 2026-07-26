@@ -2694,6 +2694,35 @@ async def _import_hybrid_news_internal(
             if is_obituary_like(article):
                 continue
 
+            # A feed-configured Cheshire-wide signal is useful for editorial
+            # review but must never substitute a false town location or enter
+            # the strict automatic-publication path.
+            if article.get("county_wide_manual_review_candidate") is True:
+                if is_hard_reject_local_review_candidate(article):
+                    logger.info(
+                        "Skipping unsafe county-wide Local RSS candidate: "
+                        f"{title[:60]}..."
+                    )
+                    continue
+                if not is_useful_local_article(article):
+                    logger.info(
+                        "Skipping low-value county-wide Local RSS candidate: "
+                        f"{title[:60]}..."
+                    )
+                    continue
+                if await queue_local_rss_manual_review(
+                    article,
+                    title,
+                    "Local RSS article needs manual review: County-wide "
+                    "Cheshire story without a qualifying town match",
+                ):
+                    continue
+                logger.info(
+                    "Skipping unsafe county-wide Local RSS candidate: "
+                    f"{title[:60]}..."
+                )
+                continue
+
             # Keep promotional/spam material rejected, but let suitable soft
             # lifestyle or borderline editorial candidates reach Manual Review.
             if is_low_utility_article(article) and not is_high_value_local_civic_economic_article(article):
