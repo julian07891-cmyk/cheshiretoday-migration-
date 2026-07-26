@@ -24060,3 +24060,102 @@ Current priorities and remaining work are:
    evidence-led activation changes; keep all unapproved sources inactive
 4. follow the approve-article-first social workflow and use subsequent Meta
    Insights reviews to assess outcomes without automating editorial decisions
+
+## Operational update — 26 July 2026
+
+### RSS expansion
+
+The Knutsford Guardian production activation was completed previously. Runcorn
+& Widnes World has now also been activated as a production Local RSS source.
+Its word-bounded locality mappings are:
+
+- Runcorn → `warrington`
+- Widnes → `warrington`
+- Halton → `warrington`
+
+The existing duplicate, locality, editorial, image, rewrite, scheduler and
+Manual Review safeguards were preserved. Northwich Guardian remains inactive.
+Nantwich News remained pending until the later activation recorded below.
+
+### Nantwich News activation
+
+Nantwich News has been activated through its verified RSS feed, with Nantwich
+mapped to the existing `crewe` public location. County-wide Cheshire review
+routing was added for configured Cheshire-wide signals that do not have a
+qualifying Nantwich town match.
+
+County-wide candidates never enter automatic public publication. They may
+enter the existing hidden Manual Review workflow only after passing the
+existing hard-rejection checks and the existing useful-local article gate.
+Useful county-wide civic stories retain the Manual Review reason:
+
+`Local RSS article needs manual review: County-wide Cheshire story without a qualifying town match`
+
+Crime/court, duplicate, promotional/spam, missing-source, missing-image and
+known weak-image safeguards remain in force before Manual Review insertion.
+Low-value county-wide material is skipped without public or Manual Review
+insertion.
+
+### Current production status
+
+```text
+Branch: full-scrape-prod
+
+99dec3e Activate Runcorn and Widnes World feed
+9cfb187 Activate Nantwich News feed and county-wide manual review routing
+```
+
+The production `/health` endpoint was verified healthy with HTTP 200. The
+scheduler is running, and the morning, midday and evening import jobs remain
+scheduled.
+
+### Social media / Meta
+
+Completed:
+
+- Business Portfolio reviewed
+- Facebook Page ownership verified
+- Instagram Business ownership verified
+- Facebook and Instagram accounts linked for cross-platform management
+- automatic cross-posting intentionally disabled to allow platform-specific publishing
+- two-factor authentication required
+- Instagram category changed to `News & Media Website`
+- Instagram profile renamed to `Cheshire Today | Cheshire News`
+- Instagram bio updated
+- website link verified
+- profile image refreshed
+- first Instagram Highlight created: `News`
+- Highlight branding project initiated
+
+### Branding project
+
+A new project, **Cheshire Today Brand Identity & Social Media System**, is
+planned.
+
+Planned deliverables:
+
+- brand colour palette
+- typography
+- logo suite
+- professional vector Highlight cover suite
+- Instagram Highlight covers
+- Story templates
+- feed templates
+- carousel templates
+- Reel covers
+- Facebook templates
+- Threads templates
+- Brand Guidelines PDF
+- Media Kit
+
+Status: planned.
+
+### Next priorities
+
+1. Observe the midday import after the RSS expansion.
+2. Verify Runcorn & Widnes World articles entering the pipeline.
+3. Verify Nantwich News town and county-wide Manual Review routing.
+4. Continue the Brand Identity project.
+5. Continue Meta optimisation.
+6. Consider Northwich Guardian activation only after production observation.
+7. Evaluate future HTML adapters for selected Nub News publishers.
