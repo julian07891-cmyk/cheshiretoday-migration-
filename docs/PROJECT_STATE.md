@@ -24521,3 +24521,43 @@ The Brand Identity & Social Media System now includes:
 Recommended next production asset:
 
 - Facebook Template System v1.0
+
+## Brand asset update — Brand Guidelines v1.0
+
+### Brand Guidelines
+
+A new version-controlled source document now exists at:
+
+`docs/brand-assets/brand-guidelines/BRAND_GUIDELINES.md`
+
+It is the operational source for:
+
+- brand principles
+- logo usage
+- colour palette
+- typography
+- social asset standards
+- editorial imagery
+- accessibility
+- social publishing
+- version control
+- future roadmap
+
+Markdown is now the source of truth for the Brand Guidelines. PDF editions should be generated from the Markdown document when required. The production website design system remains the authoritative Cheshire Today brand baseline.
+
+The guidelines reference the existing Highlight, Story, Feed and Reels template systems. No production code or website behaviour changed.
+
+### Project status
+
+The Brand Identity & Social Media System now contains:
+
+- Brand Asset Library
+- Highlight Suite
+- Story Templates
+- Feed Templates
+- Reels Templates
+- Brand Guidelines v1.0
+
+Recommended next project:
+
+- Facebook Template System v1.0
