@@ -24295,3 +24295,100 @@ Planned next work:
 3. Review Manual Review quality after several scheduler cycles.
 4. Reassess Northwich Guardian only after sufficient production evidence.
 5. Begin the reusable social-media template library.
+
+## Operational update — 26 July 2026 (Brand Asset Library v1.0)
+
+### Authoritative design baseline
+
+The live website design system is the authoritative Cheshire Today brand
+baseline.
+
+Approved typography:
+
+- Playfair Display for editorial headlines
+- Public Sans for interface and body text
+
+Approved primary palette:
+
+- royal blue `#1E3A8A`
+- primary hover `#1B357D`
+- editorial emerald `#047857` / `#059669`
+- breaking red `#DC2626`
+- warm paper `#F7F4EE`
+- warm panel `#FBFAF7`
+- warm border `#E6E1D8`
+- main headline text `#020617`
+- body text `#1E293B`
+- secondary text `#475569`
+
+Montserrat and a new teal-first palette were explicitly not adopted because
+they would conflict with the current production design system.
+
+### Brand Asset Library v1.0
+
+The permanent library has been created at `docs/brand-assets/`. An SVG-first
+workflow has been adopted, with production PNG exports generated from approved
+SVG masters. Naming, export, versioning and approval rules are documented. No
+existing Highlight asset was altered during the library setup.
+
+### Instagram Highlight suite
+
+The completed Version 1.0 production suite contains SVG masters and
+`1080 × 1080` PNG exports for:
+
+- News
+- Money
+- Property
+- AI & Tech
+- Food & Drink
+- Places
+- Transport
+- Newsletter
+- Reels
+
+The shared production contract is:
+
+- background `#1E3A8A`
+- icon colour `#F7F4EE`
+- `32 px` rounded monoline stroke
+- no visible text
+- no gradients
+- no filters
+- no shadows
+- central safe-area compliance
+- accessibility metadata in the SVG masters
+
+### Library structure
+
+Prepared repository locations now exist for:
+
+- logos
+- colours
+- typography
+- social/highlights
+- social/stories
+- social/feed
+- social/reels
+- social/facebook
+- social/threads
+- media-kit
+- brand-guidelines
+
+### Production impact
+
+- no website code changed
+- no frontend styling changed
+- no Tailwind configuration changed
+- no production behaviour changed
+- no deployment was required
+
+### Next priority
+
+The next brand deliverable is the Instagram Story Template System, followed by:
+
+1. Feed graphics
+2. Reels covers
+3. Facebook graphics
+4. Threads graphics
+5. Brand Guidelines PDF
+6. Media Kit

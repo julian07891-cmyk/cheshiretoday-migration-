@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="Cheshire Today Money highlight cover">
+  <rect width="1080" height="1080" fill="#1E3A8A"/>
+  <g fill="none" stroke="#F7F4EE" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="540" cy="540" r="175"/>
+    <path d="M620 445C603 420 577 405 545 405C495 405 465 438 465 488V570C465 624 438 657 410 675H635"/>
+    <path d="M420 535H575"/>
+  </g>
+</svg>
