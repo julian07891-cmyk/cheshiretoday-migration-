@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920" role="img" aria-labelledby="property-reel-title property-reel-description">
+  <title id="property-reel-title">Cheshire Today property Reel cover template</title>
+  <desc id="property-reel-description">Reusable property Reel cover with six editable placeholders inside the shared safe area.</desc>
+  <style>.interface { font-family: 'Public Sans', Arial, sans-serif; } .headline { font-family: 'Playfair Display', Georgia, serif; }</style>
+  <rect width="1080" height="1920" fill="#FBFAF7"/><rect x="0" y="0" width="1080" height="390" fill="#1E3A8A"/>
+  <g data-placeholder="logo" class="interface" fill="none" stroke="#F7F4EE" stroke-width="3"><rect x="72" y="270" width="270" height="72" rx="8"/><text x="207" y="316" fill="#F7F4EE" stroke="none" text-anchor="middle" font-size="24" font-weight="700" letter-spacing="2">LOGO</text></g>
+  <g data-placeholder="category" class="interface"><rect x="748" y="275" width="260" height="62" rx="31" fill="#F7F4EE"/><text x="878" y="315" fill="#1E3A8A" text-anchor="middle" font-size="21" font-weight="700" letter-spacing="2">[CATEGORY]</text></g>
+  <g data-placeholder="image"><rect x="120" y="440" width="888" height="690" rx="22" fill="#F7F4EE" stroke="#E6E1D8" stroke-width="4"/><path d="M420 700L680 850M680 700L420 850" fill="none" stroke="#E6E1D8" stroke-width="6" stroke-linecap="round"/><text class="interface" x="564" y="980" fill="#475569" text-anchor="middle" font-size="26" font-weight="600" letter-spacing="2">IMAGE</text></g>
+  <g data-placeholder="reel-badge" class="interface"><rect x="800" y="1035" width="180" height="64" rx="32" fill="#047857"/><text x="890" y="1077" fill="#F7F4EE" text-anchor="middle" font-size="22" font-weight="700" letter-spacing="2">[REEL]</text></g>
+  <g data-placeholder="headline" class="headline" fill="#020617"><text x="72" y="1240" font-size="84" font-weight="700">[HEADLINE]</text><path d="M72 1288H1008M72 1390H800" stroke="#E6E1D8" stroke-width="3"/></g>
+  <g data-placeholder="cta" class="interface"><rect x="72" y="1490" width="390" height="104" rx="12" fill="#1E3A8A"/><text x="267" y="1557" fill="#F7F4EE" text-anchor="middle" font-size="28" font-weight="700">[CTA]</text></g>
+  <g id="editor-guides" data-export="hide" display="none" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="12 10"><rect x="72" y="250" width="936" height="1370"/><path d="M540 250V1620M72 390H1008M72 1450H1008"/></g>
+</svg>

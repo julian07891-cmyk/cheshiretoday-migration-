@@ -24472,3 +24472,52 @@ The Brand Identity & Social Media System now includes:
 Recommended next production asset:
 
 - Reels Cover Template System v1.0
+
+## Brand asset update — Reels Cover Template System v1.0
+
+### Reels Cover Template System v1.0
+
+Six permanent SVG masters were created under
+`docs/brand-assets/social/reels/templates/`:
+
+- `breaking-news-reel.svg`
+- `local-news-reel.svg`
+- `business-reel.svg`
+- `property-reel.svg`
+- `ai-tech-reel.svg`
+- `newsletter-reel.svg`
+
+Standards:
+
+- 1080 × 1920 canvas
+- same safe-area contract as the Story Template System
+- hidden editor-guide layer
+- shared `logo`, `image`, `category`, `headline`, `reel-badge` and CTA placeholders
+- Playfair Display headlines
+- Public Sans interface text
+- approved production website palette only
+- SVG-first workflow
+- no raster images, gradients, filters, shadows, external references or PNG exports
+
+### Validation
+
+- all six SVG files are valid XML
+- canvas and `viewBox` values were verified
+- IDs and accessibility references were validated
+- all critical content remains within the approved safe area
+- no website, frontend, backend, Tailwind or production behaviour changed
+- Reels README documentation was completed
+
+### Project status
+
+The Brand Identity & Social Media System now includes:
+
+- Brand Asset Library v1.0
+- Instagram Highlight Suite v1.0
+- Instagram Story Template System v1.0
+- Instagram Feed Template System v1.0
+- Reels Cover Template System v1.0
+
+Recommended next production asset:
+
+- Facebook Template System v1.0
