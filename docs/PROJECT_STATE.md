@@ -24159,3 +24159,139 @@ Status: planned.
 5. Continue Meta optimisation.
 6. Consider Northwich Guardian activation only after production observation.
 7. Evaluate future HTML adapters for selected Nub News publishers.
+
+## Operational update — 26 July 2026 (Post-deployment verification)
+
+### Production deployment
+
+The following commits are deployed in production:
+
+```text
+f82610e Update project state after RSS expansion and Meta setup
+c80ca7e Refine local RSS manual review quality
+```
+
+Deployment completed successfully.
+
+### Production verification
+
+Confirmed:
+
+- `/health` is healthy
+- the scheduler is running normally
+- no scheduler behaviour changed
+- no RSS configuration regressions were found
+- no locality-mapping regressions were found
+
+### First production import verification
+
+The first scheduled import after the Runcorn & Widnes World and Nantwich
+News feed activations increased the hidden Manual Review pool from 69 to
+114 articles, an increase of 45. This observation occurred before the
+later `c80ca7e` Manual Review quality-refinement deployment.
+
+Observed contribution from the newly evaluated Local feeds:
+
+- Knutsford Guardian: `+4`
+- Runcorn & Widnes World: `+10`
+- Nantwich News: `+4`
+- Northwich Guardian: `0`
+- public articles from the newly activated feeds: `0`
+
+This confirms that the newly activated feeds entered the existing hidden
+Manual Review workflow rather than bypassing editorial review.
+
+### Editorial refinement
+
+Production observation led to a narrow pre-Manual-Review rejection rule for:
+
+- routine kitchen, shed, bin and other small fires
+- TripAdvisor “best” listicles
+- picnic listicles
+- generic café reviews
+- ordinary property-for-sale features
+- routine road closures without significant public impact
+
+Existing handling was retained for:
+
+- food-hygiene enforcement
+- significant transport disruption
+- planning and housing
+- NHS
+- council decisions
+- education
+- regeneration and investment
+- business and infrastructure
+- charity and community projects
+- environmental stories
+
+The planning/housing topic classifier was also corrected so that community
+stories mentioning care homes are no longer incorrectly assigned to the
+planning/housing topic cap. All other publication and Manual Review safeguards
+remain unchanged.
+
+### Current active production Local RSS sources
+
+Active:
+
+- Cheshire Live
+- Warrington Guardian
+- Chester Standard
+- Knutsford Guardian
+- Runcorn & Widnes World
+- Nantwich News
+
+Inactive by design:
+
+- Northwich Guardian
+- Nub News sources
+- Wilmslow.co.uk
+- AlderleyEdge.com
+
+### Current project status
+
+The RSS rollout phase is considered stable. Future RSS work must remain
+evidence-led, and no further production feed activation should occur until
+sufficient observation data has been gathered.
+
+### Current primary project
+
+The current primary project is **Cheshire Today Brand Identity & Social Media
+System**.
+
+Status: started.
+
+Completed:
+
+- Meta Business review
+- Instagram optimisation
+- Facebook linking review
+- Threads account presence confirmed in Accounts Centre; it is not currently
+  added as a Business Portfolio asset
+- Business Portfolio review
+- Highlight strategy
+- initial Highlight cover concept
+- brand system documented
+
+Planned next work:
+
+- professional vector Highlight covers
+- logo suite
+- colour palette
+- typography
+- Story templates
+- Instagram templates
+- Facebook templates
+- Threads templates
+- carousel templates
+- Reel covers
+- Brand Guidelines PDF
+- Media Kit
+
+### Immediate priorities
+
+1. Continue the Brand Identity project.
+2. Observe future RSS imports.
+3. Review Manual Review quality after several scheduler cycles.
+4. Reassess Northwich Guardian only after sufficient production evidence.
+5. Begin the reusable social-media template library.
