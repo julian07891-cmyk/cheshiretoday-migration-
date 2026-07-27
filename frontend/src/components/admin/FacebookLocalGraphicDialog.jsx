@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Download, Image as ImageIcon, Loader2, RefreshCw } from 'lucide-react';
+import { Copy, Download, ExternalLink, Image as ImageIcon, Loader2, RefreshCw } from 'lucide-react';
 
 import { buildArticleUrl } from '../../utils/articleUrl';
 import { Badge } from '../ui/badge';
@@ -34,9 +34,12 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
+  const [linkMessage, setLinkMessage] = useState('');
+  const [linkError, setLinkError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
   const previewUrlRef = useRef(null);
   const requestSequence = useRef(0);
+  const copySequence = useRef(0);
 
   const revokePreview = useCallback((clearState = true) => {
     if (previewUrlRef.current) {
@@ -48,10 +51,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
 
   const reset = useCallback(() => {
     requestSequence.current += 1;
+    copySequence.current += 1;
     revokePreview();
     setLoading(false);
     setDownloading(false);
     setError('');
+    setLinkMessage('');
+    setLinkError('');
   }, [revokePreview]);
 
   useEffect(() => {
@@ -113,6 +119,23 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     ? `https://cheshiretoday.co.uk${buildArticleUrl({ ...article, id: article.mongo_id })}`
     : '';
 
+  const copyArticleLink = async () => {
+    if (!canonicalUrl) return;
+    const sequence = copySequence.current + 1;
+    copySequence.current = sequence;
+    setLinkMessage('');
+    setLinkError('');
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(canonicalUrl);
+      if (copySequence.current === sequence) setLinkMessage('Link copied');
+    } catch (_error) {
+      if (copySequence.current === sequence) {
+        setLinkError('The article link could not be copied. Please copy it manually.');
+      }
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
@@ -145,6 +168,8 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
             </section>
 
             {error && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
+            {linkError && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{linkError}</div>}
+            {linkMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{linkMessage}</div>}
 
             {previewUrl && (
               <section aria-label="Generated SVG preview">
@@ -158,8 +183,22 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
           </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
+          <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
+            <Copy className="mr-2 h-4 w-4" />Copy Article Link
+          </Button>
+          {canonicalUrl ? (
+            <Button variant="outline" asChild>
+              <a href={canonicalUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />Open Article
+              </a>
+            </Button>
+          ) : (
+            <Button type="button" variant="outline" disabled>
+              <ExternalLink className="mr-2 h-4 w-4" />Open Article
+            </Button>
+          )}
           <Button type="button" onClick={generate} disabled={loading || downloading || !article?.mongo_id}>
             {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
           </Button>

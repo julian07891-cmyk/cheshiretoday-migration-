@@ -28,15 +28,21 @@ jest.mock('../ui/dialog', () => ({
   DialogFooter: ({ children }) => <div>{children}</div>,
 }));
 jest.mock('../ui/badge', () => ({ Badge: ({ children }) => <span>{children}</span> }));
-jest.mock('../ui/button', () => ({
-  Button: ({ children, variant, ...props }) => <button {...props}>{children}</button>,
-}));
+jest.mock('../ui/button', () => {
+  const ReactModule = require('react');
+  return {
+    Button: ({ children, variant, asChild, ...props }) => asChild
+      ? ReactModule.cloneElement(children, props)
+      : <button {...props}>{children}</button>,
+  };
+});
 
 const ARTICLE = {
   mongo_id: '507f1f77bcf86cd799439011',
   title: 'Council investment supports new jobs in Knutsford',
   category: 'Local News',
   image: 'https://images.example.test/story.jpg',
+  source_url: 'https://publisher.example.test/source-story',
 };
 
 
@@ -56,6 +62,10 @@ describe('FacebookLocalGraphicDialog', () => {
     fetchFacebookLocalGraphic.mockReset();
     rasterizeFacebookSvg.mockReset();
     downloadFacebookPng.mockReset();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: jest.fn().mockResolvedValue(undefined) },
+    });
   });
   afterEach(() => {
     act(() => root.unmount());
@@ -85,6 +95,89 @@ describe('FacebookLocalGraphicDialog', () => {
     );
     expect(button('Generate Graphic').disabled).toBe(false);
     expect(button('Download PNG').disabled).toBe(true);
+    expect(button('Copy Article Link').disabled).toBe(false);
+    const openArticle = container.querySelector('a');
+    expect(openArticle.textContent).toContain('Open Article');
+    expect(openArticle.href).toBe(
+      `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`
+    );
+    expect(openArticle.target).toBe('_blank');
+    expect(openArticle.rel).toBe('noopener noreferrer');
+  });
+
+  test('copies only the canonical Cheshire Today article URL and announces success', async () => {
+    renderDialog();
+    await click('Copy Article Link');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`
+    );
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(ARTICLE.image);
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(ARTICLE.source_url);
+    const status = container.querySelector('[role="status"][aria-live="polite"]');
+    expect(status.textContent).toBe('Link copied');
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
+  });
+
+  test('shows a safe copy error without triggering graphic work', async () => {
+    navigator.clipboard.writeText.mockRejectedValue(new Error('private detail'));
+    renderDialog();
+    await click('Copy Article Link');
+    expect(container.querySelector('[role="alert"]').textContent).toBe(
+      'The article link could not be copied. Please copy it manually.'
+    );
+    expect(container.textContent).not.toContain('private detail');
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+  });
+
+  test('clears copy confirmation when the selected article changes or dialog closes', async () => {
+    renderDialog();
+    await click('Copy Article Link');
+    expect(container.textContent).toContain('Link copied');
+
+    const replacement = { ...ARTICLE, mongo_id: '507f191e810c19729de860ea', title: 'Replacement article' };
+    act(() => root.render(
+      <FacebookLocalGraphicDialog
+        open
+        article={replacement}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    expect(container.textContent).not.toContain('Link copied');
+
+    await click('Copy Article Link');
+    expect(container.textContent).toContain('Link copied');
+    await click('Close');
+    expect(container.textContent).not.toContain('Link copied');
+  });
+
+  test('does not restore copy confirmation after closing during a pending clipboard request', async () => {
+    let resolveCopy;
+    navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
+    renderDialog();
+    act(() => button('Copy Article Link').click());
+    await click('Close');
+    await act(async () => resolveCopy());
+    expect(container.textContent).not.toContain('Link copied');
+  });
+
+  test('disables canonical-link actions when the Mongo ID is unavailable', () => {
+    act(() => root.render(
+      <FacebookLocalGraphicDialog
+        open
+        article={{ ...ARTICLE, mongo_id: '' }}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    expect(button('Copy Article Link').disabled).toBe(true);
+    expect(button('Open Article').disabled).toBe(true);
+    expect(container.querySelector('a')).toBeNull();
   });
 
   test('shows loading then enables SVG preview and PNG download', async () => {
