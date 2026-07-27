@@ -2,6 +2,10 @@ import {
   buildFacebookCaption,
   buildFacebookHashtags,
   buildFacebookPackage,
+  buildNewsletterFacebookPost,
+  NEWSLETTER_CAPTION,
+  NEWSLETTER_HASHTAGS,
+  NEWSLETTER_URL,
 } from './facebookPublishingCopy';
 
 
@@ -53,4 +57,14 @@ test('package ordering and blank-line spacing are exact', () => {
 test('package requires a title and canonical URL', () => {
   expect(buildFacebookPackage({ article: { ...RUDYS_ARTICLE, title: '' }, canonicalUrl: CANONICAL_URL })).toBe('');
   expect(buildFacebookPackage({ article: RUDYS_ARTICLE, canonicalUrl: '' })).toBe('');
+});
+
+
+test('Newsletter Facebook post is fixed and article independent', () => {
+  expect(buildNewsletterFacebookPost()).toBe(
+    `${NEWSLETTER_CAPTION}\n\n${NEWSLETTER_URL}\n\n${NEWSLETTER_HASHTAGS}`
+  );
+  expect(buildNewsletterFacebookPost()).toBe(
+    "Get Cheshire’s latest local, business, property and AI & Tech stories delivered to your inbox.\n\nSign up free to the Cheshire Today newsletter.\n\nhttps://cheshiretoday.co.uk/newsletter\n\n#CheshireToday #CheshireNews #Newsletter"
+  );
 });

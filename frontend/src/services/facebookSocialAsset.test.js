@@ -4,6 +4,7 @@ import {
   FacebookSocialAssetError,
   downloadFacebookPng,
   fetchFacebookLocalGraphic,
+  fetchFacebookNewsletterGraphic,
   rasterizeFacebookSvg,
 } from './facebookSocialAsset';
 
@@ -40,6 +41,29 @@ test.each([400, 404, 422, 500])('returns only a safe status for %s', async statu
     token: 'admin-token',
     fetchImpl,
   })).rejects.toEqual(new FacebookSocialAssetError(status));
+});
+
+
+test('requests the narrow authenticated Newsletter endpoint without article data', async () => {
+  const blob = new Blob(['<svg/>'], { type: 'image/svg+xml' });
+  const fetchImpl = jest.fn().mockResolvedValue({
+    ok: true,
+    headers: { get: () => 'image/svg+xml' },
+    blob: async () => blob,
+  });
+  await expect(fetchFacebookNewsletterGraphic({
+    apiUrl: 'https://admin.example',
+    token: 'admin-token',
+    fetchImpl,
+  })).resolves.toBe(blob);
+  expect(fetchImpl).toHaveBeenCalledWith(
+    'https://admin.example/api/admin/social-assets/facebook/newsletter',
+    {
+      method: 'GET',
+      headers: { Authorization: 'Bearer admin-token', Accept: 'image/svg+xml' },
+    }
+  );
+  expect(fetchImpl.mock.calls[0][1]).not.toHaveProperty('body');
 });
 
 
@@ -98,4 +122,18 @@ test('downloads a deterministic PNG filename and revokes its object URL', () => 
   expect(link.click).toHaveBeenCalledTimes(1);
   expect(scheduleRevoke).toHaveBeenCalledTimes(1);
   expect(urlApi.revokeObjectURL).toHaveBeenCalledWith('blob:png-download');
+});
+
+
+test('uses the fixed Newsletter filename when explicitly requested', () => {
+  const link = { click: jest.fn() };
+  const filename = downloadFacebookPng({
+    pngBlob: new Blob(['png'], { type: 'image/png' }),
+    filename: 'cheshire-today-newsletter-facebook.png',
+    documentRef: { createElement: jest.fn(() => link) },
+    urlApi: { createObjectURL: () => 'blob:newsletter', revokeObjectURL: jest.fn() },
+    scheduleRevoke: callback => callback(),
+  });
+  expect(filename).toBe('cheshire-today-newsletter-facebook.png');
+  expect(link.download).toBe(filename);
 });

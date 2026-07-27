@@ -51,6 +51,34 @@ export const fetchFacebookLocalGraphic = async ({
 };
 
 
+export const fetchFacebookNewsletterGraphic = async ({
+  apiUrl,
+  token,
+  fetchImpl = fetch,
+}) => {
+  if (!token) throw new FacebookSocialAssetError(400);
+  let response;
+  try {
+    response = await fetchImpl(
+      `${String(apiUrl || '').replace(/\/$/, '')}/api/admin/social-assets/facebook/newsletter`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'image/svg+xml',
+        },
+      }
+    );
+  } catch (_error) {
+    throw new FacebookSocialAssetError(500);
+  }
+  if (!response.ok) throw new FacebookSocialAssetError(response.status);
+  const contentType = String(response.headers?.get?.('content-type') || '').toLowerCase();
+  if (!contentType.startsWith('image/svg+xml')) throw new FacebookSocialAssetError(500);
+  return response.blob();
+};
+
+
 const waitForBrandFonts = async (documentRef) => {
   if (!documentRef?.fonts) return;
   if (typeof documentRef.fonts.load === 'function') {
@@ -100,11 +128,12 @@ export const rasterizeFacebookSvg = async ({
 export const downloadFacebookPng = ({
   pngBlob,
   title,
+  filename: explicitFilename,
   documentRef = document,
   urlApi = URL,
   scheduleRevoke = callback => setTimeout(callback, 0),
 }) => {
-  const filename = `cheshire-today-${slugifyArticleTitle(title)}-facebook.png`;
+  const filename = explicitFilename || `cheshire-today-${slugifyArticleTitle(title)}-facebook.png`;
   const downloadUrl = urlApi.createObjectURL(pngBlob);
   const link = documentRef.createElement('a');
   link.href = downloadUrl;

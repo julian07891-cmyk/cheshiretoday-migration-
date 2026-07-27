@@ -10,6 +10,9 @@ const LOCALITY_HASHTAGS = Object.freeze({
 });
 
 const BASE_HASHTAGS = Object.freeze(['#CheshireToday', '#CheshireNews']);
+export const NEWSLETTER_URL = 'https://cheshiretoday.co.uk/newsletter';
+export const NEWSLETTER_CAPTION = "Get Cheshire’s latest local, business, property and AI & Tech stories delivered to your inbox.\n\nSign up free to the Cheshire Today newsletter.";
+export const NEWSLETTER_HASHTAGS = '#CheshireToday #CheshireNews #Newsletter';
 
 
 export const buildFacebookCaption = title => {
@@ -37,3 +40,8 @@ export const buildFacebookPackage = ({ article, canonicalUrl }) => {
   if (!caption || !canonicalUrl || !hashtags) return '';
   return `${caption}\n\n${canonicalUrl}\n\n${hashtags}`;
 };
+
+
+export const buildNewsletterFacebookPost = () => (
+  `${NEWSLETTER_CAPTION}\n\n${NEWSLETTER_URL}\n\n${NEWSLETTER_HASHTAGS}`
+);

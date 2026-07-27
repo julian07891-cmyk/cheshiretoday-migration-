@@ -16,13 +16,23 @@ import {
   FacebookSocialAssetError,
   downloadFacebookPng,
   fetchFacebookLocalGraphic,
+  fetchFacebookNewsletterGraphic,
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
 import {
   buildFacebookCaption,
   buildFacebookHashtags,
   buildFacebookPackage,
+  buildNewsletterFacebookPost,
+  NEWSLETTER_CAPTION,
+  NEWSLETTER_HASHTAGS,
 } from '../../services/facebookPublishingCopy';
+
+
+const GRAPHIC_TYPES = Object.freeze([
+  { value: 'local-news', label: 'Local News' },
+  { value: 'newsletter', label: 'Newsletter' },
+]);
 
 
 const errorMessage = (error) => {
@@ -43,6 +53,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const [copyError, setCopyError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
   const [publishingMode, setPublishingMode] = useState('link-preview');
+  const [graphicType, setGraphicType] = useState('local-news');
   const previewUrlRef = useRef(null);
   const requestSequence = useRef(0);
   const copySequence = useRef(0);
@@ -65,6 +76,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setStatusMessage('');
     setCopyError('');
     setPublishingMode('link-preview');
+    setGraphicType('local-news');
   }, [revokePreview]);
 
   useEffect(() => {
@@ -82,6 +94,19 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     onOpenChange(nextOpen);
   };
 
+  const changeGraphicType = (nextType) => {
+    if (nextType === graphicType) return;
+    requestSequence.current += 1;
+    copySequence.current += 1;
+    revokePreview();
+    setLoading(false);
+    setDownloading(false);
+    setError('');
+    setStatusMessage('');
+    setCopyError('');
+    setGraphicType(nextType);
+  };
+
   const generate = async () => {
     const sequence = requestSequence.current + 1;
     requestSequence.current = sequence;
@@ -90,11 +115,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setStatusMessage('');
     setLoading(true);
     try {
-      const svgBlob = await fetchFacebookLocalGraphic({
-        apiUrl,
-        mongoId: article?.mongo_id,
-        token,
-      });
+      const svgBlob = graphicType === 'newsletter'
+        ? await fetchFacebookNewsletterGraphic({ apiUrl, token })
+        : await fetchFacebookLocalGraphic({
+          apiUrl,
+          mongoId: article?.mongo_id,
+          token,
+        });
       if (requestSequence.current !== sequence) return;
       const objectUrl = URL.createObjectURL(svgBlob);
       previewUrlRef.current = objectUrl;
@@ -116,7 +143,14 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     try {
       const pngBlob = await rasterizeFacebookSvg({ svgUrl: previewUrl });
       if (requestSequence.current !== sequence) return;
-      downloadFacebookPng({ pngBlob, title: article?.title });
+      if (graphicType === 'newsletter') {
+        downloadFacebookPng({
+          pngBlob,
+          filename: 'cheshire-today-newsletter-facebook.png',
+        });
+      } else {
+        downloadFacebookPng({ pngBlob, title: article?.title });
+      }
       setStatusMessage('Graphic downloaded');
     } catch (_error) {
       if (requestSequence.current === sequence) {
@@ -134,6 +168,9 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const caption = buildFacebookCaption(article?.title);
   const hashtags = buildFacebookHashtags(article);
   const facebookPackage = buildFacebookPackage({ article, canonicalUrl });
+  const newsletterPost = buildNewsletterFacebookPost();
+  const activeCaption = graphicType === 'newsletter' ? NEWSLETTER_CAPTION : caption;
+  const activeHashtags = graphicType === 'newsletter' ? NEWSLETTER_HASHTAGS : hashtags;
 
   const copyText = async ({ text, successMessage, failureMessage }) => {
     if (!text) return;
@@ -159,13 +196,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   });
 
   const copyFacebookCaption = () => copyText({
-    text: caption,
+    text: activeCaption,
     successMessage: 'Caption copied',
     failureMessage: 'The Facebook caption could not be copied. Please copy it manually.',
   });
 
   const copyHashtags = () => copyText({
-    text: hashtags,
+    text: activeHashtags,
     successMessage: 'Hashtags copied',
     failureMessage: 'The hashtags could not be copied. Please copy them manually.',
   });
@@ -174,6 +211,12 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     text: facebookPackage,
     successMessage: 'Facebook post copied',
     failureMessage: 'The Facebook package could not be copied. Please copy it manually.',
+  });
+
+  const copyNewsletterPost = () => copyText({
+    text: newsletterPost,
+    successMessage: 'Newsletter post copied',
+    failureMessage: 'The Newsletter post could not be copied. Please copy it manually.',
   });
 
   return (
@@ -241,7 +284,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
               <section aria-label="Generated SVG preview">
                 <img
                   src={previewUrl}
-                  alt="Generated Facebook graphic preview"
+                  alt={`Generated Facebook ${graphicType === 'newsletter' ? 'Newsletter' : 'Local News'} graphic preview`}
                   className="w-full rounded-lg border bg-white"
                 />
               </section>
@@ -250,27 +293,29 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
         )}
 
         <DialogFooter className="block space-y-3">
-          <section aria-labelledby="facebook-dialog-article-actions">
-            <h3 id="facebook-dialog-article-actions" className="mb-2 text-sm font-semibold">Article</h3>
-            <div className="flex flex-wrap gap-2">
-              {canonicalUrl ? (
-                <Button variant="outline" asChild>
-                  <a href={canonicalUrl} target="_blank" rel="noopener noreferrer">
+          {(publishingMode === 'link-preview' || graphicType === 'local-news') && (
+            <section aria-labelledby="facebook-dialog-article-actions">
+              <h3 id="facebook-dialog-article-actions" className="mb-2 text-sm font-semibold">Article</h3>
+              <div className="flex flex-wrap gap-2">
+                {canonicalUrl ? (
+                  <Button variant="outline" asChild>
+                    <a href={canonicalUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="mr-2 h-4 w-4" />View Article
+                    </a>
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" disabled>
                     <ExternalLink className="mr-2 h-4 w-4" />View Article
-                  </a>
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" disabled>
-                  <ExternalLink className="mr-2 h-4 w-4" />View Article
-                </Button>
-              )}
-              {publishingMode === 'link-preview' && (
-                <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
-                  <Copy className="mr-2 h-4 w-4" />Copy Link
-                </Button>
-              )}
-            </div>
-          </section>
+                  </Button>
+                )}
+                {publishingMode === 'link-preview' && (
+                  <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
+                    <Copy className="mr-2 h-4 w-4" />Copy Link
+                  </Button>
+                )}
+              </div>
+            </section>
+          )}
           <section aria-labelledby="facebook-dialog-facebook-actions">
             <h3 id="facebook-dialog-facebook-actions" className="mb-2 text-sm font-semibold">Facebook</h3>
             <div className="flex flex-wrap gap-2">
@@ -279,26 +324,50 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
                   <Copy className="mr-2 h-4 w-4" />Copy Facebook Post
                 </Button>
               )}
-              <Button type="button" variant="outline" onClick={copyFacebookCaption} disabled={!caption}>
+              {publishingMode === 'branded-graphic' && graphicType === 'newsletter' && (
+                <Button type="button" variant="default" onClick={copyNewsletterPost} disabled={!newsletterPost}>
+                  <Copy className="mr-2 h-4 w-4" />Copy Newsletter Post
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={copyFacebookCaption} disabled={!activeCaption}>
                 <Copy className="mr-2 h-4 w-4" />Copy Caption
               </Button>
-              <Button type="button" variant="outline" onClick={copyHashtags} disabled={!hashtags}>
+              <Button type="button" variant="outline" onClick={copyHashtags} disabled={!activeHashtags}>
                 <Copy className="mr-2 h-4 w-4" />Copy Hashtags
               </Button>
             </div>
           </section>
           {publishingMode === 'branded-graphic' && (
-            <section aria-labelledby="facebook-dialog-graphic-actions">
-              <h3 id="facebook-dialog-graphic-actions" className="mb-2 text-sm font-semibold">Graphics</h3>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !article?.mongo_id}>
-                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
-                </Button>
-                <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
-                  {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download Graphic</>}
-                </Button>
-              </div>
-            </section>
+            <>
+              <section aria-labelledby="facebook-dialog-graphic-type-label">
+                <h3 id="facebook-dialog-graphic-type-label" className="mb-2 text-sm font-semibold">Graphic Type</h3>
+                <div role="radiogroup" aria-labelledby="facebook-dialog-graphic-type-label" className="flex flex-wrap gap-2">
+                  {GRAPHIC_TYPES.map(type => (
+                    <label key={type.value} className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                      <input
+                        type="radio"
+                        name="facebook-graphic-type"
+                        value={type.value}
+                        checked={graphicType === type.value}
+                        onChange={() => changeGraphicType(type.value)}
+                      />
+                      <span>{type.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+              <section aria-labelledby="facebook-dialog-graphic-actions">
+                <h3 id="facebook-dialog-graphic-actions" className="mb-2 text-sm font-semibold">Graphics</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || (graphicType === 'local-news' && !article?.mongo_id)}>
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
+                    {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download Graphic</>}
+                  </Button>
+                </div>
+              </section>
+            </>
           )}
           <div className="flex justify-end">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>

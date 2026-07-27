@@ -6,6 +6,7 @@ import {
   FacebookSocialAssetError,
   downloadFacebookPng,
   fetchFacebookLocalGraphic,
+  fetchFacebookNewsletterGraphic,
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
 
@@ -16,6 +17,7 @@ jest.mock('../../services/facebookSocialAsset', () => {
     ...actual,
     downloadFacebookPng: jest.fn(),
     fetchFacebookLocalGraphic: jest.fn(),
+    fetchFacebookNewsletterGraphic: jest.fn(),
     rasterizeFacebookSvg: jest.fn(),
   };
 });
@@ -49,6 +51,9 @@ const CANONICAL_URL = `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/c
 const CAPTION = `${ARTICLE.title}\n\nRead the full story on Cheshire Today.`;
 const HASHTAGS = '#CheshireToday #CheshireNews #Wilmslow #LocalNews';
 const FACEBOOK_PACKAGE = `${CAPTION}\n\n${CANONICAL_URL}\n\n${HASHTAGS}`;
+const NEWSLETTER_CAPTION = "Get Cheshire’s latest local, business, property and AI & Tech stories delivered to your inbox.\n\nSign up free to the Cheshire Today newsletter.";
+const NEWSLETTER_HASHTAGS = '#CheshireToday #CheshireNews #Newsletter';
+const NEWSLETTER_POST = `${NEWSLETTER_CAPTION}\n\nhttps://cheshiretoday.co.uk/newsletter\n\n${NEWSLETTER_HASHTAGS}`;
 
 
 describe('FacebookLocalGraphicDialog', () => {
@@ -65,6 +70,7 @@ describe('FacebookLocalGraphicDialog', () => {
     URL.createObjectURL = jest.fn(() => 'blob:svg-preview');
     URL.revokeObjectURL = jest.fn();
     fetchFacebookLocalGraphic.mockReset();
+    fetchFacebookNewsletterGraphic.mockReset();
     rasterizeFacebookSvg.mockReset();
     downloadFacebookPng.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
@@ -110,6 +116,7 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(container.querySelector('#facebook-dialog-article-actions').textContent).toBe('Article');
     expect(container.querySelector('#facebook-dialog-facebook-actions').textContent).toBe('Facebook');
     expect(container.querySelector('#facebook-dialog-graphic-actions')).toBeNull();
+    expect(container.querySelector('#facebook-dialog-graphic-type-label')).toBeNull();
     const openArticle = container.querySelector('a');
     expect(openArticle.textContent).toContain('View Article');
     expect(openArticle.href).toBe(
@@ -131,6 +138,33 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(button('Copy Link')).toBeUndefined();
     expect(button('Copy Facebook Post')).toBeUndefined();
     expect(container.querySelector('#facebook-dialog-graphic-actions').textContent).toBe('Graphics');
+    expect(container.querySelector('#facebook-dialog-graphic-type-label').textContent).toBe('Graphic Type');
+    expect(radio('local-news').checked).toBe(true);
+    expect(radio('newsletter').checked).toBe(false);
+  });
+
+  test('Newsletter type hides article publishing controls and exposes deterministic Newsletter copy', async () => {
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode('newsletter');
+    expect(radio('newsletter').checked).toBe(true);
+    expect(container.querySelector('#facebook-dialog-article-actions')).toBeNull();
+    expect(container.querySelector('a')).toBeNull();
+    expect(button('Copy Link')).toBeUndefined();
+    expect(button('Copy Facebook Post')).toBeUndefined();
+    expect(button('Copy Newsletter Post')).toBeDefined();
+
+    await click('Copy Newsletter Post');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(NEWSLETTER_POST);
+    expect(NEWSLETTER_POST).not.toContain(CANONICAL_URL);
+    expect(NEWSLETTER_POST).not.toContain(ARTICLE.source_url);
+    expect(NEWSLETTER_POST).not.toContain(ARTICLE.image);
+    expect(container.querySelector('[role="status"][aria-live="polite"]').textContent).toBe('Newsletter post copied');
+
+    await click('Copy Caption');
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(NEWSLETTER_CAPTION);
+    await click('Copy Hashtags');
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(NEWSLETTER_HASHTAGS);
   });
 
   test('switching modes preserves existing clipboard status without triggering work', async () => {
@@ -296,7 +330,7 @@ describe('FacebookLocalGraphicDialog', () => {
     const svgBlob = new Blob(['<svg/>'], { type: 'image/svg+xml' });
     await act(async () => resolveFetch(svgBlob));
     expect(URL.createObjectURL).toHaveBeenCalledWith(svgBlob);
-    expect(container.querySelector('[alt="Generated Facebook graphic preview"]').src).toContain('blob:svg-preview');
+    expect(container.querySelector('[alt="Generated Facebook Local News graphic preview"]').src).toContain('blob:svg-preview');
     expect(button('Download Graphic').disabled).toBe(false);
     expect(container.querySelector('[role="status"][aria-live="polite"]').textContent).toBe('Graphic generated');
     expect(button('Regenerate').dataset.variant).toBe('outline');
@@ -307,13 +341,13 @@ describe('FacebookLocalGraphicDialog', () => {
     renderDialog();
     selectMode('branded-graphic');
     await click('Generate Graphic');
-    expect(container.querySelector('[alt="Generated Facebook graphic preview"]')).not.toBeNull();
+    expect(container.querySelector('[alt="Generated Facebook Local News graphic preview"]')).not.toBeNull();
 
     selectMode('link-preview');
-    expect(container.querySelector('[alt="Generated Facebook graphic preview"]')).toBeNull();
+    expect(container.querySelector('[alt="Generated Facebook Local News graphic preview"]')).toBeNull();
     expect(button('Generate Graphic')).toBeUndefined();
     selectMode('branded-graphic');
-    expect(container.querySelector('[alt="Generated Facebook graphic preview"]').src).toContain('blob:svg-preview');
+    expect(container.querySelector('[alt="Generated Facebook Local News graphic preview"]').src).toContain('blob:svg-preview');
     expect(button('Regenerate')).toBeDefined();
     expect(fetchFacebookLocalGraphic).toHaveBeenCalledTimes(1);
     expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
@@ -340,6 +374,60 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(radio('link-preview').checked).toBe(true);
   });
 
+  test('restores Local News graphic type when the dialog closes or article changes', () => {
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode('newsletter');
+    act(() => button('Close').click());
+    selectMode('branded-graphic');
+    expect(radio('local-news').checked).toBe(true);
+
+    selectMode('newsletter');
+    act(() => root.render(
+      <FacebookLocalGraphicDialog
+        open
+        article={{ ...ARTICLE, mongo_id: '507f191e810c19729de860ea' }}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    selectMode('branded-graphic');
+    expect(radio('local-news').checked).toBe(true);
+  });
+
+  test('switching graphic type clears and revokes only the previous preview', async () => {
+    fetchFacebookLocalGraphic.mockResolvedValue(new Blob(['svg'], { type: 'image/svg+xml' }));
+    renderDialog();
+    selectMode('branded-graphic');
+    await click('Generate Graphic');
+    expect(container.textContent).toContain('Graphic generated');
+    selectMode('newsletter');
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:svg-preview');
+    expect(container.querySelector('[alt*="graphic preview"]')).toBeNull();
+    expect(container.textContent).not.toContain('Graphic generated');
+    expect(fetchFacebookLocalGraphic).toHaveBeenCalledTimes(1);
+    expect(fetchFacebookNewsletterGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
+  });
+
+  test('type changes clear copy status and suppress stale clipboard completion', async () => {
+    renderDialog();
+    selectMode('branded-graphic');
+    await click('Copy Caption');
+    expect(container.textContent).toContain('Caption copied');
+    selectMode('newsletter');
+    expect(container.textContent).not.toContain('Caption copied');
+
+    let resolveCopy;
+    navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
+    act(() => button('Copy Newsletter Post').click());
+    selectMode('local-news');
+    await act(async () => resolveCopy());
+    expect(container.textContent).not.toContain('Newsletter post copied');
+  });
+
   test('downloads the rasterised preview with the article title contract', async () => {
     fetchFacebookLocalGraphic.mockResolvedValue(new Blob(['svg'], { type: 'image/svg+xml' }));
     const pngBlob = new Blob(['png'], { type: 'image/png' });
@@ -351,6 +439,28 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(rasterizeFacebookSvg).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
     expect(downloadFacebookPng).toHaveBeenCalledWith({ pngBlob, title: ARTICLE.title });
     expect(container.querySelector('[role="status"][aria-live="polite"]').textContent).toBe('Graphic downloaded');
+  });
+
+  test('generates and downloads Newsletter graphic through its narrow contract', async () => {
+    fetchFacebookNewsletterGraphic.mockResolvedValue(new Blob(['newsletter-svg'], { type: 'image/svg+xml' }));
+    rasterizeFacebookSvg.mockResolvedValue(new Blob(['png'], { type: 'image/png' }));
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode('newsletter');
+    await click('Generate Graphic');
+    expect(fetchFacebookNewsletterGraphic).toHaveBeenCalledWith({
+      apiUrl: 'https://admin.example',
+      token: 'admin-token',
+    });
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(container.querySelector('[alt="Generated Facebook Newsletter graphic preview"]')).not.toBeNull();
+    await click('Download Graphic');
+    const pngBlob = await rasterizeFacebookSvg.mock.results[0].value;
+    expect(downloadFacebookPng).toHaveBeenCalledWith({
+      pngBlob,
+      filename: 'cheshire-today-newsletter-facebook.png',
+    });
+    expect(container.textContent).toContain('Graphic downloaded');
   });
 
   test.each([

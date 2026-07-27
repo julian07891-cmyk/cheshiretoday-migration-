@@ -53,6 +53,7 @@ from app.facebook_social_asset import (
     TemplateValidationError as SocialAssetTemplateValidationError,
     compose_facebook_local_news_svg,
 )
+from app.facebook_newsletter_asset import compose_facebook_newsletter_svg
 from app.local_rss_editorial_policy import (
     is_crime_like as classify_local_crime,
     is_high_value_local_civic_economic_article as classify_high_value_local,
@@ -7987,6 +7988,39 @@ async def get_admin_facebook_local_news_social_asset(
         ) from None
 
 
+@api_router.get("/admin/social-assets/facebook/newsletter")
+async def get_admin_facebook_newsletter_social_asset(
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Compose the deterministic Newsletter Facebook SVG without persistence."""
+    try:
+        svg = compose_facebook_newsletter_svg()
+        return Response(
+            content=svg,
+            media_type="image/svg+xml",
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Disposition": 'inline; filename="cheshire-today-newsletter-facebook.svg"',
+            },
+        )
+    except SocialAssetTemplateValidationError as exc:
+        logger.error(
+            "Admin Facebook Newsletter social asset failed error=%s",
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Social asset could not be generated",
+        ) from None
+    except Exception as exc:
+        logger.error(
+            "Admin Facebook Newsletter social asset failed error=%s",
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Social asset could not be generated",
+        ) from None
 @api_router.get("/admin/articles")
 async def get_admin_articles(
     skip: int = 0,
