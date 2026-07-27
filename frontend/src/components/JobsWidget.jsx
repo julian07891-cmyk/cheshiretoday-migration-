@@ -4,6 +4,7 @@ import { Briefcase, ArrowRight, MapPin, Mail } from 'lucide-react';
 import { Button } from './ui/button';
 import { newsletterService } from '../services/api';
 import NewsletterPreferences from './NewsletterPreferences';
+import { NEWSLETTER_SIGNUP_CONSENT } from '../constants/newsletterSignup';
 
 // Compact widget for article sidebar/inline
 export const JobsWidget = () => {
@@ -73,12 +74,13 @@ export const JobsInlineBanner = () => {
 };
 
 // Inline banner for within article content - Subscribe
-export const SubscribeInlineBanner = () => {
+export const SubscribeInlineBanner = ({ signupPlacement = 'article' }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
+  const [signupOutcome, setSignupOutcome] = useState('existing');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -89,10 +91,11 @@ export const SubscribeInlineBanner = () => {
 
     try {
       const cleanedEmail = (email || '').trim().toLowerCase();
-      const response = await newsletterService.subscribe(cleanedEmail);
+      const response = await newsletterService.subscribe(cleanedEmail, signupPlacement);
       if (response.success) {
         setEmail(cleanedEmail);
         setSubscribed(true);
+        setSignupOutcome(response.outcome === 'created' ? 'created' : 'existing');
         setShowPreferences(true);
         setTimeout(() => setSubscribed(false), 4000);
       } else {
@@ -128,6 +131,7 @@ export const SubscribeInlineBanner = () => {
               {!subscribed ? (
                 <form onSubmit={handleSubmit} className="flex w-full lg:w-auto gap-2 lg:min-w-[420px]">
                   <input
+                    aria-label="Email address"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -145,15 +149,20 @@ export const SubscribeInlineBanner = () => {
                   </button>
                 </form>
               ) : (
-                <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                  Subscribed! Check your email.
+                <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  {signupOutcome === 'created'
+                    ? 'You’re subscribed.'
+                    : 'Thanks. If this address is eligible, no further action is needed.'}
                 </div>
               )}
             </div>
 
             {errorMessage ? (
-              <p className="mt-2 text-xs text-red-600 dark:text-red-400">{errorMessage}</p>
+              <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">{errorMessage}</p>
             ) : null}
+            <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+              {NEWSLETTER_SIGNUP_CONSENT}
+            </p>
           </div>
         </div>
       </div>
@@ -162,6 +171,7 @@ export const SubscribeInlineBanner = () => {
       open={showPreferences}
       onOpenChange={setShowPreferences}
       email={email}
+      outcome={signupOutcome}
     />
     </>
   );

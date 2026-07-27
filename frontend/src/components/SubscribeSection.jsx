@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, CheckCircle, Loader2, Settings } from 'lucide-react';
 import { newsletterService } from '../services/api';
 import NewsletterPreferences from './NewsletterPreferences';
+import { NEWSLETTER_SIGNUP_CONSENT } from '../constants/newsletterSignup';
 
 const SubscribeSection = ({ compact = false }) => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const SubscribeSection = ({ compact = false }) => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
+  const [signupOutcome, setSignupOutcome] = useState('existing');
 
   const handleSubscribe = async (e) => {
     e.preventDefault();
@@ -18,11 +20,12 @@ const SubscribeSection = ({ compact = false }) => {
     setErrorMessage('');
     
     try {
-      const response = await newsletterService.subscribe(email);
+      const response = await newsletterService.subscribe(email, 'article');
       if (response.success) {
         const subscribedEmail = email.trim().toLowerCase();
         setEmail(subscribedEmail);
         setSubscribed(true);
+        setSignupOutcome(response.outcome === 'created' ? 'created' : 'existing');
         setShowPreferences(true);
         setTimeout(() => {
           setSubscribed(false);
@@ -58,6 +61,7 @@ const SubscribeSection = ({ compact = false }) => {
           {!subscribed ? (
             <form onSubmit={handleSubscribe} className="mt-3 flex gap-2">
               <input
+                aria-label="Email address"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -75,17 +79,23 @@ const SubscribeSection = ({ compact = false }) => {
               </button>
             </form>
           ) : (
-            <div className="mt-3 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 flex items-center gap-2">
+            <div role="status" aria-live="polite" className="mt-3 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                Subscribed! Check your email.
+                {signupOutcome === 'created'
+                  ? 'You’re subscribed.'
+                  : 'Thanks. If this address is eligible, no further action is needed.'}
               </span>
             </div>
           )}
 
           {errorMessage && (
-            <p className="text-red-600 dark:text-red-400 text-xs mt-2">{errorMessage}</p>
+            <p role="alert" className="text-red-600 dark:text-red-400 text-xs mt-2">{errorMessage}</p>
           )}
+
+          <p className="mt-2 text-xs text-slate-600 dark:text-gray-400">
+            {NEWSLETTER_SIGNUP_CONSENT}
+          </p>
 
           <button
             onClick={() => setShowPreferences(true)}
@@ -100,6 +110,7 @@ const SubscribeSection = ({ compact = false }) => {
           open={showPreferences}
           onOpenChange={setShowPreferences}
           email={email}
+          outcome={signupOutcome}
         />
       </>
     );
@@ -124,6 +135,7 @@ const SubscribeSection = ({ compact = false }) => {
             {!subscribed ? (
               <form onSubmit={handleSubscribe} className="flex gap-2 w-full md:w-auto max-w-md">
                 <input
+                  aria-label="Email address"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -141,9 +153,13 @@ const SubscribeSection = ({ compact = false }) => {
                 </button>
               </form>
             ) : (
-              <div className="bg-white/90 rounded-full px-4 py-2 flex items-center gap-2">
+              <div role="status" aria-live="polite" className="bg-white/90 rounded-full px-4 py-2 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <span className="text-emerald-800 font-semibold text-sm">Subscribed! Check your email.</span>
+                <span className="text-emerald-800 font-semibold text-sm">
+                  {signupOutcome === 'created'
+                    ? 'You’re subscribed.'
+                    : 'Thanks. If this address is eligible, no further action is needed.'}
+                </span>
               </div>
             )}
             
@@ -158,8 +174,11 @@ const SubscribeSection = ({ compact = false }) => {
           </div>
           
           {errorMessage && (
-            <p className="text-red-200 text-xs mt-2 text-center">{errorMessage}</p>
+            <p role="alert" className="text-red-200 text-xs mt-2 text-center">{errorMessage}</p>
           )}
+          <p className="mt-2 text-center text-xs text-white/80">
+            {NEWSLETTER_SIGNUP_CONSENT}
+          </p>
         </div>
       </div>
       
@@ -167,6 +186,7 @@ const SubscribeSection = ({ compact = false }) => {
         open={showPreferences} 
         onOpenChange={setShowPreferences}
         email={email}
+        outcome={signupOutcome}
       />
     </>
   );

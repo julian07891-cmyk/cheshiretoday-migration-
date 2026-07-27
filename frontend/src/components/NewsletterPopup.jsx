@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Bell } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { newsletterService } from '../services/api';
+import {
+  NEWSLETTER_CREATED_ITEMS,
+  NEWSLETTER_CREATED_LEAD,
+  NEWSLETTER_CREATED_SUPPORT,
+  NEWSLETTER_CREATED_TITLE,
+  NEWSLETTER_EXISTING_MESSAGE,
+  NEWSLETTER_SIGNUP_CONSENT,
+} from '../constants/newsletterSignup';
 
 const NewsletterPopup = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [errorMessage, setErrorMessage] = useState('');
+  const [signupOutcome, setSignupOutcome] = useState('existing');
   const location = useLocation();
 
   useEffect(() => {
@@ -45,14 +54,14 @@ const NewsletterPopup = () => {
     setErrorMessage('');
 
     try {
-      const response = await newsletterService.subscribe(email);
+      const response = await newsletterService.subscribe(email, 'popup');
       if (response.success || response.message) {
+        const outcome = response.outcome === 'created' ? 'created' : 'existing';
+        setSignupOutcome(outcome);
         setStatus('success');
-        localStorage.setItem('newsletter_subscribed', 'true');
-        // Auto-close after success
-        setTimeout(() => {
-          setIsVisible(false);
-        }, 2500);
+        if (outcome === 'created') {
+          localStorage.setItem('newsletter_subscribed', 'true');
+        }
       }
     } catch (error) {
       setStatus('error');
@@ -105,10 +114,31 @@ const NewsletterPopup = () => {
           {/* Content */}
           <div className="p-4">
             {status === 'success' ? (
-              <div className="text-center py-2">
+              <div role="status" aria-live="polite" className="py-2">
                 <div className="flex items-center justify-center gap-2 text-emerald-600">
                   <Mail className="h-5 w-5" />
-                  <span className="font-semibold">You&apos;re subscribed! 🎉</span>
+                  <span className="font-semibold">
+                    {signupOutcome === 'created'
+                      ? NEWSLETTER_CREATED_TITLE
+                      : NEWSLETTER_EXISTING_MESSAGE}
+                  </span>
+                </div>
+                {signupOutcome === 'created' ? (
+                  <div className="mt-3 text-left text-sm text-gray-700">
+                    <p className="font-semibold">{NEWSLETTER_CREATED_LEAD}</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5">
+                      {NEWSLETTER_CREATED_ITEMS.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                    <p className="mt-3 text-xs text-gray-500">{NEWSLETTER_CREATED_SUPPORT}</p>
+                  </div>
+                ) : null}
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <Button asChild variant="outline" className="h-9 text-sm">
+                    <Link to="/newsletter/preferences">Manage preferences</Link>
+                  </Button>
+                  <Button onClick={handleDismiss} className="h-9 bg-emerald-600 text-sm text-white hover:bg-emerald-700">
+                    Close
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -118,6 +148,7 @@ const NewsletterPopup = () => {
                 </p>
                 <div className="flex gap-2">
                   <Input
+                    aria-label="Email address"
                     type="email"
                     placeholder="Your email"
                     value={email}
@@ -134,10 +165,10 @@ const NewsletterPopup = () => {
                   </Button>
                 </div>
                 {status === 'error' && (
-                  <p className="text-red-500 text-xs">{errorMessage}</p>
+                  <p role="alert" className="text-red-500 text-xs">{errorMessage}</p>
                 )}
                 <p className="text-xs text-gray-400 text-center">
-                  Unsubscribe anytime • No spam
+                  {NEWSLETTER_SIGNUP_CONSENT}
                 </p>
               </form>
             )}

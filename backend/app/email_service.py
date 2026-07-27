@@ -436,19 +436,19 @@ class EmailService:
                             <tr>
                                 <td style="padding: 8px 0;">
                                     <span style="color: #3B82F6; font-weight: bold;">☀️ The Daily Brief</span>
-                                    <span style="color: #666;"> — Top Cheshire stories every morning at 7:30 AM</span>
+                                    <span style="color: #666;"> — Top Cheshire stories from Monday to Saturday</span>
                                 </td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px 0;">
                                     <span style="color: #3B82F6; font-weight: bold;">📰 Weekly Roundup</span>
-                                    <span style="color: #666;"> — The week's best stories every Sunday at 9:00 AM</span>
+                                    <span style="color: #666;"> — The week's best stories on Sunday</span>
                                 </td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px 0;">
-                                    <span style="color: #3B82F6; font-weight: bold;">🚨 Breaking News</span>
-                                    <span style="color: #666;"> — Urgent alerts for major local stories</span>
+                                    <span style="color: #3B82F6; font-weight: bold;">🚨 Breaking News Alerts</span>
+                                    <span style="color: #666;"> — Rare alerts for major incidents</span>
                                 </td>
                             </tr>
                         </table>
@@ -462,7 +462,7 @@ class EmailService:
                     </div>
                     
                     <p style="color: #444; font-size: 15px; margin-bottom: 25px;">
-                        Your first Daily Brief will arrive tomorrow at 7:30 AM. In the meantime, why not explore our latest stories?
+                        Your subscription is active now. No confirmation click is required.
                     </p>
                     
                     <div style="text-align: center;">
@@ -511,14 +511,14 @@ class EmailService:
         You're now part of the Cheshire Today community. We're thrilled to have you with us!
         
         WHAT TO EXPECT:
-        ☀️ The Daily Brief - Top Cheshire stories every morning at 7:30 AM
-        📰 Weekly Roundup - The week's best stories every Sunday at 9:00 AM  
-        🚨 Breaking News - Urgent alerts for major local stories
+        ☀️ The Daily Brief - Top Cheshire stories from Monday to Saturday
+        📰 The Weekly Roundup - The week's best stories on Sunday
+        🚨 Breaking News Alerts - Rare alerts for major incidents
         
         WE COVER:
         Cheshire, Crewe, Macclesfield, Wilmslow, Chester, Warrington, Nantwich, Congleton, Northwich, Knutsford & more
         
-        Your first Daily Brief will arrive tomorrow at 7:30 AM.
+        Your subscription is active now. No confirmation click is required.
         
         Read Latest News: {self.base_url}
         

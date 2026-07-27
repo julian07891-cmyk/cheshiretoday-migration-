@@ -1133,7 +1133,7 @@ return (
             </section>
 
             <div className="mb-4 w-full">
-              <SubscribeInlineBanner />
+              <SubscribeInlineBanner signupPlacement="homepage" />
             </div>
 
             <div className="mb-4 w-full lg:hidden">

@@ -319,11 +319,30 @@ class GenerateArticlesResponse(BaseModel):
 
 class SubscribeRequest(BaseModel):
     email: EmailStr
-    preferences: Optional[dict] = None  # Newsletter preferences
+    signup_placement: Optional[str] = None
 
 class SubscribeResponse(BaseModel):
     success: bool
+    outcome: str
     message: str
+
+
+NEWSLETTER_SIGNUP_CONSENT_VERSION = "all_three_newsletters_v1"
+NEWSLETTER_SIGNUP_CONSENT_TEXT = (
+    "By subscribing, you agree to receive The Daily Brief from Monday to "
+    "Saturday, The Weekly Roundup on Sunday, and rare Breaking News Alerts "
+    "for major incidents. You can unsubscribe or change your preferences at "
+    "any time."
+)
+NEWSLETTER_SIGNUP_PLACEMENTS = frozenset(
+    {"newsletter_landing", "homepage", "article", "footer", "popup"}
+)
+NEWSLETTER_SIGNUP_DEFAULT_PLACEMENT = "website"
+NEWSLETTER_SIGNUP_PREFERENCES = {
+    "daily_brief": True,
+    "weekly_roundup": True,
+    "breaking_news": True,
+}
 
 # =====================================================================================
 # COMMENTS SYSTEM - Email-based authentication
@@ -5567,7 +5586,7 @@ async def delete_article(article_id: str, auth: bool = Depends(get_admin_auth)):
 @api_router.post("/subscribe", response_model=SubscribeResponse)
 @api_router.post("/newsletter/subscribe", response_model=SubscribeResponse)
 async def subscribe_newsletter(request: SubscribeRequest):
-    """Subscribe to newsletter with optional preferences"""
+    """Create an all-three subscription without mutating existing records."""
     try:
         email = request.email.lower().strip()
         
@@ -5580,6 +5599,7 @@ async def subscribe_newsletter(request: SubscribeRequest):
             # not change subscriber state or preferences from public signup.
             return SubscribeResponse(
                 success=True,
+                outcome="existing",
                 message="Thanks. If this address is eligible, no further action is needed."
             )
         
@@ -5589,27 +5609,43 @@ async def subscribe_newsletter(request: SubscribeRequest):
             "frequency": "daily"
         }
         
-        # Create new subscriber with preferences (January 2026 update)
+        now = datetime.now(timezone.utc).isoformat()
+        signup_placement = (
+            request.signup_placement
+            if request.signup_placement in NEWSLETTER_SIGNUP_PLACEMENTS
+            else NEWSLETTER_SIGNUP_DEFAULT_PLACEMENT
+        )
+
+        # Create a new active all-three subscription with server-owned consent.
         subscriber = {
             "id": str(uuid.uuid4()),
             "newsletter_management_id": str(uuid.uuid4()),
             "newsletter_token_version": 1,
             "email": email,
-            "subscribed_at": datetime.now(timezone.utc).isoformat(),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "subscribed_at": now,
+            "created_at": now,
             "site_update_part1_sent_at": None,
             "site_update_part2_sent_at": None,
             "active": True,
-            "preferences": request.preferences if request.preferences else default_preferences,
+            "preferences": default_preferences,
             "signup_source": "website",
             "subscriber_origin": "organic_website",
-            # New tiered email preferences - daily_brief enabled by default
-            "daily_brief": True,
-            "weekly_roundup": False,
-            "breaking_news": False
+            **NEWSLETTER_SIGNUP_PREFERENCES,
+            "consent_at": now,
+            "consent_version": NEWSLETTER_SIGNUP_CONSENT_VERSION,
+            "consent_text": NEWSLETTER_SIGNUP_CONSENT_TEXT,
+            "consent_preferences": dict(NEWSLETTER_SIGNUP_PREFERENCES),
+            "signup_placement": signup_placement,
         }
-        
-        await db.subscribers.insert_one(subscriber)
+
+        try:
+            await db.subscribers.insert_one(subscriber)
+        except DuplicateKeyError:
+            return SubscribeResponse(
+                success=True,
+                outcome="existing",
+                message="Thanks. If this address is eligible, no further action is needed.",
+            )
         
         logger.info(f"New newsletter subscriber: {email}")
         
@@ -5623,7 +5659,8 @@ async def subscribe_newsletter(request: SubscribeRequest):
         
         return SubscribeResponse(
             success=True,
-            message="Thank you for subscribing! You'll receive The Daily Brief on newsletter mornings."
+            outcome="created",
+            message="You're subscribed to Cheshire Today newsletters."
         )
         
     except Exception as e:

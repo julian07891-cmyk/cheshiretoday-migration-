@@ -5,6 +5,7 @@ import { newsletterService } from '../services/api';
 import NewsletterPreferences from './NewsletterPreferences';
 import { trackEvent } from '../utils/trackEvent';
 import { LOCATION_HUBS } from "../config/publicHubs";
+import { NEWSLETTER_SIGNUP_CONSENT } from "../constants/newsletterSignup";
 
 const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
@@ -15,6 +16,7 @@ const NewsFooter = () => {
   const [loading, setLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState('');
   const [showPreferences, setShowPreferences] = React.useState(false);
+  const [signupOutcome, setSignupOutcome] = React.useState('existing');
 
   const footerLinks = {
     'Coverage': ['Local', 'Business', 'UK'],
@@ -40,12 +42,13 @@ const NewsFooter = () => {
         setTimeout(() => setErrorMessage(""), 3000);
         return;
       }
-      const response = await newsletterService.subscribe(cleanedEmail);
+      const response = await newsletterService.subscribe(cleanedEmail, 'footer');
 
       if (response.success) {
         const subscribedEmail = cleanedEmail.toLowerCase();
         setEmail(subscribedEmail);
         setSubscribed(true);
+        setSignupOutcome(response.outcome === 'created' ? 'created' : 'existing');
         setShowPreferences(true);
         setTimeout(() => {
           setSubscribed(false);
@@ -79,6 +82,7 @@ const NewsFooter = () => {
             {!subscribed ? (
               <form onSubmit={handleSubscribe} noValidate className="flex flex-col sm:flex-row gap-2 max-w-xl mx-auto">
                 <input
+                  aria-label="Email address"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -97,22 +101,24 @@ const NewsFooter = () => {
               </form>
             ) : (
               <div className="border border-[#E6E1D8] bg-[#FBFAF7] rounded-full px-6 py-3 max-w-xl mx-auto dark:border-slate-700 dark:bg-slate-800">
-                <p className="text-neutral-800 dark:text-slate-100 font-semibold flex items-center justify-center gap-2">
-                  ✓ Thank you! Your subscription is confirmed!
+                <p role="status" aria-live="polite" className="text-neutral-800 dark:text-slate-100 font-semibold flex items-center justify-center gap-2">
+                  {signupOutcome === 'created'
+                    ? '✓ Thank you! Your subscription is confirmed!'
+                    : 'Thanks. If this address is eligible, no further action is needed.'}
                 </p>
               </div>
             )}
             
             {errorMessage && (
               <div className="bg-[#FBFAF7] border border-red-300 rounded-full px-6 py-3 max-w-xl mx-auto mt-3 dark:bg-slate-800 dark:border-red-700">
-                <p className="text-red-800 font-semibold text-center dark:text-red-200">
+                <p role="alert" className="text-red-800 font-semibold text-center dark:text-red-200">
                   {errorMessage}
                 </p>
               </div>
             )}
             
             <p className="text-neutral-500 dark:text-slate-500 dark:text-slate-500 dark:text-slate-400 text-xs mt-3">
-              No spam, unsubscribe anytime. Weekly Roundup & Breaking News alerts also available.
+              {NEWSLETTER_SIGNUP_CONSENT}
             </p>
           </div>
         </div>
@@ -220,6 +226,7 @@ const NewsFooter = () => {
       open={showPreferences}
       onOpenChange={setShowPreferences}
       email={email}
+      outcome={signupOutcome}
     />
     </>
   );

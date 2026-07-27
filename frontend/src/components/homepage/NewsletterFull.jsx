@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import NewsletterPreferences from "../NewsletterPreferences";
-import { getApiUrl } from "../../utils/api";
 import { trackEvent } from "../../utils/trackEvent";
+import { NEWSLETTER_SIGNUP_CONSENT } from "../../constants/newsletterSignup";
+import { newsletterService } from "../../services/api";
 
 export default function NewsletterFull() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [showPreferences, setShowPreferences] = useState(false);
+  const [outcome, setOutcome] = useState("existing");
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -16,15 +18,13 @@ export default function NewsletterFull() {
       setStatus("loading");
       trackEvent("newsletter_submit", { placement: "homepage_full" });
 
-      const res = await fetch(getApiUrl() + "/api/newsletter/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!res.ok) throw new Error("bad_status");
+      const result = await newsletterService.subscribe(
+        email,
+        "newsletter_landing",
+      );
       const subscribedEmail = email.trim().toLowerCase();
       setStatus("success");
+      setOutcome(result.outcome === "created" ? "created" : "existing");
       setShowPreferences(true);
       setEmail(subscribedEmail);
     } catch (err) {
@@ -76,7 +76,9 @@ export default function NewsletterFull() {
 
         {status === "success" && (
           <p role="status" aria-live="polite" className="mt-4 text-white font-semibold">
-            ✓ Thanks — you’re subscribed.
+            {outcome === "created"
+              ? "✓ Thanks — you’re subscribed."
+              : "Thanks. If this address is eligible, no further action is needed."}
           </p>
         )}
         {status === "error" && (
@@ -86,7 +88,7 @@ export default function NewsletterFull() {
         )}
 
         <p className="mt-4 text-sm text-white/80">
-          No spam. Unsubscribe anytime.
+          {NEWSLETTER_SIGNUP_CONSENT}
         </p>
       </div>
     </section>
@@ -94,6 +96,7 @@ export default function NewsletterFull() {
       open={showPreferences}
       onOpenChange={setShowPreferences}
       email={email}
+      outcome={outcome}
     />
     </>
   );

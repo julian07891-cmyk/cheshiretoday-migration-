@@ -24664,3 +24664,43 @@ No production deployment or newsletter operation was performed. After a later
 approved deployment, verify `/newsletter` with an ordinary browser and a
 Facebook crawler, then refresh the Facebook link preview cache before using the
 URL in a live campaign.
+
+## Operational update — 27 July 2026 (Newsletter signup simplification Phase 1)
+
+The public newsletter signup flow has been simplified locally for genuinely
+new subscribers. New records are immediately active for The Daily Brief, The
+Weekly Roundup and rare Breaking News Alerts. The three preferences and a
+versioned, server-owned consent contract are stored with the consent timestamp
+and an allow-listed signup placement; no IP address or user agent is collected.
+
+Existing normalised email addresses remain privacy-preserving no-ops. Active,
+partially configured and inactive records are not changed, inactive readers are
+not publicly reactivated, and the secure preference, unsubscribe and
+reactivation flows remain unchanged. The public response now distinguishes only
+`created` from `existing`; it does not expose active state, preferences or
+management identifiers. A duplicate-key race is mapped to the same safe
+`existing` outcome. No subscriber-email index was added because repository
+evidence does not yet prove a production duplicate audit and migration plan.
+
+All active public signup forms now show the exact all-three consent wording and
+send only the email address plus an allow-listed placement. A created outcome
+shows a clear “You’re subscribed” summary with Close as the primary action and
+optional secure preference management. An existing outcome retains the generic
+non-enumerating message. The welcome email confirms immediate activation,
+describes the Monday-to-Saturday and Sunday schedules accurately, describes
+Breaking News Alerts as rare major-incident alerts, and removes the unreliable
+“tomorrow” promise and any confirmation-click requirement.
+
+Local verification completed:
+
+- focused subscriber, consent-parity and welcome-email tests: 25 passed
+- related newsletter security, public-route and Admin subscriber tests: 469 passed
+- focused newsletter frontend tests: 14 passed
+- complete frontend suite: 183 passed
+- Python compilation: passed
+- production frontend build: passed
+- `git diff --check`: passed
+
+No production subscriber operation, email send, deployment, commit or push was
+performed. A later deployment must verify one new signup, one existing active
+address and one inactive address without changing the latter two records.

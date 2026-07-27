@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getApiUrl } from "../utils/api";
+import { buildNewsletterSignupPayload } from "../constants/newsletterSignup";
 
 const API_BASE_URL = getApiUrl();
 const API_URL = `${API_BASE_URL}/api`;
@@ -99,9 +100,12 @@ export const newsletterService = {
   /**
    * Subscribe to newsletter
    */
-  async subscribe(email) {
+  async subscribe(email, signupPlacement = 'website') {
     try {
-      const response = await apiClient.post('/subscribe', { email });
+      const response = await apiClient.post(
+        '/subscribe',
+        buildNewsletterSignupPayload(email, signupPlacement),
+      );
       return response.data;
     } catch (error) {
       console.error('Error subscribing to newsletter:', error);
