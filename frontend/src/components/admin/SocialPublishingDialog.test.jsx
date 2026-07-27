@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import FacebookLocalGraphicDialog from './FacebookLocalGraphicDialog';
+import SocialPublishingDialog from './SocialPublishingDialog';
 import {
   FacebookSocialAssetError,
   downloadFacebookPng,
@@ -10,6 +10,12 @@ import {
   fetchFacebookTypedGraphic,
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
+import {
+  downloadInstagramStoryPng,
+  fetchInstagramTopStory,
+  InstagramSocialAssetError,
+  rasterizeInstagramStorySvg,
+} from '../../services/instagramSocialAsset';
 
 
 jest.mock('../../services/facebookSocialAsset', () => {
@@ -21,6 +27,15 @@ jest.mock('../../services/facebookSocialAsset', () => {
     fetchFacebookNewsletterGraphic: jest.fn(),
     fetchFacebookTypedGraphic: jest.fn(),
     rasterizeFacebookSvg: jest.fn(),
+  };
+});
+jest.mock('../../services/instagramSocialAsset', () => {
+  const actual = jest.requireActual('../../services/instagramSocialAsset');
+  return {
+    ...actual,
+    downloadInstagramStoryPng: jest.fn(),
+    fetchInstagramTopStory: jest.fn(),
+    rasterizeInstagramStorySvg: jest.fn(),
   };
 });
 jest.mock('../ui/dialog', () => ({
@@ -58,7 +73,7 @@ const NEWSLETTER_HASHTAGS = '#CheshireToday #CheshireNews #Newsletter';
 const NEWSLETTER_POST = `${NEWSLETTER_CAPTION}\n\nhttps://cheshiretoday.co.uk/newsletter\n\n${NEWSLETTER_HASHTAGS}`;
 
 
-describe('FacebookLocalGraphicDialog', () => {
+describe('SocialPublishingDialog', () => {
   let container;
   let root;
   let onOpenChange;
@@ -76,6 +91,9 @@ describe('FacebookLocalGraphicDialog', () => {
     fetchFacebookTypedGraphic.mockReset();
     rasterizeFacebookSvg.mockReset();
     downloadFacebookPng.mockReset();
+    fetchInstagramTopStory.mockReset();
+    rasterizeInstagramStorySvg.mockReset();
+    downloadInstagramStoryPng.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: jest.fn().mockResolvedValue(undefined) },
@@ -87,7 +105,7 @@ describe('FacebookLocalGraphicDialog', () => {
   });
 
   const renderDialog = () => act(() => root.render(
-    <FacebookLocalGraphicDialog
+    <SocialPublishingDialog
       open
       article={ARTICLE}
       apiUrl="https://admin.example"
@@ -100,6 +118,7 @@ describe('FacebookLocalGraphicDialog', () => {
   const click = async label => act(async () => button(label).click());
   const radio = value => container.querySelector(`input[type="radio"][value="${value}"]`);
   const selectMode = value => act(() => radio(value).click());
+  const selectPlatform = value => act(() => radio(value).click());
   const changeInput = (node, value) => act(() => {
     const prototype = node.tagName === 'TEXTAREA'
       ? window.HTMLTextAreaElement.prototype
@@ -110,7 +129,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
   test('opens in Link Preview mode with only link-preview controls', () => {
     renderDialog();
-    expect(container.textContent).toContain('Facebook Graphic');
+    expect(container.textContent).toContain('Social Publishing');
     expect(container.textContent).toContain(ARTICLE.title);
     expect(container.textContent).toContain('Local News');
     expect(container.querySelector('[aria-label="Canonical article URL"]').value).toBe(
@@ -391,7 +410,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
     const replacement = { ...ARTICLE, mongo_id: '507f191e810c19729de860ea', title: 'Replacement article' };
     act(() => root.render(
-      <FacebookLocalGraphicDialog
+      <SocialPublishingDialog
         open
         article={replacement}
         apiUrl="https://admin.example"
@@ -419,7 +438,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
   test('disables canonical-link actions when the Mongo ID is unavailable', () => {
     act(() => root.render(
-      <FacebookLocalGraphicDialog
+      <SocialPublishingDialog
         open
         article={{ ...ARTICLE, mongo_id: '' }}
         apiUrl="https://admin.example"
@@ -435,7 +454,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
   test('disables caption and package without a title and hashtags without an article', () => {
     act(() => root.render(
-      <FacebookLocalGraphicDialog
+      <SocialPublishingDialog
         open
         article={{ ...ARTICLE, title: '' }}
         apiUrl="https://admin.example"
@@ -447,7 +466,7 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(button('Copy Facebook Post').disabled).toBe(true);
 
     act(() => root.render(
-      <FacebookLocalGraphicDialog
+      <SocialPublishingDialog
         open
         article={null}
         apiUrl="https://admin.example"
@@ -507,7 +526,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
     selectMode('branded-graphic');
     act(() => root.render(
-      <FacebookLocalGraphicDialog
+      <SocialPublishingDialog
         open
         article={{ ...ARTICLE, mongo_id: '507f191e810c19729de860ea' }}
         apiUrl="https://admin.example"
@@ -528,7 +547,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
     selectMode('newsletter');
     act(() => root.render(
-      <FacebookLocalGraphicDialog
+      <SocialPublishingDialog
         open
         article={{ ...ARTICLE, mongo_id: '507f191e810c19729de860ea' }}
         apiUrl="https://admin.example"
@@ -658,5 +677,75 @@ describe('FacebookLocalGraphicDialog', () => {
     await click('Close');
     await act(async () => resolveRaster(new Blob(['png'], { type: 'image/png' })));
     expect(downloadFacebookPng).not.toHaveBeenCalled();
+  });
+
+  test('defaults to Facebook and exposes only Story and Top Story for Instagram', () => {
+    renderDialog();
+    expect(radio('facebook').checked).toBe(true);
+    expect(radio('instagram').checked).toBe(false);
+    selectPlatform('instagram');
+    expect(radio('instagram').checked).toBe(true);
+    expect(radio('story').checked).toBe(true);
+    expect(radio('top-story').checked).toBe(true);
+    expect(button('Generate Preview')).toBeDefined();
+    expect(button('Download PNG')).toBeDefined();
+    expect(button('Copy Facebook Post')).toBeUndefined();
+    expect(button('Copy Caption')).toBeUndefined();
+    expect(button('Copy Hashtags')).toBeUndefined();
+    expect(radio('link-preview')).toBeNull();
+    expect(fetchInstagramTopStory).not.toHaveBeenCalled();
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+  });
+
+  test('generates previews and downloads exact Instagram Story output', async () => {
+    const svgBlob = new Blob(['story-svg'], { type: 'image/svg+xml' });
+    const pngBlob = new Blob(['story-png'], { type: 'image/png' });
+    fetchInstagramTopStory.mockResolvedValue(svgBlob);
+    rasterizeInstagramStorySvg.mockResolvedValue(pngBlob);
+    renderDialog();
+    selectPlatform('instagram');
+    await click('Generate Preview');
+    expect(fetchInstagramTopStory).toHaveBeenCalledWith({
+      apiUrl: 'https://admin.example',
+      mongoId: ARTICLE.mongo_id,
+      token: 'admin-token',
+    });
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(container.querySelector('[alt="Generated Instagram Top Story preview"]')).not.toBeNull();
+    expect(container.textContent).toContain('Preview generated');
+    await click('Download PNG');
+    expect(rasterizeInstagramStorySvg).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
+    expect(downloadInstagramStoryPng).toHaveBeenCalledWith({ pngBlob, title: ARTICLE.title });
+    expect(container.textContent).toContain('PNG downloaded');
+  });
+
+  test('switching platform clears and revokes the Instagram preview without generating', async () => {
+    fetchInstagramTopStory.mockResolvedValue(new Blob(['story-svg'], { type: 'image/svg+xml' }));
+    URL.createObjectURL.mockReturnValue('blob:instagram-preview');
+    renderDialog();
+    selectPlatform('instagram');
+    await click('Generate Preview');
+    selectPlatform('facebook');
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:instagram-preview');
+    expect(container.querySelector('[alt="Generated Instagram Top Story preview"]')).toBeNull();
+    expect(fetchInstagramTopStory).toHaveBeenCalledTimes(1);
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+  });
+
+  test('stale Instagram results and safe errors cannot escape the active platform', async () => {
+    let resolveStory;
+    fetchInstagramTopStory.mockReturnValue(new Promise(resolve => { resolveStory = resolve; }));
+    renderDialog();
+    selectPlatform('instagram');
+    act(() => button('Generate Preview').click());
+    selectPlatform('facebook');
+    await act(async () => resolveStory(new Blob(['late-story'], { type: 'image/svg+xml' })));
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+    expect(container.querySelector('[alt="Generated Instagram Top Story preview"]')).toBeNull();
+
+    selectPlatform('instagram');
+    fetchInstagramTopStory.mockRejectedValue(new InstagramSocialAssetError(422));
+    await click('Generate Preview');
+    expect(container.textContent).toContain('This article does not have a usable featured image.');
   });
 });

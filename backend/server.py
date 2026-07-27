@@ -58,6 +58,14 @@ from app.facebook_graphic_types import (
     ARTICLE_GRAPHIC_TYPES as FACEBOOK_ARTICLE_GRAPHIC_TYPES,
     compose_facebook_graphic_svg,
 )
+from app.instagram_social_asset import (
+    ArticleValidationError as InstagramAssetArticleValidationError,
+    ImageContentError as InstagramAssetImageContentError,
+    ImageFetchError as InstagramAssetImageFetchError,
+    ImageURLValidationError as InstagramAssetImageURLValidationError,
+    TemplateValidationError as InstagramAssetTemplateValidationError,
+    compose_instagram_top_story_svg,
+)
 from app.local_rss_editorial_policy import (
     is_crime_like as classify_local_crime,
     is_high_value_local_civic_economic_article as classify_high_value_local,
@@ -8201,6 +8209,89 @@ async def get_admin_facebook_poll_graphic(
         raise
     except Exception as exc:
         _raise_facebook_graphic_error(exc, mongo_id)
+
+
+@api_router.get("/admin/social-assets/instagram/story/{article_id}")
+async def get_admin_instagram_top_story_social_asset(
+    article_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Compose one active Local News Instagram Top Story without persistence."""
+    if not ObjectId.is_valid(article_id):
+        raise HTTPException(status_code=400, detail="Article ID is invalid")
+    try:
+        article = await db.articles.find_one(
+            {
+                "_id": ObjectId(article_id),
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+            },
+            {"_id": 1, "title": 1, "category": 1, "image": 1},
+        )
+        if (
+            not article
+            or article.get("archived") is True
+            or article.get("manual_review_hidden_from_public") is True
+        ):
+            raise HTTPException(status_code=404, detail="Article not found")
+        if article.get("category") != "Local News":
+            raise HTTPException(
+                status_code=400,
+                detail="Only Local News articles are supported",
+            )
+        svg = compose_instagram_top_story_svg({
+            "mongo_id": str(article["_id"]),
+            "title": article.get("title"),
+            "category": article.get("category"),
+            "image": article.get("image"),
+        })
+        return Response(
+            content=svg,
+            media_type="image/svg+xml",
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Disposition": (
+                    f'inline; filename="cheshire-today-{article_id.lower()}-instagram-story-top-story.svg"'
+                ),
+            },
+        )
+    except HTTPException:
+        raise
+    except (
+        InstagramAssetImageURLValidationError,
+        InstagramAssetImageFetchError,
+        InstagramAssetImageContentError,
+        InstagramAssetArticleValidationError,
+    ) as exc:
+        logger.warning(
+            "Admin Instagram Story rejected article_id=%s error=%s",
+            article_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=422,
+            detail="Article image is unavailable or unusable",
+        ) from None
+    except InstagramAssetTemplateValidationError as exc:
+        logger.error(
+            "Admin Instagram Story failed article_id=%s error=%s",
+            article_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Social asset could not be generated",
+        ) from None
+    except Exception as exc:
+        logger.error(
+            "Admin Instagram Story failed article_id=%s error=%s",
+            article_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Social asset could not be generated",
+        ) from None
 
 
 @api_router.get("/admin/articles")

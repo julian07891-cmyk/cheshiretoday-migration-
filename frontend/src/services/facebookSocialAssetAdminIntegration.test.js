@@ -8,13 +8,13 @@ const source = fs.readFileSync(
 );
 
 
-test('article rows with canonical Mongo IDs expose the multi-type Facebook graphic action', () => {
+test('article rows with canonical Mongo IDs expose the shared Social Publishing action', () => {
   expect(source).toContain('{article.mongo_id && (');
   expect(source).not.toContain("article.category === 'Local News' && article.mongo_id");
-  expect(source).toContain('title="Create Facebook Graphic"');
-  expect(source).toContain('setFacebookGraphicArticle(article)');
-  expect(source).toContain('<FacebookLocalGraphicDialog');
-  expect(source).toContain('article={facebookGraphicArticle}');
+  expect(source).toContain('title="Social Publishing"');
+  expect(source).toContain('setSocialPublishingArticle(article)');
+  expect(source).toContain('<SocialPublishingDialog');
+  expect(source).toContain('article={socialPublishingArticle}');
 });
 
 

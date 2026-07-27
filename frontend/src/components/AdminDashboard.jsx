@@ -30,7 +30,7 @@ import {
   removeArchivedSelection,
 } from '../services/adminArticleActions';
 import ManualReviewEditorialMetadata from './ManualReviewEditorialMetadata';
-import FacebookLocalGraphicDialog from './admin/FacebookLocalGraphicDialog';
+import SocialPublishingDialog from './admin/SocialPublishingDialog';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -141,7 +141,7 @@ const AdminDashboard = ({ onBack }) => {
 
   // Facebook scheduling state
   const [schedulableArticles, setSchedulableArticles] = useState([]);
-  const [facebookGraphicArticle, setFacebookGraphicArticle] = useState(null);
+  const [socialPublishingArticle, setSocialPublishingArticle] = useState(null);
   
   // Facebook analytics state
   const [fbAnalytics, setFbAnalytics] = useState(null);
@@ -3405,11 +3405,11 @@ const handleDeleteArticle = async (articleId) => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setFacebookGraphicArticle(article)}
+                            onClick={() => setSocialPublishingArticle(article)}
                             className="text-blue-700 hover:bg-blue-50 border-blue-200"
-                            title="Create Facebook Graphic"
-                            aria-label={`Create Facebook Graphic for ${article.title}`}
-                            data-testid={`facebook-graphic-${article.mongo_id}`}
+                            title="Social Publishing"
+                            aria-label={`Social Publishing for ${article.title}`}
+                            data-testid={`social-publishing-${article.mongo_id}`}
                           >
                             <ImageIcon className="h-4 w-4" />
                           </Button>
@@ -6416,13 +6416,13 @@ const handleDeleteArticle = async (articleId) => {
         </DialogContent>
       </Dialog>
 
-      <FacebookLocalGraphicDialog
-        open={Boolean(facebookGraphicArticle)}
-        article={facebookGraphicArticle}
+      <SocialPublishingDialog
+        open={Boolean(socialPublishingArticle)}
+        article={socialPublishingArticle}
         apiUrl={getApiUrl()}
         token={localStorage.getItem(TOKEN_KEY) || ''}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) setFacebookGraphicArticle(null);
+          if (!nextOpen) setSocialPublishingArticle(null);
         }}
       />
 

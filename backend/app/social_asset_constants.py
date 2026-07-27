@@ -45,3 +45,12 @@ FACEBOOK_GRAPHIC_MASTERS: Final = MappingProxyType({
         ("poll", "poll", "d3afae2f31d709d35da04715de1006628710636a00a4c63fc36b2e332d07c566"),
     )
 })
+
+INSTAGRAM_GRAPHIC_MASTERS: Final = MappingProxyType({
+    ("story", "top-story"): (
+        _REPOSITORY_ROOT
+        / "docs/brand-assets/social/stories/templates/top-story.svg",
+        "4f2a807f1b3d6e6ca747d7c81706e8c976962466003a5b989f07b3bb3be00685",
+    ),
+})
+INSTAGRAM_GRAPHIC_FORMATS: Final = frozenset(INSTAGRAM_GRAPHIC_MASTERS)

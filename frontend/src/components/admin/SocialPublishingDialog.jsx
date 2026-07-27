@@ -30,6 +30,12 @@ import {
   NEWSLETTER_CAPTION,
   NEWSLETTER_HASHTAGS,
 } from '../../services/facebookPublishingCopy';
+import {
+  downloadInstagramStoryPng,
+  fetchInstagramTopStory,
+  InstagramSocialAssetError,
+  rasterizeInstagramStorySvg,
+} from '../../services/instagramSocialAsset';
 
 
 const GRAPHIC_TYPES = Object.freeze([
@@ -56,14 +62,24 @@ const errorMessage = (error, graphicType) => {
   return 'The Facebook graphic could not be generated. Please try again.';
 };
 
+const instagramErrorMessage = error => {
+  if (error instanceof InstagramSocialAssetError) {
+    if (error.status === 404) return 'This article is no longer available.';
+    if (error.status === 400) return 'Instagram Top Story currently supports Local News articles only.';
+    if (error.status === 422) return 'This article does not have a usable featured image.';
+  }
+  return 'The Instagram Story preview could not be generated. Please try again.';
+};
 
-const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange }) => {
+
+const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) => {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [copyError, setCopyError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [platform, setPlatform] = useState('facebook');
   const [publishingMode, setPublishingMode] = useState('link-preview');
   const [graphicType, setGraphicType] = useState('local-news');
   const [breakingConfirmed, setBreakingConfirmed] = useState(false);
@@ -93,6 +109,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setError('');
     setStatusMessage('');
     setCopyError('');
+    setPlatform('facebook');
     setPublishingMode('link-preview');
     setGraphicType('local-news');
     setBreakingConfirmed(false);
@@ -132,6 +149,19 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setBreakingConfirmed(false);
   };
 
+  const changePlatform = nextPlatform => {
+    if (nextPlatform === platform) return;
+    requestSequence.current += 1;
+    copySequence.current += 1;
+    revokePreview();
+    setLoading(false);
+    setDownloading(false);
+    setError('');
+    setStatusMessage('');
+    setCopyError('');
+    setPlatform(nextPlatform);
+  };
+
   const generate = async () => {
     const sequence = requestSequence.current + 1;
     requestSequence.current = sequence;
@@ -141,7 +171,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setLoading(true);
     try {
       let svgBlob;
-      if (graphicType === 'newsletter') {
+      if (platform === 'instagram') {
+        svgBlob = await fetchInstagramTopStory({
+          apiUrl,
+          mongoId: article?.mongo_id,
+          token,
+        });
+      } else if (graphicType === 'newsletter') {
         svgBlob = await fetchFacebookNewsletterGraphic({ apiUrl, token });
       } else if (graphicType === 'local-news') {
         svgBlob = await fetchFacebookLocalGraphic({
@@ -166,9 +202,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
       const objectUrl = URL.createObjectURL(svgBlob);
       previewUrlRef.current = objectUrl;
       setPreviewUrl(objectUrl);
-      setStatusMessage('Graphic generated');
+      setStatusMessage(platform === 'instagram' ? 'Preview generated' : 'Graphic generated');
     } catch (requestError) {
-      if (requestSequence.current === sequence) setError(errorMessage(requestError, graphicType));
+      if (requestSequence.current === sequence) {
+        setError(platform === 'instagram'
+          ? instagramErrorMessage(requestError)
+          : errorMessage(requestError, graphicType));
+      }
     } finally {
       if (requestSequence.current === sequence) setLoading(false);
     }
@@ -181,18 +221,24 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setStatusMessage('');
     setDownloading(true);
     try {
-      const pngBlob = await rasterizeFacebookSvg({ svgUrl: previewUrl });
+      const pngBlob = platform === 'instagram'
+        ? await rasterizeInstagramStorySvg({ svgUrl: previewUrl })
+        : await rasterizeFacebookSvg({ svgUrl: previewUrl });
       if (requestSequence.current !== sequence) return;
-      const explicitFilename = GRAPHIC_TYPES.find(type => type.value === graphicType)?.filename;
-      if (explicitFilename) {
+      if (platform === 'instagram') {
+        downloadInstagramStoryPng({ pngBlob, title: article?.title });
+      } else {
+        const explicitFilename = GRAPHIC_TYPES.find(type => type.value === graphicType)?.filename;
+        if (explicitFilename) {
         downloadFacebookPng({
           pngBlob,
           filename: explicitFilename,
         });
-      } else {
-        downloadFacebookPng({ pngBlob, title: article?.title });
+        } else {
+          downloadFacebookPng({ pngBlob, title: article?.title });
+        }
       }
-      setStatusMessage('Graphic downloaded');
+      setStatusMessage(platform === 'instagram' ? 'PNG downloaded' : 'Graphic downloaded');
     } catch (_error) {
       if (requestSequence.current === sequence) {
         setError('The PNG could not be created. Please try again.');
@@ -228,7 +274,9 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
         && pollOptionA.trim() && pollOptionA.length <= 48
         && pollOptionB.trim() && pollOptionB.length <= 48
       : true;
-  const canGenerate = Boolean(
+  const canGenerate = platform === 'instagram'
+    ? Boolean(article?.mongo_id && article?.category === 'Local News')
+    : Boolean(
     (graphicType === 'newsletter' || article?.mongo_id)
     && editorFieldsValid
     && (graphicType !== 'breaking-news' || breakingConfirmed)
@@ -287,14 +335,35 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5 text-blue-700" />
-            Facebook Graphic
+            Social Publishing
           </DialogTitle>
           <DialogDescription>
-            Generate a preview and download it without changing or publishing the article.
+            Prepare platform assets without changing or publishing the article.
           </DialogDescription>
         </DialogHeader>
 
-        <div role="radiogroup" aria-labelledby="facebook-publishing-mode-label" className="space-y-2">
+        <div role="radiogroup" aria-labelledby="social-publishing-platform-label" className="space-y-2">
+          <p id="social-publishing-platform-label" className="text-sm font-semibold">Platform</p>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ['facebook', 'Facebook'],
+              ['instagram', 'Instagram'],
+            ].map(([value, label]) => (
+              <label key={value} className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <input
+                  type="radio"
+                  name="social-publishing-platform"
+                  value={value}
+                  checked={platform === value}
+                  onChange={() => changePlatform(value)}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {platform === 'facebook' && <div role="radiogroup" aria-labelledby="facebook-publishing-mode-label" className="space-y-2">
           <p id="facebook-publishing-mode-label" className="text-sm font-semibold">Publishing Mode</p>
           <div className="flex flex-wrap gap-2">
             <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
@@ -318,7 +387,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
               <span>Branded Graphic</span>
             </label>
           </div>
-        </div>
+        </div>}
 
         {article && (
           <div className="space-y-5">
@@ -342,11 +411,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
             {copyError && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{copyError}</div>}
             {statusMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{statusMessage}</div>}
 
-            {publishingMode === 'branded-graphic' && previewUrl && (
+            {((platform === 'facebook' && publishingMode === 'branded-graphic') || platform === 'instagram') && previewUrl && (
               <section aria-label="Generated SVG preview">
                 <img
                   src={previewUrl}
-                  alt={`Generated Facebook ${GRAPHIC_TYPES.find(type => type.value === graphicType)?.label || ''} graphic preview`}
+                  alt={platform === 'instagram'
+                    ? 'Generated Instagram Top Story preview'
+                    : `Generated Facebook ${GRAPHIC_TYPES.find(type => type.value === graphicType)?.label || ''} graphic preview`}
                   className="w-full rounded-lg border bg-white"
                 />
               </section>
@@ -355,6 +426,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
         )}
 
         <DialogFooter className="block space-y-3">
+          {platform === 'facebook' ? <>
           {(publishingMode === 'link-preview' || graphicType !== 'newsletter') && (
             <section aria-labelledby="facebook-dialog-article-actions">
               <h3 id="facebook-dialog-article-actions" className="mb-2 text-sm font-semibold">Article</h3>
@@ -466,6 +538,44 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
               </section>
             </>
           )}
+          </> : (
+            <>
+              <section aria-labelledby="instagram-story-format-label">
+                <h3 id="instagram-story-format-label" className="mb-2 text-sm font-semibold">Format</h3>
+                <div role="radiogroup" aria-labelledby="instagram-story-format-label" className="flex flex-wrap gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                    <input type="radio" name="instagram-format" value="story" checked readOnly />
+                    <span>Story</span>
+                  </label>
+                </div>
+              </section>
+              <section aria-labelledby="instagram-story-layout-label">
+                <h3 id="instagram-story-layout-label" className="mb-2 text-sm font-semibold">Approved layout</h3>
+                <div role="radiogroup" aria-labelledby="instagram-story-layout-label" className="flex flex-wrap gap-2">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                    <input type="radio" name="instagram-layout" value="top-story" checked readOnly />
+                    <span>Top Story</span>
+                  </label>
+                </div>
+              </section>
+              {article?.category !== 'Local News' && (
+                <p role="status" className="text-sm text-amber-700">
+                  Instagram Top Story currently supports Local News articles only.
+                </p>
+              )}
+              <section aria-labelledby="instagram-story-actions">
+                <h3 id="instagram-story-actions" className="mb-2 text-sm font-semibold">Instagram Story</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !canGenerate}>
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate Preview</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Preview</>}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
+                    {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download PNG</>}
+                  </Button>
+                </div>
+              </section>
+            </>
+          )}
           <div className="flex justify-end">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
           </div>
@@ -476,4 +586,4 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
 };
 
 
-export default FacebookLocalGraphicDialog;
+export default SocialPublishingDialog;

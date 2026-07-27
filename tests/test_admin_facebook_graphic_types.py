@@ -212,7 +212,7 @@ def test_backend_registries_are_genuinely_immutable():
 
 def test_frontend_transport_routes_and_backend_composer_inventory_remain_in_parity():
     root = Path(__file__).resolve().parents[1]
-    dialog = (root / "frontend/src/components/admin/FacebookLocalGraphicDialog.jsx").read_text()
+    dialog = (root / "frontend/src/components/admin/SocialPublishingDialog.jsx").read_text()
     transport = (root / "frontend/src/services/facebookSocialAsset.js").read_text()
     options_block = dialog.split("const GRAPHIC_TYPES", 1)[1].split("]);", 1)[0]
     frontend_options = set(re.findall(r"value: '([^']+)'", options_block))
