@@ -24704,3 +24704,105 @@ Local verification completed:
 No production subscriber operation, email send, deployment, commit or push was
 performed. A later deployment must verify one new signup, one existing active
 address and one inactive address without changing the latter two records.
+
+## Operational update — 27 July 2026 (Facebook publishing and newsletter completion)
+
+### Facebook publishing system
+
+The Admin Facebook publishing workflow is complete. The existing publishing
+dialog now supports both Link Preview and Branded Graphic modes for one article
+at a time. Editors can generate and preview approved graphics, download exact
+PNG exports, copy the canonical Cheshire Today article link, copy deterministic
+Facebook captions and hashtags, and copy a complete Facebook post. The workflow
+does not publish or schedule posts automatically and does not modify articles.
+
+Completed graphic types:
+
+- Local News
+- Newsletter
+- Business
+- Property
+- AI & Tech
+- Breaking News
+- Event
+- Quote
+- Poll
+
+The graphic system uses authenticated Admin-only SVG endpoints and immutable,
+checksum-protected approved templates and logo assets. Article-based requests
+use stored article data and Mongo IDs; the Newsletter graphic uses fixed
+approved copy; Breaking News requires explicit editor confirmation; Quote and
+Poll accept only narrowly validated editor text. No arbitrary template, logo or
+image URL is accepted from the client.
+
+Release-candidate hardening completed:
+
+- deterministic Quote attribution and Poll option fitting within approved
+  template geometry
+- typed rejection when editor text cannot fit safely
+- immutable backend graphic and master registries
+- frontend option, transport, backend route and composer inventory-parity
+  protection
+- URL, scheme, HTML and malformed tag-like input rejection
+- authenticated-route, archived-record, Manual Review, error-mapping and
+  no-write security regressions
+- complete frontend and backend coverage for generation, preview, PNG download,
+  publishing copy, accessibility, object-URL cleanup and stale-request handling
+
+Final release-candidate verification passed:
+
+- backend social-asset tests: 105 passed
+- focused frontend publishing tests: 80 passed
+- complete frontend suite: 211 passed
+- Python compilation: passed
+- production frontend build: passed
+- `git diff --check`: passed
+
+### Newsletter improvements
+
+The newsletter public and operational workflow now includes:
+
+- the public `/newsletter` landing page
+- a dedicated 1200 × 630 newsletter Open Graph image
+- one-click signup for genuinely new normalised email addresses
+- immediate activation of The Daily Brief, The Weekly Roundup and Breaking News
+  Alerts
+- versioned consent wording, consent timestamp, selected preferences and
+  allow-listed signup-placement recording
+- an updated welcome email that confirms subscription without requiring a
+  confirmation click
+- consistent accessible status and error announcements across public signup
+  surfaces
+- one shared consent wording contract with automated frontend/backend parity
+  protection
+- secure preference management, unsubscribe and reactivation retained for later
+  subscriber changes
+
+The read-only production subscriber duplicate audit and guarded unique-index
+provisioning have been completed successfully.
+
+Production subscriber verification:
+
+```text
+Total subscribers: 14,265
+Duplicate groups: 0
+Malformed emails: 0
+Unique email index: ACTIVE
+Index name: newsletter_email_unique
+```
+
+The unique production index now enforces the canonical newsletter email
+uniqueness contract. No duplicate repair was required before provisioning.
+
+### Current repository status
+
+```text
+Branch: full-scrape-prod
+HEAD: 886d9f3
+```
+
+### Next priorities
+
+1. Continue editorial and content growth.
+2. Monitor production operation and health.
+3. Continue future feature work through the established QA-first workflow.
