@@ -42,6 +42,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const [statusMessage, setStatusMessage] = useState('');
   const [copyError, setCopyError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [publishingMode, setPublishingMode] = useState('link-preview');
   const previewUrlRef = useRef(null);
   const requestSequence = useRef(0);
   const copySequence = useRef(0);
@@ -63,6 +64,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setError('');
     setStatusMessage('');
     setCopyError('');
+    setPublishingMode('link-preview');
   }, [revokePreview]);
 
   useEffect(() => {
@@ -187,6 +189,32 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
           </DialogDescription>
         </DialogHeader>
 
+        <div role="radiogroup" aria-labelledby="facebook-publishing-mode-label" className="space-y-2">
+          <p id="facebook-publishing-mode-label" className="text-sm font-semibold">Publishing Mode</p>
+          <div className="flex flex-wrap gap-2">
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <input
+                type="radio"
+                name="facebook-publishing-mode"
+                value="link-preview"
+                checked={publishingMode === 'link-preview'}
+                onChange={() => setPublishingMode('link-preview')}
+              />
+              <span>Link Preview <span className="text-muted-foreground">(Recommended)</span></span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+              <input
+                type="radio"
+                name="facebook-publishing-mode"
+                value="branded-graphic"
+                checked={publishingMode === 'branded-graphic'}
+                onChange={() => setPublishingMode('branded-graphic')}
+              />
+              <span>Branded Graphic</span>
+            </label>
+          </div>
+        </div>
+
         {article && (
           <div className="space-y-5">
             <section aria-label="Selected article" className="rounded-lg border bg-gray-50 p-4 dark:bg-gray-900">
@@ -209,7 +237,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
             {copyError && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{copyError}</div>}
             {statusMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{statusMessage}</div>}
 
-            {previewUrl && (
+            {publishingMode === 'branded-graphic' && previewUrl && (
               <section aria-label="Generated SVG preview">
                 <img
                   src={previewUrl}
@@ -236,17 +264,21 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
                   <ExternalLink className="mr-2 h-4 w-4" />View Article
                 </Button>
               )}
-              <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
-                <Copy className="mr-2 h-4 w-4" />Copy Link
-              </Button>
+              {publishingMode === 'link-preview' && (
+                <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
+                  <Copy className="mr-2 h-4 w-4" />Copy Link
+                </Button>
+              )}
             </div>
           </section>
           <section aria-labelledby="facebook-dialog-facebook-actions">
             <h3 id="facebook-dialog-facebook-actions" className="mb-2 text-sm font-semibold">Facebook</h3>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant={previewUrl ? 'default' : 'outline'} onClick={copyFacebookPackage} disabled={!facebookPackage}>
-                <Copy className="mr-2 h-4 w-4" />Copy Facebook Post
-              </Button>
+              {publishingMode === 'link-preview' && (
+                <Button type="button" variant="default" onClick={copyFacebookPackage} disabled={!facebookPackage}>
+                  <Copy className="mr-2 h-4 w-4" />Copy Facebook Post
+                </Button>
+              )}
               <Button type="button" variant="outline" onClick={copyFacebookCaption} disabled={!caption}>
                 <Copy className="mr-2 h-4 w-4" />Copy Caption
               </Button>
@@ -255,17 +287,19 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
               </Button>
             </div>
           </section>
-          <section aria-labelledby="facebook-dialog-graphic-actions">
-            <h3 id="facebook-dialog-graphic-actions" className="mb-2 text-sm font-semibold">Graphics</h3>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !article?.mongo_id}>
-                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
-              </Button>
-              <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
-                {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download Graphic</>}
-              </Button>
-            </div>
-          </section>
+          {publishingMode === 'branded-graphic' && (
+            <section aria-labelledby="facebook-dialog-graphic-actions">
+              <h3 id="facebook-dialog-graphic-actions" className="mb-2 text-sm font-semibold">Graphics</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !article?.mongo_id}>
+                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
+                </Button>
+                <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
+                  {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download Graphic</>}
+                </Button>
+              </div>
+            </section>
+          )}
           <div className="flex justify-end">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
           </div>

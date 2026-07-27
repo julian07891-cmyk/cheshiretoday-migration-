@@ -89,8 +89,10 @@ describe('FacebookLocalGraphicDialog', () => {
   const button = label => Array.from(container.querySelectorAll('button'))
     .find(node => node.textContent.includes(label));
   const click = async label => act(async () => button(label).click());
+  const radio = value => container.querySelector(`input[type="radio"][value="${value}"]`);
+  const selectMode = value => act(() => radio(value).click());
 
-  test('opens with the selected article, canonical URL and Generate button', () => {
+  test('opens in Link Preview mode with only link-preview controls', () => {
     renderDialog();
     expect(container.textContent).toContain('Facebook Graphic');
     expect(container.textContent).toContain(ARTICLE.title);
@@ -98,12 +100,16 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(container.querySelector('[aria-label="Canonical article URL"]').value).toBe(
       CANONICAL_URL
     );
-    expect(button('Generate Graphic').disabled).toBe(false);
-    expect(button('Download Graphic').disabled).toBe(true);
+    expect(container.querySelector('[role="radiogroup"][aria-labelledby="facebook-publishing-mode-label"]')).not.toBeNull();
+    expect(radio('link-preview').checked).toBe(true);
+    expect(radio('branded-graphic').checked).toBe(false);
+    expect(button('Generate Graphic')).toBeUndefined();
+    expect(button('Download Graphic')).toBeUndefined();
     expect(button('Copy Link').disabled).toBe(false);
+    expect(button('Copy Facebook Post').dataset.variant).toBe('default');
     expect(container.querySelector('#facebook-dialog-article-actions').textContent).toBe('Article');
     expect(container.querySelector('#facebook-dialog-facebook-actions').textContent).toBe('Facebook');
-    expect(container.querySelector('#facebook-dialog-graphic-actions').textContent).toBe('Graphics');
+    expect(container.querySelector('#facebook-dialog-graphic-actions')).toBeNull();
     const openArticle = container.querySelector('a');
     expect(openArticle.textContent).toContain('View Article');
     expect(openArticle.href).toBe(
@@ -111,6 +117,33 @@ describe('FacebookLocalGraphicDialog', () => {
     );
     expect(openArticle.target).toBe('_blank');
     expect(openArticle.rel).toBe('noopener noreferrer');
+  });
+
+  test('Branded Graphic mode exposes only its article, Facebook and graphic controls', () => {
+    renderDialog();
+    selectMode('branded-graphic');
+    expect(radio('branded-graphic').checked).toBe(true);
+    expect(container.querySelector('a').textContent).toContain('View Article');
+    expect(button('Copy Caption')).toBeDefined();
+    expect(button('Copy Hashtags')).toBeDefined();
+    expect(button('Generate Graphic')).toBeDefined();
+    expect(button('Download Graphic')).toBeDefined();
+    expect(button('Copy Link')).toBeUndefined();
+    expect(button('Copy Facebook Post')).toBeUndefined();
+    expect(container.querySelector('#facebook-dialog-graphic-actions').textContent).toBe('Graphics');
+  });
+
+  test('switching modes preserves existing clipboard status without triggering work', async () => {
+    renderDialog();
+    await click('Copy Caption');
+    expect(container.textContent).toContain('Caption copied');
+    selectMode('branded-graphic');
+    expect(container.textContent).toContain('Caption copied');
+    selectMode('link-preview');
+    expect(container.textContent).toContain('Caption copied');
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
   });
 
   test('copies only the canonical Cheshire Today article URL and announces success', async () => {
@@ -251,6 +284,7 @@ describe('FacebookLocalGraphicDialog', () => {
     let resolveFetch;
     fetchFacebookLocalGraphic.mockReturnValue(new Promise(resolve => { resolveFetch = resolve; }));
     renderDialog();
+    selectMode('branded-graphic');
     act(() => button('Generate Graphic').click());
     expect(button('Generating…').disabled).toBe(true);
     expect(container.querySelector('[role="status"][aria-live="polite"]')).not.toBeNull();
@@ -265,8 +299,45 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(container.querySelector('[alt="Generated Facebook graphic preview"]').src).toContain('blob:svg-preview');
     expect(button('Download Graphic').disabled).toBe(false);
     expect(container.querySelector('[role="status"][aria-live="polite"]').textContent).toBe('Graphic generated');
-    expect(button('Copy Facebook Post').dataset.variant).toBe('default');
     expect(button('Regenerate').dataset.variant).toBe('outline');
+  });
+
+  test('retains a generated preview across mode switches without extra work', async () => {
+    fetchFacebookLocalGraphic.mockResolvedValue(new Blob(['svg'], { type: 'image/svg+xml' }));
+    renderDialog();
+    selectMode('branded-graphic');
+    await click('Generate Graphic');
+    expect(container.querySelector('[alt="Generated Facebook graphic preview"]')).not.toBeNull();
+
+    selectMode('link-preview');
+    expect(container.querySelector('[alt="Generated Facebook graphic preview"]')).toBeNull();
+    expect(button('Generate Graphic')).toBeUndefined();
+    selectMode('branded-graphic');
+    expect(container.querySelector('[alt="Generated Facebook graphic preview"]').src).toContain('blob:svg-preview');
+    expect(button('Regenerate')).toBeDefined();
+    expect(fetchFacebookLocalGraphic).toHaveBeenCalledTimes(1);
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
+  });
+
+  test('restores Link Preview mode when the dialog closes or article changes', () => {
+    renderDialog();
+    selectMode('branded-graphic');
+    expect(radio('branded-graphic').checked).toBe(true);
+    act(() => button('Close').click());
+    expect(radio('link-preview').checked).toBe(true);
+
+    selectMode('branded-graphic');
+    act(() => root.render(
+      <FacebookLocalGraphicDialog
+        open
+        article={{ ...ARTICLE, mongo_id: '507f191e810c19729de860ea' }}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    expect(radio('link-preview').checked).toBe(true);
   });
 
   test('downloads the rasterised preview with the article title contract', async () => {
@@ -274,6 +345,7 @@ describe('FacebookLocalGraphicDialog', () => {
     const pngBlob = new Blob(['png'], { type: 'image/png' });
     rasterizeFacebookSvg.mockResolvedValue(pngBlob);
     renderDialog();
+    selectMode('branded-graphic');
     await click('Generate Graphic');
     await click('Download Graphic');
     expect(rasterizeFacebookSvg).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
@@ -289,6 +361,7 @@ describe('FacebookLocalGraphicDialog', () => {
   ])('shows a safe error for %s', async (status, expected) => {
     fetchFacebookLocalGraphic.mockRejectedValue(new FacebookSocialAssetError(status));
     renderDialog();
+    selectMode('branded-graphic');
     await click('Generate Graphic');
     expect(container.textContent).toContain(expected);
   });
@@ -299,6 +372,7 @@ describe('FacebookLocalGraphicDialog', () => {
       .mockReturnValueOnce('blob:first')
       .mockReturnValueOnce('blob:second');
     renderDialog();
+    selectMode('branded-graphic');
     await click('Generate Graphic');
     await click('Regenerate');
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:first');
@@ -311,6 +385,7 @@ describe('FacebookLocalGraphicDialog', () => {
     fetchFacebookLocalGraphic.mockResolvedValue(new Blob(['svg'], { type: 'image/svg+xml' }));
     URL.createObjectURL.mockReturnValue('blob:unmount-preview');
     renderDialog();
+    selectMode('branded-graphic');
     await click('Generate Graphic');
     act(() => root.unmount());
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:unmount-preview');
@@ -322,6 +397,7 @@ describe('FacebookLocalGraphicDialog', () => {
     let resolveRaster;
     rasterizeFacebookSvg.mockReturnValue(new Promise(resolve => { resolveRaster = resolve; }));
     renderDialog();
+    selectMode('branded-graphic');
     await click('Generate Graphic');
     act(() => button('Download Graphic').click());
     expect(container.textContent).toContain('Creating PNG…');
