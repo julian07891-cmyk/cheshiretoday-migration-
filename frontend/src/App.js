@@ -96,6 +96,7 @@ const SecureNewsletterReactivationPage = lazy(() =>
     default: module.SecureNewsletterReactivationPage,
   })),
 );
+const NewsletterPage = lazy(() => import("./pages/NewsletterPage"));
 
 // Lazy load affiliate widgets
 const AffiliateWidgetSidebar = lazy(() =>
@@ -304,6 +305,14 @@ function App() {
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <SecureNewsletterUnsubscribePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/newsletter"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <NewsletterPage />
                 </Suspense>
               }
             />

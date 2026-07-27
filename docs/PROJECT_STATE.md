@@ -24632,3 +24632,35 @@ All nine Facebook masters remain valid XML and preserve:
 - hidden editor guides
 
 No website, frontend, backend or production behaviour changed.
+
+## Operational update — 27 July 2026 (Newsletter landing page v1)
+
+A dedicated public newsletter landing page has been implemented locally at
+`/newsletter`. The page uses the production Cheshire Today design system and
+reuses the existing `NewsletterFull` subscription component and
+`/api/newsletter/subscribe` contract. It includes the approved newsletter
+schedule, benefits, privacy guidance and FAQ without adding subscriber-count,
+testimonial or advertising claims.
+
+The frontend route is paired with a dedicated crawler response so Facebook and
+other social crawlers receive HTTP 200, a self-canonical newsletter URL,
+newsletter-specific title and description, `index, follow`, Open Graph and
+Twitter metadata, and the dedicated approved 1200 × 630
+`cheshire-today-newsletter-share.png` asset. The secure
+`/newsletter/preferences` and `/newsletter/reactivate`
+routes and the real unknown-route 404 contract remain unchanged.
+
+Verification completed locally:
+
+- focused newsletter landing and public-route backend tests: 37 passed
+- related newsletter security/backend regression tests: 298 passed
+- focused newsletter landing frontend tests: 4 passed
+- complete frontend suite: 173 passed
+- Python compilation: passed
+- production frontend build: passed
+- `git diff --check`: passed
+
+No production deployment or newsletter operation was performed. After a later
+approved deployment, verify `/newsletter` with an ordinary browser and a
+Facebook crawler, then refresh the Facebook link preview cache before using the
+URL in a live campaign.

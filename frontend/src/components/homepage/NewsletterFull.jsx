@@ -36,7 +36,11 @@ export default function NewsletterFull() {
 
   return (
     <>
-    <section className="bg-gradient-to-r from-emerald-700 to-emerald-600 rounded-2xl p-8 shadow">
+    <section
+      id="newsletter-signup"
+      data-testid="newsletter-full-signup"
+      className="rounded-2xl bg-[#1E3A8A] p-6 sm:p-8"
+    >
       <div className="max-w-3xl mx-auto text-center">
         <h3 className="text-3xl font-extrabold text-white">
           Stay informed across Cheshire
@@ -49,7 +53,11 @@ export default function NewsletterFull() {
           onSubmit={onSubmit}
           className="mt-6 flex flex-col sm:flex-row gap-3 justify-center"
         >
+          <label htmlFor="newsletter-signup-email" className="sr-only">
+            Email address
+          </label>
           <input
+            id="newsletter-signup-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -67,12 +75,12 @@ export default function NewsletterFull() {
         </form>
 
         {status === "success" && (
-          <p className="mt-4 text-white font-semibold">
+          <p role="status" aria-live="polite" className="mt-4 text-white font-semibold">
             ✓ Thanks — you’re subscribed.
           </p>
         )}
         {status === "error" && (
-          <p className="mt-4 text-red-200 font-semibold">
+          <p role="alert" className="mt-4 text-red-200 font-semibold">
             Something went wrong — please try again.
           </p>
         )}

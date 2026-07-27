@@ -17158,6 +17158,58 @@ def _spa_index_or_500():
     raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
 
 
+def _newsletter_landing_crawler_response():
+    from fastapi.responses import HTMLResponse
+
+    title = "Cheshire Today Newsletter | Local News and Business Briefing"
+    description = (
+        "Subscribe free to the Cheshire Today newsletter for local news, business, "
+        "property, finance and AI & Tech updates from across Cheshire."
+    )
+    og_title = "Stay ahead with Cheshire’s daily briefing"
+    og_description = (
+        "Local news, business, property, finance and AI & Tech stories delivered free "
+        "to your inbox."
+    )
+    url = "https://cheshiretoday.co.uk/newsletter"
+    image = "https://cheshiretoday.co.uk/cheshire-today-newsletter-share.png"
+    content = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <meta name="description" content="{description.replace('&', '&amp;')}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="{url}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Cheshire Today">
+  <meta property="og:url" content="{url}">
+  <meta property="og:title" content="{og_title}">
+  <meta property="og:description" content="{og_description.replace('&', '&amp;')}">
+  <meta property="og:image" content="{image}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{og_title}">
+  <meta name="twitter:description" content="{og_description.replace('&', '&amp;')}">
+  <meta name="twitter:image" content="{image}">
+</head>
+<body>
+  <main>
+    <h1>{og_title}</h1>
+    <p>{og_description.replace('&', '&amp;')}</p>
+    <p><a href="{url}">Subscribe free</a></p>
+  </main>
+</body>
+</html>"""
+    return HTMLResponse(
+        content=content,
+        status_code=200,
+        headers={"Cache-Control": "public, max-age=1800"},
+    )
+
+
 PUBLIC_SPA_EXACT_PATHS = {
     "admin",
     "jobs",
@@ -17172,6 +17224,7 @@ PUBLIC_SPA_EXACT_PATHS = {
     "affiliate-disclosure",
     "contact",
     "unsubscribe",
+    "newsletter",
     "newsletter/preferences",
     "newsletter/reactivate",
 }
@@ -17237,6 +17290,8 @@ async def serve_react_spa(full_path: str, request: Request):
     if candidate.is_file():
         return _spa_file_response(candidate)
     if _is_crawler_request(request):
+        if full_path == "newsletter":
+            return _newsletter_landing_crawler_response()
         if (
             full_path in PUBLIC_LOCATION_HUBS
             or (

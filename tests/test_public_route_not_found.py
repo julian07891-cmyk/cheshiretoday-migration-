@@ -31,6 +31,7 @@ SUPPORTED_EXACT_PATHS = {
     "affiliate-disclosure",
     "contact",
     "unsubscribe",
+    "newsletter",
     "newsletter/preferences",
     "newsletter/reactivate",
 }
