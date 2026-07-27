@@ -32,8 +32,8 @@ jest.mock('../ui/button', () => {
   const ReactModule = require('react');
   return {
     Button: ({ children, variant, asChild, ...props }) => asChild
-      ? ReactModule.cloneElement(children, props)
-      : <button {...props}>{children}</button>,
+      ? ReactModule.cloneElement(children, { ...props, 'data-variant': variant })
+      : <button data-variant={variant} {...props}>{children}</button>,
   };
 });
 
@@ -99,10 +99,13 @@ describe('FacebookLocalGraphicDialog', () => {
       CANONICAL_URL
     );
     expect(button('Generate Graphic').disabled).toBe(false);
-    expect(button('Download PNG').disabled).toBe(true);
-    expect(button('Copy Article Link').disabled).toBe(false);
+    expect(button('Download Graphic').disabled).toBe(true);
+    expect(button('Copy Link').disabled).toBe(false);
+    expect(container.querySelector('#facebook-dialog-article-actions').textContent).toBe('Article');
+    expect(container.querySelector('#facebook-dialog-facebook-actions').textContent).toBe('Facebook');
+    expect(container.querySelector('#facebook-dialog-graphic-actions').textContent).toBe('Graphics');
     const openArticle = container.querySelector('a');
-    expect(openArticle.textContent).toContain('Open Article');
+    expect(openArticle.textContent).toContain('View Article');
     expect(openArticle.href).toBe(
       CANONICAL_URL
     );
@@ -112,7 +115,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
   test('copies only the canonical Cheshire Today article URL and announces success', async () => {
     renderDialog();
-    await click('Copy Article Link');
+    await click('Copy Link');
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       CANONICAL_URL
     );
@@ -126,9 +129,9 @@ describe('FacebookLocalGraphicDialog', () => {
   });
 
   test.each([
-    ['Copy Facebook Caption', CAPTION, 'Caption copied'],
+    ['Copy Caption', CAPTION, 'Caption copied'],
     ['Copy Hashtags', HASHTAGS, 'Hashtags copied'],
-    ['Copy Facebook Package', FACEBOOK_PACKAGE, 'Facebook package copied'],
+    ['Copy Facebook Post', FACEBOOK_PACKAGE, 'Facebook post copied'],
   ])('%s copies deterministic text and announces success', async (label, expected, confirmation) => {
     renderDialog();
     await click(label);
@@ -144,9 +147,9 @@ describe('FacebookLocalGraphicDialog', () => {
   });
 
   test.each([
-    ['Copy Facebook Caption', 'The Facebook caption could not be copied. Please copy it manually.'],
+    ['Copy Caption', 'The Facebook caption could not be copied. Please copy it manually.'],
     ['Copy Hashtags', 'The hashtags could not be copied. Please copy them manually.'],
-    ['Copy Facebook Package', 'The Facebook package could not be copied. Please copy it manually.'],
+    ['Copy Facebook Post', 'The Facebook package could not be copied. Please copy it manually.'],
   ])('%s shows its safe failure message', async (label, expected) => {
     navigator.clipboard.writeText.mockRejectedValue(new Error('private detail'));
     renderDialog();
@@ -161,7 +164,7 @@ describe('FacebookLocalGraphicDialog', () => {
   test('shows a safe copy error without triggering graphic work', async () => {
     navigator.clipboard.writeText.mockRejectedValue(new Error('private detail'));
     renderDialog();
-    await click('Copy Article Link');
+    await click('Copy Link');
     expect(container.querySelector('[role="alert"]').textContent).toBe(
       'The article link could not be copied. Please copy it manually.'
     );
@@ -172,7 +175,7 @@ describe('FacebookLocalGraphicDialog', () => {
 
   test('clears copy confirmation when the selected article changes or dialog closes', async () => {
     renderDialog();
-    await click('Copy Facebook Caption');
+    await click('Copy Caption');
     expect(container.textContent).toContain('Caption copied');
 
     const replacement = { ...ARTICLE, mongo_id: '507f191e810c19729de860ea', title: 'Replacement article' };
@@ -187,7 +190,7 @@ describe('FacebookLocalGraphicDialog', () => {
     ));
     expect(container.textContent).not.toContain('Caption copied');
 
-    await click('Copy Facebook Caption');
+    await click('Copy Caption');
     expect(container.textContent).toContain('Caption copied');
     await click('Close');
     expect(container.textContent).not.toContain('Caption copied');
@@ -197,10 +200,10 @@ describe('FacebookLocalGraphicDialog', () => {
     let resolveCopy;
     navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
     renderDialog();
-    act(() => button('Copy Facebook Package').click());
+    act(() => button('Copy Facebook Post').click());
     await click('Close');
     await act(async () => resolveCopy());
-    expect(container.textContent).not.toContain('Facebook package copied');
+    expect(container.textContent).not.toContain('Facebook post copied');
   });
 
   test('disables canonical-link actions when the Mongo ID is unavailable', () => {
@@ -213,9 +216,9 @@ describe('FacebookLocalGraphicDialog', () => {
         onOpenChange={onOpenChange}
       />
     ));
-    expect(button('Copy Article Link').disabled).toBe(true);
-    expect(button('Open Article').disabled).toBe(true);
-    expect(button('Copy Facebook Package').disabled).toBe(true);
+    expect(button('Copy Link').disabled).toBe(true);
+    expect(button('View Article').disabled).toBe(true);
+    expect(button('Copy Facebook Post').disabled).toBe(true);
     expect(container.querySelector('a')).toBeNull();
   });
 
@@ -229,8 +232,8 @@ describe('FacebookLocalGraphicDialog', () => {
         onOpenChange={onOpenChange}
       />
     ));
-    expect(button('Copy Facebook Caption').disabled).toBe(true);
-    expect(button('Copy Facebook Package').disabled).toBe(true);
+    expect(button('Copy Caption').disabled).toBe(true);
+    expect(button('Copy Facebook Post').disabled).toBe(true);
 
     act(() => root.render(
       <FacebookLocalGraphicDialog
@@ -244,7 +247,7 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(button('Copy Hashtags').disabled).toBe(true);
   });
 
-  test('shows loading then enables SVG preview and PNG download', async () => {
+  test('shows loading then enables SVG preview and graphic download', async () => {
     let resolveFetch;
     fetchFacebookLocalGraphic.mockReturnValue(new Promise(resolve => { resolveFetch = resolve; }));
     renderDialog();
@@ -260,7 +263,10 @@ describe('FacebookLocalGraphicDialog', () => {
     await act(async () => resolveFetch(svgBlob));
     expect(URL.createObjectURL).toHaveBeenCalledWith(svgBlob);
     expect(container.querySelector('[alt="Generated Facebook graphic preview"]').src).toContain('blob:svg-preview');
-    expect(button('Download PNG').disabled).toBe(false);
+    expect(button('Download Graphic').disabled).toBe(false);
+    expect(container.querySelector('[role="status"][aria-live="polite"]').textContent).toBe('Graphic generated');
+    expect(button('Copy Facebook Post').dataset.variant).toBe('default');
+    expect(button('Regenerate').dataset.variant).toBe('outline');
   });
 
   test('downloads the rasterised preview with the article title contract', async () => {
@@ -269,9 +275,10 @@ describe('FacebookLocalGraphicDialog', () => {
     rasterizeFacebookSvg.mockResolvedValue(pngBlob);
     renderDialog();
     await click('Generate Graphic');
-    await click('Download PNG');
+    await click('Download Graphic');
     expect(rasterizeFacebookSvg).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
     expect(downloadFacebookPng).toHaveBeenCalledWith({ pngBlob, title: ARTICLE.title });
+    expect(container.querySelector('[role="status"][aria-live="polite"]').textContent).toBe('Graphic downloaded');
   });
 
   test.each([
@@ -316,7 +323,7 @@ describe('FacebookLocalGraphicDialog', () => {
     rasterizeFacebookSvg.mockReturnValue(new Promise(resolve => { resolveRaster = resolve; }));
     renderDialog();
     await click('Generate Graphic');
-    act(() => button('Download PNG').click());
+    act(() => button('Download Graphic').click());
     expect(container.textContent).toContain('Creating PNG…');
     await click('Close');
     await act(async () => resolveRaster(new Blob(['png'], { type: 'image/png' })));

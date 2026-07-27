@@ -39,7 +39,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
-  const [copyMessage, setCopyMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
   const [copyError, setCopyError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
   const previewUrlRef = useRef(null);
@@ -61,7 +61,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setLoading(false);
     setDownloading(false);
     setError('');
-    setCopyMessage('');
+    setStatusMessage('');
     setCopyError('');
   }, [revokePreview]);
 
@@ -85,6 +85,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     requestSequence.current = sequence;
     revokePreview();
     setError('');
+    setStatusMessage('');
     setLoading(true);
     try {
       const svgBlob = await fetchFacebookLocalGraphic({
@@ -96,6 +97,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
       const objectUrl = URL.createObjectURL(svgBlob);
       previewUrlRef.current = objectUrl;
       setPreviewUrl(objectUrl);
+      setStatusMessage('Graphic generated');
     } catch (requestError) {
       if (requestSequence.current === sequence) setError(errorMessage(requestError));
     } finally {
@@ -107,11 +109,13 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     if (!previewUrl) return;
     const sequence = requestSequence.current;
     setError('');
+    setStatusMessage('');
     setDownloading(true);
     try {
       const pngBlob = await rasterizeFacebookSvg({ svgUrl: previewUrl });
       if (requestSequence.current !== sequence) return;
       downloadFacebookPng({ pngBlob, title: article?.title });
+      setStatusMessage('Graphic downloaded');
     } catch (_error) {
       if (requestSequence.current === sequence) {
         setError('The PNG could not be created. Please try again.');
@@ -133,12 +137,12 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     if (!text) return;
     const sequence = copySequence.current + 1;
     copySequence.current = sequence;
-    setCopyMessage('');
+    setStatusMessage('');
     setCopyError('');
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
       await navigator.clipboard.writeText(text);
-      if (copySequence.current === sequence) setCopyMessage(successMessage);
+      if (copySequence.current === sequence) setStatusMessage(successMessage);
     } catch (_error) {
       if (copySequence.current === sequence) {
         setCopyError(failureMessage);
@@ -166,7 +170,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
 
   const copyFacebookPackage = () => copyText({
     text: facebookPackage,
-    successMessage: 'Facebook package copied',
+    successMessage: 'Facebook post copied',
     failureMessage: 'The Facebook package could not be copied. Please copy it manually.',
   });
 
@@ -203,7 +207,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
 
             {error && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
             {copyError && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{copyError}</div>}
-            {copyMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{copyMessage}</div>}
+            {statusMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{statusMessage}</div>}
 
             {previewUrl && (
               <section aria-label="Generated SVG preview">
@@ -217,37 +221,54 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
           </div>
         )}
 
-        <DialogFooter className="flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
-          <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
-            <Copy className="mr-2 h-4 w-4" />Copy Article Link
-          </Button>
-          <Button type="button" variant="outline" onClick={copyFacebookCaption} disabled={!caption}>
-            <Copy className="mr-2 h-4 w-4" />Copy Facebook Caption
-          </Button>
-          <Button type="button" variant="outline" onClick={copyHashtags} disabled={!hashtags}>
-            <Copy className="mr-2 h-4 w-4" />Copy Hashtags
-          </Button>
-          <Button type="button" variant="outline" onClick={copyFacebookPackage} disabled={!facebookPackage}>
-            <Copy className="mr-2 h-4 w-4" />Copy Facebook Package
-          </Button>
-          {canonicalUrl ? (
-            <Button variant="outline" asChild>
-              <a href={canonicalUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-2 h-4 w-4" />Open Article
-              </a>
-            </Button>
-          ) : (
-            <Button type="button" variant="outline" disabled>
-              <ExternalLink className="mr-2 h-4 w-4" />Open Article
-            </Button>
-          )}
-          <Button type="button" onClick={generate} disabled={loading || downloading || !article?.mongo_id}>
-            {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
-          </Button>
-          <Button type="button" onClick={download} disabled={!previewUrl || loading || downloading}>
-            {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download PNG</>}
-          </Button>
+        <DialogFooter className="block space-y-3">
+          <section aria-labelledby="facebook-dialog-article-actions">
+            <h3 id="facebook-dialog-article-actions" className="mb-2 text-sm font-semibold">Article</h3>
+            <div className="flex flex-wrap gap-2">
+              {canonicalUrl ? (
+                <Button variant="outline" asChild>
+                  <a href={canonicalUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" />View Article
+                  </a>
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" disabled>
+                  <ExternalLink className="mr-2 h-4 w-4" />View Article
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
+                <Copy className="mr-2 h-4 w-4" />Copy Link
+              </Button>
+            </div>
+          </section>
+          <section aria-labelledby="facebook-dialog-facebook-actions">
+            <h3 id="facebook-dialog-facebook-actions" className="mb-2 text-sm font-semibold">Facebook</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant={previewUrl ? 'default' : 'outline'} onClick={copyFacebookPackage} disabled={!facebookPackage}>
+                <Copy className="mr-2 h-4 w-4" />Copy Facebook Post
+              </Button>
+              <Button type="button" variant="outline" onClick={copyFacebookCaption} disabled={!caption}>
+                <Copy className="mr-2 h-4 w-4" />Copy Caption
+              </Button>
+              <Button type="button" variant="outline" onClick={copyHashtags} disabled={!hashtags}>
+                <Copy className="mr-2 h-4 w-4" />Copy Hashtags
+              </Button>
+            </div>
+          </section>
+          <section aria-labelledby="facebook-dialog-graphic-actions">
+            <h3 id="facebook-dialog-graphic-actions" className="mb-2 text-sm font-semibold">Graphics</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !article?.mongo_id}>
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
+              </Button>
+              <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
+                {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download Graphic</>}
+              </Button>
+            </div>
+          </section>
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
