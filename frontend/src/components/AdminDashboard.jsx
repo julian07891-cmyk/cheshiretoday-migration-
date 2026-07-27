@@ -3401,7 +3401,7 @@ const handleDeleteArticle = async (articleId) => {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {article.category === 'Local News' && article.mongo_id && (
+                        {article.mongo_id && (
                           <Button
                             variant="outline"
                             size="sm"

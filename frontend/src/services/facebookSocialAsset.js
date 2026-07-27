@@ -79,6 +79,51 @@ export const fetchFacebookNewsletterGraphic = async ({
 };
 
 
+export const fetchFacebookTypedGraphic = async ({
+  apiUrl,
+  graphicType,
+  mongoId,
+  token,
+  payload,
+  fetchImpl = fetch,
+}) => {
+  const normalizedId = String(mongoId || '').trim().toLowerCase();
+  const articleTypes = new Set(['business', 'property', 'ai-tech', 'breaking-news', 'event']);
+  const editorTypes = new Set(['quote', 'poll']);
+  if (!MONGO_OBJECT_ID_PATTERN.test(normalizedId) || !token) {
+    throw new FacebookSocialAssetError(400);
+  }
+  if (!articleTypes.has(graphicType) && !editorTypes.has(graphicType)) {
+    throw new FacebookSocialAssetError(400);
+  }
+  const base = String(apiUrl || '').replace(/\/$/, '');
+  const path = articleTypes.has(graphicType)
+    ? `/api/admin/social-assets/facebook/article/${graphicType}/${encodeURIComponent(normalizedId)}`
+    : `/api/admin/social-assets/facebook/${graphicType}/${encodeURIComponent(normalizedId)}`;
+  const options = {
+    method: editorTypes.has(graphicType) ? 'POST' : 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'image/svg+xml',
+    },
+  };
+  if (editorTypes.has(graphicType)) {
+    options.headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(payload || {});
+  }
+  let response;
+  try {
+    response = await fetchImpl(`${base}${path}`, options);
+  } catch (_error) {
+    throw new FacebookSocialAssetError(500);
+  }
+  if (!response.ok) throw new FacebookSocialAssetError(response.status);
+  const contentType = String(response.headers?.get?.('content-type') || '').toLowerCase();
+  if (!contentType.startsWith('image/svg+xml')) throw new FacebookSocialAssetError(500);
+  return response.blob();
+};
+
+
 const waitForBrandFonts = async (documentRef) => {
   if (!documentRef?.fonts) return;
   if (typeof documentRef.fonts.load === 'function') {

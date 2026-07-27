@@ -45,3 +45,45 @@ export const buildFacebookPackage = ({ article, canonicalUrl }) => {
 export const buildNewsletterFacebookPost = () => (
   `${NEWSLETTER_CAPTION}\n\n${NEWSLETTER_URL}\n\n${NEWSLETTER_HASHTAGS}`
 );
+
+
+const typeCaptionSuffix = Object.freeze({
+  business: 'Read the full business story on Cheshire Today.',
+  property: 'Read the full property story on Cheshire Today.',
+  'ai-tech': 'Read the full AI & Tech story on Cheshire Today.',
+  'breaking-news': 'Latest verified update from Cheshire Today.',
+  event: 'Find out more on Cheshire Today.',
+});
+
+
+export const buildGraphicTypeCaption = ({ graphicType, article, quote, attribution, question, optionA, optionB }) => {
+  if (graphicType === 'quote') {
+    if (!String(quote || '').trim() || !String(attribution || '').trim()) return '';
+    return `“${String(quote).trim()}”\n\n— ${String(attribution).trim()}`;
+  }
+  if (graphicType === 'poll') {
+    if (![question, optionA, optionB].every(value => String(value || '').trim())) return '';
+    return `${String(question).trim()}\n\nA: ${String(optionA).trim()}\nB: ${String(optionB).trim()}\n\nShare your view in the comments.`;
+  }
+  const title = typeof article?.title === 'string' ? article.title : '';
+  const suffix = typeCaptionSuffix[graphicType];
+  return title.trim() && suffix ? `${title}\n\n${suffix}` : '';
+};
+
+
+export const buildGraphicTypeHashtags = ({ graphicType, article }) => {
+  const location = typeof article?.location === 'string'
+    ? LOCALITY_HASHTAGS[article.location.trim().toLowerCase()]
+    : '';
+  const tags = {
+    business: ['#CheshireToday', '#CheshireBusiness'],
+    property: ['#CheshireToday', '#CheshireProperty'],
+    'ai-tech': ['#CheshireToday', '#AITech', '#CheshireBusiness'],
+    'breaking-news': ['#CheshireToday', '#CheshireNews'],
+    event: ['#CheshireToday', '#CheshireNews'],
+    quote: ['#CheshireToday', '#CheshireNews'],
+    poll: ['#CheshireToday', '#CheshireNews'],
+  }[graphicType] || [];
+  if (location && ['business', 'property'].includes(graphicType)) tags.push(location);
+  return tags.slice(0, 4).join(' ');
+};

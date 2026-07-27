@@ -17,6 +17,7 @@ import {
   downloadFacebookPng,
   fetchFacebookLocalGraphic,
   fetchFacebookNewsletterGraphic,
+  fetchFacebookTypedGraphic,
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
 import {
@@ -24,21 +25,32 @@ import {
   buildFacebookHashtags,
   buildFacebookPackage,
   buildNewsletterFacebookPost,
+  buildGraphicTypeCaption,
+  buildGraphicTypeHashtags,
   NEWSLETTER_CAPTION,
   NEWSLETTER_HASHTAGS,
 } from '../../services/facebookPublishingCopy';
 
 
 const GRAPHIC_TYPES = Object.freeze([
-  { value: 'local-news', label: 'Local News' },
-  { value: 'newsletter', label: 'Newsletter' },
+  { value: 'local-news', label: 'Local News', filename: null },
+  { value: 'newsletter', label: 'Newsletter', filename: 'cheshire-today-newsletter-facebook.png' },
+  { value: 'business', label: 'Business', filename: 'cheshire-today-business-facebook.png' },
+  { value: 'property', label: 'Property', filename: 'cheshire-today-property-facebook.png' },
+  { value: 'ai-tech', label: 'AI & Tech', filename: 'cheshire-today-ai-tech-facebook.png' },
+  { value: 'breaking-news', label: 'Breaking News', filename: 'cheshire-today-breaking-news-facebook.png' },
+  { value: 'event', label: 'Event', filename: 'cheshire-today-event-facebook.png' },
+  { value: 'quote', label: 'Quote', filename: 'cheshire-today-quote-facebook.png' },
+  { value: 'poll', label: 'Poll', filename: 'cheshire-today-poll-facebook.png' },
 ]);
 
 
-const errorMessage = (error) => {
+const errorMessage = (error, graphicType) => {
   if (error instanceof FacebookSocialAssetError) {
     if (error.status === 404) return 'This article is no longer available.';
-    if (error.status === 400) return 'This article is not supported by the Local News template.';
+    if (error.status === 400) return graphicType === 'local-news'
+      ? 'This article is not supported by the Local News template.'
+      : 'This article or editor input is not supported by the selected graphic type.';
     if (error.status === 422) return 'This article does not have a usable featured image.';
   }
   return 'The Facebook graphic could not be generated. Please try again.';
@@ -54,6 +66,12 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const [previewUrl, setPreviewUrl] = useState(null);
   const [publishingMode, setPublishingMode] = useState('link-preview');
   const [graphicType, setGraphicType] = useState('local-news');
+  const [breakingConfirmed, setBreakingConfirmed] = useState(false);
+  const [quoteText, setQuoteText] = useState('');
+  const [quoteAttribution, setQuoteAttribution] = useState('');
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptionA, setPollOptionA] = useState('');
+  const [pollOptionB, setPollOptionB] = useState('');
   const previewUrlRef = useRef(null);
   const requestSequence = useRef(0);
   const copySequence = useRef(0);
@@ -77,6 +95,12 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setCopyError('');
     setPublishingMode('link-preview');
     setGraphicType('local-news');
+    setBreakingConfirmed(false);
+    setQuoteText('');
+    setQuoteAttribution('');
+    setPollQuestion('');
+    setPollOptionA('');
+    setPollOptionB('');
   }, [revokePreview]);
 
   useEffect(() => {
@@ -105,6 +129,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setStatusMessage('');
     setCopyError('');
     setGraphicType(nextType);
+    setBreakingConfirmed(false);
   };
 
   const generate = async () => {
@@ -115,20 +140,35 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setStatusMessage('');
     setLoading(true);
     try {
-      const svgBlob = graphicType === 'newsletter'
-        ? await fetchFacebookNewsletterGraphic({ apiUrl, token })
-        : await fetchFacebookLocalGraphic({
+      let svgBlob;
+      if (graphicType === 'newsletter') {
+        svgBlob = await fetchFacebookNewsletterGraphic({ apiUrl, token });
+      } else if (graphicType === 'local-news') {
+        svgBlob = await fetchFacebookLocalGraphic({
           apiUrl,
           mongoId: article?.mongo_id,
           token,
         });
+      } else {
+        svgBlob = await fetchFacebookTypedGraphic({
+          apiUrl,
+          graphicType,
+          mongoId: article?.mongo_id,
+          token,
+          payload: graphicType === 'quote'
+            ? { quote: quoteText, attribution: quoteAttribution }
+            : graphicType === 'poll'
+              ? { question: pollQuestion, option_a: pollOptionA, option_b: pollOptionB }
+              : undefined,
+        });
+      }
       if (requestSequence.current !== sequence) return;
       const objectUrl = URL.createObjectURL(svgBlob);
       previewUrlRef.current = objectUrl;
       setPreviewUrl(objectUrl);
       setStatusMessage('Graphic generated');
     } catch (requestError) {
-      if (requestSequence.current === sequence) setError(errorMessage(requestError));
+      if (requestSequence.current === sequence) setError(errorMessage(requestError, graphicType));
     } finally {
       if (requestSequence.current === sequence) setLoading(false);
     }
@@ -143,10 +183,11 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     try {
       const pngBlob = await rasterizeFacebookSvg({ svgUrl: previewUrl });
       if (requestSequence.current !== sequence) return;
-      if (graphicType === 'newsletter') {
+      const explicitFilename = GRAPHIC_TYPES.find(type => type.value === graphicType)?.filename;
+      if (explicitFilename) {
         downloadFacebookPng({
           pngBlob,
-          filename: 'cheshire-today-newsletter-facebook.png',
+          filename: explicitFilename,
         });
       } else {
         downloadFacebookPng({ pngBlob, title: article?.title });
@@ -169,8 +210,29 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const hashtags = buildFacebookHashtags(article);
   const facebookPackage = buildFacebookPackage({ article, canonicalUrl });
   const newsletterPost = buildNewsletterFacebookPost();
-  const activeCaption = graphicType === 'newsletter' ? NEWSLETTER_CAPTION : caption;
-  const activeHashtags = graphicType === 'newsletter' ? NEWSLETTER_HASHTAGS : hashtags;
+  const typedCaption = buildGraphicTypeCaption({
+    graphicType, article, quote: quoteText, attribution: quoteAttribution,
+    question: pollQuestion, optionA: pollOptionA, optionB: pollOptionB,
+  });
+  const typedHashtags = buildGraphicTypeHashtags({ graphicType, article });
+  const activeCaption = graphicType === 'newsletter'
+    ? NEWSLETTER_CAPTION
+    : graphicType === 'local-news' ? caption : typedCaption;
+  const activeHashtags = graphicType === 'newsletter'
+    ? NEWSLETTER_HASHTAGS
+    : graphicType === 'local-news' ? hashtags : typedHashtags;
+  const editorFieldsValid = graphicType === 'quote'
+    ? quoteText.trim() && quoteText.length <= 240 && quoteAttribution.trim() && quoteAttribution.length <= 80
+    : graphicType === 'poll'
+      ? pollQuestion.trim() && pollQuestion.length <= 140
+        && pollOptionA.trim() && pollOptionA.length <= 48
+        && pollOptionB.trim() && pollOptionB.length <= 48
+      : true;
+  const canGenerate = Boolean(
+    (graphicType === 'newsletter' || article?.mongo_id)
+    && editorFieldsValid
+    && (graphicType !== 'breaking-news' || breakingConfirmed)
+  );
 
   const copyText = async ({ text, successMessage, failureMessage }) => {
     if (!text) return;
@@ -284,7 +346,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
               <section aria-label="Generated SVG preview">
                 <img
                   src={previewUrl}
-                  alt={`Generated Facebook ${graphicType === 'newsletter' ? 'Newsletter' : 'Local News'} graphic preview`}
+                  alt={`Generated Facebook ${GRAPHIC_TYPES.find(type => type.value === graphicType)?.label || ''} graphic preview`}
                   className="w-full rounded-lg border bg-white"
                 />
               </section>
@@ -293,7 +355,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
         )}
 
         <DialogFooter className="block space-y-3">
-          {(publishingMode === 'link-preview' || graphicType === 'local-news') && (
+          {(publishingMode === 'link-preview' || graphicType !== 'newsletter') && (
             <section aria-labelledby="facebook-dialog-article-actions">
               <h3 id="facebook-dialog-article-actions" className="mb-2 text-sm font-semibold">Article</h3>
               <div className="flex flex-wrap gap-2">
@@ -356,10 +418,45 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
                   ))}
                 </div>
               </section>
+              {graphicType === 'breaking-news' && (
+                <section aria-label="Breaking News confirmation" className="rounded-md border border-red-200 bg-red-50 p-3">
+                  <label className="flex items-start gap-2 text-sm font-medium text-red-900">
+                    <input
+                      type="checkbox"
+                      checked={breakingConfirmed}
+                      onChange={event => setBreakingConfirmed(event.target.checked)}
+                    />
+                    I confirm this is genuinely breaking news
+                  </label>
+                </section>
+              )}
+              {graphicType === 'quote' && (
+                <section aria-label="Verified quote details" className="space-y-3 rounded-md border p-3">
+                  <p className="text-sm text-muted-foreground">Use only a verified quotation from the article or source material.</p>
+                  <label className="block text-sm font-medium">
+                    Quote
+                    <textarea aria-label="Verified quote" maxLength={240} value={quoteText} onChange={event => setQuoteText(event.target.value)} className="mt-1 min-h-20 w-full rounded-md border p-2" />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Attribution
+                    <input aria-label="Quote attribution" maxLength={80} value={quoteAttribution} onChange={event => setQuoteAttribution(event.target.value)} className="mt-1 w-full rounded-md border p-2" />
+                  </label>
+                  <p className="text-xs text-muted-foreground">Quote maximum 240 characters; attribution maximum 80 characters.</p>
+                </section>
+              )}
+              {graphicType === 'poll' && (
+                <section aria-label="Poll details" className="space-y-3 rounded-md border p-3">
+                  <p className="text-sm text-muted-foreground">Add the actual Facebook poll or ask readers to reply in comments.</p>
+                  <label className="block text-sm font-medium">Question<input aria-label="Poll question" maxLength={140} value={pollQuestion} onChange={event => setPollQuestion(event.target.value)} className="mt-1 w-full rounded-md border p-2" /></label>
+                  <label className="block text-sm font-medium">Option A<input aria-label="Poll option A" maxLength={48} value={pollOptionA} onChange={event => setPollOptionA(event.target.value)} className="mt-1 w-full rounded-md border p-2" /></label>
+                  <label className="block text-sm font-medium">Option B<input aria-label="Poll option B" maxLength={48} value={pollOptionB} onChange={event => setPollOptionB(event.target.value)} className="mt-1 w-full rounded-md border p-2" /></label>
+                  <p className="text-xs text-muted-foreground">Question maximum 140 characters; each option maximum 48 characters.</p>
+                </section>
+              )}
               <section aria-labelledby="facebook-dialog-graphic-actions">
                 <h3 id="facebook-dialog-graphic-actions" className="mb-2 text-sm font-semibold">Graphics</h3>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || (graphicType === 'local-news' && !article?.mongo_id)}>
+                  <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !canGenerate}>
                     {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Graphic</>}
                   </Button>
                   <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>

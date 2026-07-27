@@ -8,8 +8,9 @@ const source = fs.readFileSync(
 );
 
 
-test('only eligible Local News rows expose the Facebook graphic dialog action', () => {
-  expect(source).toContain("article.category === 'Local News' && article.mongo_id");
+test('article rows with canonical Mongo IDs expose the multi-type Facebook graphic action', () => {
+  expect(source).toContain('{article.mongo_id && (');
+  expect(source).not.toContain("article.category === 'Local News' && article.mongo_id");
   expect(source).toContain('title="Create Facebook Graphic"');
   expect(source).toContain('setFacebookGraphicArticle(article)');
   expect(source).toContain('<FacebookLocalGraphicDialog');

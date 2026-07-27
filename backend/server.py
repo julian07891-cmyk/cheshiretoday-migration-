@@ -54,6 +54,10 @@ from app.facebook_social_asset import (
     compose_facebook_local_news_svg,
 )
 from app.facebook_newsletter_asset import compose_facebook_newsletter_svg
+from app.facebook_graphic_types import (
+    ARTICLE_GRAPHIC_TYPES as FACEBOOK_ARTICLE_GRAPHIC_TYPES,
+    compose_facebook_graphic_svg,
+)
 from app.local_rss_editorial_policy import (
     is_crime_like as classify_local_crime,
     is_high_value_local_civic_economic_article as classify_high_value_local,
@@ -8058,6 +8062,147 @@ async def get_admin_facebook_newsletter_social_asset(
             status_code=500,
             detail="Social asset could not be generated",
         ) from None
+
+
+class FacebookQuoteGraphicRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    quote: str = Field(min_length=1, max_length=240)
+    attribution: str = Field(min_length=1, max_length=80)
+
+
+class FacebookPollGraphicRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    question: str = Field(min_length=1, max_length=140)
+    option_a: str = Field(min_length=1, max_length=48)
+    option_b: str = Field(min_length=1, max_length=48)
+
+
+async def _get_facebook_graphic_article(mongo_id: str):
+    if not ObjectId.is_valid(mongo_id):
+        raise HTTPException(status_code=400, detail="Article ID is invalid")
+    article = await db.articles.find_one(
+        {
+            "_id": ObjectId(mongo_id),
+            "archived": {"$ne": True},
+            "manual_review_hidden_from_public": {"$ne": True},
+        },
+        {"_id": 1, "title": 1, "category": 1, "image": 1},
+    )
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+    return {
+        "mongo_id": str(article["_id"]),
+        "title": article.get("title"),
+        "category": article.get("category"),
+        "image": article.get("image"),
+    }
+
+
+def _facebook_graphic_response(svg: bytes, graphic_type: str, mongo_id: str):
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Disposition": (
+                f'inline; filename="cheshire-today-{mongo_id.lower()}-facebook-{graphic_type}.svg"'
+            ),
+        },
+    )
+
+
+def _raise_facebook_graphic_error(exc: Exception, mongo_id: str):
+    error_name = type(exc).__name__
+    if isinstance(
+        exc,
+        (
+            SocialAssetImageURLValidationError,
+            SocialAssetImageFetchError,
+            SocialAssetImageContentError,
+        ),
+    ):
+        logger.warning(
+            "Admin Facebook graphic rejected article_id=%s error=%s",
+            mongo_id,
+            error_name,
+        )
+        raise HTTPException(status_code=422, detail="Article image is unavailable or unusable") from None
+    if isinstance(exc, SocialAssetArticleValidationError):
+        logger.warning(
+            "Admin Facebook graphic rejected article_id=%s error=%s",
+            mongo_id,
+            error_name,
+        )
+        raise HTTPException(status_code=400, detail="Graphic input is unsupported") from None
+    logger.error(
+        "Admin Facebook graphic failed article_id=%s error=%s",
+        mongo_id,
+        error_name,
+    )
+    raise HTTPException(status_code=500, detail="Social asset could not be generated") from None
+
+
+@api_router.get("/admin/social-assets/facebook/article/{graphic_type}/{mongo_id}")
+async def get_admin_facebook_article_graphic(
+    graphic_type: str,
+    mongo_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    if graphic_type not in FACEBOOK_ARTICLE_GRAPHIC_TYPES:
+        raise HTTPException(status_code=404, detail="Graphic type not found")
+    try:
+        article = await _get_facebook_graphic_article(mongo_id)
+        svg = compose_facebook_graphic_svg(article, graphic_type)
+        return _facebook_graphic_response(svg, graphic_type, mongo_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _raise_facebook_graphic_error(exc, mongo_id)
+
+
+@api_router.post("/admin/social-assets/facebook/quote/{mongo_id}")
+async def get_admin_facebook_quote_graphic(
+    mongo_id: str,
+    request: FacebookQuoteGraphicRequest,
+    authorized: bool = Depends(get_admin_auth),
+):
+    try:
+        article = await _get_facebook_graphic_article(mongo_id)
+        svg = compose_facebook_graphic_svg(
+            article,
+            "quote",
+            quote=request.quote,
+            attribution=request.attribution,
+        )
+        return _facebook_graphic_response(svg, "quote", mongo_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _raise_facebook_graphic_error(exc, mongo_id)
+
+
+@api_router.post("/admin/social-assets/facebook/poll/{mongo_id}")
+async def get_admin_facebook_poll_graphic(
+    mongo_id: str,
+    request: FacebookPollGraphicRequest,
+    authorized: bool = Depends(get_admin_auth),
+):
+    try:
+        article = await _get_facebook_graphic_article(mongo_id)
+        svg = compose_facebook_graphic_svg(
+            article,
+            "poll",
+            question=request.question,
+            option_a=request.option_a,
+            option_b=request.option_b,
+        )
+        return _facebook_graphic_response(svg, "poll", mongo_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        _raise_facebook_graphic_error(exc, mongo_id)
+
+
 @api_router.get("/admin/articles")
 async def get_admin_articles(
     skip: int = 0,

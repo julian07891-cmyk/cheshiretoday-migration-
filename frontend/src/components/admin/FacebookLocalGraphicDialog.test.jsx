@@ -7,6 +7,7 @@ import {
   downloadFacebookPng,
   fetchFacebookLocalGraphic,
   fetchFacebookNewsletterGraphic,
+  fetchFacebookTypedGraphic,
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
 
@@ -18,6 +19,7 @@ jest.mock('../../services/facebookSocialAsset', () => {
     downloadFacebookPng: jest.fn(),
     fetchFacebookLocalGraphic: jest.fn(),
     fetchFacebookNewsletterGraphic: jest.fn(),
+    fetchFacebookTypedGraphic: jest.fn(),
     rasterizeFacebookSvg: jest.fn(),
   };
 });
@@ -71,6 +73,7 @@ describe('FacebookLocalGraphicDialog', () => {
     URL.revokeObjectURL = jest.fn();
     fetchFacebookLocalGraphic.mockReset();
     fetchFacebookNewsletterGraphic.mockReset();
+    fetchFacebookTypedGraphic.mockReset();
     rasterizeFacebookSvg.mockReset();
     downloadFacebookPng.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
@@ -97,6 +100,13 @@ describe('FacebookLocalGraphicDialog', () => {
   const click = async label => act(async () => button(label).click());
   const radio = value => container.querySelector(`input[type="radio"][value="${value}"]`);
   const selectMode = value => act(() => radio(value).click());
+  const changeInput = (node, value) => act(() => {
+    const prototype = node.tagName === 'TEXTAREA'
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(prototype, 'value').set.call(node, value);
+    node.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 
   test('opens in Link Preview mode with only link-preview controls', () => {
     renderDialog();
@@ -141,6 +151,140 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(container.querySelector('#facebook-dialog-graphic-type-label').textContent).toBe('Graphic Type');
     expect(radio('local-news').checked).toBe(true);
     expect(radio('newsletter').checked).toBe(false);
+  });
+
+  test('Branded Graphic mode exposes all nine allow-listed graphic types', () => {
+    renderDialog();
+    selectMode('branded-graphic');
+    expect(Array.from(container.querySelectorAll('input[name="facebook-graphic-type"]')).map(node => node.value)).toEqual([
+      'local-news', 'newsletter', 'business', 'property', 'ai-tech',
+      'breaking-news', 'event', 'quote', 'poll',
+    ]);
+    expect(radio('local-news').checked).toBe(true);
+  });
+
+  test.each(['business', 'property', 'ai-tech', 'event'])(
+    '%s calls only the narrow approved typed endpoint',
+    async graphicType => {
+      fetchFacebookTypedGraphic.mockResolvedValue(new Blob(['<svg/>'], { type: 'image/svg+xml' }));
+      renderDialog();
+      selectMode('branded-graphic');
+      selectMode(graphicType);
+      expect(fetchFacebookTypedGraphic).not.toHaveBeenCalled();
+      await click('Generate Graphic');
+      expect(fetchFacebookTypedGraphic).toHaveBeenCalledWith({
+        apiUrl: 'https://admin.example', graphicType, mongoId: ARTICLE.mongo_id,
+        token: 'admin-token', payload: undefined,
+      });
+      expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+      expect(fetchFacebookNewsletterGraphic).not.toHaveBeenCalled();
+    }
+  );
+
+  test('Breaking News cannot generate without explicit editor confirmation', async () => {
+    fetchFacebookTypedGraphic.mockResolvedValue(new Blob(['<svg/>'], { type: 'image/svg+xml' }));
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode('breaking-news');
+    expect(button('Generate Graphic').disabled).toBe(true);
+    const confirmation = container.querySelector('input[type="checkbox"]');
+    act(() => confirmation.click());
+    expect(button('Generate Graphic').disabled).toBe(false);
+    await click('Generate Graphic');
+    expect(fetchFacebookTypedGraphic).toHaveBeenCalledWith(expect.objectContaining({ graphicType: 'breaking-news' }));
+  });
+
+  test('Quote requires verified text and sends only the approved payload', async () => {
+    fetchFacebookTypedGraphic.mockResolvedValue(new Blob(['<svg/>'], { type: 'image/svg+xml' }));
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode('quote');
+    expect(container.textContent).toContain('Use only a verified quotation');
+    expect(button('Generate Graphic').disabled).toBe(true);
+    const quote = container.querySelector('[aria-label="Verified quote"]');
+    const attribution = container.querySelector('[aria-label="Quote attribution"]');
+    expect(quote.maxLength).toBe(240);
+    expect(attribution.maxLength).toBe(80);
+    expect(container.textContent).toContain('Quote maximum 240 characters; attribution maximum 80 characters.');
+    changeInput(quote, 'Investment will support Cheshire jobs');
+    changeInput(attribution, 'Jane Smith');
+    await click('Generate Graphic');
+    expect(fetchFacebookTypedGraphic).toHaveBeenCalledWith(expect.objectContaining({
+      graphicType: 'quote',
+      payload: { quote: 'Investment will support Cheshire jobs', attribution: 'Jane Smith' },
+    }));
+  });
+
+  test('Poll requires exactly two options and provides non-interactive guidance', async () => {
+    fetchFacebookTypedGraphic.mockResolvedValue(new Blob(['<svg/>'], { type: 'image/svg+xml' }));
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode('poll');
+    expect(container.textContent).toContain('reply in comments');
+    expect(button('Generate Graphic').disabled).toBe(true);
+    const values = [
+      ['Poll question', 'Should Cheshire invest more?'],
+      ['Poll option A', 'Yes'],
+      ['Poll option B', 'No'],
+    ];
+    values.forEach(([label, value]) => {
+      const input = container.querySelector(`[aria-label="${label}"]`);
+      changeInput(input, value);
+    });
+    expect(container.querySelector('[aria-label="Poll question"]').maxLength).toBe(140);
+    expect(container.querySelector('[aria-label="Poll option A"]').maxLength).toBe(48);
+    expect(container.querySelector('[aria-label="Poll option B"]').maxLength).toBe(48);
+    expect(container.textContent).toContain('Question maximum 140 characters; each option maximum 48 characters.');
+    await click('Generate Graphic');
+    expect(fetchFacebookTypedGraphic).toHaveBeenCalledWith(expect.objectContaining({
+      graphicType: 'poll',
+      payload: { question: 'Should Cheshire invest more?', option_a: 'Yes', option_b: 'No' },
+    }));
+  });
+
+  test.each([
+    ['business', 'cheshire-today-business-facebook.png'],
+    ['property', 'cheshire-today-property-facebook.png'],
+    ['ai-tech', 'cheshire-today-ai-tech-facebook.png'],
+    ['event', 'cheshire-today-event-facebook.png'],
+  ])('%s downloads with its exact deterministic filename', async (graphicType, filename) => {
+    const svgBlob = new Blob(['<svg/>'], { type: 'image/svg+xml' });
+    const pngBlob = new Blob(['png'], { type: 'image/png' });
+    fetchFacebookTypedGraphic.mockResolvedValue(svgBlob);
+    rasterizeFacebookSvg.mockResolvedValue(pngBlob);
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode(graphicType);
+    await click('Generate Graphic');
+    await click('Download Graphic');
+    expect(downloadFacebookPng).toHaveBeenCalledWith({ pngBlob, filename });
+  });
+
+  test.each([
+    ['breaking-news', 'cheshire-today-breaking-news-facebook.png'],
+    ['quote', 'cheshire-today-quote-facebook.png'],
+    ['poll', 'cheshire-today-poll-facebook.png'],
+  ])('%s downloads with its exact deterministic filename', async (graphicType, filename) => {
+    const svgBlob = new Blob(['<svg/>'], { type: 'image/svg+xml' });
+    const pngBlob = new Blob(['png'], { type: 'image/png' });
+    fetchFacebookTypedGraphic.mockResolvedValue(svgBlob);
+    rasterizeFacebookSvg.mockResolvedValue(pngBlob);
+    renderDialog();
+    selectMode('branded-graphic');
+    selectMode(graphicType);
+    if (graphicType === 'breaking-news') {
+      act(() => container.querySelector('input[type="checkbox"]').click());
+    } else if (graphicType === 'quote') {
+      changeInput(container.querySelector('[aria-label="Verified quote"]'), 'Verified quote');
+      changeInput(container.querySelector('[aria-label="Quote attribution"]'), 'Named source');
+    } else {
+      changeInput(container.querySelector('[aria-label="Poll question"]'), 'Your view?');
+      changeInput(container.querySelector('[aria-label="Poll option A"]'), 'Yes');
+      changeInput(container.querySelector('[aria-label="Poll option B"]'), 'No');
+    }
+    await click('Generate Graphic');
+    await click('Download Graphic');
+    expect(downloadFacebookPng).toHaveBeenCalledWith({ pngBlob, filename });
   });
 
   test('Newsletter type hides article publishing controls and exposes deterministic Newsletter copy', async () => {
