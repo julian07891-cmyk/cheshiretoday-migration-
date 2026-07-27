@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request, Body, Query
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware
@@ -45,6 +45,14 @@ LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 from app.email_service import email_service
 from app.news_feed_service import news_feed_service
 from app.article_image_resolver import resolve_imported_article_image
+from app.facebook_social_asset import (
+    ArticleValidationError as SocialAssetArticleValidationError,
+    ImageContentError as SocialAssetImageContentError,
+    ImageFetchError as SocialAssetImageFetchError,
+    ImageURLValidationError as SocialAssetImageURLValidationError,
+    TemplateValidationError as SocialAssetTemplateValidationError,
+    compose_facebook_local_news_svg,
+)
 from app.local_rss_editorial_policy import (
     is_crime_like as classify_local_crime,
     is_high_value_local_civic_economic_article as classify_high_value_local,
@@ -7892,6 +7900,92 @@ async def delete_subscriber(email: str, authorized: bool = Depends(get_admin_aut
     except Exception as e:
         logger.error(f"Error deleting subscriber: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/social-assets/facebook/local-news/{mongo_id}")
+async def get_admin_facebook_local_news_social_asset(
+    mongo_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Compose one active Local News Facebook SVG without persisting output."""
+    if not ObjectId.is_valid(mongo_id):
+        raise HTTPException(status_code=400, detail="Article ID is invalid")
+
+    try:
+        article = await db.articles.find_one(
+            {
+                "_id": ObjectId(mongo_id),
+                "archived": {"$ne": True},
+                "manual_review_hidden_from_public": {"$ne": True},
+            },
+            {"_id": 1, "title": 1, "category": 1, "image": 1},
+        )
+        if (
+            not article
+            or article.get("archived") is True
+            or article.get("manual_review_hidden_from_public") is True
+        ):
+            raise HTTPException(status_code=404, detail="Article not found")
+        if article.get("category") != "Local News":
+            raise HTTPException(
+                status_code=400,
+                detail="Only Local News articles are supported",
+            )
+
+        svg = compose_facebook_local_news_svg(
+            {
+                "mongo_id": str(article["_id"]),
+                "title": article.get("title"),
+                "category": article.get("category"),
+                "image": article.get("image"),
+            }
+        )
+        filename = f"cheshire-today-{mongo_id.lower()}-facebook-local-news.svg"
+        return Response(
+            content=svg,
+            media_type="image/svg+xml",
+            headers={
+                "Cache-Control": "no-store",
+                "Content-Disposition": f'inline; filename="{filename}"',
+            },
+        )
+    except HTTPException:
+        raise
+    except (
+        SocialAssetImageURLValidationError,
+        SocialAssetImageFetchError,
+        SocialAssetImageContentError,
+        SocialAssetArticleValidationError,
+    ) as exc:
+        logger.warning(
+            "Admin Facebook social asset rejected article_id=%s error=%s",
+            mongo_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=422,
+            detail="Article image is unavailable or unusable",
+        ) from None
+    except SocialAssetTemplateValidationError as exc:
+        logger.error(
+            "Admin Facebook social asset failed article_id=%s error=%s",
+            mongo_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Social asset could not be generated",
+        ) from None
+    except Exception as exc:
+        logger.error(
+            "Admin Facebook social asset failed article_id=%s error=%s",
+            mongo_id,
+            type(exc).__name__,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Social asset could not be generated",
+        ) from None
+
 
 @api_router.get("/admin/articles")
 async def get_admin_articles(
@@ -16758,7 +16852,7 @@ app.include_router(
 # - Never hijack /api/*
 # =====================================================================================
 from pathlib import Path
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
 
 _FRONTEND_DIR = Path(__file__).resolve().parent / "frontend_build"
 _INDEX_HTML = _FRONTEND_DIR / "index.html"
