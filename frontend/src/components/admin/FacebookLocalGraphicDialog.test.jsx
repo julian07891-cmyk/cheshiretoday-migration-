@@ -43,7 +43,12 @@ const ARTICLE = {
   category: 'Local News',
   image: 'https://images.example.test/story.jpg',
   source_url: 'https://publisher.example.test/source-story',
+  location: 'wilmslow',
 };
+const CANONICAL_URL = `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`;
+const CAPTION = `${ARTICLE.title}\n\nRead the full story on Cheshire Today.`;
+const HASHTAGS = '#CheshireToday #CheshireNews #Wilmslow #LocalNews';
+const FACEBOOK_PACKAGE = `${CAPTION}\n\n${CANONICAL_URL}\n\n${HASHTAGS}`;
 
 
 describe('FacebookLocalGraphicDialog', () => {
@@ -91,7 +96,7 @@ describe('FacebookLocalGraphicDialog', () => {
     expect(container.textContent).toContain(ARTICLE.title);
     expect(container.textContent).toContain('Local News');
     expect(container.querySelector('[aria-label="Canonical article URL"]').value).toBe(
-      `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`
+      CANONICAL_URL
     );
     expect(button('Generate Graphic').disabled).toBe(false);
     expect(button('Download PNG').disabled).toBe(true);
@@ -99,7 +104,7 @@ describe('FacebookLocalGraphicDialog', () => {
     const openArticle = container.querySelector('a');
     expect(openArticle.textContent).toContain('Open Article');
     expect(openArticle.href).toBe(
-      `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`
+      CANONICAL_URL
     );
     expect(openArticle.target).toBe('_blank');
     expect(openArticle.rel).toBe('noopener noreferrer');
@@ -109,12 +114,45 @@ describe('FacebookLocalGraphicDialog', () => {
     renderDialog();
     await click('Copy Article Link');
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`
+      CANONICAL_URL
     );
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(ARTICLE.image);
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(ARTICLE.source_url);
     const status = container.querySelector('[role="status"][aria-live="polite"]');
     expect(status.textContent).toBe('Link copied');
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['Copy Facebook Caption', CAPTION, 'Caption copied'],
+    ['Copy Hashtags', HASHTAGS, 'Hashtags copied'],
+    ['Copy Facebook Package', FACEBOOK_PACKAGE, 'Facebook package copied'],
+  ])('%s copies deterministic text and announces success', async (label, expected, confirmation) => {
+    renderDialog();
+    await click(label);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expected);
+    expect(expected).not.toContain(ARTICLE.source_url);
+    expect(expected).not.toContain(ARTICLE.image);
+    expect(expected).not.toContain('https://admin.example');
+    const status = container.querySelector('[role="status"][aria-live="polite"]');
+    expect(status.textContent).toBe(confirmation);
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['Copy Facebook Caption', 'The Facebook caption could not be copied. Please copy it manually.'],
+    ['Copy Hashtags', 'The hashtags could not be copied. Please copy them manually.'],
+    ['Copy Facebook Package', 'The Facebook package could not be copied. Please copy it manually.'],
+  ])('%s shows its safe failure message', async (label, expected) => {
+    navigator.clipboard.writeText.mockRejectedValue(new Error('private detail'));
+    renderDialog();
+    await click(label);
+    expect(container.querySelector('[role="alert"]').textContent).toBe(expected);
+    expect(container.textContent).not.toContain('private detail');
     expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
     expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
     expect(downloadFacebookPng).not.toHaveBeenCalled();
@@ -134,8 +172,8 @@ describe('FacebookLocalGraphicDialog', () => {
 
   test('clears copy confirmation when the selected article changes or dialog closes', async () => {
     renderDialog();
-    await click('Copy Article Link');
-    expect(container.textContent).toContain('Link copied');
+    await click('Copy Facebook Caption');
+    expect(container.textContent).toContain('Caption copied');
 
     const replacement = { ...ARTICLE, mongo_id: '507f191e810c19729de860ea', title: 'Replacement article' };
     act(() => root.render(
@@ -147,22 +185,22 @@ describe('FacebookLocalGraphicDialog', () => {
         onOpenChange={onOpenChange}
       />
     ));
-    expect(container.textContent).not.toContain('Link copied');
+    expect(container.textContent).not.toContain('Caption copied');
 
-    await click('Copy Article Link');
-    expect(container.textContent).toContain('Link copied');
+    await click('Copy Facebook Caption');
+    expect(container.textContent).toContain('Caption copied');
     await click('Close');
-    expect(container.textContent).not.toContain('Link copied');
+    expect(container.textContent).not.toContain('Caption copied');
   });
 
   test('does not restore copy confirmation after closing during a pending clipboard request', async () => {
     let resolveCopy;
     navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
     renderDialog();
-    act(() => button('Copy Article Link').click());
+    act(() => button('Copy Facebook Package').click());
     await click('Close');
     await act(async () => resolveCopy());
-    expect(container.textContent).not.toContain('Link copied');
+    expect(container.textContent).not.toContain('Facebook package copied');
   });
 
   test('disables canonical-link actions when the Mongo ID is unavailable', () => {
@@ -177,7 +215,33 @@ describe('FacebookLocalGraphicDialog', () => {
     ));
     expect(button('Copy Article Link').disabled).toBe(true);
     expect(button('Open Article').disabled).toBe(true);
+    expect(button('Copy Facebook Package').disabled).toBe(true);
     expect(container.querySelector('a')).toBeNull();
+  });
+
+  test('disables caption and package without a title and hashtags without an article', () => {
+    act(() => root.render(
+      <FacebookLocalGraphicDialog
+        open
+        article={{ ...ARTICLE, title: '' }}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    expect(button('Copy Facebook Caption').disabled).toBe(true);
+    expect(button('Copy Facebook Package').disabled).toBe(true);
+
+    act(() => root.render(
+      <FacebookLocalGraphicDialog
+        open
+        article={null}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    expect(button('Copy Hashtags').disabled).toBe(true);
   });
 
   test('shows loading then enables SVG preview and PNG download', async () => {

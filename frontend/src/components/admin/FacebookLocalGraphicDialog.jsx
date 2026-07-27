@@ -18,6 +18,11 @@ import {
   fetchFacebookLocalGraphic,
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
+import {
+  buildFacebookCaption,
+  buildFacebookHashtags,
+  buildFacebookPackage,
+} from '../../services/facebookPublishingCopy';
 
 
 const errorMessage = (error) => {
@@ -34,8 +39,8 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
-  const [linkMessage, setLinkMessage] = useState('');
-  const [linkError, setLinkError] = useState('');
+  const [copyMessage, setCopyMessage] = useState('');
+  const [copyError, setCopyError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
   const previewUrlRef = useRef(null);
   const requestSequence = useRef(0);
@@ -56,8 +61,8 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     setLoading(false);
     setDownloading(false);
     setError('');
-    setLinkMessage('');
-    setLinkError('');
+    setCopyMessage('');
+    setCopyError('');
   }, [revokePreview]);
 
   useEffect(() => {
@@ -66,6 +71,7 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
 
   useEffect(() => () => {
     requestSequence.current += 1;
+    copySequence.current += 1;
     revokePreview(false);
   }, [revokePreview]);
 
@@ -119,22 +125,50 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
     ? `https://cheshiretoday.co.uk${buildArticleUrl({ ...article, id: article.mongo_id })}`
     : '';
 
-  const copyArticleLink = async () => {
-    if (!canonicalUrl) return;
+  const caption = buildFacebookCaption(article?.title);
+  const hashtags = buildFacebookHashtags(article);
+  const facebookPackage = buildFacebookPackage({ article, canonicalUrl });
+
+  const copyText = async ({ text, successMessage, failureMessage }) => {
+    if (!text) return;
     const sequence = copySequence.current + 1;
     copySequence.current = sequence;
-    setLinkMessage('');
-    setLinkError('');
+    setCopyMessage('');
+    setCopyError('');
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(canonicalUrl);
-      if (copySequence.current === sequence) setLinkMessage('Link copied');
+      await navigator.clipboard.writeText(text);
+      if (copySequence.current === sequence) setCopyMessage(successMessage);
     } catch (_error) {
       if (copySequence.current === sequence) {
-        setLinkError('The article link could not be copied. Please copy it manually.');
+        setCopyError(failureMessage);
       }
     }
   };
+
+  const copyArticleLink = () => copyText({
+    text: canonicalUrl,
+    successMessage: 'Link copied',
+    failureMessage: 'The article link could not be copied. Please copy it manually.',
+  });
+
+  const copyFacebookCaption = () => copyText({
+    text: caption,
+    successMessage: 'Caption copied',
+    failureMessage: 'The Facebook caption could not be copied. Please copy it manually.',
+  });
+
+  const copyHashtags = () => copyText({
+    text: hashtags,
+    successMessage: 'Hashtags copied',
+    failureMessage: 'The hashtags could not be copied. Please copy them manually.',
+  });
+
+  const copyFacebookPackage = () => copyText({
+    text: facebookPackage,
+    successMessage: 'Facebook package copied',
+    failureMessage: 'The Facebook package could not be copied. Please copy it manually.',
+  });
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -168,8 +202,8 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
             </section>
 
             {error && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-            {linkError && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{linkError}</div>}
-            {linkMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{linkMessage}</div>}
+            {copyError && <div role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{copyError}</div>}
+            {copyMessage && <div role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{copyMessage}</div>}
 
             {previewUrl && (
               <section aria-label="Generated SVG preview">
@@ -187,6 +221,15 @@ const FacebookLocalGraphicDialog = ({ open, article, apiUrl, token, onOpenChange
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Close</Button>
           <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
             <Copy className="mr-2 h-4 w-4" />Copy Article Link
+          </Button>
+          <Button type="button" variant="outline" onClick={copyFacebookCaption} disabled={!caption}>
+            <Copy className="mr-2 h-4 w-4" />Copy Facebook Caption
+          </Button>
+          <Button type="button" variant="outline" onClick={copyHashtags} disabled={!hashtags}>
+            <Copy className="mr-2 h-4 w-4" />Copy Hashtags
+          </Button>
+          <Button type="button" variant="outline" onClick={copyFacebookPackage} disabled={!facebookPackage}>
+            <Copy className="mr-2 h-4 w-4" />Copy Facebook Package
           </Button>
           {canonicalUrl ? (
             <Button variant="outline" asChild>
