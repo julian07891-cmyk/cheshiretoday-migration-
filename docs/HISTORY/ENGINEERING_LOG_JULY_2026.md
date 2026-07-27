@@ -511,3 +511,58 @@ HEAD: 9cc745c2cf4bc1830d11c2a66a1df3510eec0d90
 Operational source of truth: docs/PROJECT_STATE.md
 Historical engineering log: docs/HISTORY/ENGINEERING_LOG_JULY_2026.md
 ```
+
+## Version 1 completion
+
+### Representative Instagram operational verification
+
+The approved Instagram systems moved beyond structural validation into
+representative real-use verification. A current Cheshire Today Local News
+article was composed through the approved Story workflow and exported as an
+exact `1080 × 1920` sRGB PNG. Representative Feed and Reels working copies were
+also exported at `1080 × 1080` and `1080 × 1920` respectively. Image crops,
+headline wrapping, logo and CTA placement, hidden guides, placeholders and safe
+areas were reviewed without altering the permanent masters.
+
+These representative checks signed off the production export workflow. A final
+private preview in the Instagram app remains an ordinary per-post editorial
+check for platform chrome and device presentation, not an outstanding Version
+1 engineering task.
+
+### Threads workflow completion
+
+The Threads Version 1 workflow was completed as a native, conversational and
+text-led publishing process. It documents article selection, the two-step
+editorial approval sequence, post structure, link and image use, engagement,
+frequency, the 40/40/20 editorial balance and a copy-ready acceptance checklist.
+Repository evidence did not establish a need for a dedicated Threads graphic
+system, so no unnecessary template or software was introduced.
+
+### Documentation and social-media completion
+
+The operational state, July engineering history, Brand Asset Library, Brand
+Guidelines and platform READMEs now record the approved production contracts.
+Stale references that described completed Facebook and Instagram systems as
+future work, the approved Brand Guidelines as unapproved, or Threads as a
+graphics system were corrected during the final handover audit.
+
+Facebook Publishing Studio, Instagram Highlights, Stories, Feed graphics and
+Reels covers, and the native Threads workflow together complete the Version 1
+social-media suite.
+
+### Engineering handover
+
+Cheshire Today Version 1 engineering is complete. The Version 1 implementation
+baseline before the final documentation commit is:
+
+```text
+Repository: CT29january26-new-website-migration
+Branch: full-scrape-prod
+HEAD: b1e6b186a01865870a9a1deed2e187303a565552
+Operational source of truth: docs/PROJECT_STATE.md
+Historical engineering log: docs/HISTORY/ENGINEERING_LOG_JULY_2026.md
+```
+
+The project now moves into Operations & Growth. Further engineering should be
+evidence-led and follow the established QA-first, narrowly scoped and
+reversible workflow.

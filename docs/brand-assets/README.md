@@ -41,7 +41,7 @@ Font files are not stored in this library unless licensing and redistribution ha
 - `media-kit/` — approved partner, audience and commercial media-kit assets.
 - `brand-guidelines/` — consolidated brand-guideline documents and their source assets.
 
-The Instagram Highlight suite in `social/highlights/` is the first completed production set and is designated **Version 1.0**.
+The approved Version 1.0 social systems are documented in `social/` and include Instagram Highlights, Stories, Feed graphics and Reels covers, together with Facebook templates and the native Threads publishing workflow.
 
 ## Naming conventions
 
@@ -65,9 +65,10 @@ The Instagram Highlight suite in `social/highlights/` is the first completed pro
 ## PNG export standards
 
 - Instagram Highlight covers: `1080 × 1080 px`.
-- Instagram feed and Threads portrait graphics: `1080 × 1350 px`.
+- Instagram square Feed graphics: `1080 × 1080 px`.
 - Instagram Stories and Reels working graphics: `1080 × 1920 px`.
 - Facebook and landscape campaign graphics: `1200 × 630 px`.
+- A future Threads portrait graphic, if separately approved, should use `1080 × 1350 px`.
 - Export as sRGB PNG with transparency only when the design requires it.
 - Preserve exact dimensions; do not upscale a smaller raster export.
 - Optimise file size without changing dimensions, artwork or visible colour values.
@@ -92,14 +93,20 @@ docs/brand-assets/
 
 Website runtime assets remain in their existing production locations unless a separate implementation explicitly moves or integrates them. This library must not be referenced by the website merely because an asset has been added here.
 
+## Completed systems
+
+- Instagram Highlight Suite v1.0.
+- Instagram Story Template System v1.0.
+- Instagram Feed Template System v1.0.
+- Reels Cover Template System v1.0.
+- Facebook Template System v1.0 and Admin Publishing Studio.
+- Native Threads publishing workflow v1.0; no dedicated template is currently required.
+- Brand Guidelines v1.0 Markdown source.
+
 ## Planned assets
 
 - Complete logo and wordmark suite.
-- Social Story templates.
-- Instagram feed and carousel templates.
-- Reels cover templates.
-- Facebook and Threads templates.
-- Newsletter promotion templates.
-- Brand Guidelines PDF and source document.
+- Brand Guidelines PDF generated from the approved Markdown source when required.
 - Commercial Media Kit and source document.
 - Sponsor and partnership presentation assets.
+- Further campaign assets only when operational evidence establishes a need.

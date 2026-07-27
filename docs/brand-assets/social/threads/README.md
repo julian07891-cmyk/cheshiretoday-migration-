@@ -1,10 +1,10 @@
 # Threads
 
-This directory is reserved for approved Threads-native editorial graphics.
-
-Standard portrait canvas: `1080 × 1350 px`. Prefer concise quotes, statistics or questions, generous warm-paper space and restrained branding rather than duplicating an entire post inside the image.
-
-No production Threads template has been approved yet.
+This directory documents the approved native Threads publishing workflow.
+Version 1 is deliberately text-led and has no dedicated production graphic
+template. Existing approved Instagram or Facebook assets may be reused only
+under the image rules below; a Threads-specific asset should be introduced only
+when operational evidence establishes a need.
 
 ## Version 1 publishing workflow
 

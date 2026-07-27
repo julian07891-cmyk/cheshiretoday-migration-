@@ -131,7 +131,9 @@ The canonical social systems are held under `docs/brand-assets/social/`:
 - Instagram Highlight Suite v1.0 in `highlights/`;
 - Instagram Story Template System v1.0 in `stories/templates/`;
 - Instagram Feed Template System v1.0 in `feed/templates/`;
-- Reels Cover Template System v1.0 in `reels/templates/`.
+- Reels Cover Template System v1.0 in `reels/templates/`;
+- Facebook Template System v1.0 in `facebook/templates/`;
+- native Threads publishing workflow v1.0 in `threads/README.md`.
 
 ### SVG-first workflow
 
@@ -151,8 +153,8 @@ Never overwrite a published Version 1.0 master. Permanent masters remain free of
 - Highlight covers: `1080 × 1080 px`.
 - Square Feed graphics: `1080 × 1080 px`.
 - Stories and Reels: `1080 × 1920 px`.
-- Future portrait Feed or Threads graphics: `1080 × 1350 px` when approved.
-- Future Facebook landscape graphics: `1200 × 630 px` when approved.
+- A future portrait Threads graphic: `1080 × 1350 px` only when separately approved.
+- Facebook landscape graphics: `1200 × 630 px`.
 
 Export in sRGB at the exact master dimensions. Do not upscale a smaller raster file. Use the same base filename for an SVG working asset and its PNG export.
 
@@ -196,11 +198,11 @@ Use an approved Feed, Story, Reel or Highlight master. Keep the graphic concise 
 
 ### Facebook
 
-Until the Facebook Template System is approved, use the production palette, typography and existing approved assets without inventing a Facebook-specific identity. Use accurate headlines, meaningful images and clear link context. Future landscape assets should follow the documented `1200 × 630 px` standard.
+Use the approved Facebook Template System or the authenticated Admin Facebook Publishing Studio. Preserve accurate headlines, meaningful images, clear link context and the documented `1200 × 630 px` output. Use Link Preview for native link sharing and Branded Graphic when an approved graphic treatment adds value.
 
 ### Threads
 
-Lead with clear editorial text and use graphics only where they add context. Until a Threads Template System is approved, do not repurpose an asset whose crop or text hierarchy is unsuitable. Preserve the same voice, palette and attribution standards.
+Follow the native Threads workflow in `social/threads/README.md`: lead with clear conversational editorial text and use graphics only where they add context. No dedicated Threads template is currently required. Do not repurpose an asset whose crop or text hierarchy is unsuitable, and preserve the same voice and attribution standards.
 
 ### Reels
 
@@ -253,13 +255,10 @@ Future changes require focused review against the live website, the current Bran
 
 Planned extensions, subject to separate design and editorial approval, are:
 
-1. Facebook Template System v1.0.
-2. Threads Template System v1.0.
-3. Complete approved logo and wordmark suite with channel-specific exports.
-4. Brand Guidelines PDF generated from an approved source edition.
-5. Commercial Media Kit.
-6. Sponsor and partnership assets with formal co-branding rules.
-7. Newsletter-promotion and campaign asset sets.
-8. Commercial presentation and advertising assets that preserve editorial independence.
+1. Complete approved logo and wordmark suite with channel-specific exports.
+2. Brand Guidelines PDF generated from this approved Markdown source when required.
+3. Commercial Media Kit.
+4. Sponsor and partnership assets with formal co-branding rules.
+5. Further campaign and commercial assets only when operational evidence establishes a need.
 
 New systems must extend the production website identity rather than create a competing palette, type system or visual language.

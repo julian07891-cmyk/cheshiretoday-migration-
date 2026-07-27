@@ -7,6 +7,6 @@ This directory contains approved platform-specific social masters, exports and p
 - `feed/` — Instagram feed and carousel graphics.
 - `reels/` — Reel covers and supporting graphic masters.
 - `facebook/` — Facebook post and campaign graphics.
-- `threads/` — Threads-native editorial graphics.
+- `threads/` — native Threads publishing workflow; no dedicated template is currently approved or required.
 
 Use the shared production palette and typography defined in the parent Brand Asset Library. Keep editable SVG masters and matching PNG exports together, respect each platform safe area and do not reuse breaking-news treatment for routine promotion.

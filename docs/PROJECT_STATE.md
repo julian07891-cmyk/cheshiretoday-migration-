@@ -24806,3 +24806,74 @@ HEAD: 886d9f3
 1. Continue editorial and content growth.
 2. Monitor production operation and health.
 3. Continue future feature work through the established QA-first workflow.
+
+## Operational update — 27 July 2026 (Version 1 completion)
+
+### Version 1 completion
+
+Cheshire Today Version 1 engineering is complete. The production platform now
+has the public publishing, authenticated Admin, editorial workflow, hidden
+Manual Review, scheduler, archive, newsletter, SEO, security and operational
+documentation foundations required for the move into Operations & Growth.
+
+The July engineering history is complete in
+`docs/HISTORY/ENGINEERING_LOG_JULY_2026.md`. It remains the chronological
+historical record, while this file remains the operational source of truth.
+
+### Social-media suite completion
+
+Facebook Publishing Studio is complete with Link Preview and Branded Graphic
+modes, deterministic copy helpers, SVG preview, exact PNG download and all nine
+approved graphic types: Local News, Newsletter, Business, Property, AI & Tech,
+Breaking News, Event, Quote and Poll. Its authenticated, read-only generation
+contracts and immutable asset registry remain protected by backend and frontend
+regressions.
+
+The Instagram Highlight, Story, Feed and Reels systems are complete.
+Representative real-article operational exports verified the Story, Feed and
+Reels workflows at their exact production dimensions without changing their
+immutable masters. Final private previews in the Instagram app remain a normal
+per-post publishing check rather than unfinished engineering.
+
+The native Threads publishing workflow is complete. It uses the existing
+two-step editorial approval process, preserves the 40/40/20 content strategy
+and deliberately remains conversational and text-led. No dedicated Threads
+template is required without evidence of a future operational need.
+
+The Brand Asset Library, Brand Guidelines v1.0 and platform workflow
+documentation together form the completed Version 1 social-media system.
+
+### Version 1 production implementation baseline
+
+- Public homepage, article, category, canonical, sitemap and 404 behaviour is
+  operational.
+- Admin editorial, Manual Review, archive and publishing workflows are
+  operational.
+- Morning, midday and evening scheduling remains operational.
+- The public newsletter landing page, one-click signup, welcome email, secure
+  preferences, unsubscribe and reactivation are operational.
+- Production newsletter email uniqueness is enforced by
+  `newsletter_email_unique`.
+- Facebook preparation and the Instagram and Threads publishing workflows are
+  ready for routine editorial use.
+
+The following branch and SHA identify the Version 1 implementation baseline
+before the final documentation commit:
+
+```text
+Branch: full-scrape-prod
+HEAD: b1e6b186a01865870a9a1deed2e187303a565552
+```
+
+### Remaining priorities
+
+1. Editorial growth.
+2. Facebook growth.
+3. Newsletter growth.
+4. SEO.
+5. Google News.
+6. Discover.
+7. Affiliate-first monetisation.
+8. Sponsor readiness.
+9. Production monitoring.
+10. Evidence-led future engineering.
