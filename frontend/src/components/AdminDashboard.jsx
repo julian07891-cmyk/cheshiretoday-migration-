@@ -30,6 +30,7 @@ import {
   removeArchivedSelection,
 } from '../services/adminArticleActions';
 import ManualReviewEditorialMetadata from './ManualReviewEditorialMetadata';
+import FacebookLocalGraphicDialog from './admin/FacebookLocalGraphicDialog';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -140,6 +141,7 @@ const AdminDashboard = ({ onBack }) => {
 
   // Facebook scheduling state
   const [schedulableArticles, setSchedulableArticles] = useState([]);
+  const [facebookGraphicArticle, setFacebookGraphicArticle] = useState(null);
   
   // Facebook analytics state
   const [fbAnalytics, setFbAnalytics] = useState(null);
@@ -3399,6 +3401,19 @@ const handleDeleteArticle = async (articleId) => {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        {article.category === 'Local News' && article.mongo_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setFacebookGraphicArticle(article)}
+                            className="text-blue-700 hover:bg-blue-50 border-blue-200"
+                            title="Create Facebook Graphic"
+                            aria-label={`Create Facebook Graphic for ${article.title}`}
+                            data-testid={`facebook-graphic-${article.mongo_id}`}
+                          >
+                            <ImageIcon className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -6400,6 +6415,16 @@ const handleDeleteArticle = async (articleId) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FacebookLocalGraphicDialog
+        open={Boolean(facebookGraphicArticle)}
+        article={facebookGraphicArticle}
+        apiUrl={getApiUrl()}
+        token={localStorage.getItem(TOKEN_KEY) || ''}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setFacebookGraphicArticle(null);
+        }}
+      />
 
       {/* Add/Edit Article Dialog */}
       <Dialog open={showAddArticle} onOpenChange={(open) => { if (!open) { setShowAddArticle(false); resetArticleForm(); } }}>
