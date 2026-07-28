@@ -11,9 +11,15 @@ import {
   rasterizeFacebookSvg,
 } from '../../services/facebookSocialAsset';
 import {
+  downloadInstagramFeedPng,
+  downloadInstagramReelsCoverPng,
   downloadInstagramStoryPng,
+  fetchInstagramFeed,
+  fetchInstagramReelsCover,
   fetchInstagramTopStory,
   InstagramSocialAssetError,
+  rasterizeInstagramFeedSvg,
+  rasterizeInstagramReelsCoverSvg,
   rasterizeInstagramStorySvg,
 } from '../../services/instagramSocialAsset';
 
@@ -33,8 +39,14 @@ jest.mock('../../services/instagramSocialAsset', () => {
   const actual = jest.requireActual('../../services/instagramSocialAsset');
   return {
     ...actual,
+    downloadInstagramFeedPng: jest.fn(),
+    downloadInstagramReelsCoverPng: jest.fn(),
     downloadInstagramStoryPng: jest.fn(),
+    fetchInstagramFeed: jest.fn(),
+    fetchInstagramReelsCover: jest.fn(),
     fetchInstagramTopStory: jest.fn(),
+    rasterizeInstagramFeedSvg: jest.fn(),
+    rasterizeInstagramReelsCoverSvg: jest.fn(),
     rasterizeInstagramStorySvg: jest.fn(),
   };
 });
@@ -92,8 +104,14 @@ describe('SocialPublishingDialog', () => {
     rasterizeFacebookSvg.mockReset();
     downloadFacebookPng.mockReset();
     fetchInstagramTopStory.mockReset();
+    fetchInstagramFeed.mockReset();
+    fetchInstagramReelsCover.mockReset();
     rasterizeInstagramStorySvg.mockReset();
+    rasterizeInstagramFeedSvg.mockReset();
+    rasterizeInstagramReelsCoverSvg.mockReset();
     downloadInstagramStoryPng.mockReset();
+    downloadInstagramFeedPng.mockReset();
+    downloadInstagramReelsCoverPng.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: jest.fn().mockResolvedValue(undefined) },
@@ -679,16 +697,18 @@ describe('SocialPublishingDialog', () => {
     expect(downloadFacebookPng).not.toHaveBeenCalled();
   });
 
-  test('defaults to Facebook and exposes only Story and Top Story for Instagram', () => {
+  test('defaults to Facebook and exposes the exact approved Instagram formats', () => {
     renderDialog();
     expect(radio('facebook').checked).toBe(true);
     expect(radio('instagram').checked).toBe(false);
     selectPlatform('instagram');
     expect(radio('instagram').checked).toBe(true);
     expect(radio('story').checked).toBe(true);
+    expect(radio('feed')).not.toBeNull();
+    expect(radio('reels-cover')).not.toBeNull();
     expect(radio('top-story').checked).toBe(true);
-    expect(button('Generate Preview')).toBeDefined();
-    expect(button('Download PNG')).toBeDefined();
+    expect(button('Generate Story Preview')).toBeDefined();
+    expect(button('Download Story PNG')).toBeDefined();
     expect(button('Copy Facebook Post')).toBeUndefined();
     expect(button('Copy Caption')).toBeUndefined();
     expect(button('Copy Hashtags')).toBeUndefined();
@@ -704,16 +724,16 @@ describe('SocialPublishingDialog', () => {
     rasterizeInstagramStorySvg.mockResolvedValue(pngBlob);
     renderDialog();
     selectPlatform('instagram');
-    await click('Generate Preview');
+    await click('Generate Story Preview');
     expect(fetchInstagramTopStory).toHaveBeenCalledWith({
       apiUrl: 'https://admin.example',
       mongoId: ARTICLE.mongo_id,
       token: 'admin-token',
     });
     expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
-    expect(container.querySelector('[alt="Generated Instagram Top Story preview"]')).not.toBeNull();
+    expect(container.querySelector('[alt="Generated Instagram Story Top Story preview"]')).not.toBeNull();
     expect(container.textContent).toContain('Preview generated');
-    await click('Download PNG');
+    await click('Download Story PNG');
     expect(rasterizeInstagramStorySvg).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
     expect(downloadInstagramStoryPng).toHaveBeenCalledWith({ pngBlob, title: ARTICLE.title });
     expect(container.textContent).toContain('PNG downloaded');
@@ -724,10 +744,10 @@ describe('SocialPublishingDialog', () => {
     URL.createObjectURL.mockReturnValue('blob:instagram-preview');
     renderDialog();
     selectPlatform('instagram');
-    await click('Generate Preview');
+    await click('Generate Story Preview');
     selectPlatform('facebook');
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:instagram-preview');
-    expect(container.querySelector('[alt="Generated Instagram Top Story preview"]')).toBeNull();
+    expect(container.querySelector('[alt="Generated Instagram Story Top Story preview"]')).toBeNull();
     expect(fetchInstagramTopStory).toHaveBeenCalledTimes(1);
     expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
   });
@@ -737,15 +757,64 @@ describe('SocialPublishingDialog', () => {
     fetchInstagramTopStory.mockReturnValue(new Promise(resolve => { resolveStory = resolve; }));
     renderDialog();
     selectPlatform('instagram');
-    act(() => button('Generate Preview').click());
+    act(() => button('Generate Story Preview').click());
     selectPlatform('facebook');
     await act(async () => resolveStory(new Blob(['late-story'], { type: 'image/svg+xml' })));
     expect(URL.createObjectURL).not.toHaveBeenCalled();
-    expect(container.querySelector('[alt="Generated Instagram Top Story preview"]')).toBeNull();
+    expect(container.querySelector('[alt="Generated Instagram Story Top Story preview"]')).toBeNull();
 
     selectPlatform('instagram');
     fetchInstagramTopStory.mockRejectedValue(new InstagramSocialAssetError(422));
-    await click('Generate Preview');
+    await click('Generate Story Preview');
     expect(container.textContent).toContain('This article does not have a usable featured image.');
+  });
+
+  test.each([
+    ['feed', 'Feed', fetchInstagramFeed, rasterizeInstagramFeedSvg, downloadInstagramFeedPng, 'Generated Instagram Feed Local News preview'],
+    ['reels-cover', 'Reels Cover', fetchInstagramReelsCover, rasterizeInstagramReelsCoverSvg, downloadInstagramReelsCoverPng, 'Generated Instagram Reels Cover Local News preview'],
+  ])('generates, previews and downloads Instagram %s without automatic requests', async (
+    format, label, fetcher, rasterizer, downloader, altText
+  ) => {
+    const svgBlob = new Blob([`${format}-svg`], { type: 'image/svg+xml' });
+    const pngBlob = new Blob([`${format}-png`], { type: 'image/png' });
+    fetcher.mockResolvedValue(svgBlob);
+    rasterizer.mockResolvedValue(pngBlob);
+    renderDialog();
+    selectPlatform('instagram');
+    selectMode(format);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(radio('local-news').checked).toBe(true);
+    await click(`Generate ${label} Preview`);
+    expect(fetcher).toHaveBeenCalledWith({
+      apiUrl: 'https://admin.example',
+      mongoId: ARTICLE.mongo_id,
+      token: 'admin-token',
+    });
+    expect(container.querySelector(`[alt="${altText}"]`)).not.toBeNull();
+    await click(`Download ${label} PNG`);
+    expect(rasterizer).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
+    expect(downloader).toHaveBeenCalledWith({ pngBlob, title: ARTICLE.title });
+    expect(button('Copy Caption')).toBeUndefined();
+    expect(button('Copy Hashtags')).toBeUndefined();
+  });
+
+  test('format switching revokes preview, makes no request and blocks stale cross-format results', async () => {
+    let resolveStory;
+    fetchInstagramTopStory.mockReturnValue(new Promise(resolve => { resolveStory = resolve; }));
+    renderDialog();
+    selectPlatform('instagram');
+    act(() => button('Generate Story Preview').click());
+    selectMode('feed');
+    expect(fetchInstagramFeed).not.toHaveBeenCalled();
+    await act(async () => resolveStory(new Blob(['late-story'], { type: 'image/svg+xml' })));
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+
+    fetchInstagramFeed.mockResolvedValue(new Blob(['feed'], { type: 'image/svg+xml' }));
+    await click('Generate Feed Preview');
+    expect(container.querySelector('[alt="Generated Instagram Feed Local News preview"]')).not.toBeNull();
+    selectMode('reels-cover');
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:svg-preview');
+    expect(container.querySelector('[alt="Generated Instagram Feed Local News preview"]')).toBeNull();
+    expect(fetchInstagramReelsCover).not.toHaveBeenCalled();
   });
 });

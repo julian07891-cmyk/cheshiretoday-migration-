@@ -52,5 +52,15 @@ INSTAGRAM_GRAPHIC_MASTERS: Final = MappingProxyType({
         / "docs/brand-assets/social/stories/templates/top-story.svg",
         "4f2a807f1b3d6e6ca747d7c81706e8c976962466003a5b989f07b3bb3be00685",
     ),
+    ("feed", "local-news"): (
+        _REPOSITORY_ROOT
+        / "docs/brand-assets/social/feed/templates/local-news-square.svg",
+        "6341a19f6a84ee7725050a1af95a76aa7bc9637066baedcb494ecbf81017bd8c",
+    ),
+    ("reels-cover", "local-news"): (
+        _REPOSITORY_ROOT
+        / "docs/brand-assets/social/reels/templates/local-news-reel.svg",
+        "ef9f81001d169c01127f23af75a84a6d3e0ea54a4bbb439e92443e499c0dd2d5",
+    ),
 })
 INSTAGRAM_GRAPHIC_FORMATS: Final = frozenset(INSTAGRAM_GRAPHIC_MASTERS)

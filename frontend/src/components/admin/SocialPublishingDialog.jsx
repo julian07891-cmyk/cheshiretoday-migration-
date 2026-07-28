@@ -31,9 +31,15 @@ import {
   NEWSLETTER_HASHTAGS,
 } from '../../services/facebookPublishingCopy';
 import {
+  downloadInstagramFeedPng,
+  downloadInstagramReelsCoverPng,
   downloadInstagramStoryPng,
+  fetchInstagramFeed,
+  fetchInstagramReelsCover,
   fetchInstagramTopStory,
   InstagramSocialAssetError,
+  rasterizeInstagramFeedSvg,
+  rasterizeInstagramReelsCoverSvg,
   rasterizeInstagramStorySvg,
 } from '../../services/instagramSocialAsset';
 
@@ -50,6 +56,12 @@ const GRAPHIC_TYPES = Object.freeze([
   { value: 'poll', label: 'Poll', filename: 'cheshire-today-poll-facebook.png' },
 ]);
 
+const INSTAGRAM_FORMAT_OPTIONS = Object.freeze([
+  { value: 'story', label: 'Story', layout: 'Top Story' },
+  { value: 'feed', label: 'Feed', layout: 'Local News' },
+  { value: 'reels-cover', label: 'Reels Cover', layout: 'Local News' },
+]);
+
 
 const errorMessage = (error, graphicType) => {
   if (error instanceof FacebookSocialAssetError) {
@@ -62,13 +74,13 @@ const errorMessage = (error, graphicType) => {
   return 'The Facebook graphic could not be generated. Please try again.';
 };
 
-const instagramErrorMessage = error => {
+const instagramErrorMessage = (error, formatLabel) => {
   if (error instanceof InstagramSocialAssetError) {
     if (error.status === 404) return 'This article is no longer available.';
-    if (error.status === 400) return 'Instagram Top Story currently supports Local News articles only.';
+    if (error.status === 400) return `Instagram ${formatLabel} currently supports Local News articles only.`;
     if (error.status === 422) return 'This article does not have a usable featured image.';
   }
-  return 'The Instagram Story preview could not be generated. Please try again.';
+  return `The Instagram ${formatLabel} preview could not be generated. Please try again.`;
 };
 
 
@@ -80,6 +92,7 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
   const [copyError, setCopyError] = useState('');
   const [previewUrl, setPreviewUrl] = useState(null);
   const [platform, setPlatform] = useState('facebook');
+  const [instagramFormat, setInstagramFormat] = useState('story');
   const [publishingMode, setPublishingMode] = useState('link-preview');
   const [graphicType, setGraphicType] = useState('local-news');
   const [breakingConfirmed, setBreakingConfirmed] = useState(false);
@@ -110,6 +123,7 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     setStatusMessage('');
     setCopyError('');
     setPlatform('facebook');
+    setInstagramFormat('story');
     setPublishingMode('link-preview');
     setGraphicType('local-news');
     setBreakingConfirmed(false);
@@ -160,6 +174,20 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     setStatusMessage('');
     setCopyError('');
     setPlatform(nextPlatform);
+    if (nextPlatform === 'instagram') setInstagramFormat('story');
+  };
+
+  const changeInstagramFormat = nextFormat => {
+    if (nextFormat === instagramFormat) return;
+    requestSequence.current += 1;
+    copySequence.current += 1;
+    revokePreview();
+    setLoading(false);
+    setDownloading(false);
+    setError('');
+    setStatusMessage('');
+    setCopyError('');
+    setInstagramFormat(nextFormat);
   };
 
   const generate = async () => {
@@ -172,7 +200,12 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     try {
       let svgBlob;
       if (platform === 'instagram') {
-        svgBlob = await fetchInstagramTopStory({
+        const instagramFetcher = {
+          story: fetchInstagramTopStory,
+          feed: fetchInstagramFeed,
+          'reels-cover': fetchInstagramReelsCover,
+        }[instagramFormat];
+        svgBlob = await instagramFetcher({
           apiUrl,
           mongoId: article?.mongo_id,
           token,
@@ -206,7 +239,7 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     } catch (requestError) {
       if (requestSequence.current === sequence) {
         setError(platform === 'instagram'
-          ? instagramErrorMessage(requestError)
+          ? instagramErrorMessage(requestError, INSTAGRAM_FORMAT_OPTIONS.find(option => option.value === instagramFormat)?.label)
           : errorMessage(requestError, graphicType));
       }
     } finally {
@@ -221,12 +254,22 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     setStatusMessage('');
     setDownloading(true);
     try {
+      const instagramRasterizer = {
+        story: rasterizeInstagramStorySvg,
+        feed: rasterizeInstagramFeedSvg,
+        'reels-cover': rasterizeInstagramReelsCoverSvg,
+      }[instagramFormat];
       const pngBlob = platform === 'instagram'
-        ? await rasterizeInstagramStorySvg({ svgUrl: previewUrl })
+        ? await instagramRasterizer({ svgUrl: previewUrl })
         : await rasterizeFacebookSvg({ svgUrl: previewUrl });
       if (requestSequence.current !== sequence) return;
       if (platform === 'instagram') {
-        downloadInstagramStoryPng({ pngBlob, title: article?.title });
+        const instagramDownloader = {
+          story: downloadInstagramStoryPng,
+          feed: downloadInstagramFeedPng,
+          'reels-cover': downloadInstagramReelsCoverPng,
+        }[instagramFormat];
+        instagramDownloader({ pngBlob, title: article?.title });
       } else {
         const explicitFilename = GRAPHIC_TYPES.find(type => type.value === graphicType)?.filename;
         if (explicitFilename) {
@@ -328,6 +371,8 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     successMessage: 'Newsletter post copied',
     failureMessage: 'The Newsletter post could not be copied. Please copy it manually.',
   });
+  const activeInstagramFormat = INSTAGRAM_FORMAT_OPTIONS.find(option => option.value === instagramFormat)
+    || INSTAGRAM_FORMAT_OPTIONS[0];
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -416,7 +461,7 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
                 <img
                   src={previewUrl}
                   alt={platform === 'instagram'
-                    ? 'Generated Instagram Top Story preview'
+                    ? `Generated Instagram ${activeInstagramFormat.label} ${activeInstagramFormat.layout} preview`
                     : `Generated Facebook ${GRAPHIC_TYPES.find(type => type.value === graphicType)?.label || ''} graphic preview`}
                   className="w-full rounded-lg border bg-white"
                 />
@@ -540,37 +585,45 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
           )}
           </> : (
             <>
-              <section aria-labelledby="instagram-story-format-label">
-                <h3 id="instagram-story-format-label" className="mb-2 text-sm font-semibold">Format</h3>
-                <div role="radiogroup" aria-labelledby="instagram-story-format-label" className="flex flex-wrap gap-2">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                    <input type="radio" name="instagram-format" value="story" checked readOnly />
-                    <span>Story</span>
-                  </label>
+              <section aria-labelledby="instagram-format-label">
+                <h3 id="instagram-format-label" className="mb-2 text-sm font-semibold">Format</h3>
+                <div role="radiogroup" aria-labelledby="instagram-format-label" className="flex flex-wrap gap-2">
+                  {INSTAGRAM_FORMAT_OPTIONS.map(option => (
+                    <label key={option.value} className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                      <input
+                        type="radio"
+                        name="instagram-format"
+                        value={option.value}
+                        checked={instagramFormat === option.value}
+                        onChange={() => changeInstagramFormat(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
                 </div>
               </section>
-              <section aria-labelledby="instagram-story-layout-label">
-                <h3 id="instagram-story-layout-label" className="mb-2 text-sm font-semibold">Approved layout</h3>
-                <div role="radiogroup" aria-labelledby="instagram-story-layout-label" className="flex flex-wrap gap-2">
+              <section aria-labelledby="instagram-layout-label">
+                <h3 id="instagram-layout-label" className="mb-2 text-sm font-semibold">Approved layout</h3>
+                <div role="radiogroup" aria-labelledby="instagram-layout-label" className="flex flex-wrap gap-2">
                   <label className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                    <input type="radio" name="instagram-layout" value="top-story" checked readOnly />
-                    <span>Top Story</span>
+                    <input type="radio" name="instagram-layout" value={activeInstagramFormat.layout.toLowerCase().replace(' ', '-')} checked readOnly />
+                    <span>{activeInstagramFormat.layout}</span>
                   </label>
                 </div>
               </section>
               {article?.category !== 'Local News' && (
                 <p role="status" className="text-sm text-amber-700">
-                  Instagram Top Story currently supports Local News articles only.
+                  Instagram {activeInstagramFormat.label} currently supports Local News articles only.
                 </p>
               )}
-              <section aria-labelledby="instagram-story-actions">
-                <h3 id="instagram-story-actions" className="mb-2 text-sm font-semibold">Instagram Story</h3>
+              <section aria-labelledby="instagram-format-actions">
+                <h3 id="instagram-format-actions" className="mb-2 text-sm font-semibold">Instagram {activeInstagramFormat.label}</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" variant={previewUrl ? 'outline' : 'default'} onClick={generate} disabled={loading || downloading || !canGenerate}>
-                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate Preview</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate Preview</>}
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Generating…</span></> : previewUrl ? <><RefreshCw className="mr-2 h-4 w-4" />Regenerate {activeInstagramFormat.label} Preview</> : <><ImageIcon className="mr-2 h-4 w-4" />Generate {activeInstagramFormat.label} Preview</>}
                   </Button>
                   <Button type="button" variant="outline" onClick={download} disabled={!previewUrl || loading || downloading}>
-                    {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download PNG</>}
+                    {downloading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /><span role="status" aria-live="polite">Creating PNG…</span></> : <><Download className="mr-2 h-4 w-4" />Download {activeInstagramFormat.label} PNG</>}
                   </Button>
                 </div>
               </section>

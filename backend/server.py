@@ -64,6 +64,8 @@ from app.instagram_social_asset import (
     ImageFetchError as InstagramAssetImageFetchError,
     ImageURLValidationError as InstagramAssetImageURLValidationError,
     TemplateValidationError as InstagramAssetTemplateValidationError,
+    compose_instagram_feed_svg,
+    compose_instagram_reels_cover_svg,
     compose_instagram_top_story_svg,
 )
 from app.local_rss_editorial_policy import (
@@ -8211,12 +8213,13 @@ async def get_admin_facebook_poll_graphic(
         _raise_facebook_graphic_error(exc, mongo_id)
 
 
-@api_router.get("/admin/social-assets/instagram/story/{article_id}")
-async def get_admin_instagram_top_story_social_asset(
+async def _compose_admin_instagram_article_asset(
     article_id: str,
-    authorized: bool = Depends(get_admin_auth),
+    *,
+    composer,
+    format_name: str,
+    filename_suffix: str,
 ):
-    """Compose one active Local News Instagram Top Story without persistence."""
     if not ObjectId.is_valid(article_id):
         raise HTTPException(status_code=400, detail="Article ID is invalid")
     try:
@@ -8239,7 +8242,7 @@ async def get_admin_instagram_top_story_social_asset(
                 status_code=400,
                 detail="Only Local News articles are supported",
             )
-        svg = compose_instagram_top_story_svg({
+        svg = composer({
             "mongo_id": str(article["_id"]),
             "title": article.get("title"),
             "category": article.get("category"),
@@ -8251,7 +8254,7 @@ async def get_admin_instagram_top_story_social_asset(
             headers={
                 "Cache-Control": "no-store",
                 "Content-Disposition": (
-                    f'inline; filename="cheshire-today-{article_id.lower()}-instagram-story-top-story.svg"'
+                    f'inline; filename="cheshire-today-{article_id.lower()}-{filename_suffix}.svg"'
                 ),
             },
         )
@@ -8264,7 +8267,8 @@ async def get_admin_instagram_top_story_social_asset(
         InstagramAssetArticleValidationError,
     ) as exc:
         logger.warning(
-            "Admin Instagram Story rejected article_id=%s error=%s",
+            "Admin Instagram %s rejected article_id=%s error=%s",
+            format_name,
             article_id,
             type(exc).__name__,
         )
@@ -8274,7 +8278,8 @@ async def get_admin_instagram_top_story_social_asset(
         ) from None
     except InstagramAssetTemplateValidationError as exc:
         logger.error(
-            "Admin Instagram Story failed article_id=%s error=%s",
+            "Admin Instagram %s failed article_id=%s error=%s",
+            format_name,
             article_id,
             type(exc).__name__,
         )
@@ -8284,7 +8289,8 @@ async def get_admin_instagram_top_story_social_asset(
         ) from None
     except Exception as exc:
         logger.error(
-            "Admin Instagram Story failed article_id=%s error=%s",
+            "Admin Instagram %s failed article_id=%s error=%s",
+            format_name,
             article_id,
             type(exc).__name__,
         )
@@ -8292,6 +8298,48 @@ async def get_admin_instagram_top_story_social_asset(
             status_code=500,
             detail="Social asset could not be generated",
         ) from None
+
+
+@api_router.get("/admin/social-assets/instagram/story/{article_id}")
+async def get_admin_instagram_top_story_social_asset(
+    article_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Compose one active Local News Instagram Top Story without persistence."""
+    return await _compose_admin_instagram_article_asset(
+        article_id,
+        composer=compose_instagram_top_story_svg,
+        format_name="Story",
+        filename_suffix="instagram-story-top-story",
+    )
+
+
+@api_router.get("/admin/social-assets/instagram/feed/{article_id}")
+async def get_admin_instagram_feed_social_asset(
+    article_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Compose one active Local News Instagram Feed graphic without persistence."""
+    return await _compose_admin_instagram_article_asset(
+        article_id,
+        composer=compose_instagram_feed_svg,
+        format_name="Feed",
+        filename_suffix="instagram-feed-local-news",
+    )
+
+
+@api_router.get("/admin/social-assets/instagram/reels-cover/{article_id}")
+async def get_admin_instagram_reels_cover_social_asset(
+    article_id: str,
+    authorized: bool = Depends(get_admin_auth),
+):
+    """Compose one active Local News Instagram Reels cover without persistence."""
+    return await _compose_admin_instagram_article_asset(
+        article_id,
+        composer=compose_instagram_reels_cover_svg,
+        format_name="Reels Cover",
+        filename_suffix="instagram-reels-cover-local-news",
+    )
 
 
 @api_router.get("/admin/articles")
