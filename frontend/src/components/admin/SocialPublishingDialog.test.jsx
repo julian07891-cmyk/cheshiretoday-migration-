@@ -922,4 +922,117 @@ describe('SocialPublishingDialog', () => {
     selectPlatform('facebook');
     expect(container.textContent).not.toContain('Caption copied');
   });
+
+  test('Threads exposes only native text controls and requires editorial approval', () => {
+    renderDialog();
+    selectPlatform('threads');
+    expect(radio('threads').checked).toBe(true);
+    expect(container.textContent).toContain('Threads editorial approval');
+    expect(container.textContent).toContain('40% Local');
+    expect(container.querySelector('[aria-label="Verified opening line"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Verified context"]')).not.toBeNull();
+    expect(button('Copy Threads Post').disabled).toBe(true);
+    expect(button('Generate Graphic')).toBeUndefined();
+    expect(button('Generate Story Preview')).toBeUndefined();
+    expect(button('Download PNG')).toBeUndefined();
+    expect(button('Copy Facebook Post')).toBeUndefined();
+    expect(button('Copy Instagram Post')).toBeUndefined();
+  });
+
+  test('constructs, previews and copies the exact approved Threads post', async () => {
+    const opening = 'A new Cheshire investment is expected to support local jobs.';
+    const context = 'The approved plans affect businesses and residents in Knutsford town centre.';
+    const expected = `${opening}\n\n${context}\n\n${CANONICAL_URL}`;
+    renderDialog();
+    selectPlatform('threads');
+    changeInput(container.querySelector('[aria-label="Verified opening line"]'), opening);
+    changeInput(container.querySelector('[aria-label="Verified context"]'), context);
+    expect(container.querySelector('pre').textContent.trim()).toBe(expected);
+    expect(button('Copy Threads Post').disabled).toBe(true);
+    act(() => container.querySelector('input[type="checkbox"]').click());
+    expect(button('Copy Threads Post').disabled).toBe(false);
+    await click('Copy Threads Post');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expected);
+    expect(container.textContent).toContain('Threads post copied');
+    expect(container.querySelector('[role="status"]').textContent).toContain('Threads post copied');
+    expect(expected).not.toContain('#');
+    expect(expected).not.toContain(ARTICLE.source_url);
+    expect(expected).not.toContain(ARTICLE.image);
+    expect(fetchInstagramTopStory).not.toHaveBeenCalled();
+    expect(fetchInstagramFeed).not.toHaveBeenCalled();
+    expect(fetchInstagramReelsCover).not.toHaveBeenCalled();
+    expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['Verified opening line', 'Read https://publisher.example.test/story'],
+    ['Verified opening line', '<strong>Unsupported markup</strong>'],
+    ['Verified context', 'More at www.publisher.example.test'],
+    ['Verified context', '<context>Unsupported markup</context>'],
+  ])('Threads rejects unsafe %s content', (label, value) => {
+    renderDialog();
+    selectPlatform('threads');
+    changeInput(container.querySelector('[aria-label="Verified opening line"]'), 'A verified Cheshire update.');
+    changeInput(container.querySelector(`[aria-label="${label}"]`), value);
+    act(() => container.querySelector('input[type="checkbox"]').click());
+    expect(container.textContent).toContain('must be plain text without URLs, HTML or line breaks');
+    expect(button('Copy Threads Post').disabled).toBe(true);
+  });
+
+  test('Threads context is optional and transient state resets on platform switch and close', async () => {
+    const opening = 'A verified Cheshire update for local readers.';
+    renderDialog();
+    selectPlatform('threads');
+    changeInput(container.querySelector('[aria-label="Verified opening line"]'), opening);
+    act(() => container.querySelector('input[type="checkbox"]').click());
+    expect(container.querySelector('pre').textContent.trim()).toBe(`${opening}\n\n${CANONICAL_URL}`);
+    expect(button('Copy Threads Post').disabled).toBe(false);
+    selectPlatform('facebook');
+    selectPlatform('threads');
+    expect(container.querySelector('[aria-label="Verified opening line"]').value).toBe('');
+    expect(container.querySelector('input[type="checkbox"]').checked).toBe(false);
+    await click('Close');
+    expect(radio('facebook').checked).toBe(true);
+    selectPlatform('threads');
+    expect(container.querySelector('[aria-label="Verified opening line"]').value).toBe('');
+    expect(container.querySelector('input[type="checkbox"]').checked).toBe(false);
+  });
+
+  test('article change clears Threads approval, fields and copy feedback', async () => {
+    renderDialog();
+    selectPlatform('threads');
+    changeInput(container.querySelector('[aria-label="Verified opening line"]'), 'A verified Cheshire update.');
+    act(() => container.querySelector('input[type="checkbox"]').click());
+    await click('Copy Threads Post');
+    expect(container.textContent).toContain('Threads post copied');
+    await act(async () => root.render(
+      <SocialPublishingDialog
+        open
+        article={{ ...ARTICLE, mongo_id: '607f1f77bcf86cd799439011', title: 'Another approved article' }}
+        apiUrl="https://admin.example"
+        token="admin-token"
+        onOpenChange={onOpenChange}
+      />
+    ));
+    expect(radio('facebook').checked).toBe(true);
+    expect(container.textContent).not.toContain('Threads post copied');
+  });
+
+  test('Threads clipboard failure is safe and stale completion cannot restore status after close', async () => {
+    renderDialog();
+    selectPlatform('threads');
+    changeInput(container.querySelector('[aria-label="Verified opening line"]'), 'A verified Cheshire update.');
+    act(() => container.querySelector('input[type="checkbox"]').click());
+    navigator.clipboard.writeText.mockRejectedValueOnce(new Error('private clipboard detail'));
+    await click('Copy Threads Post');
+    expect(container.textContent).toContain('The Threads post could not be copied. Please copy it manually.');
+    expect(container.textContent).not.toContain('private clipboard detail');
+
+    let resolveCopy;
+    navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
+    act(() => button('Copy Threads Post').click());
+    await click('Close');
+    await act(async () => resolveCopy());
+    expect(container.textContent).not.toContain('Threads post copied');
+  });
 });
