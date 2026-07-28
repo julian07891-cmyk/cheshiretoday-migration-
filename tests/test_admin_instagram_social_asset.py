@@ -74,15 +74,37 @@ def test_top_story_composition_is_self_contained_and_exact():
 def test_headline_is_fitted_inside_story_geometry_and_xml_escaped():
     article = {
         **ARTICLE,
-        "title": "Council & residents approve <major> investment bringing new jobs and improved public services across Knutsford",
+        "title": "Councillors advised to approve 18-home development on open countryside site in Congleton",
     }
     root = ET.fromstring(compose(article=article))
     headline = next(node for node in root.iter() if node.attrib.get("data-content") == "headline")
     lines = [node for node in headline.iter() if node.tag.endswith("tspan")]
     assert 2 <= len(lines) <= social_asset.MAX_STORY_HEADLINE_LINES
-    assert all(float(node.attrib["x"]) == 72 for node in lines)
+    assert all(float(node.attrib["x"]) == social_asset.STORY_HEADLINE_X for node in lines)
+    assert float(lines[0].attrib["y"]) == social_asset.STORY_HEADLINE_Y
     assert article["title"] == "".join("".join(node.itertext()) for node in lines)
+    assert all(
+        float(node.attrib["x"])
+        + social_asset._estimated_text_width(
+            "".join(node.itertext()).strip(),
+            int(headline.find("{http://www.w3.org/2000/svg}text").attrib["font-size"]),
+        )
+        <= 984
+        for node in lines
+    )
     assert max(float(node.attrib["y"]) for node in lines) <= 1450
+
+
+def test_headline_and_cta_use_approved_vertical_geometry():
+    root = ET.fromstring(compose())
+    cta = next(node for node in root.iter() if node.attrib.get("data-content") == "cta")
+    rect = next(node for node in cta if node.tag.endswith("rect"))
+    text = next(node for node in cta if node.tag.endswith("text"))
+
+    assert float(rect.attrib["y"]) == 1514
+    assert float(text.attrib["y"]) == 1581
+    assert float(rect.attrib["y"]) + float(rect.attrib["height"]) == 1618
+    assert float(rect.attrib["y"]) + float(rect.attrib["height"]) <= social_asset.STORY_SAFE_BOTTOM
 
 
 @pytest.mark.parametrize(

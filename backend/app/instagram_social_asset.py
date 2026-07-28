@@ -39,8 +39,12 @@ APPROVED_INSTAGRAM_TOP_STORY_PATH, APPROVED_INSTAGRAM_TOP_STORY_SHA256 = (
 STORY_WIDTH = 1080
 STORY_HEIGHT = 1920
 MAX_STORY_HEADLINE_LINES = 3
-STORY_HEADLINE_MAX_WIDTH = 936
+STORY_HEADLINE_MAX_WIDTH = 912
+STORY_HEADLINE_X = 72
+STORY_HEADLINE_Y = 1239
 STORY_HEADLINE_BOTTOM = 1450
+STORY_CTA_Y_OFFSET = 24
+STORY_SAFE_BOTTOM = 1620
 STORY_CTA = "READ THE FULL STORY"
 
 
@@ -130,7 +134,7 @@ def _fit_headline(title: str) -> tuple[list[str], int]:
         line_height = round(font_size * 1.12)
         if (
             len(lines) <= MAX_STORY_HEADLINE_LINES
-            and 1215 + (len(lines) - 1) * line_height <= STORY_HEADLINE_BOTTOM
+            and STORY_HEADLINE_Y + (len(lines) - 1) * line_height <= STORY_HEADLINE_BOTTOM
             and all(_estimated_text_width(line, font_size) <= STORY_HEADLINE_MAX_WIDTH for line in lines)
         ):
             return lines, font_size
@@ -141,13 +145,29 @@ def _replace_headline(root: ET.Element, title: str) -> None:
     lines, font_size = _fit_headline(title)
     line_height = round(font_size * 1.12)
     group = _svg_element("g", {"data-content": "headline", "class": "headline", "fill": "#020617"})
-    target = _svg_element("text", {"x": 72, "y": 1215, "font-size": font_size, "font-weight": 700})
+    target = _svg_element(
+        "text",
+        {"x": STORY_HEADLINE_X, "y": STORY_HEADLINE_Y, "font-size": font_size, "font-weight": 700},
+    )
     for index, line in enumerate(lines):
-        child = _svg_element("tspan", {"x": 72, "y": 1215 + index * line_height})
+        child = _svg_element(
+            "tspan",
+            {"x": STORY_HEADLINE_X, "y": STORY_HEADLINE_Y + index * line_height},
+        )
         child.text = line + (" " if index < len(lines) - 1 else "")
         target.append(child)
     group.append(target)
     _replace_placeholder(root, "headline", group)
+
+
+def _move_cta_down(root: ET.Element) -> None:
+    _parent, group = _find_placeholder(root, "cta")
+    for element in group.iter():
+        if "y" in element.attrib:
+            element.attrib["y"] = str(float(element.attrib["y"]) + STORY_CTA_Y_OFFSET)
+    rect = next((element for element in group if element.tag.endswith("rect")), None)
+    if rect is None or float(rect.attrib["y"]) + float(rect.attrib["height"]) > STORY_SAFE_BOTTOM:
+        raise TemplateValidationError("Approved Instagram CTA exceeds the Story safe area")
 
 
 def validate_instagram_top_story_svg(svg: bytes) -> None:
@@ -201,6 +221,7 @@ def compose_instagram_top_story_svg(
     _replace_image(root, image)
     _replace_label(root, "category", "LOCAL NEWS")
     _replace_headline(root, title)
+    _move_cta_down(root)
     _replace_label(root, "cta", STORY_CTA)
     svg = ET.tostring(root, encoding="utf-8", xml_declaration=True)
     validate_instagram_top_story_svg(svg)
