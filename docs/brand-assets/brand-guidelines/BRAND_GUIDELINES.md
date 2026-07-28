@@ -194,7 +194,7 @@ Retain required photographer, publisher, agency and supplied-image credits. Do n
 
 ### Instagram
 
-Use an approved Feed, Story, Reel or Highlight master. Keep the graphic concise and place full context in the caption. Add platform alt text and review both the full post and profile-grid crop before publication.
+Use an approved Feed, Story, Reel or Highlight master. The authenticated Admin Social Publishing dialog supports the approved Top Story, Local News Feed and Local News Reels Cover workflows, including exact PNG export and deterministic format-specific copy. Keep the graphic concise and place full context in the caption. Add platform alt text and review both the full post and profile-grid crop before publication. No Admin preparation action publishes or schedules content.
 
 ### Facebook
 
@@ -202,7 +202,7 @@ Use the approved Facebook Template System or the authenticated Admin Facebook Pu
 
 ### Threads
 
-Follow the native Threads workflow in `social/threads/README.md`: lead with clear conversational editorial text and use graphics only where they add context. No dedicated Threads template is currently required. Do not repurpose an asset whose crop or text hierarchy is unsuitable, and preserve the same voice and attribution standards.
+Follow the native Threads workflow in `social/threads/README.md`: lead with clear conversational editorial text and use graphics only where they add context. The Admin Social Publishing dialog provides transient editor-approved post preparation and copying, with no graphic generation, persistence, posting or scheduling. No dedicated Threads template is currently required. Do not repurpose an asset whose crop or text hierarchy is unsuitable, and preserve the same voice and attribution standards.
 
 ### Reels
 

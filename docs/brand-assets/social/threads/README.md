@@ -6,6 +6,12 @@ template. Existing approved Instagram or Facebook assets may be reused only
 under the image rules below; a Threads-specific asset should be introduced only
 when operational evidence establishes a need.
 
+The authenticated Admin Social Publishing dialog now implements this preparation
+contract as a transient text-only mode. It requires an explicit editorial
+approval acknowledgement, a verified opening line and optional verified context,
+then previews and copies the exact post ending with the canonical Cheshire Today
+URL. It performs no backend generation, persistence, posting or scheduling.
+
 ## Version 1 publishing workflow
 
 Threads Version 1 is a native, text-led editorial workflow. It does not require

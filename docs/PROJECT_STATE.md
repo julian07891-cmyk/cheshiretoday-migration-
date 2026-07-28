@@ -24877,3 +24877,72 @@ HEAD: b1e6b186a01865870a9a1deed2e187303a565552
 8. Sponsor readiness.
 9. Production monitoring.
 10. Evidence-led future engineering.
+
+## Operational update — 28 July 2026 (Unified Social Publishing Admin completion)
+
+### Unified Admin implementation
+
+The authenticated Admin Articles workflow now has one shared Social Publishing
+entry point. Facebook remains the default platform and its completed Link Preview,
+Branded Graphic, deterministic copy and nine graphic-type contracts are unchanged.
+
+Instagram preparation is integrated into the same dialog for the following
+approved combinations:
+
+- Story → Top Story, exported at exactly `1080 × 1920`
+- Feed → Local News, exported at exactly `1080 × 1080`
+- Reels Cover → Local News, exported at exactly `1080 × 1920`
+
+Each Instagram format supports authenticated SVG preview, exact browser-side PNG
+download and deterministic format-specific caption, restrained hashtag and post
+copy. Story copy keeps the canonical article URL as editor-only link-sticker
+guidance; Feed and Reel public copy does not claim caption links are clickable.
+The Reels workflow describes an article graphic and does not imply that its image
+is video footage.
+
+Threads is integrated as a native text-only preparation mode. It requires the
+editor to acknowledge prior article selection and approval, validates a required
+verified opening line and optional verified context, shows the exact post preview
+and copies a post ending with the canonical Cheshire Today URL. It adds no
+hashtags by default and has no graphic, backend request, persistence, posting,
+scheduling or AI generation.
+
+All platforms preserve Admin authentication, stored-article-only generation,
+immutable approved assets, bounded image retrieval, SSRF and XML safeguards,
+archived and Manual Review exclusions, exact geometry, object-URL cleanup and
+stale-request protection. The workflow writes no article, subscriber or generated
+asset record and never publishes or schedules a social post.
+
+### Verification status
+
+Repository verification passed `124` focused frontend tests covering the shared
+dialog, Facebook regressions, Instagram transport/rasterisation/copy and Threads
+validation/copy contracts.
+
+The production health endpoint and `/admin` returned HTTP 200 on 28 July 2026.
+However, `/admin` referenced deployed bundle `main.b82e6a85.js`, which did not
+contain the shared Social Publishing, Instagram or Threads implementation strings.
+The implementation at `5ceb997` was therefore not yet deployed, and no
+authenticated live Admin generation, clipboard or download result is claimed in
+this update.
+
+The Version 1 unified Social Publishing implementation baseline before this
+documentation change is:
+
+```text
+Branch: full-scrape-prod
+HEAD: 5ceb997f78abdd4c8cbb95b1296d3f2d2f9f0e86
+```
+
+### Remaining operational verification
+
+After the implementation is deployed, perform one authenticated read-only Admin
+check with a suitable active Local News article. Confirm Facebook defaults and
+all nine types; generate and download one Story, Feed and Reels Cover PNG at the
+dimensions above; verify their format-specific clipboard copy; and verify the
+Threads approval, validation, preview and clipboard contract. Preview each final
+Instagram asset in the Instagram app before publication. Do not publish during
+the verification.
+
+No unfinished unified Social Publishing source implementation is known. Deployment
+and the authenticated live checks above remain operational handover steps.

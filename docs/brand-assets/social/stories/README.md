@@ -2,6 +2,11 @@
 
 Version 1.0 provides production-ready SVG master templates for Cheshire Today Instagram Stories. PNG exports are intentionally not included in this stage.
 
+The authenticated Admin Social Publishing dialog can compose the approved Top
+Story layout from a stored active Local News article and download an exact
+`1080 × 1920 px` PNG. The remaining masters retain the documented manual
+SVG-first workflow. Admin generation does not modify a master or publish a post.
+
 ## Canvas and safe area
 
 - Canvas: `1080 × 1920 px` (`9:16`).

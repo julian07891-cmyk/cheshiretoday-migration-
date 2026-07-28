@@ -566,3 +566,32 @@ Historical engineering log: docs/HISTORY/ENGINEERING_LOG_JULY_2026.md
 The project now moves into Operations & Growth. Further engineering should be
 evidence-led and follow the established QA-first, narrowly scoped and
 reversible workflow.
+
+## Unified Social Publishing Admin completion
+
+The Facebook-specific Admin workflow was extended into one shared Social
+Publishing dialog without reopening Facebook behaviour. The implementation was
+completed as a sequence of independently reviewed changes:
+
+- `3bc2a1f` added Instagram Story Top Story generation to Admin;
+- `7e64bf8` refined the verified Story headline and CTA geometry;
+- `50a3c6f` added Instagram Local News Feed and Reels Cover generation;
+- `bd19af7` added deterministic Instagram format-specific copy helpers;
+- `5ceb997` added native Threads post preparation and copying.
+
+Instagram uses authenticated, stored-article-only SVG generation, immutable
+checksum-protected masters, safe image retrieval, self-contained previews and
+exact browser-side PNG exports. Threads remains a transient text-only workflow
+with explicit editorial approval and constrained verified copy. Neither platform
+adds automatic posting, scheduling, persistence or AI generation. Facebook's
+existing nine graphic types and copy contracts remain unchanged.
+
+Focused final source verification passed `124` frontend tests spanning the shared
+dialog, Facebook regressions, Instagram generation/rasterisation/copy services
+and Threads validation/copy behaviour.
+
+The production verification on 28 July 2026 confirmed HTTP 200 for `/health` and
+`/admin`, but the deployed Admin bundle `main.b82e6a85.js` did not yet contain the
+shared Social Publishing, Instagram or Threads implementation. Consequently,
+authenticated live generation, download and clipboard verification remained a
+post-deployment operational handover check; it was not recorded as completed.

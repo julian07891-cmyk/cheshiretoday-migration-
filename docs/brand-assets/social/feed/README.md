@@ -2,6 +2,11 @@
 
 Version 1.0 provides production-ready square SVG master templates for Cheshire Today Instagram feed graphics. PNG exports are intentionally not included in this stage.
 
+The authenticated Admin Social Publishing dialog can compose the approved Local
+News layout from a stored active Local News article and download an exact
+`1080 × 1080 px` PNG. It also provides deterministic Feed caption, hashtag and
+post copy. The remaining masters retain the documented manual SVG-first workflow.
+
 ## Template inventory
 
 - `breaking-news-square.svg` — genuinely urgent breaking-news coverage.

@@ -2,6 +2,12 @@
 
 Version 1.0 provides production-ready SVG cover masters for Cheshire Today Instagram Reels. PNG exports are intentionally not included.
 
+The authenticated Admin Social Publishing dialog can compose the approved Local
+News Reels Cover from a stored active Local News article and download an exact
+`1080 × 1920 px` PNG. It also provides deterministic Reel caption, hashtag and
+post copy without treating the article image as video footage. Other masters
+retain the documented manual SVG-first workflow.
+
 ## Template inventory
 
 - `breaking-news-reel.svg` — urgent, genuinely breaking coverage.
