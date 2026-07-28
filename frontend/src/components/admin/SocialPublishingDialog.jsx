@@ -42,6 +42,15 @@ import {
   rasterizeInstagramReelsCoverSvg,
   rasterizeInstagramStorySvg,
 } from '../../services/instagramSocialAsset';
+import {
+  buildInstagramFeedCaption,
+  buildInstagramFeedPackage,
+  buildInstagramHashtags,
+  buildInstagramReelCaption,
+  buildInstagramReelPackage,
+  buildInstagramStoryCaption,
+  buildInstagramStoryPackage,
+} from '../../services/instagramPublishingCopy';
 
 
 const GRAPHIC_TYPES = Object.freeze([
@@ -373,6 +382,58 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
   });
   const activeInstagramFormat = INSTAGRAM_FORMAT_OPTIONS.find(option => option.value === instagramFormat)
     || INSTAGRAM_FORMAT_OPTIONS[0];
+  const instagramHashtags = buildInstagramHashtags(article);
+  const instagramCaption = {
+    story: buildInstagramStoryCaption(article?.title),
+    feed: buildInstagramFeedCaption(article?.title),
+    'reels-cover': buildInstagramReelCaption(article?.title),
+  }[instagramFormat];
+  const instagramPackage = {
+    story: buildInstagramStoryPackage({ article, canonicalUrl }),
+    feed: buildInstagramFeedPackage({ article }),
+    'reels-cover': buildInstagramReelPackage({ article }),
+  }[instagramFormat];
+  const instagramCopyLabels = {
+    story: {
+      package: 'Copy Story Package',
+      caption: 'Copy Story Caption',
+      hashtags: 'Copy Story Hashtags',
+      packageSuccess: 'Story package copied',
+      captionSuccess: 'Story caption copied',
+      hashtagsSuccess: 'Story hashtags copied',
+    },
+    feed: {
+      package: 'Copy Instagram Post',
+      caption: 'Copy Caption',
+      hashtags: 'Copy Hashtags',
+      packageSuccess: 'Instagram post copied',
+      captionSuccess: 'Caption copied',
+      hashtagsSuccess: 'Hashtags copied',
+    },
+    'reels-cover': {
+      package: 'Copy Reel Post',
+      caption: 'Copy Reel Caption',
+      hashtags: 'Copy Hashtags',
+      packageSuccess: 'Reel post copied',
+      captionSuccess: 'Reel caption copied',
+      hashtagsSuccess: 'Hashtags copied',
+    },
+  }[instagramFormat];
+  const copyInstagramPackage = () => copyText({
+    text: instagramPackage,
+    successMessage: instagramCopyLabels.packageSuccess,
+    failureMessage: `The Instagram ${activeInstagramFormat.label} post could not be copied. Please copy it manually.`,
+  });
+  const copyInstagramCaption = () => copyText({
+    text: instagramCaption,
+    successMessage: instagramCopyLabels.captionSuccess,
+    failureMessage: `The Instagram ${activeInstagramFormat.label} caption could not be copied. Please copy it manually.`,
+  });
+  const copyInstagramHashtags = () => copyText({
+    text: instagramHashtags,
+    successMessage: instagramCopyLabels.hashtagsSuccess,
+    failureMessage: 'The Instagram hashtags could not be copied. Please copy them manually.',
+  });
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -616,6 +677,20 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
                   Instagram {activeInstagramFormat.label} currently supports Local News articles only.
                 </p>
               )}
+              <section aria-labelledby="instagram-copy-actions">
+                <h3 id="instagram-copy-actions" className="mb-2 text-sm font-semibold">Instagram copy</h3>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="default" onClick={copyInstagramPackage} disabled={!instagramPackage}>
+                    <Copy className="mr-2 h-4 w-4" />{instagramCopyLabels.package}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={copyInstagramCaption} disabled={!instagramCaption}>
+                    <Copy className="mr-2 h-4 w-4" />{instagramCopyLabels.caption}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={copyInstagramHashtags} disabled={!instagramHashtags}>
+                    <Copy className="mr-2 h-4 w-4" />{instagramCopyLabels.hashtags}
+                  </Button>
+                </div>
+              </section>
               <section aria-labelledby="instagram-format-actions">
                 <h3 id="instagram-format-actions" className="mb-2 text-sm font-semibold">Instagram {activeInstagramFormat.label}</h3>
                 <div className="flex flex-wrap gap-2">

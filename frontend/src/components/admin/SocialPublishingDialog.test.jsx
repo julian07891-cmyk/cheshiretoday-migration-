@@ -710,8 +710,9 @@ describe('SocialPublishingDialog', () => {
     expect(button('Generate Story Preview')).toBeDefined();
     expect(button('Download Story PNG')).toBeDefined();
     expect(button('Copy Facebook Post')).toBeUndefined();
-    expect(button('Copy Caption')).toBeUndefined();
-    expect(button('Copy Hashtags')).toBeUndefined();
+    expect(button('Copy Story Package')).toBeDefined();
+    expect(button('Copy Story Caption')).toBeDefined();
+    expect(button('Copy Story Hashtags')).toBeDefined();
     expect(radio('link-preview')).toBeNull();
     expect(fetchInstagramTopStory).not.toHaveBeenCalled();
     expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
@@ -794,8 +795,9 @@ describe('SocialPublishingDialog', () => {
     await click(`Download ${label} PNG`);
     expect(rasterizer).toHaveBeenCalledWith({ svgUrl: 'blob:svg-preview' });
     expect(downloader).toHaveBeenCalledWith({ pngBlob, title: ARTICLE.title });
-    expect(button('Copy Caption')).toBeUndefined();
-    expect(button('Copy Hashtags')).toBeUndefined();
+    expect(button(label === 'Feed' ? 'Copy Instagram Post' : 'Copy Reel Post')).toBeDefined();
+    expect(button(label === 'Feed' ? 'Copy Caption' : 'Copy Reel Caption')).toBeDefined();
+    expect(button('Copy Hashtags')).toBeDefined();
   });
 
   test('format switching revokes preview, makes no request and blocks stale cross-format results', async () => {
@@ -816,5 +818,108 @@ describe('SocialPublishingDialog', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:svg-preview');
     expect(container.querySelector('[alt="Generated Instagram Feed Local News preview"]')).toBeNull();
     expect(fetchInstagramReelsCover).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    [
+      'story',
+      'Copy Story Caption',
+      `${ARTICLE.title}\n\nTap the link sticker to read the full story on Cheshire Today.`,
+      'Story caption copied',
+    ],
+    [
+      'feed',
+      'Copy Caption',
+      `${ARTICLE.title}\n\nRead the full story on Cheshire Today.`,
+      'Caption copied',
+    ],
+    [
+      'reels-cover',
+      'Copy Reel Caption',
+      `${ARTICLE.title}\n\nFind the full story on Cheshire Today.`,
+      'Reel caption copied',
+    ],
+  ])('copies exact %s caption without generation or network work', async (
+    format, label, expected, successMessage
+  ) => {
+    renderDialog();
+    selectPlatform('instagram');
+    if (format !== 'story') selectMode(format);
+    await click(label);
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(expected);
+    expect(container.textContent).toContain(successMessage);
+    expect(container.querySelector('[role="status"]').textContent).toContain(successMessage);
+    expect(fetchInstagramTopStory).not.toHaveBeenCalled();
+    expect(fetchInstagramFeed).not.toHaveBeenCalled();
+    expect(fetchInstagramReelsCover).not.toHaveBeenCalled();
+    expect(rasterizeInstagramStorySvg).not.toHaveBeenCalled();
+    expect(rasterizeInstagramFeedSvg).not.toHaveBeenCalled();
+    expect(rasterizeInstagramReelsCoverSvg).not.toHaveBeenCalled();
+  });
+
+  test('copies the Story package with editor-only canonical link-sticker guidance', async () => {
+    renderDialog();
+    selectPlatform('instagram');
+    await click('Copy Story Package');
+    const copied = navigator.clipboard.writeText.mock.calls[0][0];
+    expect(copied).toBe(
+      `${ARTICLE.title}\n\nTap the link sticker to read the full story on Cheshire Today.\n\nLink sticker (editor use): ${CANONICAL_URL}\n\n${HASHTAGS}`
+    );
+    expect(copied).not.toContain(ARTICLE.source_url);
+    expect(copied).not.toContain(ARTICLE.image);
+    expect(copied).not.toContain('/admin/');
+  });
+
+  test.each([
+    ['feed', 'Copy Instagram Post', `${ARTICLE.title}\n\nRead the full story on Cheshire Today.\n\n${HASHTAGS}`],
+    ['reels-cover', 'Copy Reel Post', `${ARTICLE.title}\n\nFind the full story on Cheshire Today.\n\n${HASHTAGS}`],
+  ])('%s public package contains no raw URL or clickable-link claim', async (format, label, expected) => {
+    renderDialog();
+    selectPlatform('instagram');
+    selectMode(format);
+    await click(label);
+    const copied = navigator.clipboard.writeText.mock.calls[0][0];
+    expect(copied).toBe(expected);
+    expect(copied).not.toMatch(/https?:\/\/|clickable|link in bio/i);
+    expect(copied).not.toContain(ARTICLE.source_url);
+    expect(copied).not.toContain(ARTICLE.image);
+  });
+
+  test('Instagram hashtags use stored locality and never source or image data', async () => {
+    renderDialog();
+    selectPlatform('instagram');
+    await click('Copy Story Hashtags');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(HASHTAGS);
+    expect(navigator.clipboard.writeText.mock.calls[0][0].split(' ')).toHaveLength(4);
+  });
+
+  test('Instagram copy failure is safe and format switching clears feedback', async () => {
+    navigator.clipboard.writeText.mockRejectedValue(new Error('private clipboard detail'));
+    renderDialog();
+    selectPlatform('instagram');
+    await click('Copy Story Caption');
+    expect(container.textContent).toContain(
+      'The Instagram Story caption could not be copied. Please copy it manually.'
+    );
+    expect(container.textContent).not.toContain('private clipboard detail');
+    selectMode('feed');
+    expect(container.textContent).not.toContain('could not be copied');
+  });
+
+  test('stale Instagram clipboard completion cannot restore status after format or platform switch', async () => {
+    let resolveCopy;
+    navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
+    renderDialog();
+    selectPlatform('instagram');
+    act(() => button('Copy Story Caption').click());
+    selectMode('feed');
+    await act(async () => resolveCopy());
+    expect(container.textContent).not.toContain('Story caption copied');
+
+    navigator.clipboard.writeText.mockResolvedValue(undefined);
+    await click('Copy Caption');
+    expect(container.textContent).toContain('Caption copied');
+    selectPlatform('facebook');
+    expect(container.textContent).not.toContain('Caption copied');
   });
 });
