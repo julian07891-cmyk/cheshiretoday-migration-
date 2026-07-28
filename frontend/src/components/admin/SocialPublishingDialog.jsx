@@ -51,13 +51,7 @@ import {
   buildInstagramStoryCaption,
   buildInstagramStoryPackage,
 } from '../../services/instagramPublishingCopy';
-import {
-  THREADS_CONTEXT_MAX,
-  THREADS_OPENING_MAX,
-  buildThreadsPost,
-  validateThreadsContext,
-  validateThreadsOpening,
-} from '../../services/threadsPublishingCopy';
+import { buildThreadsPost } from '../../services/threadsPublishingCopy';
 
 
 const GRAPHIC_TYPES = Object.freeze([
@@ -118,8 +112,6 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
   const [pollOptionA, setPollOptionA] = useState('');
   const [pollOptionB, setPollOptionB] = useState('');
   const [threadsApproved, setThreadsApproved] = useState(false);
-  const [threadsOpening, setThreadsOpening] = useState('');
-  const [threadsContext, setThreadsContext] = useState('');
   const previewUrlRef = useRef(null);
   const requestSequence = useRef(0);
   const copySequence = useRef(0);
@@ -152,8 +144,6 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     setPollOptionA('');
     setPollOptionB('');
     setThreadsApproved(false);
-    setThreadsOpening('');
-    setThreadsContext('');
   }, [revokePreview]);
 
   useEffect(() => {
@@ -197,8 +187,6 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     setCopyError('');
     setPlatform(nextPlatform);
     setThreadsApproved(false);
-    setThreadsOpening('');
-    setThreadsContext('');
     if (nextPlatform === 'instagram') setInstagramFormat('story');
   };
 
@@ -450,11 +438,8 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
     successMessage: instagramCopyLabels.hashtagsSuccess,
     failureMessage: 'The Instagram hashtags could not be copied. Please copy them manually.',
   });
-  const threadsOpeningError = validateThreadsOpening(threadsOpening);
-  const threadsContextError = validateThreadsContext(threadsContext);
   const threadsPost = buildThreadsPost({
-    opening: threadsOpening,
-    context: threadsContext,
+    title: article?.title,
     canonicalUrl,
   });
   const copyThreadsPost = () => copyText({
@@ -718,6 +703,9 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
                   <Button type="button" variant="outline" onClick={copyInstagramHashtags} disabled={!instagramHashtags}>
                     <Copy className="mr-2 h-4 w-4" />{instagramCopyLabels.hashtags}
                   </Button>
+                  <Button type="button" variant="outline" onClick={copyArticleLink} disabled={!canonicalUrl}>
+                    <Copy className="mr-2 h-4 w-4" />Copy Link
+                  </Button>
                 </div>
               </section>
               <section aria-labelledby="instagram-format-actions">
@@ -755,52 +743,10 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
                   I confirm this article was selected and approved for Threads
                 </label>
               </section>
-              <section aria-labelledby="threads-copy-fields-label" className="space-y-3 rounded-md border p-3">
-                <div>
-                  <h3 id="threads-copy-fields-label" className="text-sm font-semibold">Verified Threads copy</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Use only facts supported by the approved article. No URLs, HTML, hashtags or automatically generated wording.
-                  </p>
-                </div>
-                <label className="block text-sm font-medium">
-                  Verified opening line
-                  <textarea
-                    aria-label="Verified opening line"
-                    maxLength={THREADS_OPENING_MAX}
-                    value={threadsOpening}
-                    onChange={event => {
-                      copySequence.current += 1;
-                      setStatusMessage('');
-                      setCopyError('');
-                      setThreadsOpening(event.target.value);
-                    }}
-                    className="mt-1 min-h-20 w-full rounded-md border p-2"
-                  />
-                </label>
-                <p className="text-xs text-muted-foreground">Required. Maximum {THREADS_OPENING_MAX} characters.</p>
-                {threadsOpening && threadsOpeningError && <p role="alert" className="text-sm text-red-700">{threadsOpeningError}</p>}
-                <label className="block text-sm font-medium">
-                  Verified context
-                  <textarea
-                    aria-label="Verified context"
-                    maxLength={THREADS_CONTEXT_MAX}
-                    value={threadsContext}
-                    onChange={event => {
-                      copySequence.current += 1;
-                      setStatusMessage('');
-                      setCopyError('');
-                      setThreadsContext(event.target.value);
-                    }}
-                    className="mt-1 min-h-20 w-full rounded-md border p-2"
-                  />
-                </label>
-                <p className="text-xs text-muted-foreground">Optional. Maximum {THREADS_CONTEXT_MAX} characters.</p>
-                {threadsContext && threadsContextError && <p role="alert" className="text-sm text-red-700">{threadsContextError}</p>}
-              </section>
               <section aria-labelledby="threads-preview-label">
                 <h3 id="threads-preview-label" className="mb-2 text-sm font-semibold">Threads post preview</h3>
                 <pre className="whitespace-pre-wrap rounded-md border bg-gray-50 p-3 text-sm text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-                  {threadsPost || 'Complete the verified opening line to preview the Threads post.'}
+                  {threadsPost}
                 </pre>
               </section>
               <section aria-labelledby="threads-copy-actions">

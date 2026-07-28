@@ -47,8 +47,9 @@ APPROVED_INSTAGRAM_REELS_COVER_PATH, APPROVED_INSTAGRAM_REELS_COVER_SHA256 = (
 STORY_WIDTH = 1080
 STORY_HEIGHT = 1920
 MAX_STORY_HEADLINE_LINES = 3
-STORY_HEADLINE_MAX_WIDTH = 912
 STORY_HEADLINE_X = 72
+STORY_HEADLINE_RIGHT = 960
+STORY_HEADLINE_MAX_WIDTH = STORY_HEADLINE_RIGHT - STORY_HEADLINE_X
 STORY_HEADLINE_Y = 1239
 STORY_HEADLINE_BOTTOM = 1450
 STORY_CTA_Y_OFFSET = 24
@@ -57,19 +58,27 @@ STORY_CTA = "READ THE FULL STORY"
 FEED_WIDTH = 1080
 FEED_HEIGHT = 1080
 FEED_HEADLINE_X = 72
+FEED_HEADLINE_RIGHT = 960
 FEED_HEADLINE_Y = 760
-FEED_HEADLINE_MAX_WIDTH = 936
+FEED_HEADLINE_MAX_WIDTH = FEED_HEADLINE_RIGHT - FEED_HEADLINE_X
 FEED_HEADLINE_BOTTOM = 890
 FEED_MAX_HEADLINE_LINES = 3
 REELS_WIDTH = 1080
 REELS_HEIGHT = 1920
 REELS_HEADLINE_X = 72
+REELS_HEADLINE_RIGHT = 960
 REELS_HEADLINE_Y = 1215
-REELS_HEADLINE_MAX_WIDTH = 936
+REELS_HEADLINE_MAX_WIDTH = REELS_HEADLINE_RIGHT - REELS_HEADLINE_X
 REELS_HEADLINE_BOTTOM = 1440
 REELS_MAX_HEADLINE_LINES = 3
 REELS_SAFE_BOTTOM = 1620
 REELS_BADGE = "REEL"
+HEADLINE_WIDTH_SAFETY_FACTOR = 1.08
+
+
+def _safe_headline_width(text: str, font_size: int) -> float:
+    """Conservatively bound Playfair text where SVG renderers shape glyphs differently."""
+    return _estimated_text_width(text, font_size) * HEADLINE_WIDTH_SAFETY_FACTOR
 
 
 def _read_approved_assets(
@@ -150,7 +159,7 @@ def _fit_headline(title: str) -> tuple[list[str], int]:
         current = ""
         for word in words:
             candidate = f"{current} {word}".strip()
-            if not current or _estimated_text_width(candidate, font_size) <= STORY_HEADLINE_MAX_WIDTH:
+            if not current or _safe_headline_width(candidate, font_size) <= STORY_HEADLINE_MAX_WIDTH:
                 current = candidate
             else:
                 lines.append(current)
@@ -161,7 +170,7 @@ def _fit_headline(title: str) -> tuple[list[str], int]:
         if (
             len(lines) <= MAX_STORY_HEADLINE_LINES
             and STORY_HEADLINE_Y + (len(lines) - 1) * line_height <= STORY_HEADLINE_BOTTOM
-            and all(_estimated_text_width(line, font_size) <= STORY_HEADLINE_MAX_WIDTH for line in lines)
+            and all(_safe_headline_width(line, font_size) <= STORY_HEADLINE_MAX_WIDTH for line in lines)
         ):
             return lines, font_size
     raise ArticleValidationError("Article headline is too long for the approved template")
@@ -201,7 +210,7 @@ def _fit_format_headline(
         current = ""
         for word in words:
             candidate = f"{current} {word}".strip()
-            if not current or _estimated_text_width(candidate, font_size) <= max_width:
+            if not current or _safe_headline_width(candidate, font_size) <= max_width:
                 current = candidate
             else:
                 lines.append(current)
@@ -212,7 +221,7 @@ def _fit_format_headline(
         if (
             len(lines) <= max_lines
             and y + (len(lines) - 1) * line_height <= bottom
-            and all(_estimated_text_width(line, font_size) <= max_width for line in lines)
+            and all(_safe_headline_width(line, font_size) <= max_width for line in lines)
         ):
             return lines, font_size
     raise ArticleValidationError("Article headline is too long for the approved template")

@@ -893,6 +893,43 @@ describe('SocialPublishingDialog', () => {
     expect(navigator.clipboard.writeText.mock.calls[0][0].split(' ')).toHaveLength(4);
   });
 
+  test.each(['story', 'feed', 'reels-cover'])('Instagram %s copies only the canonical article link without other work', async format => {
+    renderDialog();
+    selectPlatform('instagram');
+    if (format !== 'story') selectMode(format);
+    await click('Copy Link');
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(CANONICAL_URL);
+    expect(container.textContent).toContain('Link copied');
+    expect(navigator.clipboard.writeText.mock.calls[0][0]).not.toContain(ARTICLE.source_url);
+    expect(navigator.clipboard.writeText.mock.calls[0][0]).not.toContain(ARTICLE.image);
+    expect(navigator.clipboard.writeText.mock.calls[0][0]).not.toContain('/admin/');
+    expect(fetchInstagramTopStory).not.toHaveBeenCalled();
+    expect(fetchInstagramFeed).not.toHaveBeenCalled();
+    expect(fetchInstagramReelsCover).not.toHaveBeenCalled();
+    expect(rasterizeInstagramStorySvg).not.toHaveBeenCalled();
+    expect(rasterizeInstagramFeedSvg).not.toHaveBeenCalled();
+    expect(rasterizeInstagramReelsCoverSvg).not.toHaveBeenCalled();
+    expect(downloadInstagramStoryPng).not.toHaveBeenCalled();
+    expect(downloadInstagramFeedPng).not.toHaveBeenCalled();
+    expect(downloadInstagramReelsCoverPng).not.toHaveBeenCalled();
+  });
+
+  test('Instagram Copy Link uses safe failure feedback and blocks stale completion', async () => {
+    navigator.clipboard.writeText.mockRejectedValueOnce(new Error('private clipboard detail'));
+    renderDialog();
+    selectPlatform('instagram');
+    await click('Copy Link');
+    expect(container.textContent).toContain('The article link could not be copied. Please copy it manually.');
+    expect(container.textContent).not.toContain('private clipboard detail');
+
+    let resolveCopy;
+    navigator.clipboard.writeText.mockReturnValue(new Promise(resolve => { resolveCopy = resolve; }));
+    act(() => button('Copy Link').click());
+    selectMode('feed');
+    await act(async () => resolveCopy());
+    expect(container.textContent).not.toContain('Link copied');
+  });
+
   test('Instagram copy failure is safe and format switching clears feedback', async () => {
     navigator.clipboard.writeText.mockRejectedValue(new Error('private clipboard detail'));
     renderDialog();
@@ -923,14 +960,17 @@ describe('SocialPublishingDialog', () => {
     expect(container.textContent).not.toContain('Caption copied');
   });
 
-  test('Threads exposes only native text controls and requires editorial approval', () => {
+  test('Threads exposes ready-to-paste native copy and requires editorial approval', () => {
     renderDialog();
     selectPlatform('threads');
     expect(radio('threads').checked).toBe(true);
     expect(container.textContent).toContain('Threads editorial approval');
     expect(container.textContent).toContain('40% Local');
-    expect(container.querySelector('[aria-label="Verified opening line"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="Verified context"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Verified opening line"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Verified context"]')).toBeNull();
+    expect(container.querySelector('pre').textContent.trim()).toBe(
+      `${ARTICLE.title}\n\nRead the full story on Cheshire Today.\n\n${CANONICAL_URL}`
+    );
     expect(button('Copy Threads Post').disabled).toBe(true);
     expect(button('Generate Graphic')).toBeUndefined();
     expect(button('Generate Story Preview')).toBeUndefined();
@@ -939,14 +979,10 @@ describe('SocialPublishingDialog', () => {
     expect(button('Copy Instagram Post')).toBeUndefined();
   });
 
-  test('constructs, previews and copies the exact approved Threads post', async () => {
-    const opening = 'A new Cheshire investment is expected to support local jobs.';
-    const context = 'The approved plans affect businesses and residents in Knutsford town centre.';
-    const expected = `${opening}\n\n${context}\n\n${CANONICAL_URL}`;
+  test('constructs, previews and copies the exact ready-to-paste Threads post', async () => {
+    const expected = `${ARTICLE.title}\n\nRead the full story on Cheshire Today.\n\n${CANONICAL_URL}`;
     renderDialog();
     selectPlatform('threads');
-    changeInput(container.querySelector('[aria-label="Verified opening line"]'), opening);
-    changeInput(container.querySelector('[aria-label="Verified context"]'), context);
     expect(container.querySelector('pre').textContent.trim()).toBe(expected);
     expect(button('Copy Threads Post').disabled).toBe(true);
     act(() => container.querySelector('input[type="checkbox"]').click());
@@ -962,46 +998,27 @@ describe('SocialPublishingDialog', () => {
     expect(fetchInstagramFeed).not.toHaveBeenCalled();
     expect(fetchInstagramReelsCover).not.toHaveBeenCalled();
     expect(fetchFacebookLocalGraphic).not.toHaveBeenCalled();
+    expect(rasterizeFacebookSvg).not.toHaveBeenCalled();
+    expect(downloadFacebookPng).not.toHaveBeenCalled();
   });
 
-  test.each([
-    ['Verified opening line', 'Read https://publisher.example.test/story'],
-    ['Verified opening line', '<strong>Unsupported markup</strong>'],
-    ['Verified context', 'More at www.publisher.example.test'],
-    ['Verified context', '<context>Unsupported markup</context>'],
-  ])('Threads rejects unsafe %s content', (label, value) => {
+  test('Threads approval and copy state reset on platform switch and close', async () => {
     renderDialog();
     selectPlatform('threads');
-    changeInput(container.querySelector('[aria-label="Verified opening line"]'), 'A verified Cheshire update.');
-    changeInput(container.querySelector(`[aria-label="${label}"]`), value);
     act(() => container.querySelector('input[type="checkbox"]').click());
-    expect(container.textContent).toContain('must be plain text without URLs, HTML or line breaks');
-    expect(button('Copy Threads Post').disabled).toBe(true);
-  });
-
-  test('Threads context is optional and transient state resets on platform switch and close', async () => {
-    const opening = 'A verified Cheshire update for local readers.';
-    renderDialog();
-    selectPlatform('threads');
-    changeInput(container.querySelector('[aria-label="Verified opening line"]'), opening);
-    act(() => container.querySelector('input[type="checkbox"]').click());
-    expect(container.querySelector('pre').textContent.trim()).toBe(`${opening}\n\n${CANONICAL_URL}`);
     expect(button('Copy Threads Post').disabled).toBe(false);
     selectPlatform('facebook');
     selectPlatform('threads');
-    expect(container.querySelector('[aria-label="Verified opening line"]').value).toBe('');
     expect(container.querySelector('input[type="checkbox"]').checked).toBe(false);
     await click('Close');
     expect(radio('facebook').checked).toBe(true);
     selectPlatform('threads');
-    expect(container.querySelector('[aria-label="Verified opening line"]').value).toBe('');
     expect(container.querySelector('input[type="checkbox"]').checked).toBe(false);
   });
 
-  test('article change clears Threads approval, fields and copy feedback', async () => {
+  test('article change clears Threads approval and copy feedback', async () => {
     renderDialog();
     selectPlatform('threads');
-    changeInput(container.querySelector('[aria-label="Verified opening line"]'), 'A verified Cheshire update.');
     act(() => container.querySelector('input[type="checkbox"]').click());
     await click('Copy Threads Post');
     expect(container.textContent).toContain('Threads post copied');
@@ -1021,7 +1038,6 @@ describe('SocialPublishingDialog', () => {
   test('Threads clipboard failure is safe and stale completion cannot restore status after close', async () => {
     renderDialog();
     selectPlatform('threads');
-    changeInput(container.querySelector('[aria-label="Verified opening line"]'), 'A verified Cheshire update.');
     act(() => container.querySelector('input[type="checkbox"]').click());
     navigator.clipboard.writeText.mockRejectedValueOnce(new Error('private clipboard detail'));
     await click('Copy Threads Post');

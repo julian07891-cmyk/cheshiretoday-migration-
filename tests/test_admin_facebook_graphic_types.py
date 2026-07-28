@@ -47,6 +47,34 @@ def test_article_graphic_types_use_approved_self_contained_masters(graphic_type,
 
 
 @pytest.mark.parametrize(
+    "title,expected_lines",
+    [
+        ("Funding blow", 1),
+        ("Jodrell Bank funding blow", 2),
+        ("Jodrell Bank faces funding blow", 3),
+        ("Huge blow as Jodrell Bank funding withdrawn putting its future at risk", 4),
+    ],
+)
+def test_breaking_separator_sits_below_complete_headline(title, expected_lines):
+    svg = graphics.compose_facebook_graphic_svg(
+        {**ARTICLE, "title": title, "category": "Local News"}, "breaking-news"
+    )
+    root = ET.fromstring(svg)
+    headline = next(node for node in root.iter() if node.attrib.get("data-content") == "headline")
+    text = next(node for node in headline if node.tag.endswith("text"))
+    tspans = [node for node in text if node.tag.endswith("tspan")]
+    separators = [node for node in headline if node.tag.endswith("path")]
+    assert len(tspans) == expected_lines
+    assert len(separators) == 1
+    final_baseline = float(text.attrib["y"])
+    for span in tspans:
+        final_baseline += float(span.attrib.get("dy", 0))
+    separator_y = graphics._horizontal_path_y(separators[0].attrib["d"])
+    assert separator_y == final_baseline + graphics.BREAKING_SEPARATOR_GAP
+    assert separator_y < graphics.BREAKING_CTA_TOP
+
+
+@pytest.mark.parametrize(
     ("graphic_type", "category"),
     [
         ("business", "Local News"), ("property", "Business"),

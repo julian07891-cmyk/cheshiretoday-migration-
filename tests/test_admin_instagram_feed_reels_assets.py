@@ -16,6 +16,7 @@ ARTICLE = {
     "category": "Local News",
     "image": "https://images.example.test/story.jpg",
 }
+JODRELL_TITLE = "Huge blow as Jodrell Bank funding withdrawn putting its future at risk"
 
 
 def image_bytes():
@@ -89,6 +90,25 @@ def test_headlines_fit_the_approved_format_geometry(composer, bottom, max_lines)
     lines = [node for node in headline.iter() if node.tag.endswith("tspan")]
     assert 1 <= len(lines) <= max_lines
     assert max(float(line.attrib["y"]) for line in lines) <= bottom
+
+
+@pytest.mark.parametrize(
+    "composer,right_boundary,max_lines",
+    [
+        (social_asset.compose_instagram_feed_svg, social_asset.FEED_HEADLINE_RIGHT, social_asset.FEED_MAX_HEADLINE_LINES),
+        (social_asset.compose_instagram_reels_cover_svg, social_asset.REELS_HEADLINE_RIGHT, social_asset.REELS_MAX_HEADLINE_LINES),
+    ],
+)
+def test_jodrell_headline_respects_explicit_format_right_boundary(composer, right_boundary, max_lines):
+    root = ET.fromstring(compose(composer, {**ARTICLE, "title": JODRELL_TITLE}))
+    headline = next(node for node in root.iter() if node.attrib.get("data-content") == "headline")
+    text = next(node for node in headline if node.tag.endswith("text"))
+    font_size = int(text.attrib["font-size"])
+    lines = [node for node in text if node.tag.endswith("tspan")]
+    assert 1 <= len(lines) <= max_lines
+    for line in lines:
+        x = float(line.attrib["x"])
+        assert x + social_asset._safe_headline_width("".join(line.itertext()).strip(), font_size) <= right_boundary
 
 
 def test_reels_badge_and_cta_remain_inside_the_story_safe_area():

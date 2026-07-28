@@ -37,6 +37,10 @@ QUOTE_MAX_LENGTH = 240
 ATTRIBUTION_MAX_LENGTH = 80
 POLL_QUESTION_MAX_LENGTH = 140
 POLL_OPTION_MAX_LENGTH = 48
+BREAKING_SEPARATOR_GAP = 32
+BREAKING_CTA_TOP = 474
+BREAKING_SEPARATOR_LEFT = 680
+BREAKING_SEPARATOR_RIGHT = 1128
 FORBIDDEN_EDITOR_TEXT_RE = re.compile(
     r"(?:https?://|www\.|mailto:|ftp:|file:|data:|javascript:|<\s*/?\s*[a-z!][^>]*(?:>|$))",
     re.I,
@@ -223,6 +227,39 @@ def _replace_headline(root: ET.Element, value: str) -> None:
     group.attrib["data-content"] = "headline"
 
 
+def _horizontal_path_y(path_data: str) -> float:
+    match = re.fullmatch(r"M[-\d.]+\s+([-\d.]+)H[-\d.]+", path_data.strip())
+    if match is None:
+        raise TemplateValidationError("Approved Breaking News separator is invalid")
+    return float(match.group(1))
+
+
+def _position_breaking_separator(root: ET.Element) -> None:
+    group = next(
+        (item for item in root.iter() if item.attrib.get("data-content") == "headline"),
+        None,
+    )
+    if group is None:
+        raise TemplateValidationError("Approved Breaking News headline is invalid")
+    target = next((item for item in group.iter() if item.tag.endswith("text")), None)
+    if target is None:
+        raise TemplateValidationError("Approved Breaking News headline is invalid")
+    final_baseline = float(target.attrib.get("y", 0))
+    for span in (item for item in target if item.tag.endswith("tspan")):
+        final_baseline += float(span.attrib.get("dy", 0))
+    separator_y = final_baseline + BREAKING_SEPARATOR_GAP
+    if separator_y >= BREAKING_CTA_TOP:
+        raise ArticleValidationError("Article headline is too long for the approved template")
+    separators = [item for item in list(group) if item.tag.endswith("path")]
+    if not separators:
+        raise TemplateValidationError("Approved Breaking News separator is invalid")
+    separators[0].attrib["d"] = (
+        f"M{BREAKING_SEPARATOR_LEFT} {separator_y:g}H{BREAKING_SEPARATOR_RIGHT}"
+    )
+    for extra in separators[1:]:
+        group.remove(extra)
+
+
 def _remove_placeholder(root: ET.Element, name: str) -> None:
     parent, group = _find_placeholder(root, name)
     parent.remove(group)
@@ -279,6 +316,8 @@ def compose_facebook_graphic_svg(
         _replace_group_text(root, "cta", [definition.cta])
     else:
         _replace_headline(root, title)
+        if graphic_type == "breaking-news":
+            _position_breaking_separator(root)
         _replace_group_text(root, "cta", [definition.cta])
         if graphic_type == "event":
             _remove_placeholder(root, "event-date")

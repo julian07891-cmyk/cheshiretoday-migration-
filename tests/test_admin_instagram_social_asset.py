@@ -17,6 +17,7 @@ ARTICLE = {
     "category": "Local News",
     "image": "https://images.example.test/story.jpg",
 }
+JODRELL_TITLE = "Huge blow as Jodrell Bank funding withdrawn putting its future at risk"
 
 
 def image_bytes():
@@ -93,6 +94,19 @@ def test_headline_is_fitted_inside_story_geometry_and_xml_escaped():
         for node in lines
     )
     assert max(float(node.attrib["y"]) for node in lines) <= 1450
+
+
+def test_jodrell_headline_respects_explicit_story_right_boundary():
+    root = ET.fromstring(compose(article={**ARTICLE, "title": JODRELL_TITLE}))
+    headline = next(node for node in root.iter() if node.attrib.get("data-content") == "headline")
+    text = next(node for node in headline if node.tag.endswith("text"))
+    font_size = int(text.attrib["font-size"])
+    lines = [node for node in text if node.tag.endswith("tspan")]
+    assert 1 <= len(lines) <= social_asset.MAX_STORY_HEADLINE_LINES
+    for line in lines:
+        x = float(line.attrib["x"])
+        assert x == social_asset.STORY_HEADLINE_X
+        assert x + social_asset._safe_headline_width("".join(line.itertext()).strip(), font_size) <= social_asset.STORY_HEADLINE_RIGHT
 
 
 def test_headline_and_cta_use_approved_vertical_geometry():
