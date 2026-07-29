@@ -9,26 +9,30 @@ Test suite for Facebook Scheduler Lock Mechanism:
 Focus: Testing the atomicity of the lock mechanism and race condition prevention
 """
 import pytest
-import requests
 import os
 import sys
 import asyncio
 import time
 from datetime import datetime, timezone, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-from tests.external_admin_test_safety import get_local_admin_test_credentials
+from tests.external_admin_test_safety import (
+    get_local_admin_test_credentials,
+    get_local_test_session,
+)
 
-# Add backend to path for direct imports
-sys.path.insert(0, '/app/backend')
+# Add backend to path for direct imports in any checkout location.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+HTTP = get_local_test_session()
 
 @pytest.fixture(scope="module")
 def admin_token():
     """Get admin authentication token"""
     credentials = get_local_admin_test_credentials(BASE_URL)
-    response = requests.post(
+    response = HTTP.post(
         f"{BASE_URL}/api/admin/login",
         json=credentials,
         timeout=10
@@ -53,7 +57,7 @@ class TestSchedulerLockMechanism:
         """Verify scheduler_locks collection is being used"""
         # This test verifies the lock mechanism is in place by checking
         # that the scheduled post endpoint respects locks
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/status",
             timeout=10
         )
@@ -76,7 +80,7 @@ class TestSchedulerLockMechanism:
         
         def make_request():
             try:
-                response = requests.post(
+                response = HTTP.post(
                     f"{BASE_URL}/api/facebook/trigger-scheduled",
                     headers=auth_headers,
                     timeout=30
@@ -117,7 +121,7 @@ class TestSchedulerLockMechanism:
         # The lock mechanism should release locks older than 5 minutes
         # We can't easily test this without direct DB access, but we can verify
         # the endpoint behavior
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/facebook/trigger-scheduled",
             headers=auth_headers,
             timeout=30
@@ -164,7 +168,7 @@ class TestDuplicateArticleDetection:
     def test_duplicate_detection_by_article_id(self, auth_headers):
         """Test that articles are tracked by ID in facebook_post_log"""
         # Get schedulable articles
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/schedulable-articles?limit=5",
             headers=auth_headers,
             timeout=10
@@ -198,7 +202,7 @@ class Test24HourSlidingWindow:
         # recently_posted = await db.facebook_post_log.find({"posted_at": {"$gte": window_start}})
         
         # We can verify this by checking the analytics endpoint which shows recent posts
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/analytics",
             headers=auth_headers,
             timeout=15
@@ -246,7 +250,7 @@ class TestSchedulableArticlesEndpoint:
     
     def test_endpoint_requires_auth(self):
         """Test that endpoint requires authentication"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/schedulable-articles",
             timeout=10
         )
@@ -255,7 +259,7 @@ class TestSchedulableArticlesEndpoint:
     
     def test_endpoint_returns_articles(self, auth_headers):
         """Test that endpoint returns articles with required fields"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/schedulable-articles?limit=10",
             headers=auth_headers,
             timeout=10
@@ -281,7 +285,7 @@ class TestSchedulableArticlesEndpoint:
     
     def test_endpoint_respects_limit(self, auth_headers):
         """Test that limit parameter works"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/schedulable-articles?limit=3",
             headers=auth_headers,
             timeout=10
@@ -300,7 +304,7 @@ class TestPostSingleEndpoint:
     
     def test_endpoint_requires_auth(self):
         """Test that endpoint requires authentication"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/facebook/post-single?article_id=test123",
             timeout=10
         )
@@ -309,7 +313,7 @@ class TestPostSingleEndpoint:
     
     def test_endpoint_with_invalid_article_id(self, auth_headers):
         """Test endpoint behavior with invalid article ID"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/facebook/post-single?article_id=invalid_id_12345",
             headers=auth_headers,
             timeout=15
@@ -326,7 +330,7 @@ class TestPostSingleEndpoint:
     def test_endpoint_with_valid_article_id(self, auth_headers):
         """Test endpoint with a valid article ID (dry run - checks article lookup)"""
         # First get a valid article ID
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/schedulable-articles?limit=1",
             headers=auth_headers,
             timeout=10
@@ -348,7 +352,7 @@ class TestPostSingleEndpoint:
         
         # Note: This will actually try to post to Facebook if configured
         # The test verifies the endpoint works, not the actual Facebook posting
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/facebook/post-single?article_id={article_id}",
             headers=auth_headers,
             timeout=30
@@ -431,7 +435,7 @@ class TestRaceConditionVulnerability:
         def make_request(request_id):
             try:
                 start = time.time()
-                response = requests.post(
+                response = HTTP.post(
                     f"{BASE_URL}/api/facebook/trigger-scheduled",
                     headers=auth_headers,
                     timeout=30

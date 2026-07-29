@@ -7,17 +7,18 @@ Tests the new features added for Cheshire Today news website:
 - Push Notifications: VAPID key, subscribe, stats, breaking news endpoints
 """
 import pytest
-import requests
 import os
 import uuid
 from datetime import datetime
 
-from tests.external_admin_test_safety import get_local_admin_test_credentials
+from tests.external_admin_test_safety import (
+    get_local_admin_test_credentials,
+    get_local_test_session,
+)
 
 # Get BASE_URL from environment
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
-if not BASE_URL:
-    raise ValueError("REACT_APP_BACKEND_URL environment variable not set")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+HTTP = get_local_test_session()
 
 class TestMostReadWidget:
     """Tests for Most Read Widget feature - /api/articles/most-read endpoint
@@ -32,7 +33,7 @@ class TestMostReadWidget:
         
         KNOWN BUG: Returns 404 due to route order issue - 'most-read' matched as article_id
         """
-        response = requests.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=5")
+        response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=5")
         
         # BUG: Currently returns 404 due to route order issue
         if response.status_code == 404:
@@ -49,7 +50,7 @@ class TestMostReadWidget:
     
     def test_most_read_week_returns_success(self):
         """Test most-read endpoint returns success for 'week' period"""
-        response = requests.get(f"{BASE_URL}/api/articles/most-read?period=week&limit=5")
+        response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=week&limit=5")
         
         if response.status_code == 404:
             pytest.skip("Route order bug - most-read matched as article_id")
@@ -63,7 +64,7 @@ class TestMostReadWidget:
     
     def test_most_read_month_returns_success(self):
         """Test most-read endpoint returns success for 'month' period"""
-        response = requests.get(f"{BASE_URL}/api/articles/most-read?period=month&limit=5")
+        response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=month&limit=5")
         
         if response.status_code == 404:
             pytest.skip("Route order bug - most-read matched as article_id")
@@ -77,7 +78,7 @@ class TestMostReadWidget:
     
     def test_most_read_custom_limit(self):
         """Test most-read endpoint respects limit parameter"""
-        response = requests.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=3")
+        response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=3")
         
         if response.status_code == 404:
             pytest.skip("Route order bug - most-read matched as article_id")
@@ -91,7 +92,7 @@ class TestMostReadWidget:
     
     def test_most_read_article_structure(self):
         """Test that returned articles have expected fields"""
-        response = requests.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=5")
+        response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=5")
         
         if response.status_code == 404:
             pytest.skip("Route order bug - most-read matched as article_id")
@@ -116,7 +117,7 @@ class TestArticleViewTracking:
     @pytest.fixture
     def sample_article_id(self):
         """Get a sample article ID from the database"""
-        response = requests.get(f"{BASE_URL}/api/articles?limit=1")
+        response = HTTP.get(f"{BASE_URL}/api/articles?limit=1")
         if response.status_code == 200:
             data = response.json()
             # API returns list directly, not {"articles": [...]}
@@ -130,7 +131,7 @@ class TestArticleViewTracking:
         if not sample_article_id:
             pytest.skip("No articles available for testing")
         
-        response = requests.post(f"{BASE_URL}/api/articles/{sample_article_id}/view")
+        response = HTTP.post(f"{BASE_URL}/api/articles/{sample_article_id}/view")
         assert response.status_code == 200
         
         data = response.json()
@@ -143,11 +144,11 @@ class TestArticleViewTracking:
             pytest.skip("No articles available for testing")
         
         # First view
-        response1 = requests.post(f"{BASE_URL}/api/articles/{sample_article_id}/view")
+        response1 = HTTP.post(f"{BASE_URL}/api/articles/{sample_article_id}/view")
         assert response1.status_code == 200
         
         # Second view (should be deduplicated)
-        response2 = requests.post(f"{BASE_URL}/api/articles/{sample_article_id}/view")
+        response2 = HTTP.post(f"{BASE_URL}/api/articles/{sample_article_id}/view")
         assert response2.status_code == 200
         
         data2 = response2.json()
@@ -162,7 +163,7 @@ class TestArticleViewTracking:
         """Test tracking view for non-existent article - uses valid ObjectId format"""
         # Use a valid ObjectId format that doesn't exist
         fake_id = "000000000000000000000000"  # Valid 24-char hex ObjectId
-        response = requests.post(f"{BASE_URL}/api/articles/{fake_id}/view")
+        response = HTTP.post(f"{BASE_URL}/api/articles/{fake_id}/view")
         # Should still return 200 (graceful handling)
         assert response.status_code == 200
         
@@ -176,7 +177,7 @@ class TestPushNotifications:
     
     def test_vapid_public_key_returns_key(self):
         """Test that VAPID public key endpoint returns a key"""
-        response = requests.get(f"{BASE_URL}/api/push/vapid-public-key")
+        response = HTTP.get(f"{BASE_URL}/api/push/vapid-public-key")
         assert response.status_code == 200
         
         data = response.json()
@@ -201,7 +202,7 @@ class TestPushNotifications:
             }
         }
         
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/push/subscribe",
             json=mock_subscription,
             headers={"Content-Type": "application/json"}
@@ -214,7 +215,7 @@ class TestPushNotifications:
     
     def test_push_subscribe_invalid_subscription(self):
         """Test that invalid subscription is rejected"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/push/subscribe",
             json={"subscription": {}},
             headers={"Content-Type": "application/json"}
@@ -228,7 +229,7 @@ class TestPushNotifications:
     
     def test_push_unsubscribe_endpoint_exists(self):
         """Test that push unsubscribe endpoint works"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/push/unsubscribe",
             json={"endpoint": "https://test-endpoint.example.com/test"},
             headers={"Content-Type": "application/json"}
@@ -247,7 +248,7 @@ class TestPushStatsWithAuth:
     def admin_token(self):
         """Get admin authentication token"""
         credentials = get_local_admin_test_credentials(BASE_URL)
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/admin/login",
             json=credentials,
         )
@@ -258,13 +259,13 @@ class TestPushStatsWithAuth:
     
     def test_push_stats_requires_auth(self):
         """Test that push stats endpoint requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/push/stats")
+        response = HTTP.get(f"{BASE_URL}/api/push/stats")
         assert response.status_code == 401
         print("✅ Push stats correctly requires authentication")
     
     def test_push_stats_with_auth(self, admin_token):
         """Test push stats endpoint with valid auth"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/push/stats",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
@@ -285,7 +286,7 @@ class TestBreakingNewsNotification:
     def admin_token(self):
         """Get admin authentication token"""
         credentials = get_local_admin_test_credentials(BASE_URL)
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/admin/login",
             json=credentials,
         )
@@ -296,7 +297,7 @@ class TestBreakingNewsNotification:
     
     def test_breaking_news_requires_auth(self):
         """Test that breaking news endpoint requires authentication"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/push/send-breaking-news",
             json={"title": "Test Breaking News"},
             headers={"Content-Type": "application/json"}
@@ -306,7 +307,7 @@ class TestBreakingNewsNotification:
     
     def test_breaking_news_requires_title(self, admin_token):
         """Test that breaking news requires a title"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/push/send-breaking-news",
             json={},
             headers={
@@ -323,7 +324,7 @@ class TestBreakingNewsNotification:
     
     def test_breaking_news_with_valid_data(self, admin_token):
         """Test breaking news endpoint with valid data"""
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/push/send-breaking-news",
             json={
                 "title": "TEST: Breaking News Alert",
@@ -353,7 +354,7 @@ class TestSmartContentPrioritization:
     def admin_token(self):
         """Get admin authentication token"""
         credentials = get_local_admin_test_credentials(BASE_URL)
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/admin/login",
             json=credentials,
         )
@@ -364,13 +365,13 @@ class TestSmartContentPrioritization:
     
     def test_smart_articles_requires_auth(self):
         """Test that smart articles endpoint requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/facebook/smart-articles")
+        response = HTTP.get(f"{BASE_URL}/api/facebook/smart-articles")
         assert response.status_code == 401
         print("✅ Smart articles correctly requires authentication")
     
     def test_smart_articles_returns_scored_articles(self, admin_token):
         """Test smart articles endpoint returns scored articles"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/smart-articles?limit=10",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
@@ -395,7 +396,7 @@ class TestSmartContentPrioritization:
     
     def test_smart_articles_scoring_logic(self, admin_token):
         """Test that articles are sorted by score descending"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/smart-articles?limit=10",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
@@ -414,7 +415,7 @@ class TestSmartContentPrioritization:
     
     def test_smart_articles_custom_limit(self, admin_token):
         """Test smart articles respects limit parameter"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/smart-articles?limit=3",
             headers={"Authorization": f"Bearer {admin_token}"}
         )
@@ -432,7 +433,7 @@ class TestIntegration:
     def test_view_tracking_affects_most_read(self):
         """Test that tracking views affects most-read results"""
         # Get an article
-        response = requests.get(f"{BASE_URL}/api/articles?limit=1")
+        response = HTTP.get(f"{BASE_URL}/api/articles?limit=1")
         if response.status_code != 200:
             pytest.skip("Could not fetch articles")
         
@@ -445,11 +446,11 @@ class TestIntegration:
         article_id = articles[0].get("id") or str(articles[0].get("_id", ""))
         
         # Track a view
-        view_response = requests.post(f"{BASE_URL}/api/articles/{article_id}/view")
+        view_response = HTTP.post(f"{BASE_URL}/api/articles/{article_id}/view")
         assert view_response.status_code == 200
         
         # Check most-read (may return 404 due to route order bug)
-        most_read_response = requests.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=10")
+        most_read_response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=10")
         if most_read_response.status_code == 404:
             pytest.skip("Route order bug - most-read endpoint not accessible")
         

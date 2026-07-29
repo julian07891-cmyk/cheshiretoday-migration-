@@ -6,13 +6,16 @@ Test suite for new features:
 """
 
 import pytest
-import requests
 import os
 import random
 import string
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://cheshire-fix.preview.emergentagent.com').rstrip('/')
+from tests.external_admin_test_safety import get_local_test_session
+
+
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+HTTP = get_local_test_session()
 
 # Generate unique test email for each test run
 def generate_test_email():
@@ -24,7 +27,7 @@ class TestNewsletterCategories:
     
     def test_get_newsletter_categories(self):
         """GET /api/newsletter/categories returns category list"""
-        response = requests.get(f"{BASE_URL}/api/newsletter/categories")
+        response = HTTP.get(f"{BASE_URL}/api/newsletter/categories")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         
@@ -70,7 +73,7 @@ class TestNewsletterPreferences:
             }
         }
         
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/subscribe",
             json=payload
         )
@@ -83,7 +86,7 @@ class TestNewsletterPreferences:
         print(f"✅ Subscribed {test_email} with custom preferences")
         
         # Verify preferences were saved
-        prefs_response = requests.get(f"{BASE_URL}/api/newsletter/preferences/{test_email}")
+        prefs_response = HTTP.get(f"{BASE_URL}/api/newsletter/preferences/{test_email}")
         
         assert prefs_response.status_code == 200, f"Expected 200, got {prefs_response.status_code}"
         
@@ -102,7 +105,7 @@ class TestNewsletterPreferences:
         test_email = generate_test_email()
         
         # First subscribe
-        subscribe_response = requests.post(
+        subscribe_response = HTTP.post(
             f"{BASE_URL}/api/subscribe",
             json={"email": test_email}
         )
@@ -117,7 +120,7 @@ class TestNewsletterPreferences:
             }
         }
         
-        update_response = requests.put(
+        update_response = HTTP.put(
             f"{BASE_URL}/api/newsletter/preferences",
             json=update_payload
         )
@@ -128,7 +131,7 @@ class TestNewsletterPreferences:
         assert data.get("success") == True, "Update should succeed"
         
         # Verify update
-        prefs_response = requests.get(f"{BASE_URL}/api/newsletter/preferences/{test_email}")
+        prefs_response = HTTP.get(f"{BASE_URL}/api/newsletter/preferences/{test_email}")
         prefs_data = prefs_response.json()
         
         saved_prefs = prefs_data.get("preferences", {})
@@ -141,7 +144,7 @@ class TestNewsletterPreferences:
         """GET /api/newsletter/preferences/{email} returns 404 for non-subscriber"""
         fake_email = "nonexistent_" + generate_test_email()
         
-        response = requests.get(f"{BASE_URL}/api/newsletter/preferences/{fake_email}")
+        response = HTTP.get(f"{BASE_URL}/api/newsletter/preferences/{fake_email}")
         
         assert response.status_code == 404, f"Expected 404, got {response.status_code}"
         
@@ -160,7 +163,7 @@ class TestCommentsRegisterVerify:
             "name": "Test User"
         }
         
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/comments/register",
             json=payload
         )
@@ -183,7 +186,7 @@ class TestCommentsRegisterVerify:
             "name": "A"  # Too short
         }
         
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/comments/register",
             json=payload
         )
@@ -197,13 +200,13 @@ class TestCommentsRegisterVerify:
         test_email = generate_test_email()
         
         # First register
-        requests.post(
+        HTTP.post(
             f"{BASE_URL}/api/comments/register",
             json={"email": test_email, "name": "Test User"}
         )
         
         # Try to verify with wrong code
-        verify_response = requests.post(
+        verify_response = HTTP.post(
             f"{BASE_URL}/api/comments/verify",
             json={"email": test_email, "code": "000000"}
         )
@@ -216,7 +219,7 @@ class TestCommentsRegisterVerify:
         """POST /api/comments/verify rejects unregistered email"""
         fake_email = "never_registered_" + generate_test_email()
         
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/comments/verify",
             json={"email": fake_email, "code": "123456"}
         )
@@ -232,7 +235,7 @@ class TestCommentsArticle:
     def test_get_article_comments(self):
         """GET /api/comments/article/{id} returns comments"""
         # First get an article ID
-        articles_response = requests.get(f"{BASE_URL}/api/articles?limit=1")
+        articles_response = HTTP.get(f"{BASE_URL}/api/articles?limit=1")
         
         if articles_response.status_code != 200:
             pytest.skip("Could not fetch articles")
@@ -246,7 +249,7 @@ class TestCommentsArticle:
             pytest.skip("Article has no ID")
         
         # Get comments for article
-        response = requests.get(f"{BASE_URL}/api/comments/article/{article_id}")
+        response = HTTP.get(f"{BASE_URL}/api/comments/article/{article_id}")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         
@@ -262,7 +265,7 @@ class TestCommentsArticle:
         """GET /api/comments/article/{id} returns empty for non-existent article"""
         fake_id = "nonexistent-article-id-12345"
         
-        response = requests.get(f"{BASE_URL}/api/comments/article/{fake_id}")
+        response = HTTP.get(f"{BASE_URL}/api/comments/article/{fake_id}")
         
         # Should return 200 with empty comments, not 404
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
@@ -280,7 +283,7 @@ class TestCommentsAuth:
     def test_create_comment_unauthorized(self):
         """POST /api/comments requires authentication"""
         # Get an article ID
-        articles_response = requests.get(f"{BASE_URL}/api/articles?limit=1")
+        articles_response = HTTP.get(f"{BASE_URL}/api/articles?limit=1")
         
         if articles_response.status_code != 200:
             pytest.skip("Could not fetch articles")
@@ -292,7 +295,7 @@ class TestCommentsAuth:
         article_id = articles[0].get("id")
         
         # Try to create comment without auth
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/comments",
             json={
                 "article_id": article_id,
@@ -306,7 +309,7 @@ class TestCommentsAuth:
     
     def test_like_comment_unauthorized(self):
         """POST /api/comments/{id}/like requires authentication"""
-        response = requests.post(f"{BASE_URL}/api/comments/fake-comment-id/like")
+        response = HTTP.post(f"{BASE_URL}/api/comments/fake-comment-id/like")
         
         assert response.status_code == 401, f"Expected 401, got {response.status_code}"
         
@@ -314,7 +317,7 @@ class TestCommentsAuth:
     
     def test_delete_comment_unauthorized(self):
         """DELETE /api/comments/{id} requires authentication"""
-        response = requests.delete(f"{BASE_URL}/api/comments/fake-comment-id")
+        response = HTTP.delete(f"{BASE_URL}/api/comments/fake-comment-id")
         
         assert response.status_code == 401, f"Expected 401, got {response.status_code}"
         
@@ -322,7 +325,7 @@ class TestCommentsAuth:
     
     def test_get_me_unauthorized(self):
         """GET /api/comments/me requires authentication"""
-        response = requests.get(f"{BASE_URL}/api/comments/me")
+        response = HTTP.get(f"{BASE_URL}/api/comments/me")
         
         assert response.status_code == 401, f"Expected 401, got {response.status_code}"
         
@@ -334,7 +337,7 @@ class TestArticleContent:
     
     def test_articles_have_content(self):
         """Articles should have content for reading time calculation"""
-        response = requests.get(f"{BASE_URL}/api/articles?limit=5")
+        response = HTTP.get(f"{BASE_URL}/api/articles?limit=5")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         
@@ -360,7 +363,7 @@ class TestCommentsLogout:
     
     def test_logout_without_token(self):
         """POST /api/comments/logout works without token"""
-        response = requests.post(f"{BASE_URL}/api/comments/logout")
+        response = HTTP.post(f"{BASE_URL}/api/comments/logout")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         

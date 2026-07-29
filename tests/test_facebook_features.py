@@ -6,23 +6,27 @@ Test suite for Facebook posting features:
 4. Backend server health
 """
 import pytest
-import requests
 import os
 import sys
+from pathlib import Path
 
-from tests.external_admin_test_safety import get_local_admin_test_credentials
+from tests.external_admin_test_safety import (
+    get_local_admin_test_credentials,
+    get_local_test_session,
+)
 
-# Add backend to path for direct imports
-sys.path.insert(0, '/app/backend')
+# Add backend to path for direct imports in any checkout location.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
+HTTP = get_local_test_session()
 
 class TestBackendHealth:
     """Test backend server is running and accessible"""
     
     def test_articles_endpoint_accessible(self):
         """Test that articles endpoint is accessible"""
-        response = requests.get(f"{BASE_URL}/api/articles?limit=1", timeout=10)
+        response = HTTP.get(f"{BASE_URL}/api/articles?limit=1", timeout=10)
         assert response.status_code == 200, f"Articles endpoint failed: {response.status_code}"
         data = response.json()
         assert isinstance(data, list), "Expected list of articles"
@@ -31,7 +35,7 @@ class TestBackendHealth:
     def test_admin_login(self):
         """Test admin login works"""
         credentials = get_local_admin_test_credentials(BASE_URL)
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/admin/login",
             json=credentials,
             timeout=10
@@ -243,7 +247,7 @@ class TestFacebookPostEndpoint:
     def admin_token(self):
         """Get admin token for authenticated requests"""
         credentials = get_local_admin_test_credentials(BASE_URL)
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/admin/login",
             json=credentials,
             timeout=10
@@ -254,7 +258,7 @@ class TestFacebookPostEndpoint:
     
     def test_facebook_status_endpoint(self, admin_token):
         """Test Facebook status endpoint returns configuration status"""
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/status",
             headers={"Authorization": f"Bearer {admin_token}"},
             timeout=10
@@ -271,14 +275,14 @@ class TestFacebookPostEndpoint:
     def test_facebook_post_article_endpoint_exists(self, admin_token):
         """Test that Facebook post article endpoint exists"""
         # Get an article ID first
-        articles_response = requests.get(f"{BASE_URL}/api/articles?limit=1", timeout=10)
+        articles_response = HTTP.get(f"{BASE_URL}/api/articles?limit=1", timeout=10)
         if articles_response.status_code != 200 or not articles_response.json():
             pytest.skip("No articles available to test")
         
         article_id = articles_response.json()[0].get("id")
         
         # Try to post using the correct endpoint: /facebook/post-single?article_id=xxx
-        response = requests.post(
+        response = HTTP.post(
             f"{BASE_URL}/api/facebook/post-single",
             params={"article_id": article_id},
             headers={"Authorization": f"Bearer {admin_token}"},
@@ -304,7 +308,7 @@ class TestScheduledFacebookPostLogic:
         
         # Get admin token
         credentials = get_local_admin_test_credentials(BASE_URL)
-        login_response = requests.post(
+        login_response = HTTP.post(
             f"{BASE_URL}/api/admin/login",
             json=credentials,
             timeout=10
@@ -316,7 +320,7 @@ class TestScheduledFacebookPostLogic:
         token = login_response.json().get("token")
         
         # Check scheduled posts endpoint (which uses similar logic)
-        response = requests.get(
+        response = HTTP.get(
             f"{BASE_URL}/api/facebook/scheduled-posts",
             headers={"Authorization": f"Bearer {token}"},
             timeout=10
