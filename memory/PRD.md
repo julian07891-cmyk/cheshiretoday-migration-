@@ -228,7 +228,7 @@ The site operates as a **legal news aggregator**, NOT a content generator:
 - `/app/frontend/src/components/AdPlacement.jsx` - AdSense components
 
 ## Credentials
-- **Admin**: news@cheshiretoday.co.uk / ningab-zipxur-8pibDi
+- **Admin**: news@cheshiretoday.co.uk / [REDACTED]
 - **AdSense ID**: ca-pub-3403912630939928
 
 ## Change Log

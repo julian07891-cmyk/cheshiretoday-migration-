@@ -12,15 +12,12 @@ import os
 import uuid
 from datetime import datetime
 
+from tests.external_admin_test_safety import get_local_admin_test_credentials
+
 # Get BASE_URL from environment
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 if not BASE_URL:
     raise ValueError("REACT_APP_BACKEND_URL environment variable not set")
-
-# Admin credentials
-ADMIN_USERNAME = "news@cheshiretoday.co.uk"
-ADMIN_PASSWORD = "ningab-zipxur-8pibDi"
-
 
 class TestMostReadWidget:
     """Tests for Most Read Widget feature - /api/articles/most-read endpoint
@@ -249,9 +246,10 @@ class TestPushStatsWithAuth:
     @pytest.fixture
     def admin_token(self):
         """Get admin authentication token"""
+        credentials = get_local_admin_test_credentials(BASE_URL)
         response = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
+            json=credentials,
         )
         if response.status_code == 200:
             data = response.json()
@@ -286,9 +284,10 @@ class TestBreakingNewsNotification:
     @pytest.fixture
     def admin_token(self):
         """Get admin authentication token"""
+        credentials = get_local_admin_test_credentials(BASE_URL)
         response = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
+            json=credentials,
         )
         if response.status_code == 200:
             data = response.json()
@@ -353,9 +352,10 @@ class TestSmartContentPrioritization:
     @pytest.fixture
     def admin_token(self):
         """Get admin authentication token"""
+        credentials = get_local_admin_test_credentials(BASE_URL)
         response = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}
+            json=credentials,
         )
         if response.status_code == 200:
             data = response.json()

@@ -45,7 +45,7 @@
   },
   "test_credentials": {
     "admin_username": "news@cheshiretoday.co.uk",
-    "admin_password": "ningab-zipxur-8pibDi"
+    "admin_password": "[REDACTED]"
   },
   "seed_data_creation": "None - used existing articles",
   "retest_needed": true,

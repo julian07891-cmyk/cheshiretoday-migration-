@@ -10,15 +10,12 @@ import requests
 import os
 import sys
 
+from tests.external_admin_test_safety import get_local_admin_test_credentials
+
 # Add backend to path for direct imports
 sys.path.insert(0, '/app/backend')
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
-
-# Test credentials
-ADMIN_USERNAME = "news@cheshiretoday.co.uk"
-ADMIN_PASSWORD = "ningab-zipxur-8pibDi"
-
 
 class TestBackendHealth:
     """Test backend server is running and accessible"""
@@ -33,9 +30,10 @@ class TestBackendHealth:
     
     def test_admin_login(self):
         """Test admin login works"""
+        credentials = get_local_admin_test_credentials(BASE_URL)
         response = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json=credentials,
             timeout=10
         )
         assert response.status_code == 200, f"Admin login failed: {response.status_code}"
@@ -244,9 +242,10 @@ class TestFacebookPostEndpoint:
     @pytest.fixture
     def admin_token(self):
         """Get admin token for authenticated requests"""
+        credentials = get_local_admin_test_credentials(BASE_URL)
         response = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json=credentials,
             timeout=10
         )
         if response.status_code == 200:
@@ -304,9 +303,10 @@ class TestScheduledFacebookPostLogic:
         # We'll verify via the API that the scheduler logic is in place
         
         # Get admin token
+        credentials = get_local_admin_test_credentials(BASE_URL)
         login_response = requests.post(
             f"{BASE_URL}/api/admin/login",
-            json={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
+            json=credentials,
             timeout=10
         )
         
