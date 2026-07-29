@@ -11,9 +11,8 @@ IS_RENDER = bool(
     or os.getenv("RENDER_SERVICE_ID")
     or os.getenv("RENDER_EXTERNAL_URL")
 )
-if not IS_RENDER:
-
 ROOT_DIR = Path(__file__).parent
+if not IS_RENDER:
     load_dotenv(ROOT_DIR / '.env', override=False)
 # Admin credentials
 ADMIN_USERNAME = os.getenv('ADMIN_USERNAME') or os.getenv('ADMIN_USER', 'admin')
