@@ -164,12 +164,7 @@ class TestArticleViewTracking:
         # Use a valid ObjectId format that doesn't exist
         fake_id = "000000000000000000000000"  # Valid 24-char hex ObjectId
         response = HTTP.post(f"{BASE_URL}/api/articles/{fake_id}/view")
-        # Should still return 200 (graceful handling)
-        assert response.status_code == 200
-        
-        data = response.json()
-        assert data.get("success") == True
-        print(f"✅ View tracking handles non-existent article gracefully")
+        assert response.status_code == 404
 
 
 class TestPushNotifications:

@@ -24,6 +24,7 @@ import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy"
 import { FEATURES } from "../config/features";
 import { monetisationTools } from "../config/monetisationTools";
 import { trackEvent } from "../utils/trackEvent";
+import { loadPublicArticle } from "../services/articleViewTracking";
 
 function getSourceLabel(article) {
   const raw = String(article?.source || "").trim();
@@ -954,10 +955,10 @@ export default function ArticlePageV2({ categories }) {
         setErrorMsg("");
 
         const API_BASE = getApiUrl().replace(/\/$/, "");
-        const res = await fetch(`${API_BASE}/api/articles/${encodeURIComponent(articleId)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-        const data = await res.json();
+        const data = await loadPublicArticle(articleId, {
+          apiBase: API_BASE,
+          isActive: () => mounted,
+        });
         if (!mounted) return;
 
         setArticle(data);

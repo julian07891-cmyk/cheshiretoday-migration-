@@ -12588,13 +12588,31 @@ async def track_article_view(article_id: str, request: Request):
     Uses IP-based deduplication to prevent spam.
     """
     try:
+        article = None
+        try:
+            article = await db.articles.find_one({"_id": ObjectId(article_id)})
+        except Exception:
+            article = None
+
+        if not article:
+            article = await db.articles.find_one({"id": article_id})
+
+        if (
+            not article
+            or article.get("archived") is True
+            or article.get("manual_review_hidden_from_public") is True
+        ):
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        resolved_article_id = str(article["_id"])
+
         # Get client IP for deduplication
         client_ip = request.client.host if request.client else "unknown"
         
         # Check if this IP viewed this article in last hour
         one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
         existing_view = await db.article_views.find_one({
-            "article_id": article_id,
+            "article_id": resolved_article_id,
             "ip_hash": hashlib.md5(client_ip.encode()).hexdigest(),
             "viewed_at": {"$gte": one_hour_ago}
         })
@@ -12604,19 +12622,21 @@ async def track_article_view(article_id: str, request: Request):
         
         # Record the view
         await db.article_views.insert_one({
-            "article_id": article_id,
+            "article_id": resolved_article_id,
             "ip_hash": hashlib.md5(client_ip.encode()).hexdigest(),
             "viewed_at": datetime.now(timezone.utc)
         })
         
         # Increment view counter on article
         await db.articles.update_one(
-            {"$or": [{"_id": ObjectId(article_id)}, {"id": article_id}]},
+            {"_id": article["_id"]},
             {"$inc": {"view_count": 1}}
         )
         
         return {"success": True, "counted": True}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error tracking article view: {str(e)}")
         return {"success": False, "error": str(e)}
