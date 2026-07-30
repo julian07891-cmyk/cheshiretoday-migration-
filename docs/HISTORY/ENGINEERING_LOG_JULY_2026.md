@@ -595,3 +595,29 @@ The production verification on 28 July 2026 confirmed HTTP 200 for `/health` and
 shared Social Publishing, Instagram or Threads implementation. Consequently,
 authenticated live generation, download and clipboard verification remained a
 post-deployment operational handover check; it was not recorded as completed.
+
+## First-party article-view tracking repair
+
+A read-only analytics audit identified that first-party article readership was
+not being recorded by the public article page and that the existing tracking
+route did not resolve public eligibility before analytics writes. The working
+tree also showed that `backend/server.py` contained two independent changes:
+article-view tracking and Most Read period correctness.
+
+The work was separated at hunk level. The article-view route, public frontend
+integration and focused tests were isolated from all Most Read changes through
+interactive partial staging. The staged diff was then reviewed independently to
+confirm that it contained only article-view resolution, visibility rejection,
+canonical Mongo identifier use, one-hour deduplication, non-blocking frontend
+tracking and stale-navigation protection.
+
+The isolated repair was committed as:
+
+```text
+6a95ba9 Repair first-party article view tracking
+```
+
+The commit was pushed successfully to `origin/full-scrape-prod`. The separate
+Most Read handler and tests were intentionally left unstaged for their own QA,
+review and commit. Import, scheduler, publishing, newsletter and production-data
+behaviour remained outside the change.

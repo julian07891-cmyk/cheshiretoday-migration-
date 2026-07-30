@@ -24946,3 +24946,45 @@ the verification.
 
 No unfinished unified Social Publishing source implementation is known. Deployment
 and the authenticated live checks above remain operational handover steps.
+
+## Operational update — 30 July 2026 (First-party article-view tracking repair)
+
+### Analytics review and repair
+
+The first-party analytics review and article-view tracking investigation were
+completed. Article-view tracking was intentionally separated from the independent
+Most Read period-correctness work before commit.
+
+The backend route, public article-page integration and focused backend/frontend
+regressions were repaired and verified. Public article reads now resolve the
+stored article before recording analytics, reject missing, archived and Manual
+Review-hidden records before any analytics write, use the resolved Mongo article
+identifier consistently and preserve the existing one-hour deduplication. The
+frontend records a non-blocking view only after a successful current article load;
+analytics failures do not affect rendering and stale navigation cannot record the
+previous article.
+
+The completed repair was committed and pushed to `origin/full-scrape-prod`:
+
+```text
+6a95ba9 Repair first-party article view tracking
+```
+
+RSS and other imports, scheduler jobs and locks, Daily Brief, Weekly Roundup,
+Breaking News, all newsletter generation/rendering/tracking/sending behaviour and
+the production database were untouched.
+
+### Current repository state
+
+The article-view portion of `backend/server.py` is committed and clean. The file
+still has a separate unstaged hunk limited to the pending Most Read period work;
+it is therefore not globally clean in the current working tree. Remaining
+uncommitted QA work is confined to:
+
+- `backend/server.py` — Most Read only
+- `tests/test_most_read_push_features.py` — Most Read only
+- `tests/test_most_read_periods.py`
+- `AGENTS.md`, intentionally untracked and untouched
+
+The immediate next task is to review and complete Most Read as a completely
+separate QA change.
