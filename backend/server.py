@@ -89,6 +89,10 @@ from app.newsletter_token_service import (
     WrongNewsletterTokenPurposeError,
     newsletter_token_service_from_environment,
 )
+from app.newsletter_click_tracking import (
+    UnsafeNewsletterClickDestination,
+    validate_newsletter_click_destination,
+)
 from app.newsletter_link_security import (
     CHALLENGE_COLLECTION_NAME,
     RATE_LIMIT_COLLECTION_NAME,
@@ -13760,6 +13764,11 @@ async def track_email_click_head(tracking_id: str, url: str, request: Request):
     Accept HEAD checks from email security scanners without counting them as real clicks.
     Prevents noisy 404s in Render logs and avoids inflating click analytics.
     """
+    try:
+        validate_newsletter_click_destination(url)
+    except UnsafeNewsletterClickDestination:
+        raise HTTPException(status_code=400, detail="Invalid newsletter destination.")
+
     from fastapi.responses import Response
     return Response(status_code=204)
 
@@ -13770,6 +13779,11 @@ async def track_email_click(tracking_id: str, url: str, request: Request):
     Track email link clicks and redirect to target URL.
     """
     try:
+        approved_url = validate_newsletter_click_destination(url)
+    except UnsafeNewsletterClickDestination:
+        raise HTTPException(status_code=400, detail="Invalid newsletter destination.")
+
+    try:
         # Log the click event
         await db.email_analytics.update_one(
             {"tracking_id": tracking_id},
@@ -13779,7 +13793,7 @@ async def track_email_click(tracking_id: str, url: str, request: Request):
                 "$push": {
                     "click_events": {
                         "timestamp": datetime.now(timezone.utc),
-                        "url": url[:500],
+                        "url": approved_url[:500],
                         "ip": request.client.host if request.client else None,
                         "user_agent": request.headers.get("user-agent", "")[:200]
                     }
@@ -13791,7 +13805,7 @@ async def track_email_click(tracking_id: str, url: str, request: Request):
         logger.warning(f"Failed to log email click: {e}")
     
     # Redirect to the actual URL
-    return RedirectResponse(url=url, status_code=302)
+    return RedirectResponse(url=approved_url, status_code=302)
 
 
 @api_router.get("/admin/email-analytics")
