@@ -648,3 +648,76 @@ a93d4bf Fix Most Read public result limiting
 
 The commit was pushed successfully to `origin/full-scrape-prod`. After the push,
 the working tree contained only the intentionally untracked `AGENTS.md` file.
+
+## First-party analytics QA — complete engineering handover
+
+### Audit conclusions
+
+The closing analytics review traced public article loading, the view-recording
+endpoint, `article_views`, the lifetime `articles.view_count` field and the Most
+Read endpoint. It established that the public article page was not recording a
+first-party read, while an empty period in Most Read was being replaced by a
+lifetime ranking. Period events and lifetime counters were therefore retained as
+separate concepts: `article_views` is authoritative for period rankings, while
+`view_count` remains a lifetime field and is not a period fallback.
+
+The work intentionally did not introduce indexes, TTL retention, bot filtering,
+homepage or Admin changes, or a wider analytics redesign. Existing one-hour
+IP/article deduplication remained the production contract. Residual risks noted
+for future evidence-led work were concurrent application-level deduplication,
+shared/proxy IP ambiguity and non-transactional event/counter writes.
+
+### Isolation and delivery sequence
+
+The first implementation diff mixed article-view tracking and Most Read changes
+inside `backend/server.py`. They were classified as independent work streams and
+were not released together. Interactive partial staging selected only the
+article-view handler from the shared backend file, together with the public-page
+integration, isolated helper and focused tests. The staged diff was reviewed to
+prove that the Most Read hunk remained outside the commit.
+
+Article-view tracking was then released through:
+
+```text
+6a95ba9 Repair first-party article view tracking
+c4d9faf Update project state after article-view tracking repair
+```
+
+Both commits were pushed to `origin/full-scrape-prod`. Verification included `55`
+focused backend/visibility tests, `7` focused frontend tests, `268` complete
+frontend tests, Python compilation, a successful production frontend build and a
+clean `git diff --check`.
+
+The remaining Most Read diff was audited independently. QA found that a database
+limit applied before visibility resolution could allow missing, archived or
+Manual Review-hidden records to consume slots. The final implementation retained
+descending period-view ordering but applied the result limit only after eligible
+public articles were resolved. It removed the lifetime fallback while preserving
+`today`, `week`, `month`, invalid-period, Mongo-ID and legacy-ID behavior.
+
+Most Read was released through:
+
+```text
+a93d4bf Fix Most Read public result limiting
+d6eb46b Record completed Most Read fix
+```
+
+Both commits were pushed to `origin/full-scrape-prod`. Focused and related tests
+passed `61` checks; Python compilation and `git diff --check` passed. The branch
+then reached `d6eb46b1c400c98e5f25595c01fd34ce2373c0b0` with only the intentionally
+untracked `AGENTS.md` remaining.
+
+### Operational and documentation decisions
+
+Throughout the sequence, imports, scheduler, publishing, newsletters, subscribers,
+provider delivery and production data were protected explicitly. No production
+import, scheduler, newsletter-send or database operation was run. Runtime and
+documentation work used separate commit boundaries so that operational state
+records did not obscure implementation review.
+
+The agreed handover practice for future substantial engineering chats is to add
+a durable summary before closure: architecture conclusions, independent task
+boundaries, exact QA evidence, commits and pushes, repository transitions,
+protected-system impact and remaining risks belong in `docs/PROJECT_STATE.md` and
+the relevant historical engineering log. Prompt iterations and conversational
+back-and-forth are excluded from that record.

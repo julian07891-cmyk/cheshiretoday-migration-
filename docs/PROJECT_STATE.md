@@ -25017,3 +25017,100 @@ a93d4bf Fix Most Read public result limiting
 
 The working tree now contains only `AGENTS.md`, intentionally untracked and
 untouched.
+
+## Engineering handover — 31 July 2026 (First-party analytics QA completion)
+
+### Architecture review and decisions
+
+The first-party article analytics path was reviewed end to end. Cheshire Today
+retains two deliberately distinct measures: individual period events in
+`article_views`, and the lifetime `articles.view_count` counter. Public article
+reads must create deduplicated period events; Most Read must use those events for
+its `today`, `week` and `month` results and must not substitute lifetime counts
+when a period is empty.
+
+The existing one-view-per-IP-per-article-per-hour behavior was preserved. No bot
+filtering, consent redesign, index, TTL retention policy, homepage activation,
+Admin reporting change or broader analytics redesign was introduced. The known
+residual limitations remain application-level concurrent-request deduplication,
+shared/proxied IP ambiguity and separate Mongo operations for the event insert
+and lifetime-counter increment.
+
+### Work-stream separation
+
+The initial working tree mixed two independent fixes in `backend/server.py`:
+
+1. recording valid public article reads;
+2. correcting period-based Most Read results.
+
+They were treated as separate QA and commit boundaries. The article-view handler
+was partially staged without the Most Read hunk, its frontend and tests were
+reviewed independently, and the remaining Most Read changes stayed unstaged until
+their own implementation and approval cycle. This separation prevented a shared
+file from broadening either production change.
+
+### Article-view tracking outcome
+
+The public article page now records a non-blocking view only after a successful,
+current article load and uses the canonical Mongo identifier returned by the
+backend. Failed analytics never affect rendering, and cleanup/navigation guards
+prevent a delayed response from recording the previous article.
+
+The backend resolves Mongo `_id` or legacy `id` before any analytics write,
+rejects missing, archived and Manual Review-hidden records with HTTP 404, stores
+the resolved Mongo identifier consistently, increments the same resolved article
+and preserves one-hour deduplication. Focused backend and visibility checks passed
+`55` tests, focused frontend tracking passed `7`, the complete frontend suite
+passed `268`, Python compilation passed, the production frontend build passed and
+`git diff --check` passed.
+
+The implementation and its documentation were committed and pushed as:
+
+```text
+6a95ba9 Repair first-party article view tracking
+c4d9faf Update project state after article-view tracking repair
+```
+
+### Most Read outcome
+
+QA identified a second correctness defect: applying Mongo's aggregation limit
+before public eligibility resolution allowed missing, archived or Manual
+Review-hidden records to consume result slots. The endpoint now streams period
+groups in descending view-count order, skips ineligible records and stops only
+after the requested number of eligible public articles has been collected.
+
+Empty periods return an empty list, the lifetime fallback is removed, Mongo and
+legacy identifiers remain compatible, and the established `today`, `week`,
+`month` and invalid-period response behavior is preserved. Focused Most Read and
+directly related regressions passed `61` checks; Python compilation and
+`git diff --check` passed.
+
+The implementation and its documentation were committed and pushed as:
+
+```text
+a93d4bf Fix Most Read public result limiting
+d6eb46b Record completed Most Read fix
+```
+
+### Operational boundary and repository state
+
+RSS and hybrid imports, Perplexity rewriting, Manual Review routing, public caps,
+deduplication, freshness gates, automatic publishing, scheduler jobs and locks,
+Daily Brief, Weekly Roundup, Breaking News, newsletter selection/templates/
+tracking/sending, subscriber imports, provider delivery and production database
+contents were unchanged. No production database, import, scheduler or newsletter
+operation was invoked during the work.
+
+The implementation and documentation commits were pushed to
+`origin/full-scrape-prod`. At handover, branch `full-scrape-prod` is at
+`d6eb46b1c400c98e5f25595c01fd34ce2373c0b0`; the working tree contains only the
+intentionally untracked and untouched `AGENTS.md`.
+
+### Documentation workflow
+
+For future substantial engineering conversations, complete the same closing
+sequence: isolate independent work streams, verify and commit runtime changes,
+record the durable architecture decisions, QA evidence, commit/push state,
+protected-system impact and remaining risks in `docs/PROJECT_STATE.md` and the
+appropriate historical engineering log, then review and commit that documentation
+as a separate boundary before closing the conversation.
