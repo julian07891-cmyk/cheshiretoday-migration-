@@ -741,3 +741,23 @@ URLs, images, records, credentials and provider payloads.
 No import, scheduler, database, editorial, Manual Review, AI, newsletter or
 deployment behaviour was optimised or restructured. Deployment and observation
 of normal scheduled runs remain pending before any memory mitigation is selected.
+
+## Version 2 branding decision
+
+An exploratory Version 2 brand direction was considered and deliberately
+deferred. The current logo and established teal Cheshire Today identity remain
+in use while priorities stay focused on audience and readership growth,
+newsletter growth, SEO and Discover, social growth and monetisation readiness.
+
+When the business value supports a coordinated rollout, the preferred direction
+is a professional brand refresh rather than an isolated logo replacement. It
+would replace the map-pin-led symbol with a clearer regional-news icon based on a
+simplified folded newspaper and a subtle, accurate Cheshire county silhouette,
+while retaining the Cheshire Today name and ensuring clarity at favicon,
+social-avatar and app-icon sizes.
+
+The eventual system should include horizontal, stacked and icon-only logos;
+light, teal and dark variants; vector SVG assets; social avatars; favicon and app
+icon; typography, colour and usage guidance; and website, newsletter and sponsor-
+pack applications. This remains a deferred milestone to revisit only when timing
+and business value justify the full rollout.
