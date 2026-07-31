@@ -25114,3 +25114,24 @@ record the durable architecture decisions, QA evidence, commit/push state,
 protected-system impact and remaining risks in `docs/PROJECT_STATE.md` and the
 appropriate historical engineering log, then review and commit that documentation
 as a separate boundary before closing the conversation.
+
+## Operational update — 31 July 2026 (Scheduled article-generation memory observability)
+
+Render recorded production web-service memory exhaustion at approximately
+12:01 BST on 29 July and 18:00 BST on 30 July. Both events reached the Starter
+instance's 512 MB limit and correlate with scheduled `daily_article_generation`
+runs, but retained logs do not identify the memory-intensive phase.
+
+Non-sensitive observability instrumentation has been added locally to the
+existing scheduled workflow. Searchable `article_generation_memory` markers
+record approved phase names, elapsed seconds, process maximum RSS in MiB and
+allow-listed integer counts only. Memory sampling and logging failures are
+non-fatal. Titles, article text, URLs, images, database records, credentials,
+environment values and API payloads are excluded.
+
+This change is instrumentation only. Scheduler times and IDs, import targets,
+RSS concurrency, source ordering, editorial and Manual Review gates, AI
+rewriting, MongoDB operations, visible-pool handling, duplicate cleanup,
+newsletters and deployment configuration remain unchanged. No production
+optimisation has been made. Deployment and evidence collection across future
+06:00, 12:00 and 18:00 runs remain pending review and approval.

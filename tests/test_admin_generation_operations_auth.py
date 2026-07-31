@@ -213,14 +213,16 @@ def test_scheduled_generation_uses_internal_helper_and_preserves_lock_order(
         async def delete_one(self, query):
             events.append("lock_release")
 
-    async def fake_generate(request):
+    async def fake_generate(request, memory_started_at=None):
         events.append("generate")
+        assert memory_started_at is not None
         assert request.count == 12
         assert request.include_uk_news is True
         assert request.public_import_limit == 6
 
-    async def fake_cleanup():
+    async def fake_cleanup(memory_started_at=None):
         events.append("cleanup")
+        assert memory_started_at is not None
         return {"total_removed": 0}
 
     async def fail_if_http_wrapper_called(*args, **kwargs):

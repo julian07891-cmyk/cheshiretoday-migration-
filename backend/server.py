@@ -108,6 +108,7 @@ from app.newsletter_management_email import (
     NewsletterManagementEmailRequest,
 )
 from app.perplexity_service import perplexity_service, ai_budget_available
+from app.article_generation_observability import log_article_generation_memory
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
@@ -1874,6 +1875,7 @@ async def seed_authority_pages(auth: bool = Depends(get_admin_auth)):
 
 async def _generate_articles_internal(
     request: GenerateArticlesRequest,
+    memory_started_at: Optional[float] = None,
 ) -> GenerateArticlesResponse:
     """
     Generate articles using HYBRID approach (cost-optimized):
@@ -1892,7 +1894,13 @@ async def _generate_articles_internal(
             public_import_limit=getattr(request, "public_import_limit", None)
         )
         
-        result = await _import_hybrid_news_internal(hybrid_request)
+        if memory_started_at is None:
+            result = await _import_hybrid_news_internal(hybrid_request)
+        else:
+            result = await _import_hybrid_news_internal(
+                hybrid_request,
+                memory_started_at=memory_started_at,
+            )
         
         cheshire_count = result.get('cheshire_articles', 0)
         uk_count = result.get('uk_articles', 0)
@@ -2149,6 +2157,7 @@ class HybridNewsRequest(BaseModel):
 
 async def _import_hybrid_news_internal(
     request: HybridNewsRequest,
+    memory_started_at: Optional[float] = None,
 ) -> dict:
     """
     Import news using HYBRID approach (cost-optimized):
@@ -2227,6 +2236,17 @@ async def _import_hybrid_news_internal(
                 existing_source_urls.add(source_url)
             if a.get('image'):
                 used_image_urls.add(a.get('image'))
+
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "existing_record_index_completed",
+                memory_started_at,
+                {
+                    "active_record_count": len(existing_articles),
+                    "archived_record_count": len(archived_existing_articles),
+                },
+            )
         
         logger.info(f"Starting hybrid import. {len(existing_titles)} existing titles, {len(used_image_urls)} existing images")
         
@@ -2354,6 +2374,13 @@ async def _import_hybrid_news_internal(
             logger.info(f"Fetching UK news via RSS feeds (ONLY with images, max {max_sports} sports)...")
             
             rss_articles = await news_feed_service.fetch_all_feeds()
+            if memory_started_at is not None:
+                log_article_generation_memory(
+                    logger,
+                    "all_feed_fetch_completed",
+                    memory_started_at,
+                    {"candidate_count": len(rss_articles)},
+                )
             
             # STRICT: Only articles WITH RSS images
             uk_with_images = [
@@ -2565,6 +2592,19 @@ async def _import_hybrid_news_internal(
                     property_enrichment_target - property_enrichment_imported,
                     "uk_imported"
                 )
+
+            if memory_started_at is not None:
+                log_article_generation_memory(
+                    logger,
+                    "uk_finance_processing_completed",
+                    memory_started_at,
+                    {
+                        "uk_candidate_count": len(uk_news_articles),
+                        "finance_candidate_count": len(finance_articles),
+                        "uk_imported_count": uk_imported,
+                        "finance_imported_count": finance_imported + property_enrichment_imported,
+                    },
+                )
             
         
         # ==========================================
@@ -2587,6 +2627,14 @@ async def _import_hybrid_news_internal(
             for article in additional:
                 if article.get('title', '').lower() not in existing_local_titles:
                     local_articles.append(article)
+
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "local_feed_fetch_completed",
+                memory_started_at,
+                {"local_candidate_count": len(local_articles)},
+            )
         
         # Only Cheshire articles WITH images
         cheshire_with_images = [
@@ -2921,6 +2969,14 @@ async def _import_hybrid_news_internal(
             count_inserted_article_visibility(article)
             cheshire_from_rss += 1
             logger.info(f"✅ Imported local Cheshire article: {title[:50]}...")
+
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "local_processing_completed",
+                memory_started_at,
+                {"local_imported_count": cheshire_from_rss},
+            )
         
         # ==========================================
         # STEP 2B: Import Business and Tech articles after Local RSS
@@ -2935,6 +2991,17 @@ async def _import_hybrid_news_internal(
             
             # Sports import removed per editorial policy
             sports_imported = 0
+
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "business_tech_processing_completed",
+                memory_started_at,
+                {
+                    "business_imported_count": business_imported,
+                    "tech_imported_count": tech_imported,
+                },
+            )
         
         # ==========================================
         # STEP 3: Import Cheshire news via Perplexity (ONLY if local feeds don't have enough)
@@ -3088,6 +3155,12 @@ async def _import_hybrid_news_internal(
         logger.info(f"Image sources: {rss_images_used} RSS, {smart_images_used} smart search")
         
         await cap_visible_articles(keep=100)
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "visible_pool_cap_completed",
+                memory_started_at,
+            )
 
         # === RATIO_REBALANCE_45 ===
         if os.getenv("ENABLE_RATIO_REBALANCE", "0").strip().lower() in ("1", "true", "yes", "on"):
@@ -3584,7 +3657,7 @@ async def clean_article_content(authorized: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def _remove_duplicates_internal():
+async def _remove_duplicates_internal(memory_started_at: Optional[float] = None):
     """
     Internal helper function to remove duplicate articles.
     Called automatically after imports and by the admin endpoint.
@@ -3592,6 +3665,13 @@ async def _remove_duplicates_internal():
     """
     try:
         articles = await db.articles.find({}).to_list(None)
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "duplicate_cleanup_first_read_completed",
+                memory_started_at,
+                {"document_count": len(articles)},
+            )
         
         # Group by normalized source URL first, fall back to exact title
         duplicate_groups = {}
@@ -3643,6 +3723,13 @@ async def _remove_duplicates_internal():
         
         # Archive low-quality short fallback articles so only full rewritten content stays live.
         remaining = await db.articles.find({}).to_list(None)
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "duplicate_cleanup_second_read_completed",
+                memory_started_at,
+                {"document_count": len(remaining)},
+            )
         boilerplate_markers = [
             "this story has been reported by",
             "more details are expected to emerge soon",
@@ -18329,6 +18416,12 @@ async def cap_visible_articles(keep: int = 200):
 
 async def daily_article_generation(count: int = 12):
     """Generate new articles daily with fault tolerance and distributed locking"""
+    memory_started_at = time.monotonic()
+    log_article_generation_memory(
+        logger,
+        "job_started",
+        memory_started_at,
+    )
     try:
         # ============================================
         # DISTRIBUTED LOCK - Prevents duplicate article generation
@@ -18376,6 +18469,11 @@ async def daily_article_generation(count: int = 12):
                 return
 
             logger.info(f"✅ Acquired article generation lock: {lock_key}")
+            log_article_generation_memory(
+                logger,
+                "lock_acquired",
+                memory_started_at,
+            )
         except Exception as lock_error:
             logger.warning(f"Lock warning (continuing): {lock_error}")
         
@@ -18385,7 +18483,14 @@ async def daily_article_generation(count: int = 12):
         try:
             # Request up to 12 candidates, but keep only 6 public; extras go to manual review.
             # Keeps quality/cost controlled while reducing homepage starvation from an overly thin public pool.
-            await _generate_articles_internal(GenerateArticlesRequest(count=count, include_uk_news=True, public_import_limit=6))
+            await _generate_articles_internal(
+                GenerateArticlesRequest(
+                    count=count,
+                    include_uk_news=True,
+                    public_import_limit=6,
+                ),
+                memory_started_at=memory_started_at,
+            )
         except Exception as gen_error:
             logger.error(f"Error during article generation (will retry): {str(gen_error)}")
             # Don't fail the entire job, just log and continue
@@ -18393,7 +18498,9 @@ async def daily_article_generation(count: int = 12):
         
         # AUTO-CLEANUP: Remove duplicates and short articles
         try:
-            cleanup_result = await _remove_duplicates_internal()
+            cleanup_result = await _remove_duplicates_internal(
+                memory_started_at=memory_started_at,
+            )
             logger.info(f"Auto-cleanup after generation: removed {cleanup_result.get('total_removed', 0)} duplicates/short articles")
         except Exception as dup_error:
             logger.error(f"Error during duplicate removal: {str(dup_error)}")
@@ -18411,6 +18518,12 @@ async def daily_article_generation(count: int = 12):
             await db.scheduler_locks.delete_one({"job": lock_key})
         except Exception:
             pass
+
+        log_article_generation_memory(
+            logger,
+            "job_completed",
+            memory_started_at,
+        )
             
     except Exception as e:
         logger.error(f"Critical error in daily article generation: {str(e)}")

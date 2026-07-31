@@ -721,3 +721,23 @@ boundaries, exact QA evidence, commits and pushes, repository transitions,
 protected-system impact and remaining risks belong in `docs/PROJECT_STATE.md` and
 the relevant historical engineering log. Prompt iterations and conversational
 back-and-forth are excluded from that record.
+
+## Scheduled article-generation memory observability
+
+A read-only Render investigation identified web-service OOM terminations at
+approximately 12:01 BST on 29 July and 18:00 BST on 30 July. Each exceeded the
+Starter instance's 512 MB limit and aligned with a scheduled article-generation
+slot. Static code-path analysis found several plausible peaks, including fully
+buffered multi-feed acquisition and unbounded duplicate-cleanup reads, but the
+retained platform events contained no Python stack trace or phase-level memory
+evidence.
+
+The first engineering response was deliberately limited to observability.
+Standard-library process maximum-RSS and monotonic-duration logging was added at
+existing workflow boundaries, with allow-listed numeric counts and a consistent
+`article_generation_memory` prefix. The helper fails safely and excludes content,
+URLs, images, records, credentials and provider payloads.
+
+No import, scheduler, database, editorial, Manual Review, AI, newsletter or
+deployment behaviour was optimised or restructured. Deployment and observation
+of normal scheduled runs remain pending before any memory mitigation is selected.
