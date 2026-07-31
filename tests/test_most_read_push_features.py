@@ -21,25 +21,11 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "").rstrip("/")
 HTTP = get_local_test_session()
 
 class TestMostReadWidget:
-    """Tests for Most Read Widget feature - /api/articles/most-read endpoint
-    
-    CRITICAL BUG: Route /api/articles/most-read is defined AFTER /api/articles/{article_id}
-    in server.py, causing FastAPI to match 'most-read' as an article_id and return 404.
-    The route order needs to be fixed in server.py.
-    """
+    """Tests for Most Read Widget feature - /api/articles/most-read endpoint."""
     
     def test_most_read_today_returns_success(self):
-        """Test most-read endpoint returns success for 'today' period
-        
-        KNOWN BUG: Returns 404 due to route order issue - 'most-read' matched as article_id
-        """
+        """Test most-read endpoint returns success for 'today' period."""
         response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=5")
-        
-        # BUG: Currently returns 404 due to route order issue
-        if response.status_code == 404:
-            print("❌ CRITICAL BUG: /api/articles/most-read returns 404 - route order issue")
-            print("   Fix: Move @api_router.get('/articles/most-read') BEFORE @api_router.get('/articles/{article_id}')")
-            pytest.skip("Route order bug - most-read matched as article_id")
         
         assert response.status_code == 200
         data = response.json()
@@ -52,9 +38,6 @@ class TestMostReadWidget:
         """Test most-read endpoint returns success for 'week' period"""
         response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=week&limit=5")
         
-        if response.status_code == 404:
-            pytest.skip("Route order bug - most-read matched as article_id")
-        
         assert response.status_code == 200
         data = response.json()
         assert data.get("success") == True
@@ -65,9 +48,6 @@ class TestMostReadWidget:
     def test_most_read_month_returns_success(self):
         """Test most-read endpoint returns success for 'month' period"""
         response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=month&limit=5")
-        
-        if response.status_code == 404:
-            pytest.skip("Route order bug - most-read matched as article_id")
         
         assert response.status_code == 200
         data = response.json()
@@ -80,9 +60,6 @@ class TestMostReadWidget:
         """Test most-read endpoint respects limit parameter"""
         response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=3")
         
-        if response.status_code == 404:
-            pytest.skip("Route order bug - most-read matched as article_id")
-        
         assert response.status_code == 200
         data = response.json()
         assert data.get("success") == True
@@ -93,9 +70,6 @@ class TestMostReadWidget:
     def test_most_read_article_structure(self):
         """Test that returned articles have expected fields"""
         response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=5")
-        
-        if response.status_code == 404:
-            pytest.skip("Route order bug - most-read matched as article_id")
         
         assert response.status_code == 200
         data = response.json()
@@ -444,11 +418,8 @@ class TestIntegration:
         view_response = HTTP.post(f"{BASE_URL}/api/articles/{article_id}/view")
         assert view_response.status_code == 200
         
-        # Check most-read (may return 404 due to route order bug)
+        # Check most-read.
         most_read_response = HTTP.get(f"{BASE_URL}/api/articles/most-read?period=today&limit=10")
-        if most_read_response.status_code == 404:
-            pytest.skip("Route order bug - most-read endpoint not accessible")
-        
         assert most_read_response.status_code == 200
         print("✅ View tracking and most-read integration working")
 

@@ -5052,29 +5052,15 @@ async def get_most_read_articles(period: str = "today", limit: int = 5):
         pipeline = [
             {"$match": {"viewed_at": {"$gte": start_time}}},
             {"$group": {"_id": "$article_id", "views": {"$sum": 1}}},
-            {"$sort": {"views": -1}},
-            {"$limit": limit}
+            {"$sort": {"views": -1}}
         ]
         
-        view_counts = await db.article_views.aggregate(pipeline).to_list(limit)
-        
-        if not view_counts:
-            # Fallback to articles with highest view_count field
-            articles = await db.articles.find(
-                {},
-                {"_id": 0, "id": 1, "title": 1, "image": 1, "category": 1, "view_count": 1}
-            ).sort("view_count", -1).limit(limit).to_list(limit)
-            
-            return {
-                "success": True,
-                "period": period,
-                "articles": articles
-            }
-        
-        # Get article details for top viewed
+        # Resolve ranked view groups until the requested number of public
+        # articles has been collected. Hidden or missing records must not
+        # consume result slots.
         articles = []
         
-        for vc in view_counts:
+        async for vc in db.article_views.aggregate(pipeline):
             article_id = vc["_id"]
             # Try to find by ObjectId first, then by id field
             article = None
@@ -5086,7 +5072,11 @@ async def get_most_read_articles(period: str = "today", limit: int = 5):
             if not article:
                 article = await db.articles.find_one({"id": article_id})
             
-            if article:
+            if (
+                article
+                and article.get("archived") is not True
+                and article.get("manual_review_hidden_from_public") is not True
+            ):
                 articles.append({
                     "id": str(article.get("_id", article.get("id", ""))),
                     "title": article.get("title", ""),
@@ -5094,6 +5084,8 @@ async def get_most_read_articles(period: str = "today", limit: int = 5):
                     "category": article.get("category", ""),
                     "views": vc["views"]
                 })
+                if len(articles) >= limit:
+                    break
         
         return {
             "success": True,
