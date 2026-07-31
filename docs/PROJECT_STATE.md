@@ -25158,3 +25158,23 @@ applications across the website, newsletters and sponsor packs.
 Current priorities remain audience and readership growth, newsletter growth,
 SEO and Discover, social growth and monetisation readiness. Revisit Version 2
 branding only when its timing and business value justify the coordinated work.
+
+## Operational update — 31 July 2026 (Legacy Facebook Admin UI containment)
+
+The obsolete direct Facebook publishing controls have been removed from the
+Admin frontend. The Overview batch-post action, legacy single-article posting
+buttons and misleading deterministic “AI-prioritized” recommendation surface
+are no longer visible or callable from Admin.
+
+The Facebook tab now provides a read-only handoff to the Articles tab, where the
+completed Social Publishing Studio remains the only visible Facebook publishing
+workflow. It explicitly states that the tab does not publish or schedule posts
+automatically.
+
+This was frontend containment only. Legacy backend Facebook routes, Meta/OAuth
+code and database collections remain unchanged pending a separate review. No
+Meta API, scheduler, database, analytics, push, newsletter or production
+configuration change was made. Redesign of the separate Analytics tab remains
+future work.
+
+This containment change is implemented and validated locally; deployment remains pending.

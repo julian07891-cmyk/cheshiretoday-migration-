@@ -12,7 +12,6 @@ test('quick actions use the current operational labels', () => {
   [
     'Run Hybrid Import',
     'Send Daily Brief',
-    'Post to Facebook',
     'Post to Twitter',
     'Remove Duplicates',
     'Archive Legacy Content',
@@ -83,7 +82,7 @@ test('quick action layout wraps labels without reducing touch height', () => {
   expect(dashboardSource).toContain('leading-tight whitespace-normal');
   expect(
     dashboardSource.split('${QUICK_ACTION_BUTTON_LAYOUT}').length - 1
-  ).toBe(9);
+  ).toBe(8);
 });
 
 
@@ -91,7 +90,6 @@ test('reviewed handlers and endpoint paths remain unchanged', () => {
   [
     'onClick={handleGenerateArticles}',
     'onClick={handleSendDigest}',
-    'onClick={handlePostToFacebook}',
     'onClick={handlePostToTwitter}',
     'onClick={handleCleanupDuplicates}',
     'onClick={handleFixMismatchedContent}',
@@ -105,7 +103,6 @@ test('reviewed handlers and endpoint paths remain unchanged', () => {
   [
     '/api/generate-articles',
     '/api/send-digest',
-    '/api/facebook/trigger-scheduled',
     '/api/twitter/trigger-scheduled',
     '/api/admin/remove-duplicates',
     '/api/fix-mismatched-content',
@@ -115,6 +112,16 @@ test('reviewed handlers and endpoint paths remain unchanged', () => {
     '/api/admin/clear-and-refresh',
     '/api/admin/backfill-locations',
   ].forEach(endpoint => expect(dashboardSource).toContain(endpoint));
+});
+
+
+test('legacy Facebook publishing controls are contained behind the Articles workflow', () => {
+  expect(dashboardSource).toContain('facebook-social-publishing-handoff');
+  expect(dashboardSource).toContain('open-articles-social-publishing');
+  expect(dashboardSource).toContain('Social Publishing in the Articles tab');
+  expect(dashboardSource).not.toContain('/api/facebook/post-single');
+  expect(dashboardSource).not.toContain('/api/facebook/trigger-scheduled');
+  expect(dashboardSource).not.toContain('AI-prioritized');
 });
 
 

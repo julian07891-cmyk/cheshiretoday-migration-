@@ -5,7 +5,7 @@ import {
   Zap, 
   Send, Clock, AlertCircle, CheckCircle, Loader2, ArrowLeft,
   Newspaper, TrendingUp, Lock, LogOut, Facebook, Calendar as CalendarIcon,
-  X, Check, Share2, Twitter, PlusCircle, Edit, Image as ImageIcon,
+  X, Check, Twitter, PlusCircle, Edit, Image as ImageIcon,
   Archive, RotateCcw, Filter, ChevronDown, ChevronRight, ShoppingBag,
   Star, ExternalLink, Link as LinkIcon, PoundSterling, Briefcase, MapPin, Building2,
   Sun, AlertTriangle, Bell, Search, Download, History, Eye, Trash, CheckSquare, Square
@@ -139,8 +139,6 @@ const AdminDashboard = ({ onBack }) => {
   const [password, setPassword] = useState('');
   const [authChecking, setAuthChecking] = useState(true);
 
-  // Facebook scheduling state
-  const [schedulableArticles, setSchedulableArticles] = useState([]);
   const [socialPublishingArticle, setSocialPublishingArticle] = useState(null);
   
   // Facebook analytics state
@@ -158,10 +156,6 @@ const AdminDashboard = ({ onBack }) => {
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
   const [articlesPage, setArticlesPage] = useState(0);
   const [hasMoreArticles, setHasMoreArticles] = useState(true);
-  
-  // Smart content prioritization state
-  const [smartArticles, setSmartArticles] = useState([]);
-  const [smartLoading, setSmartLoading] = useState(false);
   
   // Push notification state
   const [pushStats, setPushStats] = useState(null);
@@ -856,16 +850,6 @@ const AdminDashboard = ({ onBack }) => {
   // Login and checkExistingToken already handle data fetching
   // This was causing race conditions and duplicate fetches
 
-  // Fetch Facebook data when Facebook tab is active
-  useEffect(() => {
-    if (isAuthenticated && activeTab === 'facebook') {
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token) {
-        fetchFacebookData(token);
-      }
-    }
-  }, [isAuthenticated, activeTab]);
-
   const fetchAdminArticlesPage = async ({ page = 0, search = '', append = false, token = null } = {}) => {
     const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
     if (!authToken) return;
@@ -991,24 +975,6 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const fetchFacebookData = async (token = null) => {
-    const authToken = (typeof token === "string" && token) ? token : localStorage.getItem(TOKEN_KEY);
-    if (!authToken) return;
-    
-    const authHeaders = { 'Authorization': `Bearer ${authToken}` };
-    
-    try {
-      const articlesRes = await fetch(`${getApiUrl()}/api/facebook/schedulable-articles?limit=20`, { headers: authHeaders });
-
-      if (articlesRes.ok) {
-        const articlesData = await articlesRes.json();
-        setSchedulableArticles(articlesData.articles || []);
-      }
-    } catch (error) {
-      console.error('Error fetching Facebook data:', error);
-    }
-  };
-
   const fetchFacebookAnalytics = async () => {
     const authHeaders = getAuthHeaders();
     setAnalyticsLoading(true);
@@ -1032,23 +998,6 @@ const AdminDashboard = ({ onBack }) => {
       console.error('Error fetching Facebook analytics:', error);
     } finally {
       setAnalyticsLoading(false);
-    }
-  };
-
-  const fetchSmartArticles = async () => {
-    const authHeaders = getAuthHeaders();
-    setSmartLoading(true);
-    
-    try {
-      const response = await fetch(`${getApiUrl()}/api/facebook/smart-articles?limit=10`, { headers: authHeaders });
-      if (response.ok) {
-        const data = await response.json();
-        setSmartArticles(data.articles || []);
-      }
-    } catch (error) {
-      console.error('Error fetching smart articles:', error);
-    } finally {
-      setSmartLoading(false);
     }
   };
 
@@ -1798,38 +1747,6 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const handlePostToFacebook = async () => {
-    setActionLoading('facebook');
-    try {
-      const response = await fetch(`${getApiUrl()}/api/facebook/trigger-scheduled`, {
-        method: 'POST',
-        headers: getAuthHeaders()
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        toast({
-          title: "📘 Posted to Facebook",
-          description: `Successfully posted ${data.posted} articles to your Facebook page`
-        });
-      } else {
-        toast({
-          title: "Facebook Post Failed",
-          description: data.error || "Could not post to Facebook",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to post to Facebook",
-        variant: "destructive"
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const handlePostToTwitter = async () => {
     setActionLoading('twitter');
     try {
@@ -2489,60 +2406,6 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const handlePostSingleArticle = async (articleId) => {
-    // Confirm before posting
-    if (!window.confirm('Post this article to Facebook now?')) {
-      return;
-    }
-    
-    console.log('Posting article:', articleId);
-    setActionLoading(`post-${articleId}`);
-    
-    try {
-      const apiUrl = getApiUrl();
-      const url = `${apiUrl}/api/facebook/post-single?article_id=${articleId}`;
-      const headers = getAuthHeaders();
-      
-      console.log('POST URL:', url);
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: headers
-      });
-      
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
-      
-      if (data.success) {
-        toast({
-          title: "✅ Posted to Facebook!",
-          description: `${data.article_title?.substring(0, 40)}...`
-        });
-        alert('✅ Successfully posted to Facebook!\n\nPost ID: ' + data.post_id);
-      } else {
-        const errorMsg = data.error || data.message || "Could not post to Facebook";
-        toast({
-          title: "❌ Post Failed",
-          description: errorMsg,
-          variant: "destructive"
-        });
-        alert('❌ Failed to post:\n\n' + errorMsg);
-      }
-    } catch (error) {
-      console.error('Post error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to post: " + error.message,
-        variant: "destructive"
-      });
-      alert('❌ Error:\n\n' + error.message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-
   const handleForceLiveArticle = async (articleId) => {
     setActionLoading(`force-${articleId}`);
     try {
@@ -2947,7 +2810,7 @@ const handleDeleteArticle = async (articleId) => {
             <CardDescription>Editorial, distribution and maintenance actions</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-9 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-8 gap-2">
               {/* Add Article Button */}
               <Button 
                 onClick={handleAddArticle}
@@ -2984,20 +2847,6 @@ const handleDeleteArticle = async (articleId) => {
                   <Mail className="h-4 w-4" />
                 )}
                 <span>Send Daily Brief</span>
-              </Button>
-              
-              <Button 
-                onClick={handlePostToFacebook}
-                disabled={actionLoading === 'facebook'}
-                className={`bg-blue-700 hover:bg-blue-800 ${QUICK_ACTION_BUTTON_LAYOUT}`}
-                data-testid="post-to-facebook-button"
-              >
-                {actionLoading === 'facebook' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Facebook className="h-4 w-4" />
-                )}
-                <span>Post to Facebook</span>
               </Button>
               
               <Button 
@@ -3609,147 +3458,32 @@ const handleDeleteArticle = async (articleId) => {
         )}
 
         {activeTab === 'facebook' && (
-          <div className="space-y-6">
-
-            {/* Smart Recommendations */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-purple-600" />
-                      Smart Recommendations
-                    </CardTitle>
-                    <CardDescription>
-                      AI-prioritized articles based on engagement potential
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchSmartArticles}
-                    disabled={smartLoading}
-                  >
-                    {smartLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {smartLoading && smartArticles.length === 0 ? (
-                  <div className="text-center py-6">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600" />
-                    <p className="mt-2 text-muted-foreground">Analyzing articles...</p>
-                  </div>
-                ) : smartArticles.length === 0 ? (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <TrendingUp className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                    <p>Click refresh to get AI recommendations</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[350px] overflow-y-auto">
-                    {smartArticles.slice(0, 5).map((article, index) => (
-                      <div 
-                        key={article._id || article.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${
-                          index === 0 ? 'bg-purple-50 border-purple-200' : 'bg-muted border-gray-100'
-                        }`}
-                      >
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                          index === 0 ? 'bg-purple-600 text-white' : 'bg-gray-200 text-muted-foreground'
-                        }`}>
-                          {article.score}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{article.title}</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {article.reasons?.slice(0, 3).map((reason, i) => (
-                              <span key={i} className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                                {reason}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handlePostSingleArticle(article.id)}
-                          disabled={actionLoading === `post-${article.id}`}
-                          className="bg-purple-600 hover:bg-purple-700"
-                        >
-                          {actionLoading === `post-${article.id}` ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Facebook className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Select Article to Post */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Share2 className="h-5 w-5 text-blue-600" />
-                  Post to Facebook
-                </CardTitle>
-                <CardDescription>
-                  Select an article to post now
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {schedulableArticles.map((article) => (
-                    <div 
-                      key={article._id} 
-                      className="flex items-center gap-3 p-3 bg-muted rounded-lg hover:bg-gray-100 transition-colors"
-                      data-testid={`fb-article-${article._id}`}
-                    >
-                      <img 
-                        src={article.image} 
-                        alt=""
-                        className="w-14 h-14 object-cover rounded flex-shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm truncate">{article.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {article.category}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {article.source}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <Button
-                          variant="default"
-                          size="default"
-                          onClick={() => handlePostSingleArticle(article._id)}
-                          disabled={actionLoading === `post-${article._id}`}
-                          className="bg-blue-600 hover:bg-blue-700 min-w-[44px] min-h-[44px] touch-manipulation"
-                          data-testid={`post-now-${article._id}`}
-                        >
-                          {actionLoading === `post-${article._id}` ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            <Facebook className="h-5 w-5" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <Card data-testid="facebook-social-publishing-handoff">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Facebook className="h-5 w-5 text-blue-600" />
+                Facebook publishing
+              </CardTitle>
+              <CardDescription>
+                Prepare Facebook graphics and publishing copy through Social Publishing in the Articles tab.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Cheshire Today does not publish or schedule Facebook posts automatically from this tab.
+                Choose an article, then open Social Publishing to prepare the approved post package.
+              </p>
+              <Button
+                type="button"
+                onClick={() => setActiveTab('articles')}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="open-articles-social-publishing"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Open Articles
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Digest Tab Content */}

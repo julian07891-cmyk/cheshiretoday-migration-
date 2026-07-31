@@ -761,3 +761,19 @@ light, teal and dark variants; vector SVG assets; social avatars; favicon and ap
 icon; typography, colour and usage guidance; and website, newsletter and sponsor-
 pack applications. This remains a deferred milestone to revisit only when timing
 and business value justify the full rollout.
+
+## Legacy Facebook Admin UI containment
+
+A read-only QA audit separated the completed Social Publishing Studio from an
+older Facebook Admin surface that still exposed direct Meta posting, batch-post
+and deterministic recommendation controls. The frontend was narrowly contained:
+those controls and their client-side POST handlers were removed, and the
+Facebook tab became a read-only handoff to Social Publishing in Articles.
+
+The established Facebook, Instagram and Threads Studio contracts were not
+changed. Backend Facebook routes, Meta/OAuth integration and collections were
+deliberately left intact for a later review, and no scheduler, database,
+analytics, push, newsletter or production configuration behaviour changed. A
+separate Analytics-tab redesign remains future work.
+
+This containment change is implemented and validated locally; deployment remains pending.
