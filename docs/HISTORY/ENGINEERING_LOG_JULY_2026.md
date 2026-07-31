@@ -621,3 +621,30 @@ The commit was pushed successfully to `origin/full-scrape-prod`. The separate
 Most Read handler and tests were intentionally left unstaged for their own QA,
 review and commit. Import, scheduler, publishing, newsletter and production-data
 behaviour remained outside the change.
+
+## Most Read period-correctness repair
+
+After the article-view repair was isolated and released, the remaining Most Read
+work was reviewed as a separate QA change. The audit confirmed that the endpoint
+limited aggregated view groups before resolving public eligibility. Missing,
+archived or Manual Review-hidden records could therefore consume result slots and
+exclude lower-ranked eligible articles.
+
+The endpoint was corrected to retain descending period-view ordering while
+applying the requested limit only after eligible public records had been resolved.
+The lifetime `articles.view_count` fallback was removed, while the established
+`today`, `week`, `month` and invalid-period contracts were preserved.
+
+Deterministic regression coverage proved that hidden records do not consume
+limited slots and that lower-ranked eligible records fill the result in the
+correct order. Focused and directly related tests passed `61` checks; Python
+compilation and `git diff --check` also passed.
+
+The change was committed as:
+
+```text
+a93d4bf Fix Most Read public result limiting
+```
+
+The commit was pushed successfully to `origin/full-scrape-prod`. After the push,
+the working tree contained only the intentionally untracked `AGENTS.md` file.

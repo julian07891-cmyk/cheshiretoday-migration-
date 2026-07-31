@@ -24988,3 +24988,32 @@ uncommitted QA work is confined to:
 
 The immediate next task is to review and complete Most Read as a completely
 separate QA change.
+
+## Operational update — 31 July 2026 (Most Read period correctness)
+
+The separate Most Read QA task is complete. The previous implementation applied
+the requested result limit to aggregated view groups before resolving article
+visibility, allowing missing, archived or Manual Review-hidden records to consume
+limited result slots.
+
+Most Read now processes period view groups in descending view-count order, skips
+ineligible records and applies the requested limit only after collecting eligible
+public articles. Empty periods return an empty list and never fall back to the
+lifetime `articles.view_count` field. Existing `today`, `week`, `month` and
+invalid-period behaviour remains unchanged.
+
+Verification completed successfully:
+
+- focused Most Read and directly related regressions: `61 passed`
+- Python compilation: PASS
+- `git diff --check`: PASS
+
+The completed repair was committed and pushed successfully to
+`origin/full-scrape-prod`:
+
+```text
+a93d4bf Fix Most Read public result limiting
+```
+
+The working tree now contains only `AGENTS.md`, intentionally untracked and
+untouched.
