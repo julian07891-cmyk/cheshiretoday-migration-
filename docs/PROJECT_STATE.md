@@ -25286,3 +25286,35 @@ live rendered-DOM/Search Console verification remain pending.
 This correction removes a confirmed ambiguity but is not claimed to resolve the
 site's indexing exclusions by itself; representative Search Console URL sampling
 remains a separate evidence-led follow-up.
+
+## Operational update — 1 August 2026 (rendered metadata reconciliation verified in production)
+
+Render deployed `1e5c2da` successfully and production health returned HTTP
+`200`. Deployment, startup and surrounding application logs contained no HTTP
+5xx, crawler, React-bundle or metadata errors.
+
+Settled live-DOM checks passed for the homepage, a current article, the same
+article with Facebook attribution parameters, category and location hubs, the
+newsletter landing page, Contact, secure newsletter management, Admin, an
+authority/guide page and a genuine unsupported-route `404`. Homepage and
+article pages each contained exactly one canonical, description, `og:url`,
+`og:type`, `og:image`, `twitter:card` and `twitter:image`. Non-home routes no
+longer inherited homepage metadata; Admin contained no public homepage
+canonical, description, Open Graph or Twitter metadata, and secure newsletter
+management retained `noindex, nofollow, noarchive` without public homepage
+metadata. Article canonical and `og:url` values remained free of UTM parameters,
+`fbclid`, `gclid` and fragments.
+
+Same-tab navigation passed for homepage to article, article A to article B,
+article to homepage, attributed article to clean canonical identity and homepage
+to Admin. Direct secure-route verification passed; a true article-to-secure-
+management SPA transition was not demonstrated and remains a minor evidence
+gap. Googlebot HTML remained correct for homepage, article and category, with
+`NewsArticle` structured data still present. `sitemap.xml`, `news-sitemap.xml`
+and `robots.txt` remained healthy and unchanged.
+
+This verifies the production metadata reconciliation but makes no claim of
+indexing recovery. Representative Search Console sampling is the next SEO
+investigation. Loading public articles during verification naturally recorded
+ordinary first-party article-view and sponsored-impression events; no Admin
+action, form submission, publishing action or manual production job occurred.

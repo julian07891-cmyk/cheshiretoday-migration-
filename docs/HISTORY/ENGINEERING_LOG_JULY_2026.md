@@ -863,3 +863,32 @@ implementation and validation are local; deployment and a second live
 rendered-DOM/Search Console verification remain pending. The change is recorded
 as removal of confirmed ambiguity, not as proof of indexing recovery.
 Representative excluded-URL sampling remains future operational work.
+
+## Rendered metadata reconciliation production verification
+
+Render successfully deployed `1e5c2da` on 1 August 2026. Production health
+returned HTTP `200`, and deployment, startup and surrounding logs showed no HTTP
+5xx, crawler, bundle or metadata failures.
+
+Browser-rendered verification covered the homepage, current and Facebook-
+attributed article URLs, category, location, newsletter, Contact, secure
+newsletter management, Admin, authority/guide and unsupported routes. Homepage
+and article pages each settled to exactly one canonical, description, `og:url`,
+`og:type`, `og:image`, `twitter:card` and `twitter:image`. Non-home routes no
+longer inherited homepage metadata; Admin was free of public homepage metadata,
+and secure management preserved `noindex, nofollow, noarchive`. Article canonical
+identity excluded UTMs, `fbclid`, `gclid` and fragments.
+
+SPA checks passed from homepage to article, article A to article B, article to
+homepage, attributed article to clean canonical identity and homepage to Admin.
+The secure route passed direct verification, while a true article-to-secure-
+management SPA transition remained a minor evidence gap. Googlebot homepage,
+article and category HTML remained correct, `NewsArticle` structured data
+remained present, and both sitemaps and `robots.txt` remained healthy and
+unchanged.
+
+No indexing recovery was inferred; representative Search Console sampling
+remains the next SEO investigation. Ordinary public-page verification naturally
+recorded first-party article-view and sponsored-impression events. It did not
+involve an Admin action, form submission, publishing action or manual production
+job.
