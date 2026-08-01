@@ -52,6 +52,13 @@ jest.mock("./hooks/use-toast.js", () => ({ toast: jest.fn() }));
 
 const HOME_DESCRIPTION =
   "Latest local, business, finance, AI and UK news from Cheshire Today.";
+const STATIC_HOME_DESCRIPTION =
+  "Cheshire Today delivers local Cheshire news and business updates alongside AI & tech coverage, finance insights and practical tax guides.";
+const STATIC_HOME_TITLE =
+  "Cheshire Today | Local News, Business, AI & Tech, Finance";
+const STATIC_HOME_SOCIAL_DESCRIPTION =
+  "Local Cheshire news and business updates alongside AI & tech coverage, finance insights and practical tax guides.";
+const HOME_SOCIAL_IMAGE = "https://cheshiretoday.co.uk/social-share.jpg";
 
 const articles = {
   "6a65e9284730b1c10b2b37c0": {
@@ -69,12 +76,16 @@ function RouteMetadata({ kind }) {
   let canonical = "https://cheshiretoday.co.uk/";
   let description = HOME_DESCRIPTION;
   let title = "Latest News | Cheshire Today";
+  let type = "website";
+  let image = HOME_SOCIAL_IMAGE;
 
   if (kind === "article") {
     const article = articles[params.articleId];
     canonical = `https://cheshiretoday.co.uk/article/${params.articleId}/${article.slug}`;
     description = article.description;
     title = `${article.slug} | Cheshire Today`;
+    type = "article";
+    image = `https://cheshiretoday.co.uk/${article.slug}.jpg`;
   } else if (kind === "category") {
     canonical = `https://cheshiretoday.co.uk/category/${params.slug}`;
     description = "Business reporting and analysis from Cheshire Today.";
@@ -97,9 +108,13 @@ function RouteMetadata({ kind }) {
       <meta property="og:url" content={canonical} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
+      <meta property="og:type" content={type} />
+      <meta property="og:image" content={image} />
+      <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:url" content={canonical} />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={image} />
     </Helmet>
   );
 }
@@ -175,6 +190,14 @@ const headTags = () => ({
   twitterDescription: Array.from(
     document.head.querySelectorAll('meta[name="twitter:description"]'),
   ),
+  ogType: Array.from(document.head.querySelectorAll('meta[property="og:type"]')),
+  ogImage: Array.from(document.head.querySelectorAll('meta[property="og:image"]')),
+  twitterCard: Array.from(
+    document.head.querySelectorAll('meta[name="twitter:card"]'),
+  ),
+  twitterImage: Array.from(
+    document.head.querySelectorAll('meta[name="twitter:image"]'),
+  ),
 });
 
 const expectUniqueMetadata = ({ canonical, description }) => {
@@ -205,6 +228,26 @@ const expectUniqueCoreMetadata = ({ canonical, description }) => {
   expect(tags.ogUrl[0].getAttribute("content")).toBe(canonical);
 };
 
+const expectUniquePrimaryMetadata = ({
+  canonical,
+  description,
+  type,
+  image,
+}) => {
+  expectUniqueCoreMetadata({ canonical, description });
+  const tags = headTags();
+  expect(tags.ogType).toHaveLength(1);
+  expect(tags.ogImage).toHaveLength(1);
+  expect(tags.twitterCard).toHaveLength(1);
+  expect(tags.twitterImage).toHaveLength(1);
+  expect(tags.ogType[0].getAttribute("content")).toBe(type);
+  expect(tags.ogImage[0].getAttribute("content")).toBe(image);
+  expect(tags.twitterCard[0].getAttribute("content")).toBe(
+    "summary_large_image",
+  );
+  expect(tags.twitterImage[0].getAttribute("content")).toBe(image);
+};
+
 let container;
 let root;
 let originalHead;
@@ -223,14 +266,24 @@ beforeEach(() => {
   mockLoadPublicArticle.mockReset();
   document.head.insertAdjacentHTML(
     "beforeend",
-    '<meta name="description" content="Static homepage description" data-rh="true">' +
+    `<meta name="description" content="${STATIC_HOME_DESCRIPTION}" data-rh="true">` +
       '<link rel="canonical" href="https://cheshiretoday.co.uk/" data-rh="true">' +
       '<meta property="og:url" content="https://cheshiretoday.co.uk/" data-rh="true">' +
-      '<meta property="og:title" content="Static homepage title" data-rh="true">' +
-      '<meta property="og:description" content="Static homepage description" data-rh="true">' +
+      '<meta property="og:type" content="website" data-rh="true">' +
+      `<meta property="og:image" content="${HOME_SOCIAL_IMAGE}" data-rh="true">` +
+      `<meta property="og:image:secure_url" content="${HOME_SOCIAL_IMAGE}" data-rh="true">` +
+      '<meta property="og:image:type" content="image/jpeg" data-rh="true">' +
+      '<meta property="og:image:width" content="1200" data-rh="true">' +
+      '<meta property="og:image:height" content="630" data-rh="true">' +
+      '<meta property="og:image:alt" content="Cheshire Today News" data-rh="true">' +
+      `<meta property="og:title" content="${STATIC_HOME_TITLE}" data-rh="true">` +
+      `<meta property="og:description" content="${STATIC_HOME_SOCIAL_DESCRIPTION}" data-rh="true">` +
+      '<meta name="twitter:card" content="summary_large_image" data-rh="true">' +
       '<meta name="twitter:url" content="https://cheshiretoday.co.uk/" data-rh="true">' +
-      '<meta name="twitter:title" content="Static homepage title" data-rh="true">' +
-      '<meta name="twitter:description" content="Static homepage description" data-rh="true">',
+      `<meta name="twitter:title" content="${STATIC_HOME_TITLE}" data-rh="true">` +
+      `<meta name="twitter:description" content="${STATIC_HOME_SOCIAL_DESCRIPTION}" data-rh="true">` +
+      `<meta name="twitter:image" content="${HOME_SOCIAL_IMAGE}" data-rh="true">` +
+      '<meta name="twitter:image:alt" content="Cheshire Today News" data-rh="true">',
   );
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -284,31 +337,62 @@ const renderProductionRoute = async ({ path, pattern, element }) => {
 
 const expectNoHomepageDefaults = () => {
   expect(document.head.innerHTML).not.toContain(HOME_DESCRIPTION);
+  expect(document.head.innerHTML).not.toContain(STATIC_HOME_DESCRIPTION);
+  expect(document.head.innerHTML).not.toContain(STATIC_HOME_TITLE);
+  expect(document.head.innerHTML).not.toContain(STATIC_HOME_SOCIAL_DESCRIPTION);
+  expect(document.head.innerHTML).not.toContain(HOME_SOCIAL_IMAGE);
   expect(
     document.head.querySelector('link[rel="canonical"][href="https://cheshiretoday.co.uk/"]'),
   ).toBeNull();
   expect(
     document.head.querySelector('meta[property="og:url"][content="https://cheshiretoday.co.uk/"]'),
   ).toBeNull();
+  expect(
+    document.head.querySelector(`meta[property="og:image"][content="${HOME_SOCIAL_IMAGE}"]`),
+  ).toBeNull();
+  expect(
+    document.head.querySelector(`meta[name="twitter:image"][content="${HOME_SOCIAL_IMAGE}"]`),
+  ).toBeNull();
 };
 
-test("homepage replaces static shell metadata with exactly one current value", async () => {
+const expectNoPrimarySocialMetadata = () => {
+  expect(document.head.querySelectorAll('meta[property="og:url"]')).toHaveLength(0);
+  expect(document.head.querySelectorAll('meta[property="og:type"]')).toHaveLength(0);
+  expect(document.head.querySelectorAll('meta[property="og:image"]')).toHaveLength(0);
+  expect(document.head.querySelectorAll('meta[name="twitter:card"]')).toHaveLength(0);
+  expect(document.head.querySelectorAll('meta[name="twitter:image"]')).toHaveLength(0);
+};
+
+const expectRouteTypeWithoutImageDefaults = (type) => {
+  const tags = headTags();
+  expect(tags.ogType).toHaveLength(1);
+  expect(tags.ogType[0].getAttribute("content")).toBe(type);
+  expect(tags.ogImage).toHaveLength(0);
+  expect(tags.twitterCard).toHaveLength(0);
+  expect(tags.twitterImage).toHaveLength(0);
+};
+
+test("homepage replaces the real static shell with one complete metadata set", async () => {
   await renderMetadataApp();
-  expectUniqueCoreMetadata({
+  expectUniquePrimaryMetadata({
     canonical: "https://cheshiretoday.co.uk/",
     description: HOME_DESCRIPTION,
+    type: "website",
+    image: HOME_SOCIAL_IMAGE,
   });
 });
 
-test("the production homepage owns one canonical, description and og:url", async () => {
+test("the production homepage owns one complete primary metadata set", async () => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     json: async () => [],
   });
   await renderProductionRoute({ path: "/", pattern: "/", element: <HomePageV1 /> });
-  expectUniqueCoreMetadata({
+  expectUniquePrimaryMetadata({
     canonical: "https://cheshiretoday.co.uk/",
     description: HOME_DESCRIPTION,
+    type: "website",
+    image: HOME_SOCIAL_IMAGE,
   });
 });
 
@@ -321,6 +405,7 @@ test("the production Contact page keeps its description without homepage metadat
   );
   expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(0);
   expect(document.head.querySelectorAll('meta[property="og:url"]')).toHaveLength(0);
+  expectNoPrimarySocialMetadata();
   expectNoHomepageDefaults();
 });
 
@@ -336,19 +421,22 @@ test("the production secure preferences page remains noindex without homepage me
   expect(document.head.querySelectorAll('meta[name="description"]')).toHaveLength(0);
   expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(0);
   expect(document.head.querySelectorAll('meta[property="og:url"]')).toHaveLength(0);
+  expectNoPrimarySocialMetadata();
   expectNoHomepageDefaults();
 });
 
 test.each(["/admin", "/unsupported-public-route"])(
   "the homepage fallback injects nothing on %s",
   async (path) => {
-    document.head
-      .querySelectorAll('[data-rh="true"]')
-      .forEach((node) => node.remove());
     await renderProductionRoute({ path, pattern: path, element: <div>Route</div> });
     expect(document.head.querySelectorAll('meta[name="description"]')).toHaveLength(0);
     expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(0);
     expect(document.head.querySelectorAll('meta[property="og:url"]')).toHaveLength(0);
+    expect(document.head.querySelectorAll('meta[property="og:type"]')).toHaveLength(0);
+    expect(document.head.querySelectorAll('meta[property="og:image"]')).toHaveLength(0);
+    expect(document.head.querySelectorAll('meta[name="twitter:card"]')).toHaveLength(0);
+    expect(document.head.querySelectorAll('meta[name="twitter:image"]')).toHaveLength(0);
+    expectNoHomepageDefaults();
   },
 );
 
@@ -370,6 +458,7 @@ test("the production authority page owns route-specific metadata", async () => {
     canonical: "https://cheshiretoday.co.uk/guides/cheshire-business-guide",
     description,
   });
+  expectRouteTypeWithoutImageDefaults("article");
   expectNoHomepageDefaults();
 });
 
@@ -391,9 +480,11 @@ test("the production article owner emits a clean canonical from Mongo ID and tit
     pattern: "/article/:articleId/:slug",
     element: <ArticlePageV2 categories={[]} />,
   });
-  expectUniqueCoreMetadata({
+  expectUniquePrimaryMetadata({
     canonical: `https://cheshiretoday.co.uk/article/${articleId}/first-cheshire-story`,
     description,
+    type: "article",
+    image: "https://example.com/article.jpg",
   });
   expectNoHomepageDefaults();
 });
@@ -412,6 +503,7 @@ test("production category, location and newsletter owners keep route-specific co
     canonical: "https://cheshiretoday.co.uk/category/business",
     description: "Cheshire business, investment, jobs and economic news.",
   });
+  expectRouteTypeWithoutImageDefaults("website");
   expectNoHomepageDefaults();
 
   act(() => root.unmount());
@@ -429,6 +521,7 @@ test("production category, location and newsletter owners keep route-specific co
     canonical: "https://cheshiretoday.co.uk/chester",
     description: "Latest news from Chester, Ellesmere Port and surrounding areas.",
   });
+  expectRouteTypeWithoutImageDefaults("website");
   expectNoHomepageDefaults();
 
   act(() => root.unmount());
@@ -438,10 +531,12 @@ test("production category, location and newsletter owners keep route-specific co
     pattern: "/newsletter",
     element: <NewsletterPage />,
   });
-  expectUniqueCoreMetadata({
+  expectUniquePrimaryMetadata({
     canonical: "https://cheshiretoday.co.uk/newsletter",
     description:
       "Subscribe free to the Cheshire Today newsletter for local news, business, property, finance and AI & Tech updates from across Cheshire.",
+    type: "website",
+    image: "https://cheshiretoday.co.uk/cheshire-today-newsletter-share.png",
   });
   expectNoHomepageDefaults();
 });
@@ -476,6 +571,13 @@ test("Facebook attribution and browser tracking values never enter article canon
       "https://cheshiretoday.co.uk/article/6a65e9284730b1c10b2b37c0/first-cheshire-story",
     description: "The first article description.",
   });
+  expectUniquePrimaryMetadata({
+    canonical:
+      "https://cheshiretoday.co.uk/article/6a65e9284730b1c10b2b37c0/first-cheshire-story",
+    description: "The first article description.",
+    type: "article",
+    image: "https://cheshiretoday.co.uk/first-cheshire-story.jpg",
+  });
   expect(document.head.innerHTML).not.toContain("utm_");
   expect(document.head.innerHTML).not.toContain("fbclid");
   expect(document.head.innerHTML).not.toContain("gclid");
@@ -490,12 +592,26 @@ test("SPA navigation replaces article metadata and restores homepage metadata", 
       "https://cheshiretoday.co.uk/article/6a65e9284730b1c10b2b37c0/first-cheshire-story",
     description: "The first article description.",
   });
+  expectUniquePrimaryMetadata({
+    canonical:
+      "https://cheshiretoday.co.uk/article/6a65e9284730b1c10b2b37c0/first-cheshire-story",
+    description: "The first article description.",
+    type: "article",
+    image: "https://cheshiretoday.co.uk/first-cheshire-story.jpg",
+  });
 
   await navigateByLabel("Second article");
   expectUniqueMetadata({
     canonical:
       "https://cheshiretoday.co.uk/article/6a65e9284730b1c10b2b37c1/second-cheshire-story",
     description: "The second article description.",
+  });
+  expectUniquePrimaryMetadata({
+    canonical:
+      "https://cheshiretoday.co.uk/article/6a65e9284730b1c10b2b37c1/second-cheshire-story",
+    description: "The second article description.",
+    type: "article",
+    image: "https://cheshiretoday.co.uk/second-cheshire-story.jpg",
   });
   expect(document.head.innerHTML).not.toContain("first-cheshire-story");
   expect(document.head.innerHTML).not.toContain("The first article description.");
@@ -504,6 +620,12 @@ test("SPA navigation replaces article metadata and restores homepage metadata", 
   expectUniqueMetadata({
     canonical: "https://cheshiretoday.co.uk/",
     description: HOME_DESCRIPTION,
+  });
+  expectUniquePrimaryMetadata({
+    canonical: "https://cheshiretoday.co.uk/",
+    description: HOME_DESCRIPTION,
+    type: "website",
+    image: HOME_SOCIAL_IMAGE,
   });
   expect(document.head.innerHTML).not.toContain("second-cheshire-story");
   expect(document.head.innerHTML).not.toContain("The second article description.");

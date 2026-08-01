@@ -842,22 +842,24 @@ page-specific metadata beside unmanaged static homepage defaults. The confirmed
 duplicates were canonical links, descriptions and `og:url`; related homepage
 Open Graph and Twitter values could also remain stale across SPA navigation.
 
-The local correction gave the static shell tags to the existing Helmet owner,
-added one default owner under the application's existing provider and restricted
-that fallback to the exact homepage route (`/`). Unrelated public,
-secure-newsletter, Admin and unsupported routes therefore do not inherit
-homepage canonical, description or `og:url` values. Current page metadata
-reconciliation is deterministic and redundant article-level providers were
-removed. Behavioural regressions exercise the production metadata owners for
-homepage, article, category, location, newsletter, Contact, secure newsletter
-management and authority/guide routes, together with Admin and unsupported-route
-fallback isolation, Facebook UTM/query stripping, SPA navigation and stale
-metadata removal.
+The first correction was deployed as `6bfe896`. Live verification confirmed the
+core canonical, description and `og:url` contract on settled public routes, but
+also found that `/admin` retained the static homepage values and that unmanaged
+static `og:type`, `og:image`, `twitter:card` and `twitter:image` tags remained
+beside route-specific metadata.
+
+The local follow-up marks every conflicting shell tag as Helmet-managed and
+keeps a reconciliation owner mounted on non-home routes instead of returning
+`null`. Homepage defaults remain restricted to the exact `/` route. Behavioural
+regressions now enforce uniqueness for canonical, description, `og:url`,
+`og:type`, `og:image`, `twitter:card` and `twitter:image` across the production
+homepage, article, category, location, newsletter, Contact, secure-management
+and authority/guide owners, plus Admin and unsupported-route isolation,
+Facebook UTM/query stripping, SPA navigation and stale metadata removal.
 
 Crawler HTML, canonical identity, routing, structured data, social images,
-sitemaps, robots and public-visibility rules were preserved. Validation passed
-locally; deployment and live rendered-DOM/Search Console verification remain
-pending. The change is recorded as removal of one confirmed ambiguity, not as
-proof that all
-indexing exclusions are resolved. Representative excluded-URL sampling remains
-future operational work.
+sitemaps, robots and public-visibility rules were preserved. The follow-up
+implementation and validation are local; deployment and a second live
+rendered-DOM/Search Console verification remain pending. The change is recorded
+as removal of confirmed ambiguity, not as proof of indexing recovery.
+Representative excluded-URL sampling remains future operational work.
