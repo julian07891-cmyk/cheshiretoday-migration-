@@ -15,6 +15,7 @@ from backend import server
 from backend.app.admin_analytics import (
     APPROVED_ADVERTISER_STATUSES,
     TOP_ARTICLE_LIMIT,
+    TOP_FACEBOOK_ARTICLE_LIMIT,
     analytics_period_start,
     build_admin_analytics_summary,
 )
@@ -78,7 +79,18 @@ class AnalyticsDatabase:
                         {"category": "Local News", "views": 8},
                         {"category": "Business", "views": 4},
                     ],
-                }
+                },
+                {
+                    "totals": [{"facebook_views": 8}],
+                    "top_facebook_articles": [
+                        {
+                            "id": "64b7f9d4aabbccddeeff0011",
+                            "title": "Public article",
+                            "category": "Local News",
+                            "views": 8,
+                        }
+                    ],
+                },
             ]
         )
         self.email_send_opportunities = AggregateCollection(
@@ -197,6 +209,18 @@ def test_summary_uses_bounded_private_aggregates_and_returns_no_pii():
         "opens": 40,
         "clicks": 7,
     }
+    assert result["facebook"] == {
+        "available": True,
+        "facebook_views": 8,
+        "top_facebook_articles": [
+            {
+                "id": "64b7f9d4aabbccddeeff0011",
+                "title": "Public article",
+                "category": "Local News",
+                "views": 8,
+            }
+        ],
+    }
     assert result["sponsored"] == {
         "available": True,
         "scope": "lifetime",
@@ -272,6 +296,24 @@ def test_article_pipeline_filters_public_records_before_bounded_top_results():
     assert "summary" not in projection
     assert "image" not in projection
 
+    facebook_pipeline = database.article_views.pipelines[1]
+    assert facebook_pipeline[0] == {
+        "$match": {"viewed_at": {"$gte": analytics_period_start("today", NOW)}, "source": "facebook"}
+    }
+    facebook_lookup = next(stage["$lookup"] for stage in facebook_pipeline if "$lookup" in stage)
+    facebook_visibility = next(
+        stage["$match"] for stage in facebook_lookup["pipeline"]
+        if stage.get("$match", {}).get("archived")
+    )
+    assert facebook_visibility == {
+        "archived": {"$ne": True},
+        "manual_review_hidden_from_public": {"$ne": True},
+    }
+    facebook_facet = next(stage["$facet"] for stage in facebook_pipeline if "$facet" in stage)
+    assert facebook_facet["top_facebook_articles"][0] == {"$limit": TOP_FACEBOOK_ARTICLE_LIMIT}
+    assert "content" not in repr(facebook_pipeline)
+    assert "summary" not in repr(facebook_pipeline)
+
 
 def test_empty_period_returns_real_empty_results():
     database = AnalyticsDatabase()
@@ -287,6 +329,11 @@ def test_empty_period_returns_real_empty_results():
         "unique_articles": 0,
         "top_articles": [],
         "categories": [],
+    }
+    assert result["facebook"] == {
+        "available": True,
+        "facebook_views": 0,
+        "top_facebook_articles": [],
     }
 
 

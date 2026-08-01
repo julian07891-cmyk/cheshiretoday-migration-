@@ -58,6 +58,18 @@ const summary = {
       { category: 'Business', views: 4, share_percent: 33.3 },
     ],
   },
+  facebook: {
+    available: true,
+    facebook_views: 6,
+    top_facebook_articles: [
+      {
+        id: '64b7f9d4aabbccddeeff0011',
+        title: 'Most read public article',
+        category: 'Local News',
+        views: 6,
+      },
+    ],
+  },
   newsletter: {
     available: true,
     accepted_opportunities: 300,
@@ -145,6 +157,9 @@ describe('Admin first-party Analytics dashboard', () => {
     expect(container.querySelector('[data-testid="analytics-period-week"]')?.getAttribute('aria-pressed')).toBe('true');
     expect(container.textContent).toContain('First-party performance across articles, newsletter and commercial activity');
     expect(container.textContent).toContain('Article views');
+    expect(container.textContent).toContain('Facebook article views');
+    expect(container.textContent).toContain('Top Facebook-driven articles');
+    expect(container.textContent).toContain('6 Facebook views');
     expect(container.textContent).toContain('Newsletter opens');
     expect(container.textContent).toContain('Provider-accepted opportunities');
     expect(container.textContent).toContain('Sponsored placement lifetime counters');
@@ -215,9 +230,15 @@ describe('Admin first-party Analytics dashboard', () => {
         clicks: 0,
         ctr_percent: null,
       },
+      facebook: {
+        available: true,
+        facebook_views: 0,
+        top_facebook_articles: [],
+      },
     };
     await act(async () => resolveAnalytics(response(emptySummary)));
     expect(container.querySelector('[data-testid="analytics-empty"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="facebook-analytics-empty"]')).not.toBeNull();
     expect(container.textContent).toContain('No article views were recorded for this period.');
     expect(container.textContent).toContain('CTR');
     expect(container.textContent).toContain('—');

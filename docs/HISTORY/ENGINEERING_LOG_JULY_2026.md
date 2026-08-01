@@ -804,3 +804,31 @@ are complete locally; deployment and production evidence collection remain
 pending.
 Production query latency remains unverified and must be measured after deployment
 before any index or query optimisation is considered.
+
+## Admin Analytics Phase 2A — Facebook-first attribution
+
+On 1 August 2026, the first-party Analytics dashboard was extended locally with
+a deliberately narrow Facebook attribution path. Social Publishing now builds a
+separate deterministic Facebook outbound URL using `facebook`, `social` and
+`social_publishing` UTM values. The clean canonical URL remains authoritative
+for metadata, internal navigation, Instagram and Threads.
+
+The existing article-view route remains compatible with requests that have no
+body. An optional strictly bounded attribution object is normalised server-side,
+and counted events store only approved `source`, `medium` and `campaign` enums in
+addition to the existing canonical article ID, IP hash and UTC timestamp. Raw
+referrers, hostnames, URLs, queries and identity-bearing newsletter data are not
+persisted. Historical and malformed attribution is classified as `unknown`.
+
+The established one-hour article/IP deduplication and lifetime counter are
+unchanged. Admin Analytics gained isolated, bounded Facebook period totals and
+a maximum-five public-article ranking without a lifetime fallback. The work did
+not add Meta, GA4, Plausible or PostHog API integration, cookies, fingerprinting,
+a migration, an index or newsletter attribution. Implementation and validation
+are local; deployment and production verification remain pending. Production
+query latency must be measured after deployment before optimisation is
+considered.
+Invalid attribution receives a generic response that does not echo submitted
+values. Manual Facebook/iPhone paste and link-preview verification remains
+pending after deployment to confirm that the deterministic UTM link is preserved
+by the platform workflow.

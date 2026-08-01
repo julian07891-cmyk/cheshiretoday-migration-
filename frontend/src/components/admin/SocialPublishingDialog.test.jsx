@@ -77,9 +77,10 @@ const ARTICLE = {
   location: 'wilmslow',
 };
 const CANONICAL_URL = `https://cheshiretoday.co.uk/article/${ARTICLE.mongo_id}/council-investment-supports-new-jobs-in-knutsford`;
+const FACEBOOK_URL = `${CANONICAL_URL}?utm_source=facebook&utm_medium=social&utm_campaign=social_publishing`;
 const CAPTION = `${ARTICLE.title}\n\nRead the full story on Cheshire Today.`;
 const HASHTAGS = '#CheshireToday #CheshireNews #Wilmslow #LocalNews';
-const FACEBOOK_PACKAGE = `${CAPTION}\n\n${CANONICAL_URL}\n\n${HASHTAGS}`;
+const FACEBOOK_PACKAGE = `${CAPTION}\n\n${FACEBOOK_URL}\n\n${HASHTAGS}`;
 const NEWSLETTER_CAPTION = "Get Cheshire’s latest local, business, property and AI & Tech stories delivered to your inbox.\n\nSign up free to the Cheshire Today newsletter.";
 const NEWSLETTER_HASHTAGS = '#CheshireToday #CheshireNews #Newsletter';
 const NEWSLETTER_POST = `${NEWSLETTER_CAPTION}\n\nhttps://cheshiretoday.co.uk/newsletter\n\n${NEWSLETTER_HASHTAGS}`;
@@ -361,12 +362,14 @@ describe('SocialPublishingDialog', () => {
     expect(downloadFacebookPng).not.toHaveBeenCalled();
   });
 
-  test('copies only the canonical Cheshire Today article URL and announces success', async () => {
+  test('copies only the deterministic Facebook campaign URL and keeps View Article canonical', async () => {
     renderDialog();
     await click('Copy Link');
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      CANONICAL_URL
+      FACEBOOK_URL
     );
+    const viewArticle = Array.from(container.querySelectorAll('a')).find(link => link.textContent.includes('View Article'));
+    expect(viewArticle.getAttribute('href')).toBe(CANONICAL_URL);
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(ARTICLE.image);
     expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(ARTICLE.source_url);
     const status = container.querySelector('[role="status"][aria-live="polite"]');

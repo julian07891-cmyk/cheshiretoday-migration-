@@ -1,5 +1,6 @@
 import {
   buildFacebookCaption,
+  buildFacebookCampaignUrl,
   buildFacebookHashtags,
   buildFacebookPackage,
   buildNewsletterFacebookPost,
@@ -51,6 +52,23 @@ test('package ordering and blank-line spacing are exact', () => {
   expect(buildFacebookPackage({ article: RUDYS_ARTICLE, canonicalUrl: CANONICAL_URL })).toBe(
     `${RUDYS_ARTICLE.title}\n\nRead the full story on Cheshire Today.\n\n${CANONICAL_URL}\n\n#CheshireToday #CheshireNews #Wilmslow #LocalNews`
   );
+});
+
+
+test('Facebook campaign URL is deterministic and removes arbitrary query or fragment data', () => {
+  const tracked = buildFacebookCampaignUrl(`${CANONICAL_URL}?private=value#fragment`);
+  expect(tracked).toBe(
+    `${CANONICAL_URL}?utm_source=facebook&utm_medium=social&utm_campaign=social_publishing`
+  );
+  expect(tracked).not.toContain('private=value');
+  expect(tracked).not.toContain('#fragment');
+  expect(CANONICAL_URL).not.toContain('?');
+});
+
+
+test('Facebook campaign URL rejects non-Cheshire Today and malformed destinations', () => {
+  expect(buildFacebookCampaignUrl('https://publisher.example/article')).toBe('');
+  expect(buildFacebookCampaignUrl('not a URL')).toBe('');
 });
 
 

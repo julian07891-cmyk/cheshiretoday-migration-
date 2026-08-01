@@ -7,6 +7,7 @@ import logging
 ALLOWED_ANALYTICS_PERIODS = ("today", "week", "month")
 TOP_ARTICLE_LIMIT = 10
 CATEGORY_LIMIT = 50
+TOP_FACEBOOK_ARTICLE_LIMIT = 5
 APPROVED_ADVERTISER_STATUSES = (
     "advert_live",
     "archived",
@@ -161,6 +162,80 @@ async def _article_view_summary(database, cutoff: datetime) -> dict:
     }
 
 
+async def _facebook_view_summary(database, cutoff: datetime) -> dict:
+    """Return bounded period Facebook readership for eligible public articles."""
+    pipeline = [
+        {"$match": {"viewed_at": {"$gte": cutoff}, "source": "facebook"}},
+        {"$group": {"_id": "$article_id", "views": {"$sum": 1}}},
+        {
+            "$lookup": {
+                "from": "articles",
+                "let": {
+                    "view_article_id": {"$toString": "$_id"},
+                    "view_object_id": {
+                        "$convert": {
+                            "input": "$_id",
+                            "to": "objectId",
+                            "onError": None,
+                            "onNull": None,
+                        }
+                    },
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$or": [
+                                    {"$eq": ["$_id", "$$view_object_id"]},
+                                    {"$eq": ["$id", "$$view_article_id"]},
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "$match": {
+                            "archived": {"$ne": True},
+                            "manual_review_hidden_from_public": {"$ne": True},
+                        }
+                    },
+                    {"$project": {"_id": 1, "title": 1, "category": 1}},
+                    {"$limit": 1},
+                ],
+                "as": "article",
+            }
+        },
+        {"$unwind": "$article"},
+        {"$sort": {"views": -1, "article._id": 1}},
+        {
+            "$facet": {
+                "totals": [
+                    {"$group": {"_id": None, "facebook_views": {"$sum": "$views"}}},
+                    {"$project": {"_id": 0, "facebook_views": 1}},
+                ],
+                "top_facebook_articles": [
+                    {"$limit": TOP_FACEBOOK_ARTICLE_LIMIT},
+                    {
+                        "$project": {
+                            "_id": 0,
+                            "id": {"$toString": "$article._id"},
+                            "title": {"$ifNull": ["$article.title", ""]},
+                            "category": {"$ifNull": ["$article.category", "Uncategorised"]},
+                            "views": 1,
+                        }
+                    },
+                ],
+            }
+        },
+    ]
+    result = await _one_aggregate(database.article_views, pipeline)
+    totals = (result.get("totals") or [{}])[0]
+    return {
+        "available": True,
+        "facebook_views": int(totals.get("facebook_views") or 0),
+        "top_facebook_articles": result.get("top_facebook_articles") or [],
+    }
+
+
 async def _newsletter_summary(database, cutoff: datetime) -> dict:
     """Return period event counts without exposing tracking or recipient data."""
     accepted = await _one_aggregate(
@@ -298,6 +373,7 @@ async def build_admin_analytics_summary(
     sections = {}
     builders = (
         ("article_views", lambda: _article_view_summary(database, cutoff)),
+        ("facebook", lambda: _facebook_view_summary(database, cutoff)),
         ("newsletter", lambda: _newsletter_summary(database, cutoff)),
         ("sponsored", lambda: _sponsored_summary(database)),
         ("advertisers", lambda: _advertiser_summary(database, cutoff)),

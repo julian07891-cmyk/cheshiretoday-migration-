@@ -1,4 +1,4 @@
-import { loadPublicArticle, recordArticleView } from "./articleViewTracking";
+import { buildArticleViewAttribution, loadPublicArticle, recordArticleView } from "./articleViewTracking";
 
 
 test("successful article load records one view using the returned Mongo ID", async () => {
@@ -137,4 +137,51 @@ test("missing resolved Mongo ID does not send an analytics request", () => {
   recordArticleView("", { fetchImpl, apiBase: "https://example.test" });
 
   expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+
+test("approved Facebook campaign sends only the narrow attribution body", async () => {
+  const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+  const pageUrl = "https://cheshiretoday.co.uk/article/id/story?utm_source=facebook&utm_medium=social&utm_campaign=social_publishing&private=secret";
+  const fullReferrer = "https://www.facebook.com/private/path?token=secret";
+
+  recordArticleView("64b000000000000000000000005", {
+    fetchImpl,
+    apiBase: "https://example.test",
+    locationHref: pageUrl,
+    referrer: fullReferrer,
+  });
+  await Promise.resolve();
+
+  const options = fetchImpl.mock.calls[0][1];
+  expect(options).toEqual({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      attribution: {
+        utm_source: "facebook",
+        utm_medium: "social",
+        utm_campaign: "social_publishing",
+        referrer_hostname: "www.facebook.com",
+      },
+    }),
+  });
+  expect(options.body).not.toContain(pageUrl);
+  expect(options.body).not.toContain('/private/path');
+  expect(options.body).not.toContain('token=secret');
+  expect(options.body).not.toContain('private=secret');
+});
+
+
+test("missing or malformed approved attribution preserves body-less tracking", async () => {
+  expect(buildArticleViewAttribution({ locationHref: "not a URL", referrer: "also invalid" })).toBeNull();
+  const fetchImpl = jest.fn().mockResolvedValue({ ok: true });
+  recordArticleView("64b000000000000000000000006", {
+    fetchImpl,
+    apiBase: "https://example.test",
+    locationHref: "https://cheshiretoday.co.uk/article/id/story?utm_source=facebook&utm_medium=social",
+    referrer: "not a URL",
+  });
+  await Promise.resolve();
+  expect(fetchImpl.mock.calls[0][1]).toEqual({ method: "POST" });
 });

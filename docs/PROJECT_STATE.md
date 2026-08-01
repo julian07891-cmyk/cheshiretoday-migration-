@@ -25210,3 +25210,42 @@ production data was changed. The implementation and regression coverage are
 validated locally; deployment and production verification remain pending.
 Production query latency remains unverified and must be measured after deployment
 before any index or query optimisation is considered.
+
+## Operational update — 1 August 2026 (Admin Analytics Phase 2A implemented locally)
+
+Analytics Phase 2A adds Facebook-first traffic attribution without Meta or
+provider API access. Facebook links copied from Social Publishing now use the
+deterministic query `utm_source=facebook&utm_medium=social&utm_campaign=social_publishing`,
+while canonical article URLs, internal View Article links, Instagram links and
+Threads links remain query-free and unchanged.
+
+The existing public article-view endpoint remains body-less compatible and now
+accepts one optional, narrowly validated attribution object. Counted events
+continue to store canonical `article_id`, `ip_hash` and UTC `viewed_at`, and add
+only server-normalised `source`, `medium` and `campaign`. Approved stored source
+values are `facebook`, `instagram`, `threads`, `newsletter`, `google`, `bing`,
+`other_search`, `other_social`, `referral`, `direct_or_unknown` and `unknown`;
+approved media are `social`, `email`, `organic_search`, `referral`,
+`direct_or_unknown` and `unknown`; approved campaigns are `social_publishing`,
+`daily_brief`, `weekly_roundup`, `breaking_news` and `unknown`. Phase 2A emits
+the exact Facebook combination only; missing, malformed and historical values
+are treated as unknown rather than stored verbatim.
+
+The one-hour article-plus-IP-hash deduplication and lifetime `view_count`
+behaviour are unchanged. Attribution is not part of the deduplication key and a
+duplicate cannot overwrite the first counted event. Raw referrers, hostnames,
+URLs, query strings, tracking IDs and subscriber identifiers are not stored or
+returned.
+
+The authenticated read-only Admin summary now includes period Facebook article
+views and at most five eligible public Facebook-driven articles. It uses bounded
+Mongo aggregation over `article_views.source=facebook`, with no lifetime
+fallback. No Meta API, cookie, session, fingerprint, provider API, migration,
+index, retention or new dependency was introduced. Implementation and
+validation are local; deployment and production verification remain pending.
+Production query latency must be measured after deployment before any index or
+query optimisation is considered.
+Invalid attribution receives a generic response that does not echo submitted
+values. Manual Facebook/iPhone paste and link-preview verification remains
+pending after deployment to confirm that the deterministic UTM link is preserved
+by the platform workflow.

@@ -113,6 +113,11 @@ from app.admin_analytics import (
     ALLOWED_ANALYTICS_PERIODS,
     build_admin_analytics_summary,
 )
+from app.article_view_attribution import (
+    InvalidArticleViewAttribution,
+    normalise_article_view_attribution,
+    parse_article_view_tracking_input,
+)
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
@@ -12665,12 +12670,23 @@ async def get_facebook_insights(auth: bool = Depends(get_admin_auth)):
 # ============================================================================
 
 @api_router.post("/articles/{article_id}/view")
-async def track_article_view(article_id: str, request: Request):
+async def track_article_view(
+    article_id: str,
+    request: Request,
+):
     """
     Track an article view for "Most Read" feature.
     Uses IP-based deduplication to prevent spam.
     """
     try:
+        try:
+            tracking_input = parse_article_view_tracking_input(await request.body())
+        except InvalidArticleViewAttribution:
+            raise HTTPException(
+                status_code=422,
+                detail="Invalid article-view attribution",
+            ) from None
+
         article = None
         try:
             article = await db.articles.find_one({"_id": ObjectId(article_id)})
@@ -12704,10 +12720,14 @@ async def track_article_view(article_id: str, request: Request):
             return {"success": True, "counted": False, "message": "View already counted"}
         
         # Record the view
+        attribution = normalise_article_view_attribution(
+            tracking_input.attribution if tracking_input else None
+        )
         await db.article_views.insert_one({
             "article_id": resolved_article_id,
             "ip_hash": hashlib.md5(client_ip.encode()).hexdigest(),
-            "viewed_at": datetime.now(timezone.utc)
+            "viewed_at": datetime.now(timezone.utc),
+            **attribution,
         })
         
         # Increment view counter on article

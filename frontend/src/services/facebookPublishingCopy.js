@@ -15,6 +15,22 @@ export const NEWSLETTER_CAPTION = "Get Cheshire’s latest local, business, prop
 export const NEWSLETTER_HASHTAGS = '#CheshireToday #CheshireNews #Newsletter';
 
 
+export const buildFacebookCampaignUrl = canonicalUrl => {
+  try {
+    const url = new URL(canonicalUrl);
+    if (url.protocol !== 'https:' || !['cheshiretoday.co.uk', 'www.cheshiretoday.co.uk'].includes(url.hostname)) return '';
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('utm_source', 'facebook');
+    url.searchParams.set('utm_medium', 'social');
+    url.searchParams.set('utm_campaign', 'social_publishing');
+    return url.toString();
+  } catch (_error) {
+    return '';
+  }
+};
+
+
 export const buildFacebookCaption = title => {
   const exactTitle = typeof title === 'string' ? title : '';
   if (!exactTitle.trim()) return '';

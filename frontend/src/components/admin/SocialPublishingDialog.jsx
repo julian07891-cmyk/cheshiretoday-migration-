@@ -22,6 +22,7 @@ import {
 } from '../../services/facebookSocialAsset';
 import {
   buildFacebookCaption,
+  buildFacebookCampaignUrl,
   buildFacebookHashtags,
   buildFacebookPackage,
   buildNewsletterFacebookPost,
@@ -307,10 +308,11 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
   const canonicalUrl = article?.mongo_id
     ? `https://cheshiretoday.co.uk${buildArticleUrl({ ...article, id: article.mongo_id })}`
     : '';
+  const facebookCampaignUrl = buildFacebookCampaignUrl(canonicalUrl);
 
   const caption = buildFacebookCaption(article?.title);
   const hashtags = buildFacebookHashtags(article);
-  const facebookPackage = buildFacebookPackage({ article, canonicalUrl });
+  const facebookPackage = buildFacebookPackage({ article, canonicalUrl: facebookCampaignUrl });
   const newsletterPost = buildNewsletterFacebookPost();
   const typedCaption = buildGraphicTypeCaption({
     graphicType, article, quote: quoteText, attribution: quoteAttribution,
@@ -356,7 +358,7 @@ const SocialPublishingDialog = ({ open, article, apiUrl, token, onOpenChange }) 
   };
 
   const copyArticleLink = () => copyText({
-    text: canonicalUrl,
+    text: platform === 'facebook' ? facebookCampaignUrl : canonicalUrl,
     successMessage: 'Link copied',
     failureMessage: 'The article link could not be copied. Please copy it manually.',
   });

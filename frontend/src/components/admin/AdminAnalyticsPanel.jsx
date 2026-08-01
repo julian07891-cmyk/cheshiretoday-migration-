@@ -53,7 +53,7 @@ const AdminAnalyticsPanel = ({ period, onPeriodChange, loading, error, summary }
         </div>
       ) : summary ? (
         <div className="space-y-6" data-testid="analytics-dashboard">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {summary.article_views?.available ? (
               <>
                 <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4">
@@ -81,6 +81,14 @@ const AdminAnalyticsPanel = ({ period, onPeriodChange, loading, error, summary }
               </>
             ) : (
               <div className="col-span-2 rounded-lg border p-4 text-sm text-muted-foreground">Newsletter analytics unavailable</div>
+            )}
+            {summary.facebook?.available ? (
+              <div className="bg-sky-50 dark:bg-sky-950/30 rounded-lg p-4">
+                <p className="text-2xl font-bold text-sky-700 dark:text-sky-300">{summary.facebook.facebook_views}</p>
+                <p className="text-sm text-sky-600 dark:text-sky-400">Facebook article views</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border p-4 text-sm text-muted-foreground">Facebook attribution unavailable</div>
             )}
           </div>
 
@@ -143,6 +151,32 @@ const AdminAnalyticsPanel = ({ period, onPeriodChange, loading, error, summary }
               )}
             </section>
           </div>
+
+          <section aria-labelledby="facebook-driven-heading">
+            <h3 id="facebook-driven-heading" className="font-semibold mb-3">Top Facebook-driven articles</h3>
+            {!summary.facebook?.available ? (
+              <p className="text-sm text-muted-foreground">Facebook attribution unavailable.</p>
+            ) : summary.facebook.top_facebook_articles?.length ? (
+              <ol className="grid gap-3 md:grid-cols-2">
+                {summary.facebook.top_facebook_articles.slice(0, 5).map((article, index) => (
+                  <li key={article.id} className="flex gap-3 rounded-lg border p-3">
+                    <span className="font-semibold text-muted-foreground">{index + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <a href={buildArticleUrl(article)} target="_blank" rel="noopener noreferrer" className="font-medium text-blue-700 dark:text-blue-300 hover:underline">
+                        {article.title}
+                      </a>
+                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline">{article.category}</Badge>
+                        <span>{article.views} Facebook views</span>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-muted-foreground" data-testid="facebook-analytics-empty">No Facebook-attributed article views were recorded for this period.</p>
+            )}
+          </section>
 
           <div className="grid lg:grid-cols-2 gap-6">
             <section className="rounded-lg border p-4" aria-labelledby="newsletter-summary-heading">
