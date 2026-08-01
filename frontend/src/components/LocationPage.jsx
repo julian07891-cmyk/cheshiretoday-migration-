@@ -114,7 +114,7 @@ const LocationPage = () => {
   return (
     <>
     
-      <Helmet>
+      <Helmet defer={false}>
         <title>{`${locationData.name} News | Cheshire Today - Local News & Updates`}</title>
         <meta name="description" content={locationData.description} />
         <meta name="robots" content="index, follow" />

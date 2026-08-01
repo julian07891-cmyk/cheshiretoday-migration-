@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-slate-900 dark:text-white">
-      <Helmet>
+      <Helmet defer={false}>
         <title>Contact Cheshire Today</title>
         <meta name="description" content="Contact Cheshire Today for editorial enquiries, partnerships, corrections or advertising." />
       </Helmet>

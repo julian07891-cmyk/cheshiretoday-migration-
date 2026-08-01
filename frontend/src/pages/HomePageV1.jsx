@@ -1013,7 +1013,7 @@ return {
   // AI & Business feed (filtered) — keep cards relevant and avoid dumping all articles here
 return (
     <>
-      <Helmet>
+      <Helmet defer={false}>
         <title>{selectedCategory === "All" ? "Latest News | Cheshire Today" : `${selectedCategory} News | Cheshire Today`}</title>
         <meta
           name="description"
@@ -1021,6 +1021,14 @@ return (
             ? "Latest local, business, finance, AI and UK news from Cheshire Today."
             : `Latest ${selectedCategory} news and updates from Cheshire Today.`}
         />
+        <link rel="canonical" href="https://cheshiretoday.co.uk/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://cheshiretoday.co.uk/" />
+        <meta property="og:title" content="Cheshire Today | Local News, Business, AI & Tech, Finance" />
+        <meta property="og:description" content="Local Cheshire news and business updates alongside AI & tech coverage, finance insights and practical tax guides." />
+        <meta name="twitter:url" content="https://cheshiretoday.co.uk/" />
+        <meta name="twitter:title" content="Cheshire Today | Local News, Business, AI & Tech, Finance" />
+        <meta name="twitter:description" content="Local Cheshire news and business updates alongside AI & tech coverage, finance insights and practical tax guides." />
       </Helmet>
     <div data-build="HPV1_BUILD_20260222_A" className="min-h-screen bg-neutral-50 text-slate-900 dark:bg-gray-900 dark:text-white">
     <ErrorBoundary><HomepageLayout>

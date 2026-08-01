@@ -38,7 +38,7 @@ export default function NewsletterPage() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-[#F7F4EE] text-[#1E293B]">
-      <Helmet>
+      <Helmet defer={false}>
         <title>{PAGE_TITLE}</title>
         <meta name="description" content={PAGE_DESCRIPTION} />
         <meta name="robots" content="index, follow" />

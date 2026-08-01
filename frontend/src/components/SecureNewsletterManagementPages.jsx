@@ -56,7 +56,7 @@ const useCapturedToken = () => {
 
 const SecurePageShell = ({ title, description, children }) => (
   <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-    <Helmet>
+    <Helmet defer={false}>
       <title>{title} | Cheshire Today</title>
       <meta name="robots" content="noindex, nofollow, noarchive" />
       <meta name="referrer" content="no-referrer" />

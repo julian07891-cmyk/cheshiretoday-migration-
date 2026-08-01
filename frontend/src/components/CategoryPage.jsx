@@ -74,7 +74,7 @@ const CategoryPage = ({ categorySlug }) => {
 
   return (
     <>
-      <Helmet>
+      <Helmet defer={false}>
         <title>{`${hub.title} | Cheshire Today`}</title>
         <meta name="description" content={hub.description} />
         <meta name="robots" content="index, follow" />

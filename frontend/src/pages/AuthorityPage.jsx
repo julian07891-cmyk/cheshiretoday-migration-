@@ -560,7 +560,7 @@ export default function AuthorityPage() {
         onCategoryChange={() => navigate("/")}
       />
       <HomepageLayout>
-        <Helmet>
+        <Helmet defer={false}>
           <title>{title} | Cheshire Today</title>
           <meta name="description" content={intro ? intro.slice(0, 155) : "Cheshire Today guide"} />
           <link rel="canonical" href={guideUrl} />

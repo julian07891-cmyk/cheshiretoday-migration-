@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import "./App.css";
 import { getApiUrl } from "./utils/api";
-import { Helmet, HelmetProvider } from "react-helmet-async";
+import { HelmetProvider } from "react-helmet-async";
 import {
   BrowserRouter,
   Routes,
@@ -32,6 +32,7 @@ import ContactPage from "./components/ContactPage";
 
 import HomePageV1 from "./pages/HomePageV1";
 import AuthorityPage from "./pages/AuthorityPage";
+import PublicMetadataDefaults from "./components/PublicMetadataDefaults";
 
 
 import SponsoredSidebarBlock from "./components/SponsoredSidebarBlock";
@@ -220,6 +221,7 @@ function App() {
       <ThemeProvider>
       <PromoWidgetProvider>
         <BrowserRouter>
+          <PublicMetadataDefaults />
           <Routes>
             <Route path="/" element={<HomePageV1 />} />
             <Route path="/guides/:slug" element={<AuthorityPage />} />

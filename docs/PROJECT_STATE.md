@@ -25249,3 +25249,33 @@ Invalid attribution receives a generic response that does not echo submitted
 values. Manual Facebook/iPhone paste and link-preview verification remains
 pending after deployment to confirm that the deterministic UTM link is preserved
 by the platform workflow.
+
+## Operational update — 1 August 2026 (public metadata deduplication implemented locally)
+
+Live QA confirmed that direct crawler HTML was correct while the React-rendered
+DOM could retain the static homepage canonical, description and `og:url`
+alongside page-specific article or hub metadata. The same static ownership gap
+could also leave stale homepage Open Graph and Twitter title/description values.
+
+The frontend shell metadata now uses the existing `react-helmet-async`
+ownership contract, and the application has one default metadata owner inside
+the existing top-level provider. That fallback is explicitly allow-listed for
+the exact homepage route (`/`) only; unrelated public, secure-newsletter, Admin
+and unsupported routes do not inherit homepage canonical, description or
+`og:url` values. Existing page metadata owners reconcile synchronously, and the
+redundant article-level providers were removed. Final behavioural coverage uses
+the production metadata owners for homepage, article, category, location,
+newsletter, Contact, secure newsletter management and authority/guide routes,
+plus Admin and unsupported-route fallback isolation, SPA navigation and stale
+metadata removal. Article canonicals continue to use the canonical Mongo ID and
+slug and remain free of UTM parameters, `fbclid`, `gclid` and fragments.
+
+Backend crawler HTML, article routing, Open Graph image handling, NewsArticle
+structured data, sitemap and news-sitemap generation, robots rules, archived
+`noindex` behavior and Manual Review protection were not changed. Focused and
+complete frontend tests, related crawler/canonical/sitemap regressions, Python
+compilation, the production frontend build and `git diff --check` pass locally.
+Deployment and live rendered-DOM/Search Console verification remain pending.
+This correction removes a confirmed ambiguity but is not claimed to resolve the
+site's indexing exclusions by itself; representative Search Console URL sampling
+remains a separate evidence-led follow-up.

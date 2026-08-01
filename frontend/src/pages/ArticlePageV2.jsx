@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Helmet, HelmetProvider } from "react-helmet-async";
+import { Helmet } from "react-helmet-async";
 
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
@@ -1000,7 +1000,7 @@ export default function ArticlePageV2({ categories }) {
 
   if (loading) {
     return (
-      <HelmetProvider>
+      <>
         <div className="min-h-screen bg-[#F7F4EE] text-neutral-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
           <NewsHeader
@@ -1017,16 +1017,16 @@ export default function ArticlePageV2({ categories }) {
           </div>
           <Toaster />
         </div>
-      </HelmetProvider>
+      </>
     );
   }
 
   if (!article) {
     return (
-      <HelmetProvider>
+      <>
         <div className="min-h-screen bg-[#F7F4EE] text-neutral-900 dark:bg-gray-900 dark:text-white">
           <FestiveTheme />
-          <Helmet>
+          <Helmet defer={false}>
             <title>Article Not Found | Cheshire Today</title>
             <meta name="robots" content="noindex, nofollow" />
           </Helmet>
@@ -1053,7 +1053,7 @@ export default function ArticlePageV2({ categories }) {
           <NewsFooter />
           <Toaster />
         </div>
-      </HelmetProvider>
+      </>
     );
   }
 
@@ -1097,11 +1097,11 @@ export default function ArticlePageV2({ categories }) {
   };
 
   return (
-    <HelmetProvider>
+    <>
       <div className="min-h-screen bg-[#F7F4EE] text-neutral-900 dark:bg-gray-900 dark:text-white">
         <FestiveTheme />
 
-        <Helmet>
+        <Helmet defer={false}>
           <title>{safeTitle || "Article"} | Cheshire Today</title>
           <meta name="description" content={description} />
 
@@ -1553,7 +1553,7 @@ export default function ArticlePageV2({ categories }) {
         <NewsFooter />
         <Toaster />
       </div>
-    </HelmetProvider>
+    </>
 
   );
 }
