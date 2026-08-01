@@ -25373,3 +25373,22 @@ separate page-width defect. Chromium emulation is supporting layout evidence, no
 proof of Mobile Safari behaviour. Implementation and automated validation are
 local; a second real-iPhone focus, keyboard and orientation check remains required
 after deployment before the issue is considered resolved.
+
+## Operational update — 1 August 2026 (mobile editor close reachability follow-up)
+
+Physical-iPhone verification of deployed commit `6328cf3` confirmed that the Admin
+login fits correctly, the Add/Edit Article editor no longer clips on the right and
+its fields remain usable with the software keyboard open. Safari can still enlarge
+and pan the page while a text field is focused. The remaining usability issue is
+therefore close-button reachability during that retained focus state, not editor
+width or form usability.
+
+The local follow-up keeps the article dialog as the existing vertical scroll
+container and adds a mobile/touch-only sticky header containing the existing title,
+subtitle and a Radix close action with a 44-pixel touch target. Safe scroll padding
+keeps focused controls below the sticky header. Safari zoom remains enabled and no
+zoom reset, blur workaround or viewport restriction was introduced. Desktop and
+other Admin dialogs, authentication, article saving, Manual Review and Archive
+behaviour remain unchanged. Deployment and final physical-iPhone focus, keyboard,
+scroll and close verification remain pending; production resolution is not yet
+claimed.

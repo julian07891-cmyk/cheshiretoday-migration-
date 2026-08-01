@@ -943,3 +943,19 @@ focus-time scale or horizontal overflow and is not treated as proof of Mobile
 Safari behaviour. Deployment and a second real-iPhone focus, keyboard and
 orientation verification remain pending, so operational resolution is not yet
 claimed.
+
+## Mobile editor close reachability follow-up
+
+Physical-iPhone verification of deployed commit `6328cf3` confirmed that the
+top-aligned Add/Edit Article dialog no longer clipped at the right edge and remained
+usable with the software keyboard open. Safari nevertheless continued to enlarge
+and pan while a field was focused, leaving the top-right close control difficult to
+reach without pinching out.
+
+The narrow local follow-up does not attempt to disable that Safari behaviour. The
+article dialog remains the sole vertical scroll container, while its mobile/touch
+header becomes sticky and carries a Radix close action with a 44-pixel touch target.
+An opaque header, elevated stacking and scroll padding keep the close affordance
+visible without obscuring focused fields. Desktop and other dialogs, article save
+and cancel behavior, authentication, Manual Review and Archive routing remain
+unchanged. Deployment and final physical-iPhone verification remain pending.

@@ -20,7 +20,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Calendar } from './ui/calendar';
 import { buildArticleUrl } from '../utils/articleUrl';
 import { runBulkArchive } from '../services/adminBulkArchive';
@@ -5901,7 +5901,10 @@ const handleDeleteArticle = async (articleId) => {
           className="admin-mobile-scope admin-article-editor-dialog box-border max-w-2xl min-w-0 max-h-[90vh] overflow-x-hidden overflow-y-auto"
           data-testid="admin-article-editor-dialog"
         >
-          <DialogHeader>
+          <DialogHeader
+            className="admin-article-editor-sticky-header"
+            data-testid="admin-article-editor-sticky-header"
+          >
             <DialogTitle className="flex items-center gap-2">
               {editingArticle ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
               {editingArticle ? 'Edit Article' : 'Add New Article'}
@@ -5909,6 +5912,13 @@ const handleDeleteArticle = async (articleId) => {
             <DialogDescription>
               {editingArticle ? 'Update the article details below' : 'Create a new article manually'}
             </DialogDescription>
+            <DialogClose
+              className="admin-article-editor-sticky-close hidden items-center justify-center rounded-md text-gray-600 ring-offset-white transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 dark:text-gray-300 dark:ring-offset-gray-800 dark:hover:bg-gray-700 dark:hover:text-white"
+              data-testid="admin-article-editor-sticky-close"
+            >
+              <X className="h-5 w-5" />
+              <span className="sr-only">Close article editor</span>
+            </DialogClose>
           </DialogHeader>
 
           <form onSubmit={handleSubmitArticle} className="min-w-0 space-y-4" data-testid="admin-article-editor-form">

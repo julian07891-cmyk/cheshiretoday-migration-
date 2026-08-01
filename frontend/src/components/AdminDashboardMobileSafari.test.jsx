@@ -34,8 +34,7 @@ const DIALOG_SOURCE = fs.readFileSync(
   'utf8'
 );
 
-const ARTICLE_EDITOR_MOBILE_RULE = `@media (max-width: 900px), (hover: none) and (pointer: coarse) {
-    .admin-article-editor-dialog {
+const ARTICLE_EDITOR_MOBILE_RULE = `    .admin-article-editor-dialog {
         top: max(1rem, env(safe-area-inset-top, 0px));
         right: max(1rem, env(safe-area-inset-right, 0px));
         bottom: auto;
@@ -43,9 +42,9 @@ const ARTICLE_EDITOR_MOBILE_RULE = `@media (max-width: 900px), (hover: none) and
         width: auto;
         margin-inline: auto;
         max-height: calc(100vh - max(1rem, env(safe-area-inset-top, 0px)) - max(1rem, env(safe-area-inset-bottom, 0px)));
+        scroll-padding-top: 6rem;
         transform: none;
-    }
-}`;
+    }`;
 
 const ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE = `@supports (height: 100dvh) {
     @media (max-width: 900px), (hover: none) and (pointer: coarse) {
@@ -54,6 +53,27 @@ const ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE = `@supports (height: 100dvh) {
         }
     }
 }`;
+
+const ARTICLE_EDITOR_STICKY_HEADER_RULE = `    .admin-article-editor-sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        margin-top: -1.5rem;
+        margin-right: -1.5rem;
+        margin-left: -1.5rem;
+        padding: 1rem 3.75rem 1rem 1.5rem;
+        border-bottom: 1px solid rgb(229 231 235);
+        background-color: rgb(255 255 255);
+    }`;
+
+const ARTICLE_EDITOR_STICKY_CLOSE_RULE = `    .admin-article-editor-sticky-close {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+    }`;
 
 const response = (body, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -219,10 +239,15 @@ describe('Admin mobile Safari safeguards', () => {
     expect(DIALOG_SOURCE).toContain('fixed left-[50%] top-[50%]');
     expect(DIALOG_SOURCE).toContain('translate-x-[-50%] translate-y-[-50%]');
     expect(DIALOG_SOURCE).toContain('data-[state=open]:animate-in');
+    expect(INDEX_CSS).toContain('@media (max-width: 900px), (hover: none) and (pointer: coarse)');
     expect(INDEX_CSS).toContain(ARTICLE_EDITOR_MOBILE_RULE);
     expect(INDEX_CSS).toContain(ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE);
-    expect(INDEX_CSS.match(/\.admin-article-editor-dialog/g)).toHaveLength(2);
+    expect(INDEX_CSS.match(/\.admin-article-editor-dialog\s*\{/g)).toHaveLength(2);
     expect(INDEX_CSS).not.toMatch(/(^|\n)\s*\[role=["']?dialog["']?\][^{]*\{[^}]*transform:\s*none/m);
+    expect(INDEX_CSS).toContain(ARTICLE_EDITOR_STICKY_HEADER_RULE);
+    expect(INDEX_CSS).toContain(ARTICLE_EDITOR_STICKY_CLOSE_RULE);
+    expect(INDEX_CSS).toContain('background-color: rgb(31 41 55);');
+    expect(INDEX_CSS).toContain('.admin-article-editor-dialog > button:last-child');
   });
 
   test('keeps representative authenticated controls inside the Admin scope', async () => {
@@ -273,6 +298,8 @@ describe('Admin mobile Safari safeguards', () => {
     const editorDialog = document.querySelector('[data-testid="admin-article-editor-dialog"]');
     const editorForm = editorDialog.querySelector('[data-testid="admin-article-editor-form"]');
     const categoryAuthorRow = editorDialog.querySelector('[data-testid="article-category-author-row"]');
+    const stickyHeader = editorDialog.querySelector('[data-testid="admin-article-editor-sticky-header"]');
+    const stickyClose = editorDialog.querySelector('[data-testid="admin-article-editor-sticky-close"]');
     expect(editorDialog).not.toBeNull();
     expect(editorDialog.classList.contains('admin-article-editor-dialog')).toBe(true);
     expect(editorDialog.classList.contains('min-w-0')).toBe(true);
@@ -282,6 +309,14 @@ describe('Admin mobile Safari safeguards', () => {
     expect(editorDialog.classList.contains('overflow-y-auto')).toBe(true);
     expect(INDEX_CSS).toContain(ARTICLE_EDITOR_MOBILE_RULE);
     expect(INDEX_CSS).toContain(ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE);
+    expect(stickyHeader).not.toBeNull();
+    expect(stickyHeader.parentElement).toBe(editorDialog);
+    expect(stickyClose).not.toBeNull();
+    expect(stickyHeader.contains(stickyClose)).toBe(true);
+    expect(stickyClose.classList.contains('hidden')).toBe(true);
+    expect(stickyClose.tagName).toBe('BUTTON');
+    expect(stickyClose.type).toBe('button');
+    expect(stickyClose.textContent).toContain('Close article editor');
     expect(editorForm.classList.contains('min-w-0')).toBe(true);
     expect(categoryAuthorRow.classList.contains('grid-cols-1')).toBe(true);
     expect(categoryAuthorRow.classList.contains('sm:grid-cols-2')).toBe(true);
@@ -310,11 +345,21 @@ describe('Admin mobile Safari safeguards', () => {
       .find((button) => button.textContent.trim() === 'Cancel');
     expect(cancelButton).toBeDefined();
     await act(async () => cancelButton.click());
+    expect(document.querySelector('[data-testid="admin-article-editor-dialog"]')).toBeNull();
+
+    await act(async () => articleEditButton.click());
+    const reopenedStickyClose = document.querySelector('[data-testid="admin-article-editor-sticky-close"]');
+    expect(reopenedStickyClose).not.toBeNull();
+    await act(async () => reopenedStickyClose.click());
+    expect(document.querySelector('[data-testid="admin-article-editor-dialog"]')).toBeNull();
+
     await act(async () => container.querySelector('[data-testid="tab-affiliates"]').click());
     await act(async () => container.querySelector('[data-testid="add-affiliate-button"]').click());
     const affiliateDialog = document.querySelector('[role="dialog"]');
     expect(affiliateDialog).not.toBeNull();
     expect(affiliateDialog.classList.contains('admin-article-editor-dialog')).toBe(false);
+    expect(affiliateDialog.querySelector('[data-testid="admin-article-editor-sticky-header"]')).toBeNull();
+    expect(affiliateDialog.querySelector('[data-testid="admin-article-editor-sticky-close"]')).toBeNull();
   });
 
   test('keeps Articles, Manual Review and Archive on the single shared editor path', () => {

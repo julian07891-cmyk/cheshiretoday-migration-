@@ -59,7 +59,38 @@ body {
         width: auto;
         margin-inline: auto;
         max-height: calc(100vh - max(1rem, env(safe-area-inset-top, 0px)) - max(1rem, env(safe-area-inset-bottom, 0px)));
+        scroll-padding-top: 6rem;
         transform: none;
+    }
+
+    .admin-article-editor-sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        margin-top: -1.5rem;
+        margin-right: -1.5rem;
+        margin-left: -1.5rem;
+        padding: 1rem 3.75rem 1rem 1.5rem;
+        border-bottom: 1px solid rgb(229 231 235);
+        background-color: rgb(255 255 255);
+    }
+
+    .dark .admin-article-editor-sticky-header {
+        border-bottom-color: rgb(55 65 81);
+        background-color: rgb(31 41 55);
+    }
+
+    .admin-article-editor-sticky-close {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        display: inline-flex;
+        width: 44px;
+        height: 44px;
+    }
+
+    .admin-article-editor-dialog > button:last-child {
+        display: none;
     }
 }
 
