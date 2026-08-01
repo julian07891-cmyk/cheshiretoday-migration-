@@ -31,6 +31,7 @@ import {
 } from '../services/adminArticleActions';
 import ManualReviewEditorialMetadata from './ManualReviewEditorialMetadata';
 import SocialPublishingDialog from './admin/SocialPublishingDialog';
+import AdminAnalyticsPanel from './admin/AdminAnalyticsPanel';
 
 // Memoized stat card for performance
 const StatCard = memo(({ title, value, icon: Icon, color }) => (
@@ -141,10 +142,12 @@ const AdminDashboard = ({ onBack }) => {
 
   const [socialPublishingArticle, setSocialPublishingArticle] = useState(null);
   
-  // Facebook analytics state
-  const [fbAnalytics, setFbAnalytics] = useState(null);
-  const [fbInsights, setFbInsights] = useState(null);
+  // Read-only first-party analytics state
+  const [analyticsSummary, setAnalyticsSummary] = useState(null);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('week');
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
+  const analyticsRequestRef = useRef(0);
   
   // Archive and article management state
   const [archivedArticles, setArchivedArticles] = useState([]);
@@ -157,10 +160,6 @@ const AdminDashboard = ({ onBack }) => {
   const [articlesPage, setArticlesPage] = useState(0);
   const [hasMoreArticles, setHasMoreArticles] = useState(true);
   
-  // Push notification state
-  const [pushStats, setPushStats] = useState(null);
-  const [pushMilestones, setPushMilestones] = useState(null);
-
   // Job Board state
   const [jobs, setJobs] = useState([]);
   const [showAddJob, setShowAddJob] = useState(false);
@@ -975,31 +974,38 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const fetchFacebookAnalytics = async () => {
-    const authHeaders = getAuthHeaders();
+  const fetchAnalyticsSummary = useCallback(async (period) => {
+    const requestId = analyticsRequestRef.current + 1;
+    analyticsRequestRef.current = requestId;
     setAnalyticsLoading(true);
-    
+    setAnalyticsError(false);
+
     try {
-      const [analyticsRes, insightsRes] = await Promise.all([
-        fetch(`${getApiUrl()}/api/facebook/analytics`, { headers: authHeaders }),
-        fetch(`${getApiUrl()}/api/facebook/analytics/insights`, { headers: authHeaders })
-      ]);
-
-      if (analyticsRes.ok) {
-        const analyticsData = await analyticsRes.json();
-        setFbAnalytics(analyticsData);
-      }
-
-      if (insightsRes.ok) {
-        const insightsData = await insightsRes.json();
-        setFbInsights(insightsData);
-      }
+      const response = await fetch(
+        `${getApiUrl()}/api/admin/analytics/summary?period=${encodeURIComponent(period)}`,
+        { headers: getAuthHeaders() }
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (requestId !== analyticsRequestRef.current) return;
+      setAnalyticsSummary(data);
     } catch (error) {
-      console.error('Error fetching Facebook analytics:', error);
+      if (requestId !== analyticsRequestRef.current) return;
+      console.error('Error fetching Admin analytics summary:', error);
+      setAnalyticsSummary(null);
+      setAnalyticsError(true);
     } finally {
-      setAnalyticsLoading(false);
+      if (requestId === analyticsRequestRef.current) setAnalyticsLoading(false);
     }
-  };
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'analytics') return undefined;
+    fetchAnalyticsSummary(analyticsPeriod);
+    return () => {
+      analyticsRequestRef.current += 1;
+    };
+  }, [activeTab, analyticsPeriod, fetchAnalyticsSummary, isAuthenticated]);
 
   // Archive management functions
   const fetchArchivedArticles = async (searchValue = archivedArticleSearch) => {
@@ -1365,54 +1371,6 @@ const AdminDashboard = ({ onBack }) => {
       await fetchAdminArticlesPage({ page: newPage, search: articleSearch, append: true });
     } catch (error) {
       console.error('Error loading more articles:', error);
-    }
-  };
-
-  const fetchPushStats = async () => {
-    const authHeaders = getAuthHeaders();
-    try {
-      const [statsRes, milestonesRes] = await Promise.all([
-        fetch(`${getApiUrl()}/api/push/stats`, { headers: authHeaders }),
-        fetch(`${getApiUrl()}/api/push/milestones`, { headers: authHeaders })
-      ]);
-      
-      if (statsRes.ok) {
-        const data = await statsRes.json();
-        setPushStats(data);
-      }
-      
-      if (milestonesRes.ok) {
-        const data = await milestonesRes.json();
-        setPushMilestones(data);
-      }
-    } catch (error) {
-      console.error('Error fetching push stats:', error);
-    }
-  };
-
-  const sendBreakingNewsNotification = async (title) => {
-    const authHeaders = getAuthHeaders();
-    try {
-      const response = await fetch(`${getApiUrl()}/api/push/send-breaking-news`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ title })
-      });
-      const data = await response.json();
-      if (data.success) {
-        toast({
-          title: "📢 Notification Sent",
-          description: `Sent to ${data.sent} subscribers`
-        });
-      } else {
-        toast({
-          title: "Failed",
-          description: data.error || "Could not send notification",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error sending notification:', error);
     }
   };
 
@@ -2991,10 +2949,7 @@ const handleDeleteArticle = async (articleId) => {
             </Button>
             <Button 
               variant={activeTab === 'analytics' ? 'default' : 'ghost'}
-              onClick={() => {
-                setActiveTab('analytics');
-                if (!fbAnalytics) fetchFacebookAnalytics();
-              }}
+              onClick={() => setActiveTab('analytics')}
               size="sm"
               className={`flex items-center gap-2 min-w-fit ${activeTab === 'analytics' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'text-foreground dark:text-gray-100 font-medium hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               data-testid="tab-analytics"
@@ -4022,238 +3977,14 @@ const handleDeleteArticle = async (articleId) => {
         {/* Analytics Tab Content */}
         {activeTab === 'analytics' && (
           <div className="space-y-6">
-            {/* Summary Stats */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-purple-600" />
-                      Facebook Analytics
-                    </CardTitle>
-                    <CardDescription>
-                      Track your Facebook post performance
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchFacebookAnalytics}
-                    disabled={analyticsLoading}
-                    data-testid="refresh-analytics"
-                  >
-                    {analyticsLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {analyticsLoading && !fbAnalytics ? (
-                  <div className="text-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600" />
-                    <p className="mt-2 text-muted-foreground">Loading analytics...</p>
-                  </div>
-                ) : fbAnalytics?.success ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-purple-50 rounded-lg p-4 text-center">
-                      <p className="text-3xl font-bold text-purple-700">{fbAnalytics.summary?.total_posts_analyzed || 0}</p>
-                      <p className="text-sm text-purple-600">Facebook Items</p>
-                    </div>
-                    <div className="bg-blue-50 rounded-lg p-4 text-center">
-                      <p className="text-3xl font-bold text-blue-700">{fbAnalytics.summary?.total_likes || 0}</p>
-                      <p className="text-sm text-blue-600">Total Reactions</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-4 text-center">
-                      <p className="text-3xl font-bold text-green-700">{fbAnalytics.summary?.total_comments || 0}</p>
-                      <p className="text-sm text-green-600">Total Comments</p>
-                    </div>
-                    <div className="bg-orange-50 rounded-lg p-4 text-center">
-                      <p className="text-3xl font-bold text-orange-700">{fbAnalytics.summary?.total_shares || 0}</p>
-                      <p className="text-sm text-orange-600">Total Shares</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <BarChart3 className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                    <p>{fbAnalytics?.error || "Click refresh to load analytics"}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AdminAnalyticsPanel
+              period={analyticsPeriod}
+              onPeriodChange={setAnalyticsPeriod}
+              loading={analyticsLoading}
+              error={analyticsError}
+              summary={analyticsSummary}
+            />
 
-            {/* Insights */}
-            {fbInsights?.success && fbInsights.insights?.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    Insights & Recommendations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {fbInsights.insights.map((insight, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-start gap-3 p-4 bg-muted rounded-lg"
-                      >
-                        <span className="text-2xl">{insight.icon}</span>
-                        <div>
-                          <h4 className="font-semibold text-foreground">{insight.title}</h4>
-                          <p className="text-sm text-muted-foreground">{insight.description}</p>
-                          {insight.recommendation && (
-                            <p className="text-sm text-blue-600 mt-1">💡 {insight.recommendation}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Facebook Content Performance */}
-            {fbAnalytics?.success && fbAnalytics.posts?.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    Facebook Content Performance
-                  </CardTitle>
-                  <CardDescription>Feed posts, videos and Reels ranked by engagement score, with newest items shown first when scores are tied</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {fbAnalytics.posts.slice(0, 10).map((post, index) => (
-                      <div 
-                        key={post.post_id}
-                        className={`flex items-start gap-3 p-3 rounded-lg ${
-                          index === 0 ? 'bg-yellow-50 border border-yellow-200' :
-                          index < 3 ? 'bg-green-50' : 'bg-muted'
-                        }`}
-                      >
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                          index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                          index < 3 ? 'bg-green-400 text-white' : 'bg-gray-300 text-muted-foreground'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="font-medium text-foreground text-sm leading-snug">{post.title}</p>
-                            {post.permalink_url && (
-                              <a
-                                href={post.permalink_url.startsWith('http') ? post.permalink_url : `https://www.facebook.com${post.permalink_url}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-shrink-0 text-blue-600 hover:text-blue-800"
-                                title="Open on Facebook"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </a>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-muted-foreground">
-                            <Badge variant="outline" className="capitalize">
-                              {(post.source_type || 'facebook').replace('_', ' ')}
-                            </Badge>
-                            <span>{formatDate(post.created_time)}</span>
-                            <span>❤️ {post.reactions ?? post.likes ?? 0}</span>
-                            <span>💬 {post.comments}</span>
-                            <span>🔄 {post.shares}</span>
-                            <span className="text-purple-600 font-medium">Score: {post.engagement_score}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Push Notifications Stats */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      🔔 Push Notifications
-                    </CardTitle>
-                    <CardDescription>
-                      Send breaking news alerts to subscribers
-                    </CardDescription>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchPushStats}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="bg-blue-50 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-blue-700">{pushStats?.active_subscriptions || 0}</p>
-                    <p className="text-sm text-blue-600">Active Subscribers</p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-green-700">{pushStats?.configured ? '✓' : '✗'}</p>
-                    <p className="text-sm text-green-600">Push Configured</p>
-                  </div>
-                </div>
-                
-                {/* Milestone Progress */}
-                {pushMilestones && pushMilestones.next_milestone && (
-                  <div className="bg-purple-50 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-purple-700">Next Milestone: {pushMilestones.next_milestone}</span>
-                      <span className="text-xs text-purple-600">{pushMilestones.subscribers_to_next} more needed</span>
-                    </div>
-                    <div className="w-full bg-purple-200 rounded-full h-2">
-                      <div 
-                        className="bg-purple-600 h-2 rounded-full transition-all"
-                        style={{ 
-                          width: `${Math.min(100, (pushMilestones.current_subscribers / pushMilestones.next_milestone) * 100)}%` 
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-purple-600 mt-1 text-center">
-                      {pushMilestones.current_subscribers} / {pushMilestones.next_milestone} subscribers
-                    </p>
-                  </div>
-                )}
-                
-                {/* Quick send breaking news */}
-                <div className="border-t pt-4 mt-4">
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Send Breaking News Alert</p>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Breaking news headline..."
-                      className="flex-1 px-3 py-2 border rounded-lg text-sm"
-                      id="breaking-news-input"
-                    />
-                    <Button
-                      onClick={() => {
-                        const input = document.getElementById('breaking-news-input');
-                        if (input.value) {
-                          sendBreakingNewsNotification(input.value);
-                          input.value = '';
-                        }
-                      }}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      Send Alert
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
 

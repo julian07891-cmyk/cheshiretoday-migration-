@@ -777,3 +777,30 @@ analytics, push, newsletter or production configuration behaviour changed. A
 separate Analytics-tab redesign remains future work.
 
 This containment change is implemented and validated locally; deployment remains pending.
+
+## Admin Analytics Phase 1
+
+On 1 August 2026, the legacy Analytics tab was replaced locally with a read-only
+first-party operational dashboard. The old Facebook/Meta performance surface
+and push-send controls were removed from this tab; Facebook preparation remains
+in Social Publishing and no backend publishing or push routes were removed.
+
+The implementation added one authenticated summary endpoint over data Cheshire
+Today already records. Public period readership and category performance come
+from `article_views` joined to a narrow `articles` projection. Newsletter figures
+use aggregate accepted-opportunity counts from `email_send_opportunities` and
+period open/click events from `email_analytics`. Commercial reporting uses
+lifetime sponsored-placement impression/click counters and period lead counts
+grouped by advertiser status. Lifetime sponsored figures are labelled as such
+rather than being presented as period data.
+
+The endpoint performs database-side aggregation with date cutoffs and bounded
+outputs, excludes non-public articles before ranking, returns no subscriber or
+advertiser personal data, and isolates failures by section. The UI distinguishes
+loading, empty and unavailable states and contains no mutation control. Meta,
+GA4, Plausible and PostHog APIs, new tracking, indexes, migrations, retention and
+production configuration were deliberately excluded. Implementation and tests
+are complete locally; deployment and production evidence collection remain
+pending.
+Production query latency remains unverified and must be measured after deployment
+before any index or query optimisation is considered.

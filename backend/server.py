@@ -109,6 +109,10 @@ from app.newsletter_management_email import (
 )
 from app.perplexity_service import perplexity_service, ai_budget_available
 from app.article_generation_observability import log_article_generation_memory
+from app.admin_analytics import (
+    ALLOWED_ANALYTICS_PERIODS,
+    build_admin_analytics_summary,
+)
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
@@ -13993,6 +13997,18 @@ async def get_email_analytics(days: int = 30, auth: bool = Depends(get_admin_aut
     except Exception as e:
         logger.error(f"Error fetching email analytics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/admin/analytics/summary")
+async def get_admin_analytics_summary(
+    period: str = "week",
+    auth: bool = Depends(get_admin_auth),
+):
+    """Return bounded, read-only first-party Admin analytics aggregates."""
+    if period not in ALLOWED_ANALYTICS_PERIODS:
+        raise HTTPException(status_code=400, detail="Invalid analytics period")
+
+    return await build_admin_analytics_summary(db, period)
 
 
 @api_router.get("/admin/email-analytics/trends")

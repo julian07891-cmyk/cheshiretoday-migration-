@@ -25178,3 +25178,35 @@ configuration change was made. Redesign of the separate Analytics tab remains
 future work.
 
 This containment change is implemented and validated locally; deployment remains pending.
+
+## Operational update — 1 August 2026 (Admin Analytics Phase 1)
+
+The Admin Analytics tab has been rebuilt as a compact, read-only first-party
+dashboard. Its default weekly view can be changed to today or the last 30 days,
+and reports public article-view totals, articles read, bounded most-read content,
+category readership, newsletter engagement, commercial placement counters and
+aggregate advertiser-lead activity. The old Meta-dependent Facebook panels and
+the push-notification send controls are no longer part of Analytics.
+
+One authenticated `GET /api/admin/analytics/summary` endpoint supplies the
+dashboard. It uses `article_views` joined to narrow public `articles` fields,
+privacy-preserving `email_send_opportunities` counts, event counts aggregated
+inside `email_analytics`, lifetime counters from `sponsored_placements`, and
+status-only period aggregates from `advertiser_leads`. Sponsored figures are
+explicitly labelled lifetime because the current storage contract does not
+retain dated impression/click events.
+
+Queries use UTC period cutoffs, Mongo aggregation, narrow projections and
+bounded response sets. Archived, missing and Manual Review-hidden articles are
+excluded before top-content limits are applied. No email addresses, recipient
+hashes, tracking IDs, IP addresses, user agents, lead contact details, article
+content or summaries are returned. Each data section fails independently to a
+safe unavailable state, and the tab contains no write, send, publish, schedule,
+archive, import or delete action.
+
+No Meta, GA4, Plausible or PostHog API was integrated. No tracking behavior,
+database migration, index, retention policy, provider configuration or
+production data was changed. The implementation and regression coverage are
+validated locally; deployment and production verification remain pending.
+Production query latency remains unverified and must be measured after deployment
+before any index or query optimisation is considered.
