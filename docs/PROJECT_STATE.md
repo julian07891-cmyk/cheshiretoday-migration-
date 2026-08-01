@@ -25318,3 +25318,28 @@ indexing recovery. Representative Search Console sampling is the next SEO
 investigation. Loading public articles during verification naturally recorded
 ordinary first-party article-view and sponsored-impression events; no Admin
 action, form submission, publishing action or manual production job occurred.
+
+## Operational update — 1 August 2026 (Admin mobile Safari usability)
+
+A reported mobile Safari zoomed presentation was investigated against the live
+unauthenticated Admin login and the current frontend implementation. The public
+viewport contract was already correct (`width=device-width, initial-scale=1`),
+portrait login widths from 320 to 430 pixels did not overflow, and portrait login
+text fields were already 16 pixels. The remaining credible zoom risk was confined
+to authenticated Admin text-entry controls that could resolve to 12 or 14 pixels,
+particularly at wide-phone landscape breakpoints and inside portalled dialogs.
+
+The local frontend correction introduces an Admin-only mobile scope with a 16-pixel
+minimum for text-entry inputs, textareas, native selects and shared select triggers
+on mobile or touch viewports. Checkbox, radio, range, file, hidden, colour and
+button-like inputs retain their existing treatment, and public-site controls are
+not affected. The login shell now uses `100vh` with a `100dvh` enhancement,
+safe-area padding, vertical scrolling and top alignment on short-height viewports,
+while preserving normal-height centring, browser pinch zoom, autocomplete and the
+existing authentication flow.
+
+This is a frontend usability change only. Admin navigation architecture and the
+separate Articles/Archive row-overflow findings remain future tasks; backend,
+authentication and production configuration behaviour are unchanged. Implementation
+and automated validation are local. Deployment and real-iPhone Safari verification
+remain pending, so the reported device issue is not yet recorded as fully resolved.

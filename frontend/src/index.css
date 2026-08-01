@@ -14,6 +14,48 @@ body {
     padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+/*
+ * Keep Admin text-entry controls at Safari's non-zooming 16px threshold on
+ * touch and mobile-sized viewports. This is deliberately scoped so public
+ * forms and non-text controls retain their existing typography.
+ */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
+    .admin-mobile-scope input:not([type]),
+    .admin-mobile-scope input[type="text"],
+    .admin-mobile-scope input[type="password"],
+    .admin-mobile-scope input[type="email"],
+    .admin-mobile-scope input[type="search"],
+    .admin-mobile-scope input[type="url"],
+    .admin-mobile-scope input[type="tel"],
+    .admin-mobile-scope input[type="number"],
+    .admin-mobile-scope input[type="date"],
+    .admin-mobile-scope input[type="time"],
+    .admin-mobile-scope input[type="datetime-local"],
+    .admin-mobile-scope input[type="month"],
+    .admin-mobile-scope input[type="week"],
+    .admin-mobile-scope textarea,
+    .admin-mobile-scope select,
+    .admin-mobile-scope [role="combobox"] {
+        font-size: 16px !important;
+    }
+}
+
+.admin-login-shell {
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto;
+    padding-top: max(1rem, env(safe-area-inset-top, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+}
+
+@media (max-height: 600px) {
+    .admin-login-shell {
+        align-items: flex-start;
+    }
+}
+
 /* Serif font for headlines - newspaper style */
 .font-headline {
     font-family: 'Playfair Display', Georgia, serif;

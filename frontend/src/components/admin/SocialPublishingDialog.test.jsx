@@ -52,7 +52,7 @@ jest.mock('../../services/instagramSocialAsset', () => {
 });
 jest.mock('../ui/dialog', () => ({
   Dialog: ({ open, children }) => open ? <div>{children}</div> : null,
-  DialogContent: ({ children }) => <div>{children}</div>,
+  DialogContent: ({ children, ...props }) => <div {...props}>{children}</div>,
   DialogHeader: ({ children }) => <div>{children}</div>,
   DialogTitle: ({ children }) => <h2>{children}</h2>,
   DialogDescription: ({ children }) => <p>{children}</p>,
@@ -144,6 +144,16 @@ describe('SocialPublishingDialog', () => {
       : window.HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(prototype, 'value').set.call(node, value);
     node.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  test('keeps portalled controls inside the Admin mobile scope', () => {
+    renderDialog();
+
+    const canonicalLink = document.querySelector('[aria-label="Canonical article URL"]');
+    const scopedDialog = canonicalLink.closest('.admin-mobile-scope');
+
+    expect(scopedDialog).not.toBeNull();
+    expect(scopedDialog.contains(canonicalLink)).toBe(true);
   });
 
   test('opens in Link Preview mode with only link-preview controls', () => {

@@ -892,3 +892,25 @@ remains the next SEO investigation. Ordinary public-page verification naturally
 recorded first-party article-view and sponsored-impression events. It did not
 involve an Admin action, form submission, publishing action or manual production
 job.
+
+## Admin mobile Safari usability correction
+
+On 1 August 2026, a read-only mobile audit confirmed that the site viewport tag
+was already correct and that the portrait Admin login neither overflowed at
+320–430-pixel widths nor used sub-16-pixel text fields. Source inspection instead
+identified an Admin-specific iOS Safari auto-zoom risk: shared and explicit Admin
+text-entry styles could resolve to 12 or 14 pixels on mobile, including wide-phone
+landscape and portalled editor or Social Publishing dialogs.
+
+A narrow local frontend correction added an Admin-only scope enforcing a 16-pixel
+mobile/touch text-entry minimum without changing public forms or non-text controls.
+The login retained its established width and authentication contract while gaining
+dynamic viewport height, safe-area spacing, vertical scrolling and short-height
+top alignment. Browser pinch zoom remains available; no viewport restriction or
+JavaScript zoom manipulation was added.
+
+Navigation redesign and Articles/Archive row overflow were deliberately excluded.
+The change does not affect backend authentication or production configuration.
+Implementation and automated validation are local; deployment and verification on
+real iPhone Safari remain pending before the reported issue can be considered
+operationally resolved.

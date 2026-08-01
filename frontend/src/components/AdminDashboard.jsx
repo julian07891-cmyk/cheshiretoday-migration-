@@ -2556,7 +2556,10 @@ const handleDeleteArticle = async (articleId) => {
   // Show login form if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-muted dark:bg-gray-900 flex items-center justify-center p-4">
+      <div
+        className="admin-mobile-scope admin-login-shell min-h-screen bg-muted dark:bg-gray-900 flex items-center justify-center p-4"
+        data-testid="admin-login-shell"
+      >
         <Card className="w-full max-w-md dark:bg-gray-800 dark:border-gray-700">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
@@ -2648,7 +2651,7 @@ const handleDeleteArticle = async (articleId) => {
 
   return (
     <HelmetProvider>
-    <div className="min-h-screen bg-muted dark:bg-gray-900">
+    <div className="admin-mobile-scope min-h-screen bg-muted dark:bg-gray-900" data-testid="admin-dashboard-shell">
       {/* SEO - Prevent indexing of admin pages */}
       <Helmet>
         <title>Admin Dashboard | Cheshire Today</title>
@@ -3073,6 +3076,7 @@ const handleDeleteArticle = async (articleId) => {
                         value={articleSearch}
                         onChange={(e) => setArticleSearch(e.target.value)}
                         className="pl-9 bg-card dark:bg-gray-700"
+                        data-testid="admin-article-search"
                       />
                     </div>
                     {selectedArticles.size > 0 && (
@@ -5709,7 +5713,7 @@ const handleDeleteArticle = async (articleId) => {
           setJobForm({ title: '', company: '', location: 'Macclesfield', job_type: 'Full-time', salary: '', description: '', requirements: '', category: 'Other', apply_url: '', apply_email: '' }); 
         } 
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="admin-mobile-scope max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {editingJob ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
@@ -5893,7 +5897,7 @@ const handleDeleteArticle = async (articleId) => {
 
       {/* Add/Edit Article Dialog */}
       <Dialog open={showAddArticle} onOpenChange={(open) => { if (!open) { setShowAddArticle(false); resetArticleForm(); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="admin-mobile-scope max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {editingArticle ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
@@ -6174,7 +6178,7 @@ const handleDeleteArticle = async (articleId) => {
 
       {/* Affiliate Product Dialog */}
       <Dialog open={showAddAffiliate} onOpenChange={(open) => { if (!open) { setShowAddAffiliate(false); resetAffiliateForm(); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="admin-mobile-scope max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5 text-amber-600" />
@@ -6328,7 +6332,7 @@ const handleDeleteArticle = async (articleId) => {
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && confirmDialog.onCancel?.()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="admin-mobile-scope sm:max-w-md">
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${
               confirmDialog.variant === 'destructive' ? 'text-red-600' : 
