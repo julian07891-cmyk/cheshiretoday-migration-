@@ -25,6 +25,35 @@ const INDEX_CSS = fs.readFileSync(
   path.join(__dirname, '..', 'index.css'),
   'utf8'
 );
+const DASHBOARD_SOURCE = fs.readFileSync(
+  path.join(__dirname, 'AdminDashboard.jsx'),
+  'utf8'
+);
+const DIALOG_SOURCE = fs.readFileSync(
+  path.join(__dirname, 'ui', 'dialog.jsx'),
+  'utf8'
+);
+
+const ARTICLE_EDITOR_MOBILE_RULE = `@media (max-width: 900px), (hover: none) and (pointer: coarse) {
+    .admin-article-editor-dialog {
+        top: max(1rem, env(safe-area-inset-top, 0px));
+        right: max(1rem, env(safe-area-inset-right, 0px));
+        bottom: auto;
+        left: max(1rem, env(safe-area-inset-left, 0px));
+        width: auto;
+        margin-inline: auto;
+        max-height: calc(100vh - max(1rem, env(safe-area-inset-top, 0px)) - max(1rem, env(safe-area-inset-bottom, 0px)));
+        transform: none;
+    }
+}`;
+
+const ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE = `@supports (height: 100dvh) {
+    @media (max-width: 900px), (hover: none) and (pointer: coarse) {
+        .admin-article-editor-dialog {
+            max-height: calc(100dvh - max(1rem, env(safe-area-inset-top, 0px)) - max(1rem, env(safe-area-inset-bottom, 0px)));
+        }
+    }
+}`;
 
 const response = (body, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -186,6 +215,16 @@ describe('Admin mobile Safari safeguards', () => {
     expect(INDEX_CSS).toMatch(/@media \(max-height: 600px\)\s*\{\s*\.admin-login-shell\s*\{\s*align-items:\s*flex-start;/s);
   });
 
+  test('preserves desktop dialog geometry and scopes article-editor geometry to mobile', () => {
+    expect(DIALOG_SOURCE).toContain('fixed left-[50%] top-[50%]');
+    expect(DIALOG_SOURCE).toContain('translate-x-[-50%] translate-y-[-50%]');
+    expect(DIALOG_SOURCE).toContain('data-[state=open]:animate-in');
+    expect(INDEX_CSS).toContain(ARTICLE_EDITOR_MOBILE_RULE);
+    expect(INDEX_CSS).toContain(ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE);
+    expect(INDEX_CSS.match(/\.admin-article-editor-dialog/g)).toHaveLength(2);
+    expect(INDEX_CSS).not.toMatch(/(^|\n)\s*\[role=["']?dialog["']?\][^{]*\{[^}]*transform:\s*none/m);
+  });
+
   test('keeps representative authenticated controls inside the Admin scope', async () => {
     localStorage.setItem('cheshire_admin_token', 'test-admin-token');
     global.fetch = jest.fn(async (url) => {
@@ -193,7 +232,20 @@ describe('Admin mobile Safari safeguards', () => {
       if (requestPath.includes('/api/admin/verify')) return response({ success: true });
       if (requestPath.includes('/api/admin/stats')) return response({ articles: { by_category: {} } });
       if (requestPath.includes('/api/admin/subscribers')) return response({ subscribers: [] });
-      if (requestPath.includes('/api/admin/articles')) return response({ articles: [], total: 0 });
+      if (requestPath.includes('/api/admin/articles')) {
+        return response({
+          articles: [{
+            id: 'article-mobile-test',
+            title: 'Mobile editor regression article',
+            summary: 'A bounded test summary.',
+            content: 'A bounded test article body.',
+            category: 'Local News',
+            author: 'Cheshire Today',
+            publishedDate: '2026-08-01T08:00:00Z',
+          }],
+          total: 1,
+        });
+      }
       if (requestPath.includes('/api/admin/jobs')) return response({ jobs: [] });
       if (requestPath.includes('/api/jobs/meta/options')) {
         return response({ locations: [], categories: [], job_types: [] });
@@ -215,20 +267,63 @@ describe('Admin mobile Safari safeguards', () => {
     const search = container.querySelector('[data-testid="admin-article-search"]');
     expect(dashboard.contains(search)).toBe(true);
 
-    await act(async () => container.querySelector('[data-testid="add-article-button"]').click());
-    const articleTitle = document.querySelector('[data-testid="article-title-input"]');
-    const editorDialog = articleTitle.closest('.admin-mobile-scope');
+    const articleEditButton = container.querySelector('button[title="Edit article"]');
+    expect(articleEditButton).not.toBeNull();
+    await act(async () => articleEditButton.click());
+    const editorDialog = document.querySelector('[data-testid="admin-article-editor-dialog"]');
+    const editorForm = editorDialog.querySelector('[data-testid="admin-article-editor-form"]');
+    const categoryAuthorRow = editorDialog.querySelector('[data-testid="article-category-author-row"]');
     expect(editorDialog).not.toBeNull();
-    expect(editorDialog.querySelector('[data-testid="article-title-input"]')).not.toBeNull();
-    expect(editorDialog.querySelector('[data-testid="article-content-input"]')).not.toBeNull();
+    expect(editorDialog.classList.contains('admin-article-editor-dialog')).toBe(true);
+    expect(editorDialog.classList.contains('min-w-0')).toBe(true);
+    expect(editorDialog.classList.contains('max-w-2xl')).toBe(true);
+    expect(editorDialog.classList.contains('max-h-[90vh]')).toBe(true);
+    expect(editorDialog.classList.contains('overflow-x-hidden')).toBe(true);
+    expect(editorDialog.classList.contains('overflow-y-auto')).toBe(true);
+    expect(INDEX_CSS).toContain(ARTICLE_EDITOR_MOBILE_RULE);
+    expect(INDEX_CSS).toContain(ARTICLE_EDITOR_DYNAMIC_HEIGHT_RULE);
+    expect(editorForm.classList.contains('min-w-0')).toBe(true);
+    expect(categoryAuthorRow.classList.contains('grid-cols-1')).toBe(true);
+    expect(categoryAuthorRow.classList.contains('sm:grid-cols-2')).toBe(true);
+
+    const scopedTextEntryTestIds = [
+      'article-title-input',
+      'article-summary-input',
+      'article-content-input',
+      'article-author-input',
+      'article-source-input',
+      'article-source-url-input',
+      'article-image-input',
+      'article-tags-input',
+      'article-category-select',
+    ];
+    scopedTextEntryTestIds.forEach((testId) => {
+      const control = editorDialog.querySelector(`[data-testid="${testId}"]`);
+      expect(control).not.toBeNull();
+      expect(control.closest('.admin-mobile-scope')).toBe(editorDialog);
+      expect(control.classList.contains('w-full')).toBe(true);
+    });
     expect(editorDialog.querySelector('[data-testid="article-category-select"]')?.getAttribute('role')).toBe('combobox');
+    expect(editorDialog.querySelector('[data-testid="article-featured-toggle"]')?.closest('.admin-mobile-scope')).toBe(editorDialog);
+
+    const cancelButton = Array.from(editorDialog.querySelectorAll('button'))
+      .find((button) => button.textContent.trim() === 'Cancel');
+    expect(cancelButton).toBeDefined();
+    await act(async () => cancelButton.click());
+    await act(async () => container.querySelector('[data-testid="tab-affiliates"]').click());
+    await act(async () => container.querySelector('[data-testid="add-affiliate-button"]').click());
+    const affiliateDialog = document.querySelector('[role="dialog"]');
+    expect(affiliateDialog).not.toBeNull();
+    expect(affiliateDialog.classList.contains('admin-article-editor-dialog')).toBe(false);
+  });
+
+  test('keeps Articles, Manual Review and Archive on the single shared editor path', () => {
+    expect(DASHBOARD_SOURCE.match(/handleEditArticle\(article\)/g)).toHaveLength(3);
+    expect(DASHBOARD_SOURCE.match(/data-testid="admin-article-editor-dialog"/g)).toHaveLength(1);
+    expect(DASHBOARD_SOURCE.match(/\/\* Add\/Edit Article Dialog \*\//g)).toHaveLength(1);
   });
 
   test('contains no JavaScript viewport or zoom manipulation', () => {
-    const dashboardSource = fs.readFileSync(
-      path.join(__dirname, 'AdminDashboard.jsx'),
-      'utf8'
-    );
-    expect(dashboardSource).not.toMatch(/visualViewport|\.scale\s*=|style\.zoom|user-scalable|maximum-scale/);
+    expect(DASHBOARD_SOURCE).not.toMatch(/visualViewport|\.scale\s*=|style\.zoom|user-scalable|maximum-scale/);
   });
 });

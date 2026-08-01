@@ -914,3 +914,32 @@ The change does not affect backend authentication or production configuration.
 Implementation and automated validation are local; deployment and verification on
 real iPhone Safari remain pending before the reported issue can be considered
 operationally resolved.
+
+## Edit Article Safari focus follow-up
+
+Real-iPhone verification after the first Admin mobile deployment confirmed that
+the login fitted correctly while Edit Article still enlarged on focus in Title,
+preview, Content and related text fields. Once Safari enlarged the fixed editor,
+its right edge was clipped and the focus zoom could remain visible on the dashboard
+or a subsequent login view.
+
+The article editor was traced to the single Radix portal shared by normal article,
+Manual Review and Archive edits. Production bundles contained both the intended
+`admin-mobile-scope` portal class and the 16-pixel scoped rule; there was no missing
+stylesheet or Tailwind override. Authenticated Chromium inspection subsequently
+confirmed that all editor controls already computed to 16 pixels at representative
+portrait and landscape sizes, so the exact Safari enlargement trigger remains
+unproven. The revised local follow-up targets the credible clipping path instead:
+mobile/touch layouts top-align the fixed editor inside safe-area margins, remove
+its inherited translation, collapse the narrow-screen category/author row and
+preserve bounded `vh`/`dvh` vertical scrolling.
+Desktop and ordinary non-touch dialog geometry remain unchanged; the top-aligned,
+non-translated override applies only to the Add/Edit Article dialog on mobile or
+coarse-pointer layouts.
+
+No JavaScript zoom reset, pinch-zoom restriction, dashboard scaling, authentication
+change or editor-workflow change was introduced. Chromium emulation did not show
+focus-time scale or horizontal overflow and is not treated as proof of Mobile
+Safari behaviour. Deployment and a second real-iPhone focus, keyboard and
+orientation verification remain pending, so operational resolution is not yet
+claimed.

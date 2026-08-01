@@ -25343,3 +25343,33 @@ separate Articles/Archive row-overflow findings remain future tasks; backend,
 authentication and production configuration behaviour are unchanged. Implementation
 and automated validation are local. Deployment and real-iPhone Safari verification
 remain pending, so the reported device issue is not yet recorded as fully resolved.
+
+## Operational update — 1 August 2026 (Edit Article Safari focus follow-up)
+
+Post-deployment testing on a real iPhone confirmed that the Admin login now fits
+correctly, but focusing Edit Article text fields could still trigger Safari focus
+enlargement. The retained focus state then clipped the right side of the fixed
+editor dialog and could leave the dashboard looking enlarged after the editor was
+closed or the session returned to login.
+
+Inspection confirmed that Edit Article, Manual Review and Archive editing share
+the same Radix portalled article dialog. The deployed portal scope and generic
+16-pixel rule were both present, and authenticated Chromium inspection confirmed
+that every editor control already computed to 16 pixels at representative portrait
+and landscape sizes. The exact Safari enlargement trigger therefore remains
+unproven. The revised local follow-up instead addresses the evidenced clipping risk:
+on mobile/touch layouts the article dialog is top-aligned inside safe-area margins,
+the inherited two-axis translation is removed, child horizontal overflow is
+contained, and the category/author row collapses on narrow screens. The dialog
+retains bounded vertical scrolling with `vh` and `dvh` height handling.
+Desktop and ordinary non-touch dialog geometry remain unchanged; the top-aligned,
+non-translated override applies only to the Add/Edit Article dialog on mobile or
+coarse-pointer layouts.
+
+Pinch zoom, authentication, article saving, Manual Review and Archive workflows
+remain unchanged. No dashboard-scale workaround was added because the enlarged
+dashboard remains consistent with retained Safari focus zoom rather than a proven
+separate page-width defect. Chromium emulation is supporting layout evidence, not
+proof of Mobile Safari behaviour. Implementation and automated validation are
+local; a second real-iPhone focus, keyboard and orientation check remains required
+after deployment before the issue is considered resolved.

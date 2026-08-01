@@ -5897,7 +5897,10 @@ const handleDeleteArticle = async (articleId) => {
 
       {/* Add/Edit Article Dialog */}
       <Dialog open={showAddArticle} onOpenChange={(open) => { if (!open) { setShowAddArticle(false); resetArticleForm(); } }}>
-        <DialogContent className="admin-mobile-scope max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="admin-mobile-scope admin-article-editor-dialog box-border max-w-2xl min-w-0 max-h-[90vh] overflow-x-hidden overflow-y-auto"
+          data-testid="admin-article-editor-dialog"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {editingArticle ? <Edit className="h-5 w-5" /> : <PlusCircle className="h-5 w-5" />}
@@ -5908,7 +5911,7 @@ const handleDeleteArticle = async (articleId) => {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleSubmitArticle} className="space-y-4">
+          <form onSubmit={handleSubmitArticle} className="min-w-0 space-y-4" data-testid="admin-article-editor-form">
             {openAIRewriteDiagnostics && (
               <details className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/30">
                 <summary className="cursor-pointer font-semibold text-purple-900 dark:text-purple-100">
@@ -6044,7 +6047,7 @@ const handleDeleteArticle = async (articleId) => {
             </div>
 
             {/* Category and Author Row */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2" data-testid="article-category-author-row">
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
                 <Select 

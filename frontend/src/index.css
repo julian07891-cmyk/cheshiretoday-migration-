@@ -50,6 +50,27 @@ body {
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
 }
 
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
+    .admin-article-editor-dialog {
+        top: max(1rem, env(safe-area-inset-top, 0px));
+        right: max(1rem, env(safe-area-inset-right, 0px));
+        bottom: auto;
+        left: max(1rem, env(safe-area-inset-left, 0px));
+        width: auto;
+        margin-inline: auto;
+        max-height: calc(100vh - max(1rem, env(safe-area-inset-top, 0px)) - max(1rem, env(safe-area-inset-bottom, 0px)));
+        transform: none;
+    }
+}
+
+@supports (height: 100dvh) {
+    @media (max-width: 900px), (hover: none) and (pointer: coarse) {
+        .admin-article-editor-dialog {
+            max-height: calc(100dvh - max(1rem, env(safe-area-inset-top, 0px)) - max(1rem, env(safe-area-inset-bottom, 0px)));
+        }
+    }
+}
+
 @media (max-height: 600px) {
     .admin-login-shell {
         align-items: flex-start;
