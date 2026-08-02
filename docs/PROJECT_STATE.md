@@ -25460,3 +25460,20 @@ This is a presentation-only change. Manual Review selection, gates, editing,
 OpenAI drafts, source access, archive actions, bulk actions, publication safeguards,
 API requests and backend behaviour are unchanged. Deployment and production mobile
 verification remain pending.
+
+## Operational update — 2 August 2026 (normal Articles mobile containment)
+
+Real-iPhone verification confirmed that the deployed Manual Review cards were
+improved, while exposing a separate pre-existing responsive defect in the normal
+Articles list: its single non-wrapping row placed six action controls beside the
+image and metadata, squeezing the content column and allowing actions to extend
+beyond the card on narrow screens. Commit `761a7c2` changed only Manual Review
+markup and did not introduce this normal Articles-row structure.
+
+A narrow local frontend correction gives normal Articles rows a bounded mobile
+grid with a fixed image, flexible metadata and a contained three-column action area
+below the content. The prior horizontal row returns at the existing `sm` breakpoint.
+Titles use a readable two-line mobile treatment and return to one compact line at
+`sm`; category and AI status text wrap within the card. All existing action order, handlers,
+requests and publication behaviour remain unchanged. Manual Review layout is
+unchanged. Deployment and final real-iPhone verification remain pending.

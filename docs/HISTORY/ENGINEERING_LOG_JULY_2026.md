@@ -1026,3 +1026,19 @@ The change is frontend presentation only. It does not alter selection, review
 gates, editing, OpenAI Draft, source or archive actions, bulk actions, API contracts,
 publication behaviour or backend logic. Automated validation is local; deployment
 and production mobile verification remain pending.
+
+## Normal Articles mobile containment
+
+Real-iPhone verification of the improved Manual Review cards exposed a separate
+pre-existing overflow defect in the normal Articles list. Its single non-wrapping
+horizontal row placed six action controls beside the image and metadata, which
+squeezed the content and allowed controls to extend beyond narrow cards. The Manual
+Review commit `761a7c2` did not modify that row.
+
+The local frontend-only correction uses a bounded mobile grid for each normal
+Articles card: a fixed image and flexible metadata occupy the first row, with the
+unchanged actions contained in a three-column grid beneath it. The existing
+horizontal desktop layout returns at `sm`; titles use two readable lines on mobile
+and one compact line from `sm`, while category and AI status wrap safely. Manual
+Review markup remains unchanged. No handler, request, workflow, publication or backend
+behaviour changed. Deployment and final physical-iPhone verification remain pending.

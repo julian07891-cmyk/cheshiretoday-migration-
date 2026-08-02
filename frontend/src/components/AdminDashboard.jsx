@@ -3150,7 +3150,7 @@ const handleDeleteArticle = async (articleId) => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                <div className="space-y-3 max-h-[600px] overflow-x-hidden overflow-y-auto">
                   {articles
                     .filter(article => {
                       // Filter by sub-tab
@@ -3162,10 +3162,10 @@ const handleDeleteArticle = async (articleId) => {
                     .map((article) => (
                     <div 
                       key={article._id || article.id} 
-                      className={`flex items-center gap-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border ${
+                      className={`grid w-full min-w-0 max-w-full grid-cols-[auto_4rem_minmax(0,1fr)] items-start gap-3 overflow-hidden p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border sm:flex sm:items-center sm:gap-4 ${
                         selectedArticles.has(article.id) 
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700' 
-                          : 'bg-muted dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                        : 'bg-muted dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       }`}
                       data-testid={`article-row-${article.id}`}
                     >
@@ -3192,12 +3192,25 @@ const handleDeleteArticle = async (articleId) => {
                       <img 
                         src={article.image} 
                         alt={article.title}
-                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                        className="h-16 w-16 shrink-0 object-cover rounded-lg"
+                        data-testid={`article-row-image-${article.id}`}
                       />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-foreground dark:text-white truncate">{article.title}</h4>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Badge variant="secondary" className="text-xs">
+                      <div
+                        className="min-w-0 sm:flex-1"
+                        data-testid={`article-row-content-${article.id}`}
+                      >
+                        <h4
+                          className="min-w-0 break-words font-medium text-foreground line-clamp-2 dark:text-white sm:line-clamp-1"
+                          data-testid={`article-row-title-${article.id}`}
+                        >
+                          {article.title}
+                        </h4>
+                        <div className="flex min-w-0 max-w-full items-center gap-2 mt-1 flex-wrap">
+                          <Badge
+                            variant="secondary"
+                            className="max-w-full whitespace-normal break-words text-xs"
+                            data-testid={`article-row-category-${article.id}`}
+                          >
                             {article.category}
                           </Badge>
                           <span className="text-xs text-muted-foreground dark:text-gray-400">
@@ -3206,7 +3219,8 @@ const handleDeleteArticle = async (articleId) => {
                           {article.ai_review_risk_level && (
                             <Badge
                               variant="outline"
-                              className={`text-xs ${
+                              data-testid={`article-row-ai-status-${article.id}`}
+                              className={`min-w-0 max-w-full whitespace-normal break-words text-xs ${
                                 article.ai_review_risk_level === 'high'
                                   ? 'border-red-300 text-red-700 bg-red-50'
                                   : article.ai_review_risk_level === 'medium'
@@ -3229,13 +3243,16 @@ const handleDeleteArticle = async (articleId) => {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div
+                        className="col-span-full grid w-full min-w-0 grid-cols-3 gap-2 sm:flex sm:w-auto sm:items-center"
+                        data-testid={`article-row-actions-${article.id}`}
+                      >
                         {article.mongo_id && (
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setSocialPublishingArticle(article)}
-                            className="text-blue-700 hover:bg-blue-50 border-blue-200"
+                            className="min-h-11 w-full text-blue-700 hover:bg-blue-50 border-blue-200 sm:min-h-0 sm:w-auto"
                             title="Social Publishing"
                             aria-label={`Social Publishing for ${article.title}`}
                             data-testid={`social-publishing-${article.mongo_id}`}
@@ -3247,7 +3264,7 @@ const handleDeleteArticle = async (articleId) => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditArticle(article, 'articles')}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                          className="min-h-11 w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 sm:min-h-0 sm:w-auto"
                           data-testid={`edit-article-${article.id}`}
                           title="Edit article"
                         >
@@ -3258,7 +3275,7 @@ const handleDeleteArticle = async (articleId) => {
                           size="sm"
                           onClick={() => handleAIReviewArticle(article._id || article.id)}
                           disabled={actionLoading === `ai-review-${article.id}`}
-                          className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+                          className="min-h-11 w-full text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200 sm:min-h-0 sm:w-auto"
                           title="Check with ChatGPT"
                         >
                           {actionLoading === `ai-review-${article.id}` ? (
@@ -3272,7 +3289,7 @@ const handleDeleteArticle = async (articleId) => {
                           size="sm"
                           onClick={() => handleForceLiveArticle(article.id)}
                           disabled={actionLoading === `force-${article.id}`}
-                          className="text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+                          className="min-h-11 w-full text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 sm:min-h-0 sm:w-auto"
                           title="Force show on homepage"
                         >
                           {actionLoading === `force-${article.id}` ? (
@@ -3299,7 +3316,7 @@ const handleDeleteArticle = async (articleId) => {
                             }
                           }}
                           disabled={actionLoading === `manual-review-${article.id}`}
-                          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200"
+                          className="min-h-11 w-full text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200 sm:min-h-0 sm:w-auto"
                           title="Send article to Manual Review"
                           data-testid={`manual-review-article-${article.id}`}
                         >
@@ -3325,7 +3342,7 @@ const handleDeleteArticle = async (articleId) => {
                             }
                           }}
                           disabled={actionLoading === `delete-article-${article.id}`}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          className="min-h-11 w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 sm:min-h-0 sm:w-auto"
                           title="Archive article"
                           data-testid={`delete-article-${article.id}`}
                         >
