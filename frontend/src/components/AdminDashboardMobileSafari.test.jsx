@@ -363,7 +363,9 @@ describe('Admin mobile Safari safeguards', () => {
   });
 
   test('keeps Articles, Manual Review and Archive on the single shared editor path', () => {
-    expect(DASHBOARD_SOURCE.match(/handleEditArticle\(article\)/g)).toHaveLength(3);
+    expect(DASHBOARD_SOURCE).toContain("handleEditArticle(article, 'articles')");
+    expect(DASHBOARD_SOURCE).toContain("handleEditArticle(article, 'manual_review')");
+    expect(DASHBOARD_SOURCE).toContain("handleEditArticle(article, 'archive')");
     expect(DASHBOARD_SOURCE.match(/data-testid="admin-article-editor-dialog"/g)).toHaveLength(1);
     expect(DASHBOARD_SOURCE.match(/\/\* Add\/Edit Article Dialog \*\//g)).toHaveLength(1);
   });

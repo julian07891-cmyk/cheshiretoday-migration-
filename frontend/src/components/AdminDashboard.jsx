@@ -174,6 +174,7 @@ const AdminDashboard = ({ onBack }) => {
   // Manual Article Creation state
   const [showAddArticle, setShowAddArticle] = useState(false);
   const [editingArticle, setEditingArticle] = useState(null);
+  const [articleEditorOrigin, setArticleEditorOrigin] = useState(null);
   const [openAIRewriteDiagnostics, setOpenAIRewriteDiagnostics] = useState(null);
   const [articleForm, setArticleForm] = useState({
     title: '',
@@ -1256,6 +1257,7 @@ const AdminDashboard = ({ onBack }) => {
           scope: article.scope || 'cheshire'
         });
         setEditingArticle(article);
+        setArticleEditorOrigin('openai_draft');
         setShowAddArticle(true);
         toast({
           title: "✅ OpenAI draft ready",
@@ -1390,15 +1392,17 @@ const AdminDashboard = ({ onBack }) => {
       scope: 'cheshire'
     });
     setEditingArticle(null);
+    setArticleEditorOrigin(null);
     setOpenAIRewriteDiagnostics(null);
   };
 
   const handleAddArticle = () => {
     resetArticleForm();
+    setArticleEditorOrigin('add');
     setShowAddArticle(true);
   };
 
-  const handleEditArticle = (article) => {
+  const handleEditArticle = (article, origin = 'articles') => {
     setOpenAIRewriteDiagnostics(null);
     setArticleForm({
       title: article.title || '',
@@ -1414,12 +1418,29 @@ const AdminDashboard = ({ onBack }) => {
       scope: article.scope || 'cheshire'
     });
     setEditingArticle(article);
+    setArticleEditorOrigin(origin);
     setShowAddArticle(true);
   };
 
   const handleSubmitArticle = async (e) => {
     e.preventDefault();
+    if (articleSubmitting) return;
     setArticleSubmitting(true);
+
+    if (articleEditorOrigin === 'manual_review') {
+      const confirmed = await showConfirmation({
+        title: 'Confirm Manual Review update',
+        description: 'Updating this Manual Review article may restore it to the live site if all existing publication safeguards pass. If any safeguard still fails, it will remain in Manual Review.',
+        confirmText: 'Confirm update',
+        cancelText: 'Cancel',
+        variant: 'warning'
+      });
+
+      if (!confirmed) {
+        setArticleSubmitting(false);
+        return;
+      }
+    }
 
     try {
       const url = editingArticle 
@@ -3225,7 +3246,7 @@ const handleDeleteArticle = async (articleId) => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditArticle(article)}
+                          onClick={() => handleEditArticle(article, 'articles')}
                           className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
                           data-testid={`edit-article-${article.id}`}
                           title="Edit article"
@@ -4253,7 +4274,8 @@ const handleDeleteArticle = async (articleId) => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEditArticle(article)}
+                              onClick={() => handleEditArticle(article, 'manual_review')}
+                              data-testid={`edit-manual-review-${article.id}`}
                             >
                               Edit
                             </Button>
@@ -4441,7 +4463,7 @@ const handleDeleteArticle = async (articleId) => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => { e.stopPropagation(); handleEditArticle(article); }}
+                            onClick={(e) => { e.stopPropagation(); handleEditArticle(article, 'archive'); }}
                             className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                             title="Edit manual review article"
                           >
@@ -5922,6 +5944,15 @@ const handleDeleteArticle = async (articleId) => {
           </DialogHeader>
 
           <form onSubmit={handleSubmitArticle} className="min-w-0 space-y-4" data-testid="admin-article-editor-form">
+            {articleEditorOrigin === 'manual_review' && (
+              <aside
+                className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                aria-label="Manual Review publication notice"
+                data-testid="manual-review-publication-notice"
+              >
+                Updating this Manual Review article may restore it to the live site if all existing publication safeguards pass. If any safeguard still fails, it will remain in Manual Review.
+              </aside>
+            )}
             {openAIRewriteDiagnostics && (
               <details className="rounded-lg border-2 border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/30">
                 <summary className="cursor-pointer font-semibold text-purple-900 dark:text-purple-100">
@@ -6182,7 +6213,11 @@ const handleDeleteArticle = async (articleId) => {
                 ) : (
                   <Check className="h-4 w-4 mr-2" />
                 )}
-                {editingArticle ? 'Update Article' : 'Publish Article'}
+                {articleEditorOrigin === 'manual_review'
+                  ? 'Review and Update'
+                  : editingArticle
+                    ? 'Update Article'
+                    : 'Publish Article'}
               </Button>
             </DialogFooter>
           </form>

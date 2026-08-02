@@ -984,3 +984,27 @@ overflow, undersized touch targets and broader dialog consistency remain separat
 work. Facebook Analytics end-to-end production verification is the next Admin
 task. Verification changed no Admin record, article, publication, newsletter,
 schedule, database record or production configuration.
+
+## Manual Review publication-intent safeguard
+
+A read-only workflow audit confirmed that the shared Admin editor does not have
+separate Save and Publish operations. Add Article immediately creates a public
+record, while the existing authenticated update endpoint can restore a Manual
+Review article when backend publication safeguards pass or keep it hidden when a
+safeguard still fails. The generic `Update Article` label did not disclose that
+possible public restoration.
+
+The narrow local correction keeps the single editor and unchanged request
+contract. Each opening path supplies a transient frontend-only origin: `add`,
+`articles`, `manual_review`, `archive` or `openai_draft`. Manual Review alone now
+shows an accessible publication-intent notice, labels its action `Review and
+Update`, and opens the existing confirmation dialog before submission. Cancelling
+preserves every field and performs no request; confirming allows one unchanged
+authenticated `PUT`. Existing restored, non-restored, error, refresh and toast
+handling remains in place, and backend safeguards remain authoritative.
+
+Public Update, Add Article, Archive and OpenAI draft behavior was not changed. No
+backend, database, Save Draft, Publish endpoint, sticky toolbar or publication-rule
+change was introduced. Implementation and validation are local; deployment and a
+non-mutating production UI verification remain pending. A real article must not be
+updated or published solely for that verification.

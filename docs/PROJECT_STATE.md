@@ -25419,3 +25419,26 @@ verification remains pending and is the next Admin task.
 
 The verification changed no Admin record, article, publication, newsletter,
 schedule, database record or production configuration.
+
+## Operational update — 2 August 2026 (Manual Review publication-intent safeguard)
+
+Manual Review edits use the existing authenticated article-update endpoint and
+can restore an article publicly when the established backend safeguards pass; if
+any safeguard still fails, the record remains in Manual Review. The previous
+generic `Update Article` wording did not explain that possible consequence.
+
+A narrow frontend safeguard is implemented and validated locally. The shared
+editor tracks a transient origin (`add`, `articles`, `manual_review`, `archive` or
+`openai_draft`) that is neither persisted nor included in the API payload. Only a
+Manual Review-origin edit displays an explanatory notice, uses the honest
+`Review and Update` action label and requires a pre-submit confirmation. Cancelling
+the confirmation sends no request and preserves the open editor and all unsaved
+field values. Confirming sends exactly one unchanged authenticated `PUT` request;
+backend publication safeguards and the existing restored/non-restored handling
+remain authoritative.
+
+Add Article, normal public Update, Archive and OpenAI draft contracts remain
+unchanged. No Save Draft or new Publish endpoint, sticky toolbar, backend rule,
+database change or publication path was added. Deployment and production
+verification remain pending, and production verification must not update or
+publish a real article solely to exercise this safeguard.
