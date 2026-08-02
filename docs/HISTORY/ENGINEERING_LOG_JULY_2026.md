@@ -959,3 +959,28 @@ An opaque header, elevated stacking and scroll padding keep the close affordance
 visible without obscuring focused fields. Desktop and other dialogs, article save
 and cancel behavior, authentication, Manual Review and Archive routing remain
 unchanged. Deployment and final physical-iPhone verification remain pending.
+
+## Admin mobile Safari production verification
+
+The complete Admin mobile correction was deployed through commit `a6bfb78` and
+verified on a real iPhone. The initial enlarged login presentation was traced to
+Safari's saved Website Page Zoom setting for `cheshiretoday.co.uk`, not to a
+viewport or layout defect; returning that setting to 100% restored a correctly
+fitted login without pinching.
+
+At 100% Page Zoom, Add/Edit Article remained within the right edge, Title, Short
+preview and Content remained usable with the keyboard open, internal scrolling
+worked, and the sticky header stayed visible. Its 44-pixel close action was
+reachable without pinching out. Closing returned to a correctly fitted dashboard,
+and the login remained correctly fitted afterward. No independent dashboard-width
+defect was confirmed.
+
+Safari's browser-specific focus enlargement was not disabled and accessibility
+pinch zoom remains enabled. Authentication, article save/update, Manual Review,
+Archive, Social Publishing and backend behaviour were unchanged. The operational
+problem is resolved under Safari Page Zoom 100%, without claiming all-browser
+coverage or a navigation redesign. Mobile navigation, Articles/Archive action-row
+overflow, undersized touch targets and broader dialog consistency remain separate
+work. Facebook Analytics end-to-end production verification is the next Admin
+task. Verification changed no Admin record, article, publication, newsletter,
+schedule, database record or production configuration.
