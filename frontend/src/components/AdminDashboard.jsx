@@ -4181,11 +4181,16 @@ const handleDeleteArticle = async (articleId) => {
                     <p>No live manual-review articles</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[360px] overflow-y-auto">
+                  <div className="space-y-2 max-h-[360px] overflow-x-hidden overflow-y-auto">
                     {manualReviewArticles.map((article) => (
                       <div
                         key={article.id}
-                        className={`flex items-start gap-3 p-3 border rounded-lg ${
+                        data-testid={`manual-review-card-${article.id}`}
+                        className={`grid w-full min-w-0 max-w-full items-start gap-3 overflow-hidden p-3 border rounded-lg ${
+                          article.image
+                            ? 'grid-cols-[auto_5rem_minmax(0,1fr)] sm:grid-cols-[auto_4rem_minmax(0,1fr)]'
+                            : 'grid-cols-[auto_minmax(0,1fr)]'
+                        } ${
                           selectedManualReviewArticles.has(article.id)
                             ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-800'
                             : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800'
@@ -4220,26 +4225,53 @@ const handleDeleteArticle = async (articleId) => {
                           <img
                             src={article.image}
                             alt=""
-                            className="w-16 h-12 object-cover rounded"
+                            data-testid={`manual-review-image-${article.id}`}
+                            className="h-16 w-20 shrink-0 object-cover rounded sm:h-12 sm:w-16"
                           />
                         )}
-                        <div className="flex-1 min-w-0">
+                        <div
+                          data-testid={`manual-review-summary-${article.id}`}
+                          className="min-w-0"
+                        >
                           <h4 className="font-medium text-foreground line-clamp-2">{article.title}</h4>
-                          <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
-                            <span>{article.category || 'Uncategorised'}</span>
-                            <span>•</span>
-                            <span>{article.source || 'Unknown source'}</span>
+                          <div className="flex min-w-0 max-w-full flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
+                            <span
+                              data-testid={`manual-review-category-${article.id}`}
+                              className="min-w-0 max-w-full break-words whitespace-normal"
+                            >
+                              {article.category || 'Uncategorised'}
+                            </span>
+                            <span className="shrink-0">•</span>
+                            <span
+                              data-testid={`manual-review-source-${article.id}`}
+                              className="min-w-0 max-w-full break-words whitespace-normal"
+                            >
+                              {article.source || 'Unknown source'}
+                            </span>
                             {article.location && (
                               <>
-                                <span>•</span>
-                                <span>{article.location}</span>
+                                <span className="shrink-0">•</span>
+                                <span
+                                  data-testid={`manual-review-locality-${article.id}`}
+                                  className="min-w-0 max-w-full break-words whitespace-normal"
+                                >
+                                  {article.location}
+                                </span>
                               </>
                             )}
                           </div>
+                        </div>
+                        <div
+                          data-testid={`manual-review-diagnostics-${article.id}`}
+                          className={`col-span-full w-full min-w-0 ${
+                            article.image ? 'sm:col-start-3' : 'sm:col-start-2'
+                          } sm:col-span-1`}
+                        >
                           {article.ai_review_risk_level && (
                             <Badge
                               variant="outline"
-                              className={`text-xs mt-2 ${
+                              data-testid={`manual-review-risk-badge-${article.id}`}
+                              className={`mt-2 min-w-0 max-w-full whitespace-normal break-words text-xs ${
                                 article.ai_review_risk_level === 'high'
                                   ? 'border-red-300 text-red-700 bg-red-50'
                                   : article.ai_review_risk_level === 'medium'
@@ -4261,12 +4293,19 @@ const handleDeleteArticle = async (articleId) => {
                             </p>
                           )}
                           <ManualReviewEditorialMetadata metadata={article.editorial_metadata} />
-                          <div className="flex flex-wrap gap-2 mt-3">
+                        </div>
+                        <div
+                          data-testid={`manual-review-actions-${article.id}`}
+                          className={`col-span-full grid w-full min-w-0 grid-cols-2 gap-2 ${
+                            article.image ? 'sm:col-start-3' : 'sm:col-start-2'
+                          } sm:col-span-1 sm:flex sm:flex-wrap`}
+                        >
                             {article.source_url && (
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => window.open(article.source_url, '_blank')}
+                                className="min-h-11 w-full justify-center sm:min-h-0 sm:w-auto"
                               >
                                 Source
                               </Button>
@@ -4276,6 +4315,7 @@ const handleDeleteArticle = async (articleId) => {
                               size="sm"
                               onClick={() => handleEditArticle(article, 'manual_review')}
                               data-testid={`edit-manual-review-${article.id}`}
+                              className="min-h-11 w-full justify-center sm:min-h-0 sm:w-auto"
                             >
                               Edit
                             </Button>
@@ -4284,7 +4324,8 @@ const handleDeleteArticle = async (articleId) => {
                               size="sm"
                               onClick={() => handleOpenAIRewriteDraft(article)}
                               disabled={actionLoading === "openai-rewrite-" + (article._id || article.id)}
-                              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200"
+                              data-testid={`openai-draft-manual-review-${article.id}`}
+                              className="col-span-2 min-h-11 w-full justify-center text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-200 sm:col-span-1 sm:min-h-0 sm:w-auto"
                               title="Rewrite with OpenAI and open draft editor"
                             >
                               {actionLoading === "openai-rewrite-" + (article._id || article.id) ? (
@@ -4298,6 +4339,7 @@ const handleDeleteArticle = async (articleId) => {
                               variant="outline"
                               size="sm"
                               onClick={() => handleArchiveArticle(article.id)}
+                              className="min-h-11 w-full justify-center sm:min-h-0 sm:w-auto"
                             >
                               Archive
                             </Button>
@@ -4317,7 +4359,7 @@ const handleDeleteArticle = async (articleId) => {
                                 }
                               }}
                               disabled={actionLoading === `delete-article-${article.id}`}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                              className="min-h-11 w-full justify-center text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 sm:min-h-0 sm:w-auto"
                             >
                               {actionLoading === `delete-article-${article.id}` ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -4325,7 +4367,6 @@ const handleDeleteArticle = async (articleId) => {
                                 <Archive className="h-4 w-4" />
                               )}
                             </Button>
-                          </div>
                         </div>
                       </div>
                     ))}

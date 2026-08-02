@@ -25442,3 +25442,21 @@ unchanged. No Save Draft or new Publish endpoint, sticky toolbar, backend rule,
 database change or publication path was added. Deployment and production
 verification remain pending, and production verification must not update or
 publish a real article solely to exercise this safeguard.
+
+## Operational update — 2 August 2026 (Manual Review mobile card layout)
+
+The Manual Review article cards now have a locally implemented and validated
+responsive presentation. On narrow screens, each image remains a fixed 80 by 64
+pixels, the title and metadata use the remaining width, diagnostics span the full
+card, and the unchanged actions use a two-column layout with 44-pixel minimum touch
+height. At the existing `sm` breakpoint, the image returns to its prior 64 by 48
+pixel size and diagnostics and actions align with the original content column, so
+the desktop presentation remains effectively unchanged.
+
+The longer `Create OpenAI Draft` action spans both mobile action columns, while
+long category, source, locality and diagnostic values wrap safely inside the card.
+
+This is a presentation-only change. Manual Review selection, gates, editing,
+OpenAI drafts, source access, archive actions, bulk actions, publication safeguards,
+API requests and backend behaviour are unchanged. Deployment and production mobile
+verification remain pending.

@@ -1008,3 +1008,21 @@ backend, database, Save Draft, Publish endpoint, sticky toolbar or publication-r
 change was introduced. Implementation and validation are local; deployment and a
 non-mutating production UI verification remain pending. A real article must not be
 updated or published solely for that verification.
+
+## Manual Review mobile card layout
+
+The Manual Review card presentation was adjusted locally for narrow Admin screens.
+Images are fixed at 80 by 64 pixels on mobile, the title and metadata retain the
+remaining top-row width, diagnostics span the full card, and the existing actions
+use a two-column mobile layout with 44-pixel minimum touch height. From the existing
+`sm` breakpoint, the prior 64 by 48 pixel image size and content-column alignment
+are restored, preserving the desktop presentation.
+
+The longer `Create OpenAI Draft` action spans both mobile action columns. Long
+category, source, locality and diagnostic values now wrap within the card instead
+of relying on outer overflow clipping.
+
+The change is frontend presentation only. It does not alter selection, review
+gates, editing, OpenAI Draft, source or archive actions, bulk actions, API contracts,
+publication behaviour or backend logic. Automated validation is local; deployment
+and production mobile verification remain pending.
