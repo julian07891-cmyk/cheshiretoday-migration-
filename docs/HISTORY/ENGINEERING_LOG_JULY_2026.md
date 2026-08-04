@@ -1107,3 +1107,34 @@ deployment and passive evidence collection from normal scheduled runs remain
 pending. At least three normal scheduled runs must be reviewed before threshold,
 UI or operational work. No import is to be triggered solely for validation, and
 operational use of similarity scores remains a separate future review.
+
+## Editorial Similarity deployment and production-observation gate
+
+The completed foundation is recorded at commit `8043fdd`: a deterministic scorer
+with independently bounded inputs and an immutable identity-free result. It had no
+runtime caller and no MongoDB, provider or image-comparison dependency. The
+synthetic Hough/former-kennels fixture remained covered.
+
+Commit `5e1a875` completed the scheduled-only, shadow-only, log-only Phase 2B
+integration. Only normal daily scheduled generation activates it explicitly;
+manual imports remain disabled and Version 1 duplicate prevention remains
+authoritative and unchanged. The implementation uses the bounded 50 active plus
+50 archived corpus, 100-record cap, deterministic 20-record shortlist, maximum 20
+scorer calls, active/archived/same-run provenance, deterministic score/band/time/ID
+ordering, validated safe logs and fail-open behavior.
+
+Completed local validation comprised 54 passing focused Phase 2A/2B tests and a
+related Version 1 importer, duplicate, scheduler, Manual Review and memory group of
+178 passed with 12 skipped. Python compilation, the project-compatible Black check
+and `git diff --check` passed.
+
+Render marked `5e1a875` live at approximately 14:15 BST on 4 August 2026. This is
+deployment confirmation, not calibration or production-detection proof. The next
+gate is passive observation of at least three normal scheduled runs, with no manual
+imports. Evidence review must cover Render health, scheduler completion and
+duration, the twelve memory markers, shadow logs, shortlist and comparison counts,
+provenance, and confirmation that publication behavior remains unchanged. The
+first planned review is after the normal 12:00 scheduled import on 5 August 2026.
+
+No thresholds, Admin UI or Similar Stories panel are approved or implemented.
+Version 1 duplicate prevention remains authoritative.

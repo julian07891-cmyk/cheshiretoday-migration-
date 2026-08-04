@@ -25563,3 +25563,35 @@ implementation and validation are local; deployment and observation of normal
 must be reviewed before any threshold, UI or operational integration work. No
 manual import should be triggered solely to collect Phase 2B evidence, and no
 threshold may affect production until a later separately reviewed phase.
+
+## Operational update — 4 August 2026 (Editorial Similarity deployment and observation gate)
+
+The preceding Version 2 Editorial Similarity milestones are now committed as:
+
+- `8043fdd` — Phase 2A deterministic scorer foundation: independently bounded
+  inputs, immutable identity-free result, no runtime caller, MongoDB, provider or
+  image comparison, with the synthetic Hough/former-kennels fixture retained.
+- `5e1a875` — Phase 2B scheduled-only, shadow-only and log-only integration:
+  explicit activation only from normal daily scheduled generation, manual import
+  paths disabled, Version 1 duplicate prevention unchanged, bounded 50+50/100
+  comparison corpus, deterministic 20-record shortlist and maximum 20 scorer
+  calls, active/archived/same-run provenance, deterministic selection, validated
+  safe logs and fail-open behavior.
+
+Final local validation completed with 54 focused Phase 2A/2B tests passing and
+the related Version 1 importer, duplicate, scheduler, Manual Review and memory
+regression group reporting 178 passed and 12 skipped. Python compilation, the
+project-compatible Black check and `git diff --check` all passed.
+
+Render marks commit `5e1a875` live from 14:15 BST on 4 August 2026. This confirms
+deployment only; it does not establish scorer calibration or production detection
+quality. Phase 2B is now in passive production observation. No manual import is to
+be triggered for evidence collection. At least three normal scheduled runs must
+be observed while checking Render health, scheduler completion and duration, all
+twelve memory markers, bounded shadow logs, shortlist and comparison counts,
+active/archived/same-run provenance, and confirmation that publication, Manual
+Review, archive and duplicate behavior remain unchanged.
+
+The first planned evidence review is after the normal 12:00 scheduled import on
+5 August 2026. Threshold approval, an Admin UI and any Similar Stories panel remain
+future separately reviewed work. Version 1 remains authoritative.
