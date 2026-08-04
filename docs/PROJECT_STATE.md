@@ -25477,3 +25477,33 @@ Titles use a readable two-line mobile treatment and return to one compact line a
 `sm`; category and AI status text wrap within the card. All existing action order, handlers,
 requests and publication behaviour remain unchanged. Manual Review layout is
 unchanged. Deployment and final real-iPhone verification remain pending.
+
+## Operational update — 3 August 2026 (Version 2 Phase 2A shadow scorer)
+
+A database-free deterministic Editorial Similarity scorer is implemented and
+validated locally as a shadow-only Version 2 foundation. It compares two supplied
+article mappings using bounded title/text overlap, named locality or site,
+distinctive number-and-unit facts, planning references, named organisations and
+publication proximity. Its immutable pure result contains only `eligible`, `score`,
+`band` and at most five allow-listed `reasons`; it returns no matched identity,
+title, URL, source or other submitted value. Exact Version 1 title or canonicalised
+source-URL matches return `eligible=False`, score `0`, band `ineligible` and no
+reasons. Any future integration must attach matched-record identity in a separate
+reviewed layer.
+
+The confirmed Hough/former-kennels cross-feed syndication case is covered as a
+likely same-event fixture. Negative coverage includes same-place/different-event,
+same-organisation/different-announcement, later construction or follow-up,
+national-story-with-Cheshire-angle and Version 1 exact duplicates. Candidate and
+existing title, summary and content are independently bounded to 300, 2,000 and
+4,000 characters before normalization and tokenisation, which remains capped at
+600 tokens. Malformed or exceptional inputs fail safely to an eligible zero-score
+`low` result without logging or returning submitted values. No raw token list,
+body copy, embedding or image is returned or persisted.
+
+This phase is evaluation-only. The module is not imported by `backend/server.py`
+and has no database, network, image, provider, Admin, import, scheduler or Manual
+Review integration. It does not mutate records or alter Version 1 title, source-
+URL, image, index or cleanup decisions. No dependency, migration, index or
+production configuration was added. Runtime or Admin integration remains a
+separate future task after threshold calibration review.

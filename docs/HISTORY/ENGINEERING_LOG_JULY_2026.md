@@ -1042,3 +1042,26 @@ horizontal desktop layout returns at `sm`; titles use two readable lines on mobi
 and one compact line from `sm`, while category and AI status wrap safely. Manual
 Review markup remains unchanged. No handler, request, workflow, publication or backend
 behaviour changed. Deployment and final physical-iPhone verification remain pending.
+
+## Version 2 Phase 2A — Editorial Similarity shadow foundation
+
+On 3 August 2026, a pure deterministic scorer and bounded regression suite were
+added locally for evaluating cross-publisher same-event similarity. The scorer is
+side-effect-free, uses only standard-library text/date/URL processing, bounds input
+text and output reasons, and treats Version 1 exact title or canonicalised source-
+URL matches as `eligible=False`, score `0`, band `ineligible` with no reasons. Its
+immutable pure result contains only `eligible`, `score`, `band` and allow-listed
+`reasons`; matched identity is deliberately excluded and belongs to a future,
+separately reviewed integration layer.
+
+Candidate and existing title, summary and content are independently bounded to
+300, 2,000 and 4,000 characters before normalization and tokenisation, with a
+600-token cap. Malformed or exceptional inputs return a conservative eligible,
+zero-score `low` result without exposing submitted values.
+
+The confirmed Hough/former-kennels case reaches the conservative likely band,
+while unrelated and later-stage negative fixtures remain below likely. The module
+has no runtime caller and performs no MongoDB, network, image, provider, import,
+Admin, scheduler or Manual Review work. Version 1 duplicate prevention and all
+production behaviour remain unchanged. Runtime integration is explicitly deferred
+until the shadow scoring contract and thresholds receive separate review.
