@@ -249,8 +249,13 @@ def test_scheduled_workflow_reaches_all_phase_markers_in_order(monkeypatch):
     def record(_logger, phase, _started_at, counts=None):
         phases.append(phase)
 
-    async def fake_generate(_request, memory_started_at=None):
+    async def fake_generate(
+        _request,
+        memory_started_at=None,
+        enable_editorial_similarity_shadow=False,
+    ):
         assert memory_started_at is not None
+        assert enable_editorial_similarity_shadow is True
         for phase in (
             "existing_record_index_completed",
             "all_feed_fetch_completed",

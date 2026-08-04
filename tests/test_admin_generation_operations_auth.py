@@ -156,7 +156,8 @@ def test_authenticated_import_wrapper_returns_complete_helper_shape(monkeypatch)
 def test_internal_generation_preserves_request_mapping_and_result(monkeypatch):
     requests = []
 
-    async def fake_import(request):
+    async def fake_import(request, enable_editorial_similarity_shadow=False):
+        assert enable_editorial_similarity_shadow is False
         requests.append(request)
         return {
             "total_imported": 7,
@@ -213,9 +214,14 @@ def test_scheduled_generation_uses_internal_helper_and_preserves_lock_order(
         async def delete_one(self, query):
             events.append("lock_release")
 
-    async def fake_generate(request, memory_started_at=None):
+    async def fake_generate(
+        request,
+        memory_started_at=None,
+        enable_editorial_similarity_shadow=False,
+    ):
         events.append("generate")
         assert memory_started_at is not None
+        assert enable_editorial_similarity_shadow is True
         assert request.count == 12
         assert request.include_uk_news is True
         assert request.public_import_limit == 6

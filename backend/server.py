@@ -109,6 +109,18 @@ from app.newsletter_management_email import (
 )
 from app.perplexity_service import perplexity_service, ai_budget_available
 from app.article_generation_observability import log_article_generation_memory
+from app.editorial_similarity import (
+    MAX_CONTENT_CHARACTERS as EDITORIAL_SIMILARITY_CONTENT_LIMIT,
+    MAX_SUMMARY_CHARACTERS as EDITORIAL_SIMILARITY_SUMMARY_LIMIT,
+    MAX_TITLE_CHARACTERS as EDITORIAL_SIMILARITY_TITLE_LIMIT,
+    MAX_URL_CHARACTERS as EDITORIAL_SIMILARITY_URL_LIMIT,
+)
+from app.editorial_similarity_shadow import (
+    ACTIVE_COMPARISON_LIMIT as EDITORIAL_SIMILARITY_ACTIVE_LIMIT,
+    ARCHIVED_COMPARISON_LIMIT as EDITORIAL_SIMILARITY_ARCHIVED_LIMIT,
+    EditorialSimilarityShadowEvaluator,
+    insert_with_editorial_similarity_shadow,
+)
 from app.admin_analytics import (
     ALLOWED_ANALYTICS_PERIODS,
     build_admin_analytics_summary,
@@ -1885,6 +1897,7 @@ async def seed_authority_pages(auth: bool = Depends(get_admin_auth)):
 async def _generate_articles_internal(
     request: GenerateArticlesRequest,
     memory_started_at: Optional[float] = None,
+    enable_editorial_similarity_shadow: bool = False,
 ) -> GenerateArticlesResponse:
     """
     Generate articles using HYBRID approach (cost-optimized):
@@ -1904,11 +1917,15 @@ async def _generate_articles_internal(
         )
         
         if memory_started_at is None:
-            result = await _import_hybrid_news_internal(hybrid_request)
+            result = await _import_hybrid_news_internal(
+                hybrid_request,
+                enable_editorial_similarity_shadow=enable_editorial_similarity_shadow,
+            )
         else:
             result = await _import_hybrid_news_internal(
                 hybrid_request,
                 memory_started_at=memory_started_at,
+                enable_editorial_similarity_shadow=enable_editorial_similarity_shadow,
             )
         
         cheshire_count = result.get('cheshire_articles', 0)
@@ -2164,9 +2181,125 @@ class HybridNewsRequest(BaseModel):
     public_import_limit: Optional[int] = None  # Optional cap for public articles per import run
 
 
+def _editorial_similarity_bounded_string_projection(field: str, limit: int) -> dict:
+    return {
+        "$cond": [
+            {"$eq": [{"$type": f"${field}"}, "string"]},
+            {"$substrCP": [f"${field}", 0, limit]},
+            "",
+        ]
+    }
+
+
+def _editorial_similarity_bounded_date_projection(field: str) -> dict:
+    field_type = {"$type": f"${field}"}
+    return {
+        "$cond": [
+            {"$eq": [field_type, "date"]},
+            f"${field}",
+            {
+                "$cond": [
+                    {"$eq": [field_type, "string"]},
+                    {"$substrCP": [f"${field}", 0, 128]},
+                    None,
+                ]
+            },
+        ]
+    }
+
+
+def _editorial_similarity_comparison_pipeline(limit: int) -> list[dict]:
+    return [
+        {"$sort": {"_id": -1}},
+        {"$limit": limit},
+        {
+            "$project": {
+                "_id": 1,
+                "title": _editorial_similarity_bounded_string_projection(
+                    "title", EDITORIAL_SIMILARITY_TITLE_LIMIT
+                ),
+                "summary": _editorial_similarity_bounded_string_projection(
+                    "summary", EDITORIAL_SIMILARITY_SUMMARY_LIMIT
+                ),
+                "content": _editorial_similarity_bounded_string_projection(
+                    "content", EDITORIAL_SIMILARITY_CONTENT_LIMIT
+                ),
+                "source_url": _editorial_similarity_bounded_string_projection(
+                    "source_url", EDITORIAL_SIMILARITY_URL_LIMIT
+                ),
+                "location": _editorial_similarity_bounded_string_projection(
+                    "location", EDITORIAL_SIMILARITY_TITLE_LIMIT
+                ),
+                "priority_location": (
+                    _editorial_similarity_bounded_string_projection(
+                        "priority_location", EDITORIAL_SIMILARITY_TITLE_LIMIT
+                    )
+                ),
+                "publishedDate": _editorial_similarity_bounded_date_projection(
+                    "publishedDate"
+                ),
+                "published_date": _editorial_similarity_bounded_date_projection(
+                    "published_date"
+                ),
+                "created_at": _editorial_similarity_bounded_date_projection(
+                    "created_at"
+                ),
+            }
+        },
+    ]
+
+
+async def _load_editorial_similarity_shadow_evaluator():
+    records = []
+    counts = {"active": 0, "archived": 0}
+    sources = (
+        (
+            "active",
+            db.articles,
+            EDITORIAL_SIMILARITY_ACTIVE_LIMIT,
+        ),
+        (
+            "archived",
+            db.archived_articles,
+            EDITORIAL_SIMILARITY_ARCHIVED_LIMIT,
+        ),
+    )
+
+    for source_name, collection, limit in sources:
+        try:
+            documents = await collection.aggregate(
+                _editorial_similarity_comparison_pipeline(limit)
+            ).to_list(limit)
+            for document in documents:
+                document["_editorial_similarity_provenance"] = source_name
+            records.extend(documents)
+            counts[source_name] = len(documents)
+        except Exception:
+            try:
+                logger.info(
+                    "editorial_similarity_shadow_pool status=source_unavailable "
+                    f"source={source_name}"
+                )
+            except Exception:
+                pass
+
+    evaluator = EditorialSimilarityShadowEvaluator(records)
+    try:
+        logger.info(
+            "editorial_similarity_shadow_pool status=loaded "
+            f"active_count={counts['active']} "
+            f"archived_count={counts['archived']} "
+            f"pool_count={evaluator.pool_size}"
+        )
+    except Exception:
+        pass
+    return evaluator
+
+
 async def _import_hybrid_news_internal(
     request: HybridNewsRequest,
     memory_started_at: Optional[float] = None,
+    enable_editorial_similarity_shadow: bool = False,
 ) -> dict:
     """
     Import news using HYBRID approach (cost-optimized):
@@ -2245,6 +2378,21 @@ async def _import_hybrid_news_internal(
                 existing_source_urls.add(source_url)
             if a.get('image'):
                 used_image_urls.add(a.get('image'))
+
+        editorial_similarity_shadow_evaluator = None
+        if enable_editorial_similarity_shadow:
+            editorial_similarity_shadow_evaluator = (
+                await _load_editorial_similarity_shadow_evaluator()
+            )
+
+        async def insert_hybrid_article(article: dict, context: str):
+            return await insert_with_editorial_similarity_shadow(
+                db.articles,
+                article,
+                context=context,
+                evaluator=editorial_similarity_shadow_evaluator,
+                logger=logger,
+            )
 
         if memory_started_at is not None:
             log_article_generation_memory(
@@ -2563,7 +2711,7 @@ async def _import_hybrid_news_internal(
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
                     article = attach_manual_review_editorial_metadata(article)
                     try:
-                        await db.articles.insert_one(article)
+                        await insert_hybrid_article(article, "category_rss")
                     except DuplicateKeyError:
                         logger.info(f"⏭️ Duplicate skipped (DB unique index): {title[:60]}...")
                         continue
@@ -2731,7 +2879,10 @@ async def _import_hybrid_news_internal(
             review_doc = attach_manual_review_editorial_metadata(review_doc)
 
             try:
-                await db.articles.insert_one(review_doc)
+                await insert_hybrid_article(
+                    review_doc,
+                    "local_rss_manual_review",
+                )
             except DuplicateKeyError:
                 logger.info(f"⏭️ Duplicate skipped (local RSS manual review): {title[:60]}...")
                 return False
@@ -2965,7 +3116,7 @@ async def _import_hybrid_news_internal(
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
             article = attach_manual_review_editorial_metadata(article)
             try:
-                await db.articles.insert_one(article)
+                await insert_hybrid_article(article, "local_rss")
             except DuplicateKeyError:
                 logger.info(f"⏭️ Duplicate skipped (local RSS insert): {title[:60]}...")
                 continue
@@ -3143,7 +3294,7 @@ async def _import_hybrid_news_internal(
                 article = apply_public_import_cap(article, title)
                 article = attach_manual_review_editorial_metadata(article)
                 try:
-                    await db.articles.insert_one(article)
+                    await insert_hybrid_article(article, "cheshire_fallback")
                 except DuplicateKeyError:
                     logger.info(f"⏭️ Duplicate skipped (Perplexity Cheshire insert): {title[:60]}...")
                     continue
@@ -18526,6 +18677,7 @@ async def daily_article_generation(count: int = 12):
                     public_import_limit=6,
                 ),
                 memory_started_at=memory_started_at,
+                enable_editorial_similarity_shadow=True,
             )
         except Exception as gen_error:
             logger.error(f"Error during article generation (will retry): {str(gen_error)}")

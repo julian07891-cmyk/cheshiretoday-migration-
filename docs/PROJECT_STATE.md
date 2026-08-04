@@ -25501,9 +25501,65 @@ existing title, summary and content are independently bounded to 300, 2,000 and
 `low` result without logging or returning submitted values. No raw token list,
 body copy, embedding or image is returned or persisted.
 
-This phase is evaluation-only. The module is not imported by `backend/server.py`
-and has no database, network, image, provider, Admin, import, scheduler or Manual
-Review integration. It does not mutate records or alter Version 1 title, source-
-URL, image, index or cleanup decisions. No dependency, migration, index or
-production configuration was added. Runtime or Admin integration remains a
-separate future task after threshold calibration review.
+At completion of Phase 2A, this foundation was evaluation-only and was not
+imported by `backend/server.py`; it had no database, network, image, provider,
+Admin, import, scheduler or Manual Review integration. It did not mutate records
+or alter Version 1 title, source-URL, image, index or cleanup decisions. Phase 2B
+below records the later scheduled-only advisory integration boundary.
+
+## Operational update — 4 August 2026 (Version 2 Phase 2B scheduled shadow integration)
+
+The deterministic Editorial Similarity scorer is connected locally only to
+normal scheduled `daily_article_generation` hybrid imports. Activation is an
+explicit internal flag passed by the scheduled path; Admin-triggered Generate,
+Hybrid Import, Real News Import, RSS Sync and Clear/Refresh operations remain
+shadow-disabled. The four scheduled hybrid insertion contexts share one wrapper:
+category RSS, Local RSS Manual Review, Local RSS and Cheshire fallback.
+
+At the start of an enabled run, the integration reads at most the newest 50
+`articles` and 50 `archived_articles` records by indexed `_id`. Each Mongo
+pipeline applies `$limit` before a narrow projection that bounds title to 300,
+summary to 2,000, content to 4,000, source URL to 2,048, locality fields to 300
+and string dates to 128 characters. The in-process pool remains capped at 100;
+active and archived provenance is attached only to transient snapshots. Each
+successfully inserted article contributes a `same_run` bounded snapshot. The
+corpus is ordered by normalized publication time plus stable ID, so exceeding
+the cap evicts the genuinely oldest entry. No unbounded read, dependency,
+environment variable, API schema, migration or new index was added.
+
+Before invoking the full scorer, a deterministic cheap shortlist uses matching
+planning references, distinctive number/unit facts, specific locality fields,
+distinctive headline overlap and bounded rare-text overlap. Generic Cheshire/news
+terms do not create shortlist evidence. The shortlist is capped at 20, guaranteeing
+at most 20 pure-scorer calls per candidate while retaining the confirmed
+Hough/former-kennels cross-feed fixture.
+
+Scoring occurs after existing Version 1 title, source-URL and image checks and
+after final article construction, but before the unchanged single insert. Every
+score and band, including `ineligible`, is advisory only and cannot skip an
+insert, change visibility, route Manual Review, archive, clean up or alter
+publication. Query, scoring and logging failures fail open. Failed inserts keep
+their existing handling and produce no successful-insert shadow log.
+
+One `editorial_similarity_shadow` log is attempted after each successful enabled
+insert, including a bounded zero/no-match result when no shortlist match exists or
+scoring fails. Best-match selection is deterministic: highest score, strongest
+eligible band, newest normalized match time and stable-ID tie-break. An ineligible
+result cannot displace a meaningful eligible result. Logs contain an exact,
+validated allow-list of status/context, candidate and matched Mongo identities,
+active/archived/same-run provenance, eligible, score, band, comparison and shortlist
+counts, reason codes, scorer version and shadow-mode identifier. IDs and all enum,
+reason and numeric values are validated and bounded at the final logging boundary;
+arbitrary object string conversion is prohibited. Titles, article text, source
+URLs, sources, images, payloads and exception details remain excluded. No result
+or identity is persisted in an article document, returned by a public API or
+exposed in Admin.
+
+The existing twelve `article_generation_memory` phases, distributed scheduler
+lock, RSS concurrency cap, provider timeouts, visible-pool cap, duplicate cleanup
+and Version 1 deterministic duplicate/index decisions remain unchanged. This
+implementation and validation are local; deployment and observation of normal
+06:00, 12:00 and 18:00 runs remain pending. At least three normal scheduled runs
+must be reviewed before any threshold, UI or operational integration work. No
+manual import should be triggered solely to collect Phase 2B evidence, and no
+threshold may affect production until a later separately reviewed phase.

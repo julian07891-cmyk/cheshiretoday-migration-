@@ -1061,7 +1061,49 @@ zero-score `low` result without exposing submitted values.
 
 The confirmed Hough/former-kennels case reaches the conservative likely band,
 while unrelated and later-stage negative fixtures remain below likely. The module
-has no runtime caller and performs no MongoDB, network, image, provider, import,
-Admin, scheduler or Manual Review work. Version 1 duplicate prevention and all
-production behaviour remain unchanged. Runtime integration is explicitly deferred
-until the shadow scoring contract and thresholds receive separate review.
+had no runtime caller at completion of Phase 2A and performed no MongoDB, network,
+image, provider, import, Admin, scheduler or Manual Review work. Version 1
+duplicate prevention and all production behaviour remained unchanged. Phase 2B
+below records the later scheduled-only advisory integration.
+
+## Version 2 Phase 2B — scheduled-only Editorial Similarity shadow integration
+
+On 4 August 2026, a local log-only integration was added to the normal scheduled
+hybrid-import path. An explicit internal flag enables it only from
+`daily_article_generation`; Admin-triggered generation, hybrid import, Real News
+Import, RSS Sync and Clear/Refresh remain disabled. Category RSS, Local RSS Manual
+Review, Local RSS and Cheshire fallback insertions share the same fail-open wrapper.
+
+The integration loads at most 50 recent active and 50 recent archived records by
+indexed `_id`. Mongo limits precede narrow, server-side bounded projections, and
+the in-process comparison pool remains capped at 100 records. Transient records
+retain allow-listed active, archived or same-run provenance and normalized match
+time; successful same-run insertions are added and the genuinely oldest time/ID
+entry is evicted. No unbounded query, migration, index, dependency, environment
+variable or API schema was added.
+
+A cheap deterministic shortlist uses planning references, distinctive number/unit
+facts, specific locality, distinctive headline overlap and bounded rare-text
+overlap while excluding generic Cheshire/news terms. It is capped at 20, so the
+pure scorer can run at most 20 times per candidate, and retains the confirmed
+Hough/former-kennels cross-feed fixture. Best-match ordering is score, strongest
+eligible band, newest normalized time and stable ID; an ineligible result cannot
+displace a meaningful eligible match.
+
+Scoring happens only after unchanged Version 1 duplicate checks and final article
+construction. No score or band participates in insertion, publication, visibility,
+Manual Review, archive or cleanup decisions. Every successful enabled insertion
+attempts one bounded `editorial_similarity_shadow` log, including a zero/no-match
+result. Its exact validated schema contains safe internal IDs, allow-listed
+provenance/context/band/reason values, bounded score/comparison/shortlist counts,
+scorer version and shadow-mode identifier only. Arbitrary object string conversion
+is prohibited; no title, content, source, URL, image, payload or exception detail
+is logged. Nothing is persisted to article documents or exposed through Admin or
+public APIs.
+
+The twelve memory markers, scheduler locking, importer safeguards and Version 1
+duplicate behavior remain unchanged. Implementation and validation are local;
+deployment and passive evidence collection from normal scheduled runs remain
+pending. At least three normal scheduled runs must be reviewed before threshold,
+UI or operational work. No import is to be triggered solely for validation, and
+operational use of similarity scores remains a separate future review.
