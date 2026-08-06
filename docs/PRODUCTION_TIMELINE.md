@@ -1,0 +1,92 @@
+# Cheshire Today — Production Timeline
+
+> **Reconstruction status:** repository-evidenced production chronology through
+> commit `1601ae48be281153e5dd4af0eee0889a26835162`. A historical “deployed” statement
+> is retained as a dated claim unless matching live verification is recorded.
+
+## Document purpose
+
+This document separates deployments, incidents, data operations and production
+verification gates from general engineering history.
+
+## How to use this document
+
+- Read the event type and verification column before treating a commit as live.
+- Use the [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md) for build
+  sequence, the [Decision Register](DECISION_REGISTER.md) for rationale and the
+  [Source Register](HISTORY/SOURCE_REGISTER.md) for authority.
+- Production state after current HEAD belongs in the unreconciled section until it
+  is preserved in the repository.
+
+## Deployments and activations
+
+| Date/time | Environment | Event type | System | Change or incident | Commit/deployment | Verification | Impact | Resolution/follow-up | Sources |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 February 2026 | Render production | Initial deployment | Full stack | Initial repository deployment to Render | `789e9c8` | Later operational records describe live Render service; original event detail is limited | Established production baseline | Subsequent health, API and frontend stabilisation | [Preserved state](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md), early history; Git `789e9c8` |
+| 4–9 February | Render production | Activation/stabilisation | API/Admin | Health endpoint, article caching, URL and Admin auth corrections | `ef7cfbc`, `c7fe038`, `223cc34` | Later health and Admin operation records | Improved availability and routing | Continued scheduler/editorial work | Preserved state, February sections; cited Git |
+| 3–18 March | Render production | Deployment sequence | SEO/article routes | Slug canonical routes, redirects, crawler HTML and social previews | `0f6f4e0`, `82e193f`, `f4324ac`, `bc170be`, `c9aa4a5` | Repository records include live crawler/social verification | Stabilised article identity and shared links | July canonical consolidation followed | Preserved state, March SEO updates; cited Git |
+| 7–17 March | Render production | Pipeline activation | Scheduled imports | Long-form hybrid RSS/Perplexity generation with timeouts and content floors | `000fb94`, `bd762fc`, `53d5911`, `0091276` | Live regeneration/import records in state history | Fuller articles; unsafe short output archived | Repeated editorial and memory hardening | Preserved state, March import sections; cited Git |
+| 2 April | Render production | Scheduler deployment | Scheduler | Europe/London timezone, DST-correct jobs and archive-cron removal | `2e3b17d`, `be47a48`, `ad2e3b2` | Subsequent scheduled-run records use BST/UTC distinction | Prevented timing drift and age-based deletion | Retain manual cleanup only | Preserved state, April scheduler sections; cited Git |
+| 11 April | Production newsletter | Provider cutover | Newsletter | Daily Brief and Weekly Roundup moved to Resend batches | `f76248a`, documented by `fe5fe97` | Per-recipient tracking and test-send records | Replaced SMTP loop; enabled batch evidence | Caps, rotation and memory controls added | Preserved state, “Resend newsletter cutover”; cited Git |
+| 25–30 April | Production | Feature activation | Advertising | Manual sponsored placements, Admin management, payment and reporting workflow | `282a503`, `2d65bdb`, `bc734d0`, `4f4d22e` | Repository records describe live readiness and webhook verification; individual placement activation varies | Established controlled paid-placement system | Continue manual review and payment verification | Preserved state, April advertising sections; cited Git |
+| 12–31 May | Production | Workflow activation | Manual Review | Hidden review records excluded from public surfaces and editable/restorable through Admin | `8bcc6bf`, `7dda210`, `a1980d2`, `d426558`, `067288e` | Live cleanup and Admin workflow observations recorded | Separated unsafe candidates from public publication | July state/ID separation hardened it | Preserved state, May Manual Review sections; cited Git |
+| 22 June–12 July | Production/Admin | Controlled activation | OpenAI editorial draft | Admin-only OpenAI draft, source/fact-pack research and editorial guard | `ad131c7`, `5ef4041`, `2723fc7`, `3fcc4a3`, `83d8d69` | Controlled draft diagnostics; drafts were not auto-saved or published | Added human-review writing assistance | Continue claim-by-claim verification | Preserved state, June/July OpenAI sections; cited Git |
+| 18–27 July | Production | Security activation | Newsletter management | Secure preference, unsubscribe and reactivation request/challenge flows | `be98b43` through `db8fae1`; tag `newsletter-security-v1.0` | Focused tests and production provisioning records; zero duplicate normalised emails recorded | Removed legacy management-link risk | Maintain request limits and one-use challenges | [July log](HISTORY/ENGINEERING_LOG_JULY_2026.md), newsletter security sections; cited Git |
+| 21–26 July | Production | Staged source activation | Local RSS | Newsquest/Knutsford and Nantwich staged Local RSS rollout | `3f4ab10`, `6d87817`, `9cfb187`, `c80ca7e` | Scheduled imports and Manual Review counts recorded | Increased local supply without bypassing gates | Continue source-by-source observation | July log, Local RSS sections; preserved state; cited Git |
+| 26–28 July | Repository and production Admin | Feature activation | Brand/Social Publishing | Brand Library v1, Facebook/Instagram/Threads assets and unified Social Publishing Admin | `86794f6`, `2f4e1a0`, `9902e3c`, `2bcdf5c` | Automated asset tests and later Admin bundle verification; no automatic posting | Standardised creation/copy/download workflow | Publishing remains manual | July log, social sections; [brand assets](brand-assets/); cited Git |
+| 27 July | Production baseline | Milestone | Version 1 | Version 1 completion documented | `ffa7f9d` | Documentation and production baseline recorded; not a claim that all future work stopped | Closed Version 1 engineering scope | Version 2 work remained separately gated | July log, “Version 1 completion”; Git `ffa7f9d` |
+| 30–31 July | Production | Analytics deployment | Article views/Most Read | First-party article-view repair and period-correct Most Read | `6a95ba9`, `a93d4bf`, `d6eb46b` | Focused/live checks documented; Most Read no longer used lifetime fallback | Restored trustworthy period ranking | Later Admin analytics built on these events | July log, analytics sections; cited Git |
+| 1 August | Production | Analytics activation | Admin/Facebook attribution | Admin dashboard and deterministic Facebook UTM attribution | `cac9b24`, `9b024cc` | Repository records say Phase 2A was functionally production-verified; detailed task evidence awaits Codex reconciliation | Added privacy-bounded first-party attribution | No Meta API or raw attribution storage | Preserved state, Admin Analytics sections; cited Git |
+| 1 August | Production | Deployment/verification | Metadata | Static-shell/Helmet reconciliation | `6bfe896`, `1e5c2da`, documented by `7ca1269` | Health 200, settled DOM, crawler, sitemap and robots checks recorded | Removed duplicate route metadata and Admin leakage | Search Console recovery not claimed | Preserved state, metadata verification sections; cited Git |
+| 1–2 August | Production/Admin | Mobile deployment | Admin editor/cards | Mobile Safari input, editor containment/sticky close and responsive Admin cards | `2d7ed9f`, `6328cf3`, `a6bfb78`, `cf0ae79`, `761a7c2`, `f43c4ef` | Real-iPhone evidence recorded for editor; Page Zoom 100% requirement identified | Restored usable mobile Admin editing and card containment | Broader navigation/dialog work deferred | Preserved state, August mobile sections; cited Git |
+| 4 August, approximately 14:15 BST | Render production | Shadow activation | Editorial Similarity | Scheduled-only log-only Phase 2B deployed | Scorer `8043fdd`; integration `5e1a875`; deployment record `1601ae4` | Render marked `5e1a875` live according to repository record | Added advisory evidence only; no publication decision changed | Observe at least three normal runs | Preserved state, “Editorial Similarity deployment and production-observation gate”; cited Git |
+
+## Production incidents
+
+| Date/time | Environment | Event type | System | Change or incident | Commit/deployment | Verification | Impact | Resolution/follow-up | Sources |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| March 2026 | Production/startup | Data-loss risk | Duplicate cleanup | First-five-word startup duplicate cleaner removed legitimate recent articles | Pre-fix runtime; disabled by `3ca0834` | Code/history and pool-safety investigation | Recent records could disappear | Startup call disabled; later exact/source URL rules retained | Preserved state, “Emergency stability update”; Git `3ca0834` |
+| March–April | Production | Freshness incident | Homepage/pool | Stale ordering, repeated stories and pool starvation followed competing cap/fallback experiments | Multiple March commits/reverts | Live homepage observations in state history | Poor freshness and duplicates | Stable allocation, deeper bounded pool and backend ordering fixes | Preserved state, March/3 April updates; Git `b4612e1`, `0e1d639` |
+| 12 April | Production | State regression | Archive/live pool | Auto-cap could unarchive manually archived records | Resolved by `707da88` | Live pool audit and post-fix cleanup | Editorial removals could reappear | Durable archive-reason guard | Preserved state, 12 April archive section; Git `707da88` |
+| 22 May | Render production | OOM | Daily Brief | Confirmed 512 MB OOM during a 2,000-recipient send | Runtime incident; later mitigation commits | Recorded in project state and QA `QA-OPS-001` | Service memory limit exceeded | Recipient caps, batch/memory changes; later observability | [QA report](QA/QA_REPORT_2026-07-29.md), `QA-OPS-001`; Git `9580cbd`, `55f36ac` |
+| 24–25 May | Production engineering | Rollback | Import/AI verification | Broad verification/Manual Review/Gemini changes were introduced then reverted | Multiple commits and explicit reverts | Git history and 25 May project update | Unstable combined import behaviour | Restore narrower Perplexity flow; pause Gemini | Preserved state, “Major QA / Import Rollback”; Git reverts `d0e8399`, `7fef821`, `a796691` |
+| July 2026 | Render production | Intermittent OOM concern | Article generation | Historical intermittent generation-time memory failures lacked phase attribution | Before `42736f9` | QA found risk but no sufficient Render metrics | Unclear feed/cleanup peak source | Add twelve phase markers; observe before optimising | QA `QA-OPS-001`; July log memory section; Git `42736f9` |
+| 29 July | Repository/security | Critical QA finding | Admin tests | Admin credential was present in tracked legacy tests/history and external tests could mutate production | Baseline `2bcdf5c`; containment `b804cdd`, `603e11b` | QA `QA-SEC-001`, `QA-TEST-001` | Credential and unsafe-test risk | Remove current-tree exposure, enforce loopback-only tests; production rotation not proven by repository | QA report and cited Git |
+| 29 July | Production/API | Security finding | CORS | Credentialed CORS accepted arbitrary origins | Baseline `2bcdf5c` | QA `QA-SEC-002`, including live preflight | Weakened browser origin boundary | Later status requires QA reconciliation; do not infer resolved here | QA report `QA-SEC-002` |
+| 1 August | Production | Metadata regression | Browser/Admin | First dedupe deployment fixed public core tags but left Admin homepage leakage and social tag duplication | `6bfe896`; follow-up `1e5c2da` | Live settled-DOM verification | Ambiguous head metadata | Managed all conflicting shell tags and reverified | Preserved state, metadata sections; cited Git |
+| 1 August | Production/iPhone | Usability incident | Admin editor | Safari retained focus enlargement; translated editor clipped and close control became inaccessible | `2d7ed9f` followed by `6328cf3`, `a6bfb78` | Real-iPhone tests | Difficult mobile editing/closing | Top-aligned editor, sticky close; Safari zoom not disabled | Preserved state, mobile sections; cited Git |
+
+## Data and content operations
+
+| Date/time | Environment | Event type | System | Change or incident | Commit/deployment | Verification | Impact | Resolution/follow-up | Sources |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| March–April 2026 | Production database | Live cleanup | Articles | Duplicate, stale and weak-fit records were manually archived during homepage/import stabilisation | Operational actions; supporting code around `b4612e1`, `707da88` | Before/after live pool audits recorded | Improved public quality; carries mutation history | Preserve archive reasons and avoid recreating via caps | Preserved state, March/April cleanup sections |
+| 6–7 April | Production database | Subscriber import/test send | Newsletter | Bulk subscriber imports and first-live-send safety batches | Operational work; `25cb127` cap | Test send and recipient totals recorded historically | Established initial newsletter audience | Later Resend cutover and engagement rotation | Preserved state, April subscriber/newsletter sections |
+| 7 April | Production database | Content seeding | Authority guides | Six commercial guides seeded as drafts, visually checked and promoted | Runtime data operation; frontend follow-up `aae3a97` | Public route and visual checks recorded | Created initial commercial guide set | Continue disclosure and provider review | Preserved state, 7 April guide section; Git `aae3a97` |
+| 11 April | Production database | Index/tracking change | Newsletter | Per-recipient delivery IDs and Admin aggregation introduced | `11d56f2`, `77af404` | Live tracking verification recorded | Created accepted-recipient ledger | Preserve distinction from inbox delivery | Preserved state, Resend tracking section; cited Git |
+| 21 July | Production database | Image backfill | Articles | Newsquest image pipeline and guarded historical backfill | `c1356ea`, `93a38e4` | Backfill completion recorded | Improved article/social imagery | Keep source attribution and image validation | July log, image milestone; cited Git |
+| 24 July | Production database | Controlled repair | Live pool | Repair utility restored eligible auto-capped records after cleanup/cap starvation | `be5c4ed`, `dc18e65` | Counted repair and production checks recorded | Refilled eligible visible pool | Retain guarded/dry-run repair semantics | Preserved state, 24 July live-pool sections; cited Git |
+| 27 July | Production database | Unique-index provisioning | Subscribers | Normalised-email audit found zero duplicate groups; guarded unique index provisioned | `0bb3ce8` | Counts/index status recorded | Enforced one subscriber per normalised email | Retain safe duplicate-key handling | July log, production data work; Git `0bb3ce8` |
+
+## Production verification gates
+
+| Date/time | Environment | Event type | System | Change or incident | Commit/deployment | Verification | Impact | Resolution/follow-up | Sources |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 27 July | Production/repository | Completion gate | Version 1 | Version 1 declared complete | `ffa7f9d` | Platform, newsletter, Manual Review, security and social evidence summarised | Established stable baseline | Future opportunities kept separate | July log, Version 1 completion |
+| 29 July | Production/repository | QA gate | Whole platform | Post-release audit at `2bcdf5c` | QA baseline | Public/crawler/frontend passed with critical/high findings | New release not unconditionally approved | Security/test/code/CORS work required | [QA report](QA/QA_REPORT_2026-07-29.md) |
+| 31 July | Production/repository | Observation gate | Memory | Generation phase markers introduced | `42736f9` | Local regression validation; production latency/memory observation required | Evidence collection without optimisation | Compare normal runs and high-water marks | July log, memory section |
+| 1 August | Production | Verification gate | Metadata | Seven-field uniqueness and crawler preservation checked | `1e5c2da`, documented `7ca1269` | Health, DOM, SPA, crawler, sitemap and robots checks passed | Follow-up verified in production | Search Console recovery remained unclaimed | Preserved state, metadata production verification |
+| 1–2 August | Production/iPhone | Verification gate | Admin mobile | Physical-device editor and layout checks | Through `a6bfb78`, `f43c4ef` | Login/editor checks recorded; broader all-browser coverage not claimed | Operational mobile usability improved | Navigation/other row work separate | Preserved state, mobile production sections |
+| 4 August | Render production | Observation gate | Editorial Similarity | Phase 2B marked live | `5e1a875`, record `1601ae4` | Deployment recorded, calibration explicitly not proven | Shadow evidence collection began | Require at least three normal scheduled runs | Preserved state, final section; cited Git |
+
+## Unreconciled post-HEAD production evidence
+
+- Render logs, Admin observations and production investigations after 4 August 2026
+  may exist in Codex tasks but are not yet systematically preserved.
+- The requested ChatGPT export is unavailable.
+- The Editorial Similarity three-run gate is not marked complete by repository HEAD.
+- Repository history does not independently prove production credential rotation
+  following `QA-SEC-001`.
+- Historical PDFs remain unreconciled and cannot establish live state.
+- No event in this section should be upgraded to “verified” without a timestamped,
+  repository-backed evidence record.
