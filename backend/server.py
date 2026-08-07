@@ -3880,6 +3880,13 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
                     await db.articles.delete_one({'_id': original_id})
                     duplicates_removed += 1
                     logger.info(f"Archived duplicate: {display_title[:40]}...")
+
+        # Release the first full collection read and every container reference to
+        # its article dictionaries before materialising the second full read.
+        group = None
+        article = None
+        duplicate_groups = None
+        articles = None
         
         # Archive low-quality short fallback articles so only full rewritten content stays live.
         remaining = await db.articles.find({}).to_list(None)
