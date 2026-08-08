@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `1601ae4`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `49e5fe4`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 
@@ -158,16 +158,16 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Current severity:** Medium
 - **Area:** Render memory and operations
 - **Original finding:** OOM risk was only partially evidenced after newsletter and import memory incidents.
-- **Current status:** Monitoring — instrumentation deployed; stability not proven.
-- **Current-code evidence:** Twelve bounded markers in `backend/app/article_generation_observability.py`; RSS concurrency eight; scheduler locks; large identity/cleanup reads and newsletter materialisation remain.
-- **Fixing commits:** Observability `42736f9`; no optimisation commit claimed.
-- **Test evidence:** `tests/test_article_generation_memory_observability.py` and related scheduler/import regressions.
-- **Deployment evidence:** Later Project State records deployment context, but current HEAD does not contain a completed multi-run stability conclusion.
-- **Production evidence:** Historical 512 MB OOM and 29/30 July generation correlations; post-HEAD investigations are unreconciled.
-- **Remaining gap:** Multiple complete normal-run timelines, peaks/final RSS, post-run restart window and workload correlation.
-- **Closure criteria:** Evidence-backed stability window or separately reviewed optimisation followed by normal-run production verification.
+- **Current status:** Monitoring — immediate duplicate-cleanup lifecycle OOM risk operationally mitigated; broader process-memory stability not proven.
+- **Current-code evidence:** Twelve bounded markers in `backend/app/article_generation_observability.py`; RSS concurrency eight; scheduler locks; `49e5fe4` releases `group`, `article`, `duplicate_groups` and `articles` before the second cleanup materialisation. Full unrestricted reads, visible-pool work and newsletter materialisation remain.
+- **Fixing commits:** Observability `42736f9`; lifecycle release `49e5fe4`.
+- **Test evidence:** Five focused lifecycle regressions, 28 related cleanup/auth/memory/live-pool regressions, compilation and diff checks passed before commit `49e5fe4`.
+- **Deployment evidence:** Render automatically deployed `49e5fe4` on 7 August 2026; startup completed and the service became live before the 12:00 scheduled run.
+- **Production evidence:** The pre-fix 7 August 06:00 run reached 530.0 MB against the verified 512 MB ceiling and was followed by an OOM. Post-fix normal runs at 12:00 and 18:00 on 7 August and 06:00 on 8 August completed without OOM; second-read increases were 29.4 MB, 8.6 MB and 40.7 MB respectively, versus 63.4 MB pre-fix. The high-start 8 August run ended at 473.6 MB, 38.4 MB below the ceiling.
+- **Remaining gap:** Broader stability across future workloads, full unrestricted reads, visible-pool growth, allocator high-water behaviour and newsletter memory remain under observation.
+- **Closure criteria:** A sustained evidence-backed stability window covering scheduled imports and newsletter workloads, or separately reviewed further optimisation followed by normal-run production verification.
 - **Owner/documentation responsibility:** Production operations owner; [Monitoring](../OPERATIONS/MONITORING.md).
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, [Production Timeline](../PRODUCTION_TIMELINE.md).
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, [Production Timeline](../PRODUCTION_TIMELINE.md).
 
 ### QA-DOC-001
 
@@ -229,15 +229,15 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Original severity:** Not applicable
 - **Current severity:** Medium
 - **Area:** Editorial Similarity operations
-- **Original finding:** Phase 2B is deployed shadow-only, but the required multi-run production observation/calibration gate is incomplete at repository HEAD.
-- **Current status:** Monitoring.
+- **Original finding:** Phase 2B was deployed shadow-only, but the required multi-run production observation/calibration gate was incomplete at the earlier repository baseline.
+- **Current status:** Monitoring — numerical three-run observation-count gate satisfied; calibration and any product decision remain unapproved.
 - **Current-code evidence:** Explicit scheduled-only activation, 50+50 pool, 100 corpus, 20 shortlist/scorer cap, safe logs and no operational decisions.
 - **Fixing commits:** `8043fdd`, `5e1a875`; deployment record `1601ae4`.
 - **Test evidence:** 54 focused Phase 2A/2B tests; related group 178 passed and 12 skipped; compile/Black/diff checks recorded.
 - **Deployment evidence:** Project State records `5e1a875` live on 4 August.
-- **Production evidence:** No three-normal-run review is preserved at current HEAD.
-- **Remaining gap:** At least three normal scheduled runs with health, duration, memory, pool/shortlist/comparison, provenance and unchanged outcome evidence.
-- **Closure criteria:** Complete and reconcile the observation gate; approve or reject later calibration separately. Version 1 remains authoritative.
+- **Production evidence:** At least three complete normal scheduled production shadow observations are preserved at current HEAD, with health, duration, bounded similarity evidence and unchanged publication authority.
+- **Remaining gap:** Calibration review and any threshold, UI or enforcement decision require separate evidence and explicit approval; no such change is currently justified.
+- **Closure criteria:** Complete a separately scoped calibration decision, or explicitly retain shadow-only monitoring based on reviewed evidence. Version 1 remains authoritative throughout.
 - **Owner/documentation responsibility:** Editorial/import and production operations owners.
 - **Sources:** [Editorial Similarity architecture](../ARCHITECTURE/EDITORIAL_SIMILARITY.md), [Project State](../PROJECT_STATE.md).
 

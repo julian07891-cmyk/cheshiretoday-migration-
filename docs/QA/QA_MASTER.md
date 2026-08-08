@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `1601ae48be281153e5dd4af0eee0889a26835162`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `49e5fe49cc35e0ca020e8520db6365d356760060`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -26,7 +26,10 @@ Evidence-backed status totals for the eleven original findings are:
 | Remediated and verified by tests at repository level | 2 |
 | Remediated, deployed and production verified | 1 |
 
-Three additional post-baseline findings are registered: documentation authority sprawl, incomplete Editorial Similarity production observation, and scheduler lock-failure continuation risk. These totals describe evidence status, not severity totals.
+Three additional post-baseline findings are registered: documentation authority
+sprawl, Editorial Similarity calibration/product-decision evidence after completion
+of the numerical observation-count gate, and scheduler lock-failure continuation
+risk. These totals describe evidence status, not severity totals.
 
 ## Original 29 July QA baseline
 
@@ -58,7 +61,14 @@ Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2d
 
 ## Performance and memory
 
-The public article-list latency finding lacks a measured remediation. Memory markers added by `42736f9` improve diagnosis but do not prove Render OOM stability or reduce peak memory. Duplicate-cleanup reads and newsletter materialisation remain evidence-led monitoring priorities.
+The public article-list latency finding lacks a measured remediation. Memory markers
+added by `42736f9` isolated a 7 August scheduled-import OOM to simultaneous
+duplicate-cleanup materialisations. Commit `49e5fe4` released first-pass references
+before the second read; deployment and three normal runs production-verified the
+immediate lifecycle mitigation, including a high-start run finishing 38.4 MB below
+the verified 512 MB ceiling. This does not prove all Render memory stability:
+unrestricted reads, visible-pool work, allocator high-water behaviour and
+newsletter materialisation remain evidence-led monitoring priorities.
 
 ## Operations and monitoring
 
@@ -70,7 +80,12 @@ Secure request-link, challenge, replay, unsubscribe/reactivation, active-recipie
 
 ## Editorial workflow
 
-Manual Review is a first-class hidden state with backend-authoritative restoration guards. Publication-intent confirmation, responsive cards and mobile editor work are recorded, with varying deployment evidence. Version 1 duplicate protection remains authoritative. Editorial Similarity is advisory, scheduled-only and awaiting multi-run observation.
+Manual Review is a first-class hidden state with backend-authoritative restoration
+guards. Publication-intent confirmation, responsive cards and mobile editor work
+are recorded, with varying deployment evidence. Version 1 duplicate protection
+remains authoritative. Editorial Similarity is advisory, scheduled-only and
+shadow-only. Its numerical three-run observation-count gate is satisfied;
+calibration, threshold, UI and enforcement decisions remain unapproved.
 
 ## Social publishing
 
@@ -100,7 +115,11 @@ Every finding requires: an identified current-code state; a fixing or supersedin
 
 ## Reconstruction status
 
-Repository evidence through HEAD is reconciled. Pending ChatGPT export, systematic Codex-history integration, historical PDF reconciliation and post-HEAD production investigations can change evidence classifications later; they are not treated as current truth here.
+Repository evidence through HEAD, including the 7–8 August duplicate-cleanup
+incident and post-fix verification, is reconciled. Pending ChatGPT export,
+systematic Codex-history integration, historical PDF reconciliation and other
+post-HEAD production investigations can change evidence classifications later;
+they are not treated as current truth here.
 
 ## Known limitations
 

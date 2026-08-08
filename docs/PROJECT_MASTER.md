@@ -7,8 +7,8 @@
 > - **QA authority:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
 > - **Roadmap authority:** [Roadmap Master](ROADMAP_MASTER.md)
 > - **Historical reconstruction status:** Substantial repository reconstruction completed; ChatGPT, Codex, PDF and post-HEAD reconciliation remain incomplete
-> - **Last repository reconciliation date:** 6 August 2026
-> **Current repository baseline:** `full-scrape-prod` at `1601ae48be281153e5dd4af0eee0889a26835162`
+> - **Last repository reconciliation date:** 8 August 2026
+> **Current repository baseline:** `full-scrape-prod` at `49e5fe49cc35e0ca020e8520db6365d356760060`
 
 This metadata describes the repository baseline used for reconstruction. It does
 not assert that the same commit is currently deployed or that every production
@@ -180,7 +180,7 @@ Avoid:
 
 - Repository: `CT29january26-new-website-migration`
 - Primary production branch: `full-scrape-prod`
-- Reconciliation HEAD: `1601ae48be281153e5dd4af0eee0889a26835162`
+- Reconciliation HEAD: `49e5fe49cc35e0ca020e8520db6365d356760060`
 
 Always verify the actual branch, HEAD and working tree. Preserve intentional
 untracked documentation and unrelated user changes.
@@ -604,6 +604,8 @@ At the current repository baseline:
 - rendered metadata duplication was deployed and production-verified;
 - first-party article views and Most Read were corrected;
 - bounded memory and Editorial Similarity observability exist;
+- duplicate-cleanup first-pass references are released before the second full read,
+  and three normal post-fix runs production-verified the immediate OOM mitigation;
 - substantial newsletter, Manual Review, analytics, crawler and mobile regression
   coverage is preserved.
 
@@ -611,8 +613,10 @@ Highest-priority unresolved evidence includes:
 
 - production credential rotation/revocation;
 - wildcard credentialed CORS;
-- Render memory/OOM stability and duplicate-cleanup peaks;
-- Editorial Similarity’s three-normal-run observation gate;
+- broader Render memory/OOM stability, including remaining full-read and high-start
+  process risk;
+- Editorial Similarity calibration, threshold, UI and enforcement decisions after
+  satisfaction of the numerical three-run observation gate;
 - public desktop search accessibility;
 - Admin first-byte noindex/robots alignment;
 - documentation reconstruction and pending-source reconciliation.
@@ -652,9 +656,13 @@ Future decisions should supersede, not erase, previous entries.
 
 The detailed chronology is in [Production Timeline](PRODUCTION_TIMELINE.md).
 
-- **Render memory and OOM:** newsletter and scheduled article work have reached
-  memory limits. Twelve article-generation markers improve diagnosis but do not
-  prove stability; capture complete normal runs before optimisation.
+- **Render memory and OOM:** the 7 August 06:00 scheduled run reached 530.0 MB
+  against the verified 512 MB ceiling and was followed by an OOM. Investigation
+  found both duplicate-cleanup collection materialisations simultaneously
+  reachable. Commit `49e5fe4` released the first-pass references before the second
+  read; three normal post-fix runs completed without OOM, including a high-start
+  run ending at 473.6 MB. The immediate defect is operationally mitigated, but
+  broader memory monitoring remains required.
 - **Newsletter delivery and memory:** provider transitions, caps, rotating cursors,
   zero-success diagnostics and accepted-recipient accounting followed incidents.
   Provider acceptance and subscriber engagement remain separate evidence.
@@ -704,8 +712,9 @@ The detailed chronology is in [Production Timeline](PRODUCTION_TIMELINE.md).
 - **Analytics:** first-party views, Most Read, Admin summaries and Facebook
   attribution use bounded privacy-safe reporting; GA4 remains external.
 - **Editorial Similarity:** Phase 2A (`8043fdd`) and Phase 2B (`5e1a875`) are
-  implemented; repository records state deployment, while observation/calibration
-  remains incomplete.
+  implemented and deployed. At least three complete normal scheduled shadow
+  observations satisfy the numerical observation-count gate; calibration,
+  threshold, UI and enforcement decisions remain unapproved.
 
 See [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md) for chronology
 and [Completed Phases](QA/COMPLETED_PHASES.md) for QA boundaries.
@@ -721,7 +730,7 @@ The current repository reconstruction baseline is:
 
 ```text
 Branch: full-scrape-prod
-HEAD: 1601ae48be281153e5dd4af0eee0889a26835162
+HEAD: 49e5fe49cc35e0ca020e8520db6365d356760060
 ```
 
 At session start, verify:
@@ -732,10 +741,12 @@ At session start, verify:
 - health and startup state;
 - mutable provider, scheduler or production facts needed by the task.
 
-Editorial Similarity is documented at HEAD as deployed into passive scheduled
-observation. Later production investigations fall outside this repository
-baseline until they are reconciled into approved records. Do not claim calibration,
-threshold approval, Similar Stories UI or production detection quality.
+Editorial Similarity remains deployed into passive scheduled observation. The
+7–8 August duplicate-cleanup memory incident, fix and three-run production
+verification are reconciled in the repository records. Other later production
+investigations remain outside this baseline until reconciled. Do not claim
+similarity calibration, threshold approval, Similar Stories UI or production
+detection quality.
 
 ## 18. Roadmap summary
 
@@ -745,8 +756,10 @@ The authoritative prioritisation is [Roadmap Master](ROADMAP_MASTER.md).
 
 - obtain credential rotation/revocation evidence;
 - restrict and verify wildcard credentialed CORS;
-- observe production memory and duplicate-cleanup pressure;
-- complete Editorial Similarity normal-run observation;
+- continue broader production-memory monitoring after the operationally verified
+  duplicate-cleanup lifecycle mitigation;
+- keep Editorial Similarity shadow-only; consider calibration or later product
+  decisions only through separate evidence and approval;
 - complete documentation reconstruction.
 
 ### Near term

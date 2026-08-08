@@ -3,9 +3,9 @@
 > - **Status:** Concise local operational source of truth; Phases 1–7.3 complete locally and awaiting final read-only review, commit and push
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `1601ae48be281153e5dd4af0eee0889a26835162`
-> - **Last repository reconciliation:** 6 August 2026
-> - **Production-verification status:** Repository evidence records Editorial Similarity deployment through 4 August; current deployment, health and mutable live state require fresh verification when relevant
+> - **Repository baseline:** `49e5fe49cc35e0ca020e8520db6365d356760060`
+> - **Last repository reconciliation:** 8 August 2026
+> - **Production-verification status:** Commit `49e5fe4` and three normal post-fix scheduled runs were verified through 8 August; current deployment, health and mutable live state still require fresh verification when relevant
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,31 +36,20 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Reconstruction HEAD:** `1601ae48be281153e5dd4af0eee0889a26835162`
-- **Latest baseline commit:** `Record Editorial Similarity deployment state`
+- **Reconstruction HEAD:** `49e5fe49cc35e0ca020e8520db6365d356760060`
+- **Latest baseline commit:** `Release duplicate cleanup memory before second read`
 
 This is the Phase 7 reconstruction baseline, not an assertion that a later
 session or committed repository remains at the same HEAD.
 
-The expected intentional untracked documentation set at this baseline includes:
+The intentional untracked/local-only set is limited to:
 
 - `AGENTS.md`;
-- `docs/PROJECT_MASTER.md`;
 - `docs/ARCHIVE/PROJECT_STATE_FULL_2026-08-06.md` as excluded local preservation
-  evidence;
-- `docs/ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md` as the intended repository
-  archive;
-- `docs/HISTORY/CHAT_HISTORY_AUGUST_2026.md`;
-- `docs/HISTORY/SOURCE_REGISTER.md`;
-- `docs/HISTORY/ENGINEERING_HISTORY_MASTER.md`;
-- `docs/DECISION_REGISTER.md`;
-- `docs/PRODUCTION_TIMELINE.md`;
-- `docs/EDITORIAL_EVOLUTION.md`;
-- `docs/ARCHITECTURE_MASTER.md` and `docs/ARCHITECTURE/`;
-- `docs/OPERATIONS/`;
-- `docs/QA/QA_MASTER.md`, `OPEN_FINDINGS.md`, `COMPLETED_PHASES.md` and
-  `TEST_HISTORY.md`;
-- `docs/ROADMAP_MASTER.md`.
+  evidence.
+
+The reconstructed documentation set is tracked. Verify the actual working tree at
+every session start rather than inferring current modifications from this list.
 
 Verify branch, HEAD, latest commit and working tree at every session start.
 Preserve intentional untracked records and unrelated user changes.
@@ -273,10 +262,12 @@ Highest-priority unresolved or monitoring items are:
 - **Critical:** production credential rotation/revocation evidence remains
   unresolved despite current-tree containment.
 - **High:** wildcard credentialed CORS remains open in current code.
-- **Medium:** Render memory/OOM stability and duplicate-cleanup pressure remain
-  under monitoring.
-- **Medium:** Editorial Similarity multi-run production observation is incomplete
-  at repository HEAD.
+- **Medium:** the immediate duplicate-cleanup simultaneous-list OOM risk is
+  operationally mitigated by `49e5fe4` and three successful normal runs; broader
+  Render memory/OOM stability remains under monitoring.
+- **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
+  satisfied. Calibration, threshold, UI and enforcement decisions remain
+  unapproved; the scorer remains scheduled-only and shadow-only.
 - **Medium:** public desktop search accessibility remains open.
 - **Medium:** Admin first-byte server-level noindex/robots alignment is not fully
   proven.
@@ -319,11 +310,13 @@ Still active or pending:
 
 - observe normal scheduler runs only;
 - capture all twelve article-generation memory markers;
-- inspect duplicate-cleanup read pressure and post-run stability;
-- collect bounded Editorial Similarity score, band, reason and provenance
-  evidence;
+- continue post-run stability monitoring after the verified duplicate-cleanup
+  lifecycle mitigation; full unrestricted reads and high-start process memory
+  remain residual risks;
+- retain bounded Editorial Similarity score, band, reason and provenance evidence;
 - confirm Version 1 decisions, Manual Review and publication remain unchanged;
-- make no threshold or UI decision until the evidence gate is met.
+- make no calibration, threshold, UI or enforcement decision without a separate
+  reviewed evidence gate and approval.
 
 No manual import should be triggered solely to accelerate observation.
 
@@ -332,12 +325,13 @@ No manual import should be triggered solely to accelerate observation.
 1. Complete the final read-only documentation review.
 2. Reconcile current production credential rotation/revocation evidence.
 3. Restrict and verify wildcard credentialed CORS.
-4. Observe Render memory and duplicate-cleanup phases over normal runs.
-5. Complete Editorial Similarity normal-run observation.
-6. Complete Weekly Roundup QA using normal scheduled evidence.
-7. Continue inactive-subscriber evidence gathering without speculative
+4. Continue broader Render memory monitoring; retain the 7–8 August three-run
+   verification as evidence that the immediate duplicate-cleanup lifecycle risk is
+   operationally mitigated.
+5. Complete Weekly Roundup QA using normal scheduled evidence.
+6. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
-8. Complete ChatGPT and Codex historical reconciliation.
+7. Complete ChatGPT and Codex historical reconciliation.
 
 Security and reliability take precedence over speculative features.
 

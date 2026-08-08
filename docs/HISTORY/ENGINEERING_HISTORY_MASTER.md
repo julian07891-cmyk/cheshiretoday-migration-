@@ -1,7 +1,7 @@
 # Cheshire Today — Engineering History Master
 
 > **Reconstruction status:** repository-evidence history through commit
-> `1601ae48be281153e5dd4af0eee0889a26835162` on 4 August 2026. ChatGPT export,
+> `49e5fe49cc35e0ca020e8520db6365d356760060` on 7 August 2026. ChatGPT export,
 > systematic Codex history and post-HEAD production evidence remain unreconciled.
 
 ## Document purpose
@@ -415,6 +415,38 @@ listed below are reconciled.
 - **Sources:** preserved state, final three sections; July log appended Phase 2A/2B;
   Git `8043fdd`, `5e1a875`, `1601ae4`.
 
+#### Duplicate-cleanup memory lifecycle mitigation — 7–8 August
+
+- **Incident:** the normal 7 August 06:00 BST scheduled import began at a 385.3 MB
+  process high-water, reached 431.7 MB after the visible-pool cap, 466.6 MB after
+  the first duplicate-cleanup read and 530.0 MB after the second read. The job
+  completed, then Render reported OOM at approximately 06:42 and recovered at
+  approximately 06:43; the verified service ceiling was 512 MB.
+- **Investigation:** `_remove_duplicates_internal()` retained the first full
+  `articles` materialisation, `duplicate_groups` references and the final `group`
+  and `article` loop values while starting a second unrestricted
+  `find({}).to_list(None)`. Two complete decoded collections were therefore
+  reachable simultaneously. The pre-fix classification was **PRIMARY CAUSE
+  STRONGLY INDICATED**.
+- **Implementation:** commit `49e5fe4` set `group`, `article`, `duplicate_groups`
+  and `articles` to `None` immediately after duplicate processing and before the
+  second read. Queries, thresholds, archive ordering, Manual Review safeguards,
+  scheduler behaviour and Editorial Similarity were unchanged.
+- **Tests:** five focused lifecycle regressions and 28 related cleanup, auth,
+  memory-observability and live-pool regressions passed; compilation and diff
+  checks also passed.
+- **Deployment and production result:** Render automatically deployed `49e5fe4`
+  before the 7 August 12:00 run. Three normal runs completed without OOM: second
+  read increases were 29.4 MB at 12:00, 8.6 MB at 18:00 and 40.7 MB at 8 August
+  06:00, compared with 63.4 MB pre-fix. The high-start 8 August run ended at
+  473.6 MB, 38.4 MB below the ceiling. Cleanup semantics remained active and all
+  three runs removed zero records.
+- **Conclusion/follow-up:** the immediate duplicate-cleanup simultaneous-list OOM
+  risk is operationally mitigated. This is not proof that all memory risk is gone;
+  full unrestricted reads, visible-pool growth, allocator high-water behaviour,
+  provider decode buffers and newsletter workloads remain monitoring concerns.
+- **Sources:** [Production Timeline](../PRODUCTION_TIMELINE.md), [Open Findings](../QA/OPEN_FINDINGS.md), Git `49e5fe4`; authenticated Render evidence reconciled 8 August.
+
 ## Failed, reverted and deferred work
 
 ### Rolled-back homepage and feed experiments
@@ -457,8 +489,9 @@ optimisation were not approved at HEAD.
 
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
-- Production evidence after commit `1601ae4` is outside this reconstruction unless
-  already present in repository sources.
+- Production evidence after commit `49e5fe4` is outside this reconstruction unless
+  already present in repository sources. The 7–8 August duplicate-cleanup evidence
+  is reconciled in the production and QA records.
 - Historical PDFs named in the preserved state are missing from the checkout; the
   tracked `CheshireToday_Project_History.pdf` remains unreconciled.
 - Some historical paragraphs say “deployed” without a matching retained Render

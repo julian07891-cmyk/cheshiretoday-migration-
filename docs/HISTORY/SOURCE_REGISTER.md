@@ -86,8 +86,8 @@ final review and an approved commit and push.
 
 - **Path:** `docs/PROJECT_STATE.md`.
 - **Source type:** concise current operational source of truth.
-- **Repository status:** tracked file modified locally in Phase 7; unstaged and
-  pending approved commit and push.
+- **Repository status:** tracked; the reconstruction was committed in `a6e0f98` and
+  the current 8 August production-evidence update is modified locally and unstaged.
 - **Authority level:** 4 for current local operations, governed by
   `docs/PROJECT_MASTER.md`.
 - **Phase 7 replacement baseline SHA-256:** `a0230c90c2a6ec59e0e0ade66f42d1020e9b96bf2241575b969835b8138a38a9`.
@@ -98,8 +98,10 @@ final review and an approved commit and push.
 - **Current Phase 7.2 size:** 493 lines; 20,431 bytes.
 - **Current Phase 7.4 SHA-256:** `df06b22a1185543db17693b1725dda980f42aa8332f6a6328c3d34469d5c7108`.
 - **Current Phase 7.4 size:** 496 lines; 20,606 bytes.
-- **Reconciliation status:** rebuilt locally in Phase 7; final consistency review,
-  approved commit and push remain pending.
+- **Current 8 August operational update SHA-256:** `c4fcf546800137f3a3b6dfae62af7a0af5e667d871597e5ca576eb904c1a2149`.
+- **Current 8 August operational update size:** 490 lines; 20,679 bytes.
+- **Reconciliation status:** rebuilt in Phase 7 and committed in `a6e0f98`; the
+  current operational update remains pending final review and approval.
 
 #### Exact local preservation archive
 
@@ -217,8 +219,8 @@ final review and an approved commit and push.
 #### `docs/PROJECT_MASTER.md`
 
 - **Source type:** permanent first-read project index and governance record.
-- **Repository status:** intentional untracked file rebuilt locally; pending approved
-  commit and push.
+- **Repository status:** tracked; the reconstruction was committed in `a6e0f98` and
+  the current 8 August production-evidence update is modified locally and unstaged.
 - **Date range:** prepared and rebuilt in August 2026.
 - **Authority level:** 4 for local documentation governance after Phase 6.
 - **Material covered:** governance, project identity, architecture, strategy, QA,
@@ -231,10 +233,12 @@ final review and an approved commit and push.
 - **Current Phase 7.2 size:** 900 lines; 38,303 bytes.
 - **Current Phase 7.4 SHA-256:** `655897ea59bb3423be0e35a9a4a1a1d6e54f66bbb516a7184099dbfcc579327c`.
 - **Current Phase 7.4 size:** 902 lines; 38,464 bytes.
-- **Limitations:** repository-wide authority awaits final review and the approved
-  documentation commit and push; mutable production facts still require verification.
-- **Reconciliation status:** rebuilt locally in Phase 6 and synchronised after
-  Phase 7; commit and push remain pending.
+- **Current 8 August operational update SHA-256:** `0595cc0a0715a7a1654797ffb494e756a2478c425d1451f3ae8f0d414c268245`.
+- **Current 8 August operational update size:** 915 lines; 39,391 bytes.
+- **Limitations:** mutable production facts still require current verification.
+- **Reconciliation status:** rebuilt in Phase 6, synchronised after Phase 7 and
+  committed in `a6e0f98`; the current operational update remains pending final
+  review and approval.
 
 #### `AGENTS.md`
 
@@ -382,12 +386,12 @@ final review and an approved commit and push.
 
 - **Repository:** `CT29january26-new-website-migration`.
 - **Current branch:** `full-scrape-prod`.
-- **Current HEAD:** `1601ae48be281153e5dd4af0eee0889a26835162` —
-  `Record Editorial Similarity deployment state`, dated 4 August 2026.
+- **Current HEAD:** `49e5fe49cc35e0ca020e8520db6365d356760060` —
+  `Release duplicate cleanup memory before second read`, dated 7 August 2026.
 - **First known commit:** `789e9c8a39ff947b21ef01d15d2aba07e95fee7f` —
   `Initial commit for Render deployment`, dated 1 February 2026.
-- **Commit count reachable from current HEAD:** 943.
-- **Commit count across all refs established in Phase 1:** 949. The six-commit
+- **Commit count reachable from current HEAD:** 945.
+- **Commit count across all refs at 8 August reconciliation:** 951. The six-commit
   difference is branch/ref history not reachable from the current HEAD and is
   retained as historical evidence.
 
@@ -401,8 +405,8 @@ final review and an approved commit and push.
 | May 2026 | 224 |
 | June 2026 | 25 |
 | July 2026 | 177 |
-| August 2026 through HEAD | 15 |
-| **Total** | **943** |
+| August 2026 through HEAD | 17 |
+| **Total** | **945** |
 
 ### Monthly totals across all refs established in Phase 1
 
@@ -414,8 +418,8 @@ final review and an approved commit and push.
 | May 2026 | 224 |
 | June 2026 | 25 |
 | July 2026 | 177 |
-| August 2026 through inventory | 15 |
-| **Total** | **949** |
+| August 2026 through 8 August reconciliation | 17 |
+| **Total** | **951** |
 
 ### Relevant branches
 
@@ -453,6 +457,25 @@ documentation changes. Commit messages alone do not prove deployment, production
 verification or continued activation. Reverted commits, branch-only work and later
 corrections must be represented explicitly in historical records.
 
+## Reconciled 7–8 August production evidence
+
+- **Identifier:** authenticated Render deployment, scheduler, memory-marker and
+  health-log reviews for commit `49e5fe4`.
+- **Source type:** verified production evidence, authority level 2.
+- **Date range:** 7 August 2026 06:00 BST through the post-run health window after
+  the 8 August 06:00 BST scheduled import.
+- **Material covered:** pre-fix 530.0 MB high-water/OOM; static lifecycle
+  investigation; automatic deployment of `49e5fe4`; twelve-marker evidence for
+  three normal post-fix runs; cleanup outcomes; Render health and restart checks.
+- **Reconciliation status:** incorporated into [Production Timeline](../PRODUCTION_TIMELINE.md),
+  [Engineering History](ENGINEERING_HISTORY_MASTER.md), [QA Master](../QA/QA_MASTER.md),
+  [Open Findings](../QA/OPEN_FINDINGS.md), [Roadmap](../ROADMAP_MASTER.md),
+  [Project Master](../PROJECT_MASTER.md) and [Project State](../PROJECT_STATE.md).
+- **Limitations:** `rss_mb` is a lifetime process high-water marker, not a direct
+  measure of live objects or proof that all memory was returned to the operating
+  system. The evidence supports operational mitigation of the immediate lifecycle
+  defect, not closure of broader Render memory risk.
+
 ## Pending and unreconciled sources
 
 The following gates remain open:
@@ -464,8 +487,9 @@ The following gates remain open:
    checkout and have not been directly reconciled.
 5. The tracked `CheshireToday_Project_History.pdf` remains a historical source whose
    content has not yet been reconciled.
-6. Latest production investigations may post-date repository HEAD and must be
-   recorded only from preserved, timestamped evidence.
+6. Production investigations after the reconciled 7–8 August memory evidence may
+   post-date repository HEAD and must be recorded only from preserved, timestamped
+   evidence.
 7. The ignored July state backups have not yet received section-level comparison
    against the full Phase 2 snapshot.
 8. QA findings have been reconciled locally against repository evidence; final
@@ -486,4 +510,5 @@ repository-backed master records.
   excluded and the privacy-safe derivative is the proposed repository archive.
 - **Final review, commit and push:** pending.
 - **Historical reconstruction:** incomplete while ChatGPT, structured Codex,
-  historical PDF and post-HEAD production evidence remain unreconciled.
+  historical PDF and later production evidence remain unreconciled; the 7–8 August
+  duplicate-cleanup evidence is now registered and reconciled.

@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `1601ae48be281153e5dd4af0eee0889a26835162`. It does not include unreconciled post-HEAD chat claims.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `49e5fe49cc35e0ca020e8520db6365d356760060`. It includes the reconciled 7–8 August duplicate-cleanup memory evidence but not other unreconciled post-HEAD claims.
 
 ## Document purpose
 
@@ -39,8 +39,7 @@ remains authoritative.
 |---|---|---|---|
 | Next | P0 | Close `QA-SEC-001` operational credential exposure | Dated rotation/revocation and old-access failure evidence without revealing secrets |
 | Next | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Reviewed allow-list, positive/negative tests, deploy and live preflight |
-| Monitoring | P0 | Render OOM and duplicate-cleanup memory stability | Multiple complete normal-run memory timelines and post-run restart windows |
-| Monitoring | P0 | Editorial Similarity normal-run observation | At least three ordinary scheduled runs; no manual imports; unchanged publication outcomes |
+| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | Immediate simultaneous-list risk verified as mitigated across three normal runs; continue import/newsletter high-water and restart observation |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
 | Next | P1 | Final documentation review | Repeat the complete read-only gate after synchronisation and archive decision |
@@ -79,14 +78,18 @@ Security and production stability precede feature expansion.
 | Status | Work | Scope and gate |
 |---|---|---|
 | Deferred | Version 2 branding | Coordinated professional rollout only when audience/business value justifies it |
-| Deferred | Editorial Similarity UI or Similar Stories | Requires completed observation, labelled review and separately approved thresholds |
+| Deferred | Editorial Similarity UI or Similar Stories | Numerical observation-count gate is satisfied; calibration, product review and separately approved thresholds are still required |
 | Deferred | Broader Admin navigation redesign | Separate from resolved mobile editor/card containment |
 | Deferred | Database/index optimisation programme | Requires measured production evidence per query/workload |
 
 ## Monitoring-only work
 
-- Editorial Similarity pool, shortlist, comparison, band, reason and provenance evidence.
+- Editorial Similarity pool, shortlist, comparison, band, reason and provenance
+  evidence after satisfaction of the numerical three-run gate; continued monitoring
+  does not authorise calibration, UI or enforcement.
 - All twelve article-generation memory phases, scheduler duration and post-run stability.
+- Residual full-read, visible-pool and high-start memory behaviour after `49e5fe4`;
+  the lifecycle fix does not close broader Render memory risk.
 - Weekly Roundup batches, accepted-recipient ledger, provider outcome and cursor progress.
 - First-party analytics subsection latency and scanner/bot noise.
 - Sitemap, crawler metadata and representative Search Console state.
@@ -133,7 +136,8 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 
 1. Security findings precede discretionary deployment.
 2. Memory evidence precedes scheduler/import optimisation.
-3. Three normal similarity runs precede calibration or UI.
+3. The numerical three-run similarity gate is satisfied; calibration, UI and
+   enforcement still require separate reviewed evidence and approval.
 4. Provider/ledger evidence precedes newsletter recipient-state changes.
 5. Query measurements precede indexes or caching.
 6. Tests precede deployment; deployed commit evidence precedes production verification.
@@ -145,7 +149,9 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 
 - Broad credentialed CORS.
 - Unverified credential rotation/history exposure.
-- Render memory peaks during scheduled import/cleanup or newsletter work.
+- Render memory peaks from remaining full reads, visible-pool work, allocator
+  high-water behaviour or newsletter materialisation despite the operationally
+  verified duplicate-cleanup lifecycle mitigation.
 - Scheduler ownership degradation if lock acquisition errors continue fail-open.
 - Public API latency.
 - Newsletter provider/recipient conclusions without reconciled evidence.

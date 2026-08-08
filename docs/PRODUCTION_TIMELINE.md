@@ -1,7 +1,7 @@
 # Cheshire Today — Production Timeline
 
 > **Reconstruction status:** repository-evidenced production chronology through
-> commit `1601ae48be281153e5dd4af0eee0889a26835162`. A historical “deployed” statement
+> commit `49e5fe49cc35e0ca020e8520db6365d356760060`. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose
@@ -40,6 +40,7 @@ verification gates from general engineering history.
 | 1 August | Production | Deployment/verification | Metadata | Static-shell/Helmet reconciliation | `6bfe896`, `1e5c2da`, documented by `7ca1269` | Health 200, settled DOM, crawler, sitemap and robots checks recorded | Removed duplicate route metadata and Admin leakage | Search Console recovery not claimed | Preserved state, metadata verification sections; cited Git |
 | 1–2 August | Production/Admin | Mobile deployment | Admin editor/cards | Mobile Safari input, editor containment/sticky close and responsive Admin cards | `2d7ed9f`, `6328cf3`, `a6bfb78`, `cf0ae79`, `761a7c2`, `f43c4ef` | Real-iPhone evidence recorded for editor; Page Zoom 100% requirement identified | Restored usable mobile Admin editing and card containment | Broader navigation/dialog work deferred | Preserved state, August mobile sections; cited Git |
 | 4 August, approximately 14:15 BST | Render production | Shadow activation | Editorial Similarity | Scheduled-only log-only Phase 2B deployed | Scorer `8043fdd`; integration `5e1a875`; deployment record `1601ae4` | Render marked `5e1a875` live according to repository record | Added advisory evidence only; no publication decision changed | Observe at least three normal runs | Preserved state, “Editorial Similarity deployment and production-observation gate”; cited Git |
+| 7 August, 11:16–11:19 BST | Render production | Automatic deployment | Duplicate cleanup | Lifecycle-only release of first-pass duplicate-cleanup references before the second full read | `49e5fe49cc35e0ca020e8520db6365d356760060` | Build succeeded; Uvicorn startup completed; service became live before the 12:00 run; health returned 200 | Removed simultaneous reachability of both decoded collection lists without changing cleanup semantics | Verify only through normal scheduled runs | Git `49e5fe4`; authenticated Render deployment and health evidence reconciled 8 August |
 
 ## Production incidents
 
@@ -55,6 +56,7 @@ verification gates from general engineering history.
 | 29 July | Production/API | Security finding | CORS | Credentialed CORS accepted arbitrary origins | Baseline `2bcdf5c` | QA `QA-SEC-002`, including live preflight | Weakened browser origin boundary | Later status requires QA reconciliation; do not infer resolved here | QA report `QA-SEC-002` |
 | 1 August | Production | Metadata regression | Browser/Admin | First dedupe deployment fixed public core tags but left Admin homepage leakage and social tag duplication | `6bfe896`; follow-up `1e5c2da` | Live settled-DOM verification | Ambiguous head metadata | Managed all conflicting shell tags and reverified | Preserved state, metadata sections; cited Git |
 | 1 August | Production/iPhone | Usability incident | Admin editor | Safari retained focus enlargement; translated editor clipped and close control became inaccessible | `2d7ed9f` followed by `6328cf3`, `a6bfb78` | Real-iPhone tests | Difficult mobile editing/closing | Top-aligned editor, sticky close; Safari zoom not disabled | Preserved state, mobile sections; cited Git |
+| 7 August, 06:00–06:43 BST | Render production | OOM | Scheduled article cleanup | The scheduled job completed after rising from 385.3 MB to 530.0 MB high-water; Render reported OOM at approximately 06:42 and recovered approximately 06:43 | Before `49e5fe4` | Twelve markers showed 431.7 MB at visible-pool cap, 466.6 MB after first cleanup read and 530.0 MB after second read; verified ceiling 512 MB | Service exceeded its memory ceiling after job completion | Static investigation found first-pass articles, duplicate groups and residual loop references still reachable during the second full materialisation | Authenticated Render logs and code investigation reconciled 8 August; Git `49e5fe4` |
 
 ## Data and content operations
 
@@ -78,11 +80,15 @@ verification gates from general engineering history.
 | 1 August | Production | Verification gate | Metadata | Seven-field uniqueness and crawler preservation checked | `1e5c2da`, documented `7ca1269` | Health, DOM, SPA, crawler, sitemap and robots checks passed | Follow-up verified in production | Search Console recovery remained unclaimed | Preserved state, metadata production verification |
 | 1–2 August | Production/iPhone | Verification gate | Admin mobile | Physical-device editor and layout checks | Through `a6bfb78`, `f43c4ef` | Login/editor checks recorded; broader all-browser coverage not claimed | Operational mobile usability improved | Navigation/other row work separate | Preserved state, mobile production sections |
 | 4 August | Render production | Observation gate | Editorial Similarity | Phase 2B marked live | `5e1a875`, record `1601ae4` | Deployment recorded, calibration explicitly not proven | Shadow evidence collection began | Require at least three normal scheduled runs | Preserved state, final section; cited Git |
+| 7 August, 12:00 BST | Render production | Post-fix verification | Duplicate cleanup memory | First normal run after `49e5fe4` | `49e5fe4` | 123.6 MB start, 228.9 MB visible cap, 236.4 MB first read, 265.8 MB second/final; second-read increase 29.4 MB; runtime 103.07 seconds; no OOM or restart | Lifecycle release behaved safely; cleanup removed zero records | Continue normal-run monitoring | Authenticated Render logs reconciled 8 August |
+| 7 August, 18:00 BST | Render production | Post-fix verification | Duplicate cleanup memory | Second normal run after `49e5fe4` | `49e5fe4` | 314.8 MB start, 341.8 MB visible cap, 343.0 MB first read, 351.6 MB second/final; second-read increase 8.6 MB; runtime 49.45 seconds; no OOM or restart | Strengthened evidence that simultaneous-list amplification was removed | Require high-start comparison | Authenticated Render logs reconciled 8 August |
+| 8 August, 06:00 BST | Render production | Post-fix verification | Duplicate cleanup memory | High-start comparison with the pre-fix OOM run | `49e5fe4` | 377.2 MB start, 406.4 MB visible cap, 432.9 MB first read, 473.6 MB second/final; second-read increase 40.7 MB; runtime 77.32 seconds; 38.4 MB below ceiling; zero removals and no OOM/restart during the observed window | Immediate duplicate-cleanup lifecycle OOM risk classified as operationally mitigated | Continue broader memory monitoring; do not infer all memory risk is gone | Authenticated Render logs reconciled 8 August |
 
-## Unreconciled post-HEAD production evidence
+## Unreconciled later production evidence
 
-- Render logs, Admin observations and production investigations after 4 August 2026
-  may exist in Codex tasks but are not yet systematically preserved.
+- The 7–8 August duplicate-cleanup incident, deployment and three-run verification
+  are reconciled above. Other later Render logs, Admin observations and production
+  investigations may exist in Codex tasks but are not yet systematically preserved.
 - The requested ChatGPT export is unavailable.
 - The Editorial Similarity three-run gate is not marked complete by repository HEAD.
 - Repository history does not independently prove production credential rotation
