@@ -310,6 +310,12 @@ def test_duplicate_cleanup_reaches_both_read_markers_in_order(monkeypatch):
         async def to_list(self, _length):
             return []
 
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise StopAsyncIteration
+
     class Articles:
         def find(self, *_args, **_kwargs):
             return Cursor()

@@ -49,8 +49,14 @@ def test_internal_remove_duplicates_remains_directly_callable(monkeypatch):
         async def to_list(self, _length):
             return []
 
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise StopAsyncIteration
+
     class EmptyArticles:
-        def find(self, _query):
+        def find(self, _query, _projection=None):
             return EmptyCursor()
 
         async def count_documents(self, _query):

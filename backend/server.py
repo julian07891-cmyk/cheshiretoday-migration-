@@ -3889,25 +3889,28 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
         articles = None
         
         # Archive low-quality short fallback articles so only full rewritten content stays live.
-        remaining = await db.articles.find({}).to_list(None)
-        if memory_started_at is not None:
-            log_article_generation_memory(
-                logger,
-                "duplicate_cleanup_second_read_completed",
-                memory_started_at,
-                {"document_count": len(remaining)},
-            )
+        short_content_projection = {
+            "_id": 1,
+            "content": 1,
+            "summary": 1,
+            "manual_review_hidden_from_public": 1,
+            "verification_status": 1,
+            "rewrite_status": 1,
+            "manual_edited": 1,
+            "manual_edit_protected": 1,
+            "source": 1,
+        }
         boilerplate_markers = [
             "this story has been reported by",
             "more details are expected to emerge soon",
             "for the latest news from across the region, keep following",
         ]
 
-        for article in remaining:
+        def short_content_assessment(article):
             if article.get("manual_review_hidden_from_public") is True:
-                continue
+                return None
             if _is_owner_protected_article(article):
-                continue
+                return None
             content = (article.get('content') or '').strip()
             summary = (article.get('summary') or '').strip()
             text_blob = ((content + " " + summary).strip())
@@ -3916,19 +3919,61 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
 
             is_low_quality_short = blob_len < 1000
             is_boilerplate_fallback = any(m in text_l for m in boilerplate_markers)
+            return blob_len if is_low_quality_short or is_boilerplate_fallback else None
 
-            if is_low_quality_short or is_boilerplate_fallback:
-                article['archived_at'] = datetime.now(timezone.utc).isoformat()
-                article['archive_reason'] = 'short_content'
-                original_id = article.pop('_id', None)
-                try:
-                    await db.archived_articles.insert_one(article)
-                except:
-                    pass
+        short_candidate_ids = []
+        second_read_count = 0
+        short_scan_cursor = db.articles.find({}, short_content_projection)
+        async for projected_article in short_scan_cursor:
+            second_read_count += 1
+            if short_content_assessment(projected_article) is not None:
+                candidate_id = projected_article.get("_id")
+                if candidate_id is not None:
+                    short_candidate_ids.append(candidate_id)
+        projected_article = None
+        short_scan_cursor = None
 
-                await db.articles.delete_one({'_id': original_id})
-                short_removed += 1
-                logger.info(f"Archived low-quality article ({blob_len} chars): {article.get('title', '')[:60]}...")
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "duplicate_cleanup_second_read_completed",
+                memory_started_at,
+                {"document_count": second_read_count},
+            )
+
+        for candidate_id in short_candidate_ids:
+            full_article = await db.articles.find_one({"_id": candidate_id})
+            if not full_article:
+                continue
+
+            blob_len = short_content_assessment(full_article)
+            if blob_len is None:
+                continue
+
+            archive_article = dict(full_article)
+            archive_article['archived_at'] = datetime.now(timezone.utc).isoformat()
+            archive_article['archive_reason'] = 'short_content'
+            archive_article.pop('_id', None)
+            try:
+                await db.archived_articles.insert_one(archive_article)
+            except Exception:
+                logger.warning(
+                    "Could not archive short-content article; active article preserved"
+                )
+                continue
+
+            try:
+                delete_result = await db.articles.delete_one({'_id': candidate_id})
+            except Exception:
+                logger.warning(
+                    "Could not delete archived short-content article; removal not counted"
+                )
+                continue
+            if delete_result.deleted_count != 1:
+                continue
+
+            short_removed += 1
+            logger.info(f"Archived low-quality article ({blob_len} chars): {full_article.get('title', '')[:60]}...")
         
         final_count = await db.articles.count_documents({})
         
