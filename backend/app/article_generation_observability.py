@@ -66,6 +66,26 @@ def _sample_process_rss_mb() -> float | None:
     return _ru_maxrss_to_mb(usage.ru_maxrss, sys.platform)
 
 
+def _sample_current_rss_mb() -> float | None:
+    """Read the current resident set size from Linux procfs."""
+    try:
+        with open("/proc/self/status", encoding="utf-8") as status_file:
+            for line in status_file:
+                label, separator, value = line.partition(":")
+                if separator != ":" or label.strip() != "VmRSS":
+                    continue
+                parts = value.split()
+                if len(parts) != 2 or parts[1] != "kB":
+                    return None
+                value_kb = int(parts[0])
+                if value_kb < 0:
+                    return None
+                return value_kb / 1024
+    except Exception:
+        return None
+    return None
+
+
 def log_article_generation_memory(
     logger,
     phase: str,
@@ -91,6 +111,14 @@ def log_article_generation_memory(
 
         if rss_mb is not None:
             fields.append(f"rss_mb={rss_mb:.1f}")
+
+        try:
+            current_rss_mb = _sample_current_rss_mb()
+        except Exception:
+            current_rss_mb = None
+
+        if current_rss_mb is not None:
+            fields.append(f"current_rss_mb={current_rss_mb:.1f}")
 
         for key, value in (counts or {}).items():
             if key not in APPROVED_COUNT_FIELDS:

@@ -1,6 +1,10 @@
 import asyncio
+import builtins
+import io
 import os
 from types import SimpleNamespace
+
+import pytest
 
 os.environ["MONGO_URL"] = "mongodb://localhost:27017"
 os.environ["DB_NAME"] = "test_database"
@@ -25,6 +29,7 @@ def test_normal_phase_log_contains_only_approved_numeric_fields(monkeypatch):
     logger = RecordingLogger()
     monkeypatch.setattr(observability.time, "monotonic", lambda: 15.5)
     monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: 438.7)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: None)
 
     observability.log_article_generation_memory(
         logger,
@@ -57,6 +62,7 @@ def test_memory_sampling_failure_is_non_fatal(monkeypatch):
         raise RuntimeError("sample failed")
 
     monkeypatch.setattr(observability, "_sample_process_rss_mb", fail_sample)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: None)
     observability.log_article_generation_memory(logger, "job_started", 1.0)
 
     assert logger.messages == [
@@ -92,6 +98,97 @@ def test_ru_maxrss_platform_units_are_deterministic():
     assert observability._ru_maxrss_to_mb(512 * 1024 * 1024, "darwin") == 512
 
 
+def test_current_rss_linux_vmrss_is_converted_from_kb(monkeypatch):
+    monkeypatch.setattr(
+        builtins,
+        "open",
+        lambda *_args, **_kwargs: io.StringIO(
+            "Name:\tpython\nVmRSS:\t204800 kB\nThreads:\t1\n"
+        ),
+    )
+
+    assert observability._sample_current_rss_mb() == 200.0
+
+
+@pytest.mark.parametrize(
+    "vmrss_line",
+    [
+        "VmRSS: 204800 kB\n",
+        "VmRSS:\t  204800    kB  \n",
+        "  VmRSS : 204800 kB\n",
+    ],
+)
+def test_current_rss_accepts_proc_whitespace_variation(monkeypatch, vmrss_line):
+    monkeypatch.setattr(
+        builtins,
+        "open",
+        lambda *_args, **_kwargs: io.StringIO(vmrss_line),
+    )
+
+    assert observability._sample_current_rss_mb() == 200.0
+
+
+@pytest.mark.parametrize(
+    "status_text",
+    [
+        "Name:\tpython\nThreads:\t1\n",
+        "VmRSS: not-a-number kB\n",
+        "VmRSS: 204800 MB\n",
+        "VmRSS: -1 kB\n",
+    ],
+)
+def test_current_rss_malformed_or_missing_value_is_safe(monkeypatch, status_text):
+    monkeypatch.setattr(
+        builtins,
+        "open",
+        lambda *_args, **_kwargs: io.StringIO(status_text),
+    )
+
+    assert observability._sample_current_rss_mb() is None
+
+
+@pytest.mark.parametrize("error", [OSError("unavailable"), RuntimeError("unexpected")])
+def test_current_rss_open_failure_is_safe(monkeypatch, error):
+    def fail_open(*_args, **_kwargs):
+        raise error
+
+    monkeypatch.setattr(builtins, "open", fail_open)
+
+    assert observability._sample_current_rss_mb() is None
+
+
+def test_phase_log_contains_peak_and_current_rss(monkeypatch):
+    logger = RecordingLogger()
+    monkeypatch.setattr(observability.time, "monotonic", lambda: 5.0)
+    monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: 455.4)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: 360.2)
+
+    observability.log_article_generation_memory(logger, "job_started", 2.0)
+
+    assert logger.messages == [
+        "article_generation_memory phase=job_started elapsed_seconds=3.00 "
+        "rss_mb=455.4 current_rss_mb=360.2"
+    ]
+
+
+def test_current_rss_failure_keeps_peak_rss_log(monkeypatch):
+    logger = RecordingLogger()
+    monkeypatch.setattr(observability.time, "monotonic", lambda: 5.0)
+    monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: 455.4)
+
+    def fail_current_sample():
+        raise RuntimeError("current RSS unavailable")
+
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", fail_current_sample)
+
+    observability.log_article_generation_memory(logger, "job_started", 2.0)
+
+    assert logger.messages == [
+        "article_generation_memory phase=job_started elapsed_seconds=3.00 "
+        "rss_mb=455.4"
+    ]
+
+
 def test_unsupported_platform_omits_rss_and_keeps_phase_log(monkeypatch):
     logger = RecordingLogger()
     fake_resource = SimpleNamespace(
@@ -101,6 +198,7 @@ def test_unsupported_platform_omits_rss_and_keeps_phase_log(monkeypatch):
     monkeypatch.setattr(observability, "resource", fake_resource)
     monkeypatch.setattr(observability.sys, "platform", "unsupported")
     monkeypatch.setattr(observability.time, "monotonic", lambda: 4.0)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: None)
 
     observability.log_article_generation_memory(logger, "job_started", 1.0)
 
@@ -115,6 +213,7 @@ def test_missing_resource_module_omits_rss_and_keeps_phase_log(monkeypatch):
     monkeypatch.setattr(observability, "resource", None)
     monkeypatch.setattr(observability.sys, "platform", "linux")
     monkeypatch.setattr(observability.time, "monotonic", lambda: 6.0)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: None)
 
     observability.log_article_generation_memory(logger, "job_started", 2.0)
 
