@@ -45,9 +45,15 @@ class FakeCollection:
     async def find_one(self, query, projection=None):
         for document in self.documents:
             if "id" in query and document.get("id") == query["id"]:
-                return dict(document)
+                result = dict(document)
+                if projection and projection.get("_id") == 0:
+                    result.pop("_id", None)
+                return result
             if "_id" in query and document.get("_id") == query["_id"]:
-                return dict(document)
+                result = dict(document)
+                if projection and projection.get("_id") == 0:
+                    result.pop("_id", None)
+                return result
             title_query = query.get("title")
             if isinstance(title_query, dict) and "$regex" in title_query:
                 if re.search(
@@ -282,6 +288,71 @@ def test_manual_review_hidden_article_remains_noindex(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         asyncio.run(server.get_article(MONGO_ID))
     assert exc.value.status_code == 404
+
+
+@pytest.mark.parametrize("article_id", [MONGO_ID, INTERNAL_UUID])
+def test_legacy_seo_article_uses_current_mongo_canonical(monkeypatch, article_id):
+    install_database(monkeypatch, active=[article_document()])
+
+    response = asyncio.run(server.get_seo_article_page(article_id, request()))
+    html = response.body.decode("utf-8")
+
+    assert response.status_code == 200
+    assert f'<link rel="canonical" href="{CANONICAL_URL}">' in html
+    assert f'<meta property="og:url" content="{CANONICAL_URL}">' in html
+    assert f'<meta name="twitter:url" content="{CANONICAL_URL}">' in html
+    assert f'"@id": "{CANONICAL_URL}"' in html
+    assert f'href="{CANONICAL_URL}" class="cta"' in html
+
+
+def test_legacy_seo_article_uses_current_title_slug(monkeypatch):
+    current_title = "Updated Cheshire Article Headline"
+    current_slug = "updated-cheshire-article-headline"
+    canonical = f"https://cheshiretoday.co.uk/article/{MONGO_ID}/{current_slug}"
+    install_database(monkeypatch, active=[article_document(title=current_title)])
+
+    response = asyncio.run(server.get_seo_article_page(INTERNAL_UUID, request()))
+    html = response.body.decode("utf-8")
+
+    assert response.status_code == 200
+    assert f'<link rel="canonical" href="{canonical}">' in html
+    assert f'<meta property="og:url" content="{canonical}">' in html
+
+
+@pytest.mark.parametrize(
+    ("collection", "overrides", "expected_directive"),
+    [
+        (
+            "active",
+            {"manual_review_hidden_from_public": True},
+            "noindex, follow, max-image-preview:large",
+        ),
+        (
+            "archived",
+            {"archived": True},
+            "noindex, follow, max-image-preview:large",
+        ),
+        (
+            "archived",
+            {"archived": True, "force_live": True},
+            "index, follow, max-image-preview:large",
+        ),
+    ],
+)
+def test_legacy_seo_article_uses_shared_visibility_contract(
+    monkeypatch,
+    collection,
+    overrides,
+    expected_directive,
+):
+    install_database(monkeypatch, **{collection: [article_document(**overrides)]})
+
+    response = asyncio.run(server.get_seo_article_page(MONGO_ID, request()))
+    html = response.body.decode("utf-8")
+
+    assert response.status_code == 200
+    assert f'<meta name="robots" content="{expected_directive}">' in html
+    assert response.headers["x-robots-tag"] == expected_directive
 
 
 def test_sitemap_continues_to_emit_only_mongo_article_identity(monkeypatch):

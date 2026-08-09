@@ -5568,6 +5568,18 @@ async def get_article_share_page(article_id: str, request: Request):
 # SEO PRE-RENDERING FOR SEARCH ENGINES
 # =====================================================================================
 
+
+def _article_robots_directive(article: dict) -> str:
+    """Return the shared crawler visibility directive for an article."""
+    is_manual_review_hidden = article.get("manual_review_hidden_from_public") is True
+    is_archived_without_force_live = (
+        article.get("archived") is True and article.get("force_live") is not True
+    )
+    if is_manual_review_hidden or is_archived_without_force_live:
+        return "noindex, follow, max-image-preview:large"
+    return "index, follow, max-image-preview:large"
+
+
 @api_router.get("/seo/article/{article_id}")
 async def get_seo_article_page(article_id: str, request: Request):
     """
@@ -5581,22 +5593,22 @@ async def get_seo_article_page(article_id: str, request: Request):
         # Search in main articles collection first
         article = None
         try:
-            article = await db.articles.find_one({"_id": ObjectId(article_id)}, {"_id": 0})
+            article = await db.articles.find_one({"_id": ObjectId(article_id)})
         except Exception:
             pass
 
         if not article:
-            article = await db.articles.find_one({"id": article_id}, {"_id": 0})
+            article = await db.articles.find_one({"id": article_id})
 
         # If not found, search in archived_articles collection
         if not article:
             try:
-                article = await db.archived_articles.find_one({"_id": ObjectId(article_id)}, {"_id": 0})
+                article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
             except Exception:
                 pass
 
         if not article:
-            article = await db.archived_articles.find_one({"id": article_id}, {"_id": 0})
+            article = await db.archived_articles.find_one({"id": article_id})
 
         if not article:
             return HTMLResponse(
@@ -5610,7 +5622,6 @@ async def get_seo_article_page(article_id: str, request: Request):
         # Base URL: prefer env for deploys; in local dev you may set PUBLIC_URL=http://localhost:3000
         base_url = (os.environ.get("PUBLIC_URL") or "https://cheshiretoday.co.uk").rstrip("/")
 
-        article_id_str = str(article.get("id") or article.get("_id") or "").strip()
         title = str(article.get("title") or "Cheshire Today Article")
         content = str(article.get("content") or "")
         summary = str(article.get("summary") or "")
@@ -5645,7 +5656,8 @@ async def get_seo_article_page(article_id: str, request: Request):
         author = str(article.get("author") or "Cheshire Today")
         published_date = str(article.get("publishedDate") or article.get("created_at") or "")
 
-        canonical_url = f"{base_url}/article/{article_id_str}"
+        canonical_url = _canonical_article_url(article)
+        robots_directive = _article_robots_directive(article)
 
         # Basic content formatting
         formatted_content = content.replace("\n\n", "</p><p>").replace("\n", "<br>")
@@ -5680,7 +5692,7 @@ async def get_seo_article_page(article_id: str, request: Request):
   <title>{safe_title} | Cheshire Today</title>
   <meta name="description" content="{description}">
   <meta name="author" content="{author}">
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="robots" content="{robots_directive}">
 
   <link rel="canonical" href="{canonical_url}">
 
@@ -5730,7 +5742,10 @@ async def get_seo_article_page(article_id: str, request: Request):
 
         return HTMLResponse(
             content=html_content,
-            headers={"Cache-Control": "public, max-age=3600", "X-Robots-Tag": "index, follow"},
+            headers={
+                "Cache-Control": "public, max-age=3600",
+                "X-Robots-Tag": robots_directive,
+            },
         )
 
     except Exception as e:
@@ -15926,13 +15941,9 @@ async def serve_article_html(article_id: str, request=None):
     esc_published = _html.escape(published)
     esc_modified = _html.escape(modified or published)
 
-    robots_directive = "index, follow, max-image-preview:large"
     # Archived/manual-review-hidden articles are kept reachable for old links.
     # Manually force-live articles are intentional public picks and can remain indexable.
-    is_manual_review_hidden = article.get("manual_review_hidden_from_public") is True
-    is_archived_without_force_live = article.get("archived") is True and article.get("force_live") is not True
-    if is_manual_review_hidden or is_archived_without_force_live:
-        robots_directive = "noindex, follow, max-image-preview:large"
+    robots_directive = _article_robots_directive(article)
 
     schema = {
         "@context": "https://schema.org",
