@@ -334,6 +334,7 @@ def test_duplicate_cleanup_reaches_both_read_markers_in_order(monkeypatch):
 
     assert phases == [
         "duplicate_cleanup_first_read_completed",
+        "duplicate_cleanup_first_stage2_completed",
         "duplicate_cleanup_second_read_completed",
     ]
 
@@ -375,6 +376,7 @@ def test_scheduled_workflow_reaches_all_phase_markers_in_order(monkeypatch):
     async def fake_cleanup(memory_started_at=None):
         assert memory_started_at is not None
         record(None, "duplicate_cleanup_first_read_completed", memory_started_at)
+        record(None, "duplicate_cleanup_first_stage2_completed", memory_started_at)
         record(None, "duplicate_cleanup_second_read_completed", memory_started_at)
         return {"total_removed": 0}
 
@@ -396,6 +398,7 @@ def test_scheduled_workflow_reaches_all_phase_markers_in_order(monkeypatch):
         "business_tech_processing_completed",
         "visible_pool_cap_completed",
         "duplicate_cleanup_first_read_completed",
+        "duplicate_cleanup_first_stage2_completed",
         "duplicate_cleanup_second_read_completed",
         "job_completed",
     ]
@@ -413,6 +416,7 @@ def test_required_phase_inventory_is_exact():
         "business_tech_processing_completed",
         "visible_pool_cap_completed",
         "duplicate_cleanup_first_read_completed",
+        "duplicate_cleanup_first_stage2_completed",
         "duplicate_cleanup_second_read_completed",
         "job_completed",
     }

@@ -3977,6 +3977,13 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
         members = None
         duplicate_group = None
         duplicate_groups = None
+
+        if memory_started_at is not None:
+            log_article_generation_memory(
+                logger,
+                "duplicate_cleanup_first_stage2_completed",
+                memory_started_at,
+            )
         
         # Archive low-quality short fallback articles so only full rewritten content stays live.
         short_content_projection = {

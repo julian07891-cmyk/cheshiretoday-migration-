@@ -26,6 +26,7 @@ APPROVED_PHASES = frozenset(
         "business_tech_processing_completed",
         "visible_pool_cap_completed",
         "duplicate_cleanup_first_read_completed",
+        "duplicate_cleanup_first_stage2_completed",
         "duplicate_cleanup_second_read_completed",
         "job_completed",
     }
