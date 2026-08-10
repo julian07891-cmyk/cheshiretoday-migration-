@@ -3824,69 +3824,159 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
     Archives removed articles to archived_articles collection for link preservation.
     """
     try:
-        articles = await db.articles.find({}).to_list(None)
+        duplicate_projection = {
+            "_id": 1,
+            "title": 1,
+            "source_url": 1,
+            "manual_edit_protected": 1,
+            "manual_edited": 1,
+            "force_live": 1,
+            "manual_edited_at": 1,
+            "updated_at": 1,
+            "created_at": 1,
+            "publishedDate": 1,
+            "content": 1,
+        }
+
+        def duplicate_group_key(article):
+            title = (article.get("title") or "").strip()
+            source_url = (article.get("source_url") or "").strip().lower()
+            return (
+                f"url::{source_url}"
+                if source_url
+                else f"title::{title.lower()}"
+            )
+
+        def duplicate_keep_score(article):
+            """Prefer manually edited/protected articles over longer reimports."""
+            protected = bool(
+                article.get("manual_edit_protected") or article.get("manual_edited")
+            )
+            force_live = bool(article.get("force_live"))
+            updated = (
+                article.get("manual_edited_at")
+                or article.get("updated_at")
+                or article.get("created_at")
+                or article.get("publishedDate")
+                or ""
+            )
+            updated_key = (
+                updated.isoformat()
+                if hasattr(updated, "isoformat")
+                else str(updated or "")
+            )
+            return (
+                1 if protected else 0,
+                1 if force_live else 0,
+                updated_key,
+                len(article.get("content", "") or ""),
+            )
+
+        duplicate_groups = {}
+        first_read_count = 0
+        duplicate_scan_cursor = db.articles.find({}, duplicate_projection)
+        async for projected_duplicate in duplicate_scan_cursor:
+            title = (projected_duplicate.get("title") or "").strip()
+            group_key = duplicate_group_key(projected_duplicate)
+            duplicate_group = duplicate_groups.setdefault(
+                group_key,
+                {"display_title": title, "members": []},
+            )
+            duplicate_group["members"].append(
+                {
+                    "id": projected_duplicate.get("_id"),
+                    "keep_score": duplicate_keep_score(projected_duplicate),
+                    "scan_order": first_read_count,
+                }
+            )
+            first_read_count += 1
+        projected_duplicate = None
+        duplicate_scan_cursor = None
+
         if memory_started_at is not None:
             log_article_generation_memory(
                 logger,
                 "duplicate_cleanup_first_read_completed",
                 memory_started_at,
-                {"document_count": len(articles)},
+                {"document_count": first_read_count},
             )
-        
-        # Group by normalized source URL first, fall back to exact title
-        duplicate_groups = {}
-        for article in articles:
-            title = article.get('title', '').strip()
-            source_url = (article.get('source_url') or '').strip().lower()
-            group_key = f"url::{source_url}" if source_url else f"title::{title.lower()}"
-            if group_key not in duplicate_groups:
-                duplicate_groups[group_key] = []
-            duplicate_groups[group_key].append(article)
-        
+
         duplicates_removed = 0
         short_removed = 0
-        
-        for group_key, group in duplicate_groups.items():
-            if len(group) > 1:
-                display_title = (group[0].get('title') or '').strip()
-                def duplicate_keep_score(x):
-                    """Prefer manually edited/protected articles over longer reimports."""
-                    protected = bool(x.get("manual_edit_protected") or x.get("manual_edited"))
-                    force_live = bool(x.get("force_live"))
-                    updated = x.get("manual_edited_at") or x.get("updated_at") or x.get("created_at") or x.get("publishedDate") or ""
-                    updated_key = updated.isoformat() if hasattr(updated, "isoformat") else str(updated or "")
-                    return (
-                        1 if protected else 0,
-                        1 if force_live else 0,
-                        updated_key,
-                        len(x.get("content", "") or ""),
+
+        for group_key, duplicate_group in duplicate_groups.items():
+            members = duplicate_group["members"]
+            if len(members) <= 1:
+                continue
+
+            current_members = []
+            for member in members:
+                member_id = member["id"]
+                if member_id is None:
+                    continue
+                full_article = await db.articles.find_one({"_id": member_id})
+                if not full_article:
+                    continue
+                if duplicate_group_key(full_article) != group_key:
+                    continue
+                current_members.append(
+                    {
+                        "article": full_article,
+                        "keep_score": duplicate_keep_score(full_article),
+                        "scan_order": member["scan_order"],
+                    }
+                )
+
+            if len(current_members) <= 1:
+                continue
+
+            current_members.sort(key=lambda item: item["scan_order"])
+            current_members.sort(key=lambda item: item["keep_score"], reverse=True)
+            display_title = duplicate_group["display_title"]
+
+            for current_member in current_members[1:]:
+                full_loser = current_member["article"]
+                loser_id = full_loser.get("_id")
+                if loser_id is None:
+                    continue
+
+                archive_article = dict(full_loser)
+                archive_article.pop("_id", None)
+                archive_article["archived_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
+                archive_article["archive_reason"] = "duplicate"
+                try:
+                    await db.archived_articles.insert_one(archive_article)
+                except Exception:
+                    logger.warning(
+                        "Could not archive duplicate article; active article preserved"
                     )
+                    continue
 
-                # Keep the best canonical record. Manual/admin-edited records must win
-                # over longer imported duplicates so editor changes are not replaced.
-                group.sort(key=duplicate_keep_score, reverse=True)
-                
-                # Keep the first one, archive and remove the rest
-                for article in group[1:]:
-                    # Archive before deletion
-                    article['archived_at'] = datetime.now(timezone.utc).isoformat()
-                    article['archive_reason'] = 'duplicate'
-                    original_id = article.pop('_id', None)
-                    try:
-                        await db.archived_articles.insert_one(article)
-                    except:
-                        pass  # Continue even if archival fails
-                    
-                    await db.articles.delete_one({'_id': original_id})
-                    duplicates_removed += 1
-                    logger.info(f"Archived duplicate: {display_title[:40]}...")
+                try:
+                    delete_result = await db.articles.delete_one({"_id": loser_id})
+                except Exception:
+                    logger.warning(
+                        "Could not delete archived duplicate article; removal not counted"
+                    )
+                    continue
+                if delete_result.deleted_count != 1:
+                    continue
 
-        # Release the first full collection read and every container reference to
-        # its article dictionaries before materialising the second full read.
-        group = None
-        article = None
+                duplicates_removed += 1
+                logger.info(f"Archived duplicate: {display_title[:40]}...")
+
+        # Release first-pass grouping and full duplicate-group revalidation records
+        # before starting the independent short-content scan.
+        current_member = None
+        current_members = None
+        full_article = None
+        full_loser = None
+        member = None
+        members = None
+        duplicate_group = None
         duplicate_groups = None
-        articles = None
         
         # Archive low-quality short fallback articles so only full rewritten content stays live.
         short_content_projection = {

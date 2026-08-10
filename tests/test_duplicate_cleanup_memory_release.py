@@ -4,6 +4,8 @@ import weakref
 from copy import deepcopy
 from types import SimpleNamespace
 
+import pytest
+
 
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DB_NAME", "cheshire_test")
@@ -14,6 +16,19 @@ from backend import server
 
 
 LONG_CONTENT = "Complete verified Cheshire reporting. " * 40
+DUPLICATE_PROJECTION = {
+    "_id": 1,
+    "title": 1,
+    "source_url": 1,
+    "manual_edit_protected": 1,
+    "manual_edited": 1,
+    "force_live": 1,
+    "manual_edited_at": 1,
+    "updated_at": 1,
+    "created_at": 1,
+    "publishedDate": 1,
+    "content": 1,
+}
 SHORT_CONTENT_PROJECTION = {
     "_id": 1,
     "content": 1,
@@ -31,6 +46,10 @@ class TrackedArticle(dict):
     pass
 
 
+class TrackedContent(str):
+    pass
+
+
 class CleanupCursor:
     def __init__(self, collection, read_number, projection=None):
         self.collection = collection
@@ -38,23 +57,24 @@ class CleanupCursor:
         self.projection = projection
         self.index = 0
 
-    async def to_list(self, length):
-        assert self.read_number == 1
-        assert length is None
-        records = [TrackedArticle(deepcopy(item)) for item in self.collection.records]
-        self.collection.first_read_refs = [weakref.ref(item) for item in records]
-        return records
+    async def to_list(self, _length):
+        raise AssertionError("cleanup collection scans must stream asynchronously")
 
     def __aiter__(self):
-        assert self.read_number == 2
-        self.collection.stage_one_iterated = True
+        if self.read_number == 1:
+            self.collection.duplicate_scan_iterated = True
+        else:
+            self.collection.short_scan_iterated = True
         return self
 
     async def __anext__(self):
         if self.index >= len(self.collection.records):
-            if self.collection.after_stage_one is not None:
-                self.collection.after_stage_one(self.collection)
-                self.collection.after_stage_one = None
+            if self.read_number == 1 and self.collection.after_duplicate_scan:
+                self.collection.after_duplicate_scan(self.collection)
+                self.collection.after_duplicate_scan = None
+            elif self.read_number == 2 and self.collection.after_short_scan:
+                self.collection.after_short_scan(self.collection)
+                self.collection.after_short_scan = None
             raise StopAsyncIteration
 
         source = self.collection.records[self.index]
@@ -66,7 +86,17 @@ class CleanupCursor:
                 if included and field in source
             }
         )
-        self.collection.stage_one_refs.append(weakref.ref(projected))
+        refs = (
+            self.collection.duplicate_scan_refs
+            if self.read_number == 1
+            else self.collection.short_scan_refs
+        )
+        refs.append(weakref.ref(projected))
+        projected_content = projected.get("content")
+        if isinstance(projected_content, TrackedContent):
+            self.collection.projected_content_refs.append(
+                weakref.ref(projected_content)
+            )
         return projected
 
 
@@ -76,36 +106,38 @@ class CleanupArticles:
         records,
         events,
         *,
-        after_stage_one=None,
+        after_duplicate_scan=None,
+        after_short_scan=None,
         delete_count=1,
+        delete_raises=False,
     ):
         self.records = deepcopy(records)
         self.events = events
         self.find_calls = 0
         self.find_one_calls = []
         self.deleted_ids = []
-        self._first_read_refs = []
-        self.stage_one_refs = []
-        self.stage_one_projection = None
-        self.stage_one_iterated = False
-        self.after_stage_one = after_stage_one
+        self.duplicate_scan_refs = []
+        self.short_scan_refs = []
+        self.projected_content_refs = []
+        self.duplicate_projection = None
+        self.short_projection = None
+        self.duplicate_scan_iterated = False
+        self.short_scan_iterated = False
+        self.after_duplicate_scan = after_duplicate_scan
+        self.after_short_scan = after_short_scan
         self.delete_count = delete_count
-
-    @property
-    def first_read_refs(self):
-        return self._first_read_refs
-
-    @first_read_refs.setter
-    def first_read_refs(self, value):
-        self._first_read_refs = value
+        self.delete_raises = delete_raises
 
     def find(self, query, projection=None):
         assert query == {}
         self.find_calls += 1
         if self.find_calls == 1:
-            assert projection is None
+            self.duplicate_projection = projection
+            assert projection is not None
         elif self.find_calls == 2:
-            self.stage_one_projection = projection
+            assert all(ref() is None for ref in self.duplicate_scan_refs)
+            assert all(ref() is None for ref in self.projected_content_refs)
+            self.short_projection = projection
             assert projection is not None
         else:
             raise AssertionError("cleanup must perform exactly two collection scans")
@@ -113,8 +145,9 @@ class CleanupArticles:
 
     async def find_one(self, query):
         assert set(query) == {"_id"}
-        assert all(ref() is None for ref in self.first_read_refs)
-        assert all(ref() is None for ref in self.stage_one_refs)
+        assert all(ref() is None for ref in self.duplicate_scan_refs)
+        assert all(ref() is None for ref in self.short_scan_refs)
+        assert all(ref() is None for ref in self.projected_content_refs)
         self.find_one_calls.append(query["_id"])
         return next(
             (
@@ -129,6 +162,8 @@ class CleanupArticles:
         article_id = query["_id"]
         self.events.append(("delete", article_id))
         self.deleted_ids.append(article_id)
+        if self.delete_raises:
+            raise RuntimeError("delete unavailable")
         if self.delete_count == 1:
             self.records = [item for item in self.records if item["_id"] != article_id]
         return SimpleNamespace(deleted_count=self.delete_count)
@@ -169,16 +204,20 @@ def run_cleanup(
     monkeypatch,
     records,
     *,
-    after_stage_one=None,
+    after_duplicate_scan=None,
+    after_short_scan=None,
     archive_fails=False,
     delete_count=1,
+    delete_raises=False,
 ):
     events = []
     articles = CleanupArticles(
         records,
         events,
-        after_stage_one=after_stage_one,
+        after_duplicate_scan=after_duplicate_scan,
+        after_short_scan=after_short_scan,
         delete_count=delete_count,
+        delete_raises=delete_raises,
     )
     archive = CleanupArchive(events, fail=archive_fails)
     monkeypatch.setattr(
@@ -263,6 +302,566 @@ def test_protected_record_wins_duplicate_keep_score(monkeypatch):
     assert result["duplicates_removed"] == 1
 
 
+def test_same_title_with_distinct_non_empty_urls_is_not_duplicate(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article("one", "Same story", source_url="https://one.test/story"),
+            article("two", "Same story", source_url="https://two.test/story"),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 0
+    assert active.find_one_calls == []
+    assert active.deleted_ids == []
+    assert archive.inserted == []
+
+
+def test_blank_source_url_falls_back_to_case_insensitive_title(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article("older", " Fallback Story ", source_url="   ", publishedDate="1"),
+            article("newer", "fallback story", source_url="", publishedDate="2"),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["newer"]
+    assert archive.inserted[0]["title"] == " Fallback Story "
+
+
+def test_blank_source_url_and_blank_title_retain_title_empty_group(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article("first", "", source_url="", publishedDate="1"),
+            article("second", "   ", source_url="   ", publishedDate="2"),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["second"]
+    assert len(archive.inserted) == 1
+
+
+def test_equal_score_keeps_first_scanned_member(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article("first", "Tied", source_url="https://same.test/tied"),
+            article("second", "Tied", source_url="https://same.test/tied"),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["first"]
+    assert active.deleted_ids == ["second"]
+
+
+def test_three_member_group_recomputes_one_winner_and_two_losers(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "old", "Old", source_url="https://same.test/three", publishedDate="1"
+            ),
+            article(
+                "best", "Best", source_url="https://same.test/three", publishedDate="3"
+            ),
+            article(
+                "middle",
+                "Middle",
+                source_url="https://same.test/three",
+                publishedDate="2",
+            ),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 2
+    assert [item["_id"] for item in active.records] == ["best"]
+    assert active.find_one_calls[:3] == ["old", "best", "middle"]
+    assert active.deleted_ids == ["middle", "old"]
+    assert [item["archive_reason"] for item in archive.inserted] == [
+        "duplicate",
+        "duplicate",
+    ]
+
+
+def test_manual_edited_has_same_precedence_as_manual_edit_protected(monkeypatch):
+    result, active, _archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "manual",
+                "Manual",
+                source_url="https://same.test/manual",
+                manual_edited=True,
+                publishedDate="1",
+            ),
+            article(
+                "forced",
+                "Forced",
+                source_url="https://same.test/manual",
+                force_live=True,
+                publishedDate="9",
+                content=LONG_CONTENT * 2,
+            ),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["manual"]
+
+
+def test_force_live_precedes_timestamp_and_content(monkeypatch):
+    result, active, _archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "forced",
+                "Forced",
+                source_url="https://same.test/forced",
+                force_live=True,
+                publishedDate="1",
+            ),
+            article(
+                "newer",
+                "Newer",
+                source_url="https://same.test/forced",
+                publishedDate="9",
+                content=LONG_CONTENT * 2,
+            ),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["forced"]
+
+
+@pytest.mark.parametrize(
+    "timestamp_field",
+    ["manual_edited_at", "updated_at", "created_at", "publishedDate"],
+)
+def test_each_timestamp_fallback_field_can_select_winner(monkeypatch, timestamp_field):
+    earlier = article(
+        "earlier",
+        "Earlier",
+        source_url="https://same.test/time",
+        publishedDate="1",
+    )
+    later = article(
+        "later",
+        "Later",
+        source_url="https://same.test/time",
+        publishedDate="1",
+    )
+    later[timestamp_field] = "2"
+
+    result, active, _archive = run_cleanup(monkeypatch, [earlier, later])
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["later"]
+
+
+def test_timestamp_strings_retain_lexicographical_order(monkeypatch):
+    result, active, _archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "lexical",
+                "Lexical",
+                source_url="https://same.test/lex",
+                publishedDate="9",
+            ),
+            article(
+                "numeric",
+                "Numeric",
+                source_url="https://same.test/lex",
+                publishedDate="10",
+            ),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["lexical"]
+
+
+def test_content_length_breaks_only_later_tie(monkeypatch):
+    result, active, _archive = run_cleanup(
+        monkeypatch,
+        [
+            article("shorter", "Shorter", source_url="https://same.test/length"),
+            article(
+                "longer",
+                "Longer",
+                source_url="https://same.test/length",
+                content=LONG_CONTENT * 2,
+            ),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["longer"]
+
+
+def test_first_pass_streams_exact_projection_and_releases_projected_content(
+    monkeypatch,
+):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [article("singleton", "Unique", content=TrackedContent(LONG_CONTENT))],
+    )
+
+    assert result["success"] is True
+    assert active.duplicate_projection == DUPLICATE_PROJECTION
+    assert active.duplicate_scan_iterated is True
+    assert active.find_one_calls == []
+    assert all(ref() is None for ref in active.duplicate_scan_refs)
+    assert all(ref() is None for ref in active.projected_content_refs)
+    assert archive.inserted == []
+
+
+def test_all_duplicate_group_members_are_fetched_but_singletons_are_not(monkeypatch):
+    result, active, _archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "one", "One", source_url="https://same.test/group", publishedDate="1"
+            ),
+            article(
+                "two", "Two", source_url="https://same.test/group", publishedDate="2"
+            ),
+            article("singleton", "Singleton", source_url="https://other.test/story"),
+        ],
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert active.find_one_calls == ["one", "two"]
+
+
+def test_provisional_winner_disappears_and_group_falls_to_one(monkeypatch):
+    def remove_winner(collection):
+        collection.records = [
+            item for item in collection.records if item["_id"] != "winner"
+        ]
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser", "Loser", source_url="https://same.test/race", publishedDate="1"
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/race",
+                publishedDate="2",
+            ),
+        ],
+        after_duplicate_scan=remove_winner,
+    )
+
+    assert result["duplicates_removed"] == 0
+    assert active.deleted_ids == []
+    assert archive.inserted == []
+
+
+def test_provisional_loser_disappears_and_group_falls_to_one(monkeypatch):
+    def remove_loser(collection):
+        collection.records = [
+            item for item in collection.records if item["_id"] != "loser"
+        ]
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser", "Loser", source_url="https://same.test/race", publishedDate="1"
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/race",
+                publishedDate="2",
+            ),
+        ],
+        after_duplicate_scan=remove_loser,
+    )
+
+    assert result["duplicates_removed"] == 0
+    assert active.deleted_ids == []
+    assert archive.inserted == []
+
+
+@pytest.mark.parametrize("changed_id", ["winner", "loser"])
+def test_identity_change_removes_member_from_provisional_group(monkeypatch, changed_id):
+    def change_identity(collection):
+        for item in collection.records:
+            if item["_id"] == changed_id:
+                item["source_url"] = "https://different.test/story"
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser",
+                "Loser",
+                source_url="https://same.test/identity",
+                publishedDate="1",
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/identity",
+                publishedDate="2",
+            ),
+        ],
+        after_duplicate_scan=change_identity,
+    )
+
+    assert result["duplicates_removed"] == 0
+    assert active.deleted_ids == []
+    assert archive.inserted == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("manual_edited", True), ("manual_edit_protected", True), ("force_live", True)],
+)
+def test_revalidation_recomputes_protection_and_force_live(monkeypatch, field, value):
+    def promote_loser(collection):
+        collection.records[0][field] = value
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser",
+                "Loser",
+                source_url="https://same.test/promote",
+                publishedDate="1",
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/promote",
+                publishedDate="2",
+            ),
+        ],
+        after_duplicate_scan=promote_loser,
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["loser"]
+    assert archive.inserted[0]["title"] == "Winner"
+
+
+def test_revalidation_recomputes_content_length_winner(monkeypatch):
+    def improve_loser(collection):
+        collection.records[0]["content"] = LONG_CONTENT * 3
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article("loser", "Loser", source_url="https://same.test/content"),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/content",
+                content=LONG_CONTENT * 2,
+            ),
+        ],
+        after_duplicate_scan=improve_loser,
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["loser"]
+    assert archive.inserted[0]["title"] == "Winner"
+
+
+def test_revalidation_recomputes_timestamp_winner(monkeypatch):
+    def update_loser(collection):
+        collection.records[0]["updated_at"] = "3"
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser",
+                "Loser",
+                source_url="https://same.test/update",
+                publishedDate="1",
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/update",
+                publishedDate="2",
+            ),
+        ],
+        after_duplicate_scan=update_loser,
+    )
+
+    assert result["duplicates_removed"] == 1
+    assert [item["_id"] for item in active.records] == ["loser"]
+    assert archive.inserted[0]["title"] == "Winner"
+
+
+def test_three_member_group_recomputes_latest_winner(monkeypatch):
+    def promote_oldest(collection):
+        collection.records[0]["manual_edited"] = True
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "oldest",
+                "Oldest",
+                source_url="https://same.test/latest",
+                publishedDate="1",
+            ),
+            article(
+                "middle",
+                "Middle",
+                source_url="https://same.test/latest",
+                publishedDate="2",
+            ),
+            article(
+                "newest",
+                "Newest",
+                source_url="https://same.test/latest",
+                publishedDate="3",
+            ),
+        ],
+        after_duplicate_scan=promote_oldest,
+    )
+
+    assert result["duplicates_removed"] == 2
+    assert [item["_id"] for item in active.records] == ["oldest"]
+    assert {item["title"] for item in archive.inserted} == {"Middle", "Newest"}
+
+
+def test_duplicate_archive_preserves_complete_latest_loser(monkeypatch):
+    original_loser = article(
+        "loser",
+        "Loser",
+        source_url="https://same.test/archive",
+        publishedDate="1",
+        image="https://images.test/story.jpg",
+        image_metadata={"credit": "Publisher"},
+        source="Provider",
+        source_metadata={"feed": "local"},
+        analytics={"views": 8},
+        social_state={"facebook": {"prepared": True}},
+        legacy_field="preserve-me",
+        arbitrary_nested={"one": {"two": [1, 2, 3]}},
+    )
+
+    def update_loser(collection):
+        collection.records[0]["latest_nested"] = {"revision": 2}
+
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            original_loser,
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/archive",
+                publishedDate="2",
+            ),
+        ],
+        after_duplicate_scan=update_loser,
+    )
+
+    assert result["duplicates_removed"] == 1
+    archived = archive.inserted[0]
+    expected = deepcopy(original_loser)
+    expected["latest_nested"] = {"revision": 2}
+    expected.pop("_id")
+    expected["archived_at"] = archived["archived_at"]
+    expected["archive_reason"] = "duplicate"
+    assert archived == expected
+    assert [item["_id"] for item in active.records] == ["winner"]
+
+
+def test_duplicate_archive_failure_preserves_active_and_does_not_count(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser",
+                "Loser",
+                source_url="https://same.test/failure",
+                publishedDate="1",
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/failure",
+                publishedDate="2",
+            ),
+        ],
+        archive_fails=True,
+    )
+
+    assert result["success"] is True
+    assert result["duplicates_removed"] == 0
+    assert active.deleted_ids == []
+    assert {item["_id"] for item in active.records} == {"loser", "winner"}
+    assert archive.inserted == []
+
+
+def test_duplicate_delete_exception_does_not_count(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser",
+                "Loser",
+                source_url="https://same.test/delete",
+                publishedDate="1",
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/delete",
+                publishedDate="2",
+            ),
+        ],
+        delete_raises=True,
+    )
+
+    assert result["success"] is True
+    assert result["duplicates_removed"] == 0
+    assert len(archive.inserted) == 1
+    assert {item["_id"] for item in active.records} == {"loser", "winner"}
+
+
+def test_duplicate_delete_noop_does_not_count(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "loser", "Loser", source_url="https://same.test/noop", publishedDate="1"
+            ),
+            article(
+                "winner",
+                "Winner",
+                source_url="https://same.test/noop",
+                publishedDate="2",
+            ),
+        ],
+        delete_count=0,
+    )
+
+    assert result["success"] is True
+    assert result["duplicates_removed"] == 0
+    assert active.events == [("archive", "Loser"), ("delete", "loser")]
+    assert len(archive.inserted) == 1
+
+
 def test_second_pass_removes_short_content_but_preserves_manual_review(monkeypatch):
     records = [
         article("short", "Short public story", content="Too short", summary="Brief"),
@@ -300,6 +899,9 @@ def test_first_pass_articles_are_unreachable_before_second_materialisation(monke
 
     assert result["success"] is True
     assert active.find_calls == 2
+    assert active.duplicate_projection == DUPLICATE_PROJECTION
+    assert active.duplicate_scan_iterated is True
+    assert all(ref() is None for ref in active.duplicate_scan_refs)
     assert archive.inserted == []
     assert result["total_removed"] == 0
 
@@ -313,8 +915,8 @@ def test_second_pass_streams_exact_projection_without_full_fetch_for_non_candida
     )
 
     assert result["success"] is True
-    assert active.stage_one_projection == SHORT_CONTENT_PROJECTION
-    assert active.stage_one_iterated is True
+    assert active.short_projection == SHORT_CONTENT_PROJECTION
+    assert active.short_scan_iterated is True
     assert active.find_calls == 2
     assert active.find_one_calls == []
     assert archive.inserted == []
@@ -358,7 +960,7 @@ def test_revalidation_skips_article_that_becomes_manual_review_hidden(monkeypatc
     result, active, archive = run_cleanup(
         monkeypatch,
         [article("short", "Short story", content="Short", summary="Brief")],
-        after_stage_one=hide_for_review,
+        after_short_scan=hide_for_review,
     )
 
     assert active.find_one_calls == ["short"]
@@ -374,7 +976,7 @@ def test_revalidation_skips_article_that_becomes_owner_protected(monkeypatch):
     result, active, archive = run_cleanup(
         monkeypatch,
         [article("short", "Short story", content="Short", summary="Brief")],
-        after_stage_one=protect_article,
+        after_short_scan=protect_article,
     )
 
     assert active.find_one_calls == ["short"]
@@ -390,7 +992,7 @@ def test_revalidation_skips_article_whose_content_becomes_complete(monkeypatch):
     result, active, archive = run_cleanup(
         monkeypatch,
         [article("short", "Short story", content="Short", summary="Brief")],
-        after_stage_one=complete_article,
+        after_short_scan=complete_article,
     )
 
     assert active.find_one_calls == ["short"]
@@ -407,7 +1009,7 @@ def test_revalidation_archives_latest_still_short_document(monkeypatch):
     result, active, archive = run_cleanup(
         monkeypatch,
         [article("short", "Original title", content="Short", summary="Brief")],
-        after_stage_one=update_article,
+        after_short_scan=update_article,
     )
 
     assert result["short_articles_removed"] == 1
@@ -423,7 +1025,7 @@ def test_missing_candidate_between_stages_is_skipped_safely(monkeypatch):
     result, active, archive = run_cleanup(
         monkeypatch,
         [article("short", "Short story", content="Short", summary="Brief")],
-        after_stage_one=remove_candidate,
+        after_short_scan=remove_candidate,
     )
 
     assert active.find_one_calls == ["short"]
