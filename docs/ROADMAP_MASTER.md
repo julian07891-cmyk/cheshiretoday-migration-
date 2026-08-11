@@ -36,7 +36,6 @@ reliability risk.
 
 | Status | Priority | Work | Evidence/gate |
 |---|---|---|---|
-| Next | P0 | Close `QA-SEC-001` operational credential exposure | Dated rotation/revocation and old-access failure evidence without revealing secrets |
 | Next | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Reviewed allow-list, positive/negative tests, deploy and live preflight |
 | Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | Thirteen markers show multiple variable contributors; observe at least one more natural run before selecting another implementation target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
@@ -122,6 +121,9 @@ Monitoring does not authorise imports, sends, restarts, indexing requests or dat
 - First-party article-view and Most Read correctness repairs.
 - Admin read-only analytics and Facebook attribution foundation.
 - Rendered metadata reconciliation with production verification.
+- `QA-SEC-001` production Admin-password rotation, pre-rotation session
+  invalidation and historical-password rejection, closing the original Critical
+  finding while retaining the revoked credential as reachable Git history.
 - Core Admin mobile Safari/editor containment and accessible close control.
 - Editorial Similarity Phase 2A pure scorer and Phase 2B scheduled shadow integration.
 - Phases 1–7.3 documentation inventory, preservation, history, architecture,
@@ -147,7 +149,6 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 ## Current risks
 
 - Broad credentialed CORS.
-- Unverified credential rotation/history exposure.
 - Render memory peaks from first duplicate Stage 1, visible-pool and feed work,
   short-content cursor/decoded-string behaviour, allocator retention or newsletter
   materialisation despite the structurally successful cleanup mitigations.
