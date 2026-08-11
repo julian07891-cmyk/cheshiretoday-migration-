@@ -1,11 +1,11 @@
 # Cheshire Today — Current Operational State
 
-> - **Status:** Concise local operational source of truth; Phases 1–7.3 complete locally and awaiting final read-only review, commit and push
+> - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `49e5fe49cc35e0ca020e8520db6365d356760060`
-> - **Last repository reconciliation:** 8 August 2026
-> - **Production-verification status:** Commit `49e5fe4` and three normal post-fix scheduled runs were verified through 8 August; current deployment, health and mutable live state still require fresh verification when relevant
+> - **Repository baseline:** `1811430070cfa73084c8b5ded830fa88076d3cc7`
+> - **Last repository reconciliation:** 11 August 2026
+> - **Production-verification status:** Commit `1811430` was deployed and the natural 11 August 12:00 run was verified healthy; cumulative process-memory risk remains under monitoring
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,11 +36,11 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Reconstruction HEAD:** `49e5fe49cc35e0ca020e8520db6365d356760060`
-- **Latest baseline commit:** `Release duplicate cleanup memory before second read`
+- **Current reconciled HEAD:** `1811430070cfa73084c8b5ded830fa88076d3cc7`
+- **Latest baseline commit:** `Reduce short-content scan string allocations`
 
-This is the Phase 7 reconstruction baseline, not an assertion that a later
-session or committed repository remains at the same HEAD.
+This is the repository and production baseline reconciled on 11 August 2026, not
+an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
 
@@ -262,9 +262,11 @@ Highest-priority unresolved or monitoring items are:
 - **Critical:** production credential rotation/revocation evidence remains
   unresolved despite current-tree containment.
 - **High:** wildcard credentialed CORS remains open in current code.
-- **Medium:** the immediate duplicate-cleanup simultaneous-list OOM risk is
-  operationally mitigated by `49e5fe4` and three successful normal runs; broader
-  Render memory/OOM stability remains under monitoring.
+- **Medium:** duplicate-cleanup memory is structurally and materially improved by
+  `49e5fe4`, `c06c837` and `cd3f093`, with 13 phase markers now isolating cleanup
+  intervals. The `1811430` string-allocation change was semantically safe but its
+  first natural comparison was similar (+28.5 MB versus +26.0 MB). Broader
+  cumulative Render memory/OOM stability remains under monitoring.
 - **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
   satisfied. Calibration, threshold, UI and enforcement decisions remain
   unapproved; the scorer remains scheduled-only and shadow-only.
@@ -283,12 +285,12 @@ See [Completed Phases](QA/COMPLETED_PHASES.md) and
 
 ## 11. Current active milestone
 
-The active milestone is **documentation reconstruction and controlled production
-observation**.
+The active milestone is **production hardening, QA reconciliation and controlled
+production observation**.
 
-### Track 1 — Documentation reconstruction
+### Track 1 — Documentation authority
 
-Completed locally:
+Completed and committed:
 
 - Phase 7 concise current-state replacement and preservation verification;
 - Project Master, architecture, operations, QA and roadmap reconstruction.
@@ -297,22 +299,23 @@ Completed locally:
   the excluded exact archive and making clean-checkout links use the privacy-safe
   archive.
 
-Still active or pending:
+Still pending:
 
-- complete final documentation consistency review;
-- obtain approval for the documentation commit and push;
+- reconcile this 11 August authority update through final review and an approved
+  documentation commit;
 - receive and reconcile the ChatGPT export;
 - preserve and reconcile structured Codex history;
 - reconcile historical PDFs;
-- reconcile post-HEAD production evidence.
+- continue reconciling later production evidence as it is verified.
 
 ### Track 2 — Production observation
 
 - observe normal scheduler runs only;
-- capture all twelve article-generation memory markers;
-- continue post-run stability monitoring after the verified duplicate-cleanup
-  lifecycle mitigation; full unrestricted reads and high-start process memory
-  remain residual risks;
+- capture all thirteen article-generation memory markers;
+- continue post-run stability monitoring after the duplicate-cleanup lifecycle,
+  projected-scan and observability improvements; first duplicate Stage 1,
+  visible-pool work, short-content scan variability and high-start process memory
+  remain material evidence areas;
 - retain bounded Editorial Similarity score, band, reason and provenance evidence;
 - confirm Version 1 decisions, Manual Review and publication remain unchanged;
 - make no calibration, threshold, UI or enforcement decision without a separate
@@ -322,12 +325,12 @@ No manual import should be triggered solely to accelerate observation.
 
 ## 12. Immediate approved priorities
 
-1. Complete the final read-only documentation review.
+1. Observe at least one further natural article-generation run before selecting
+   another memory implementation target.
 2. Reconcile current production credential rotation/revocation evidence.
 3. Restrict and verify wildcard credentialed CORS.
-4. Continue broader Render memory monitoring; retain the 7–8 August three-run
-   verification as evidence that the immediate duplicate-cleanup lifecycle risk is
-   operationally mitigated.
+4. Continue broader Render memory monitoring; do not infer that `1811430` reduced
+   RSS from its first similar natural-run comparison.
 5. Complete Weekly Roundup QA using normal scheduled evidence.
 6. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
@@ -480,11 +483,10 @@ Register. No nonexistent future history file is linked here.
 - structured Codex-history preservation and reconciliation;
 - historical PDF reconciliation;
 - post-HEAD production-evidence reconciliation;
-- final cross-document review;
-- approved documentation commit and push.
+- final review and approved commit of this current authority reconciliation.
 
 Complete historical reconstruction has **not** yet been achieved.
 
-This file is now the concise local operational authority for the Phase 7 result.
-Its authority transition becomes repository-wide only after final review and the
-approved commit. Production facts that can change must still be freshly verified.
+This file is the concise repository operational authority. This 11 August update
+becomes current repository evidence only after final review and the approved
+commit. Production facts that can change must still be freshly verified.

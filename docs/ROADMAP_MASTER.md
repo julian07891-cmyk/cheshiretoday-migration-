@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `49e5fe49cc35e0ca020e8520db6365d356760060`. It includes the reconciled 7–8 August duplicate-cleanup memory evidence but not other unreconciled post-HEAD claims.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `1811430070cfa73084c8b5ded830fa88076d3cc7`, including production memory evidence through the natural 11 August 12:00 run.
 
 ## Document purpose
 
@@ -27,11 +27,10 @@ Choose the highest eligible item whose dependencies are met. Each implementation
 
 ## Current milestone
 
-**Next — Final documentation review.** Phases 1–7.3, authority synchronisation and
-the archive privacy/preservation decision are complete locally. The documentation
-commit/push remains blocked pending a successful final review and explicit approval.
-Operationally, Editorial Similarity remains in passive observation and Version 1
-remains authoritative.
+**Active — Production hardening and evidence reconciliation.** Version 1 and the
+documentation reconstruction are committed. Editorial Similarity remains passive,
+Version 1 remains authoritative, and cumulative process memory remains a monitored
+reliability risk.
 
 ## Immediate priorities
 
@@ -39,11 +38,10 @@ remains authoritative.
 |---|---|---|---|
 | Next | P0 | Close `QA-SEC-001` operational credential exposure | Dated rotation/revocation and old-access failure evidence without revealing secrets |
 | Next | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Reviewed allow-list, positive/negative tests, deploy and live preflight |
-| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | Immediate simultaneous-list risk verified as mitigated across three normal runs; continue import/newsletter high-water and restart observation |
+| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | Thirteen markers show multiple variable contributors; observe at least one more natural run before selecting another implementation target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
-| Next | P1 | Final documentation review | Repeat the complete read-only gate after synchronisation and archive decision |
-| Blocked | P1 | Documentation commit and push | Requires successful final review and explicit approval |
+| Next | P1 | Current authority reconciliation review | Review and approve the 11 August evidence update before its documentation-only commit |
 
 Security and production stability precede feature expansion.
 
@@ -87,9 +85,10 @@ Security and production stability precede feature expansion.
 - Editorial Similarity pool, shortlist, comparison, band, reason and provenance
   evidence after satisfaction of the numerical three-run gate; continued monitoring
   does not authorise calibration, UI or enforcement.
-- All twelve article-generation memory phases, scheduler duration and post-run stability.
-- Residual full-read, visible-pool and high-start memory behaviour after `49e5fe4`;
-  the lifecycle fix does not close broader Render memory risk.
+- All thirteen article-generation memory phases, scheduler duration and post-run stability.
+- First duplicate Stage 1, visible-pool, short-content scan and high-start memory
+  behaviour after the staged cleanup optimisations. `1811430` was safe but its
+  first natural comparison (+28.5 MB versus +26.0 MB) did not show material RSS improvement.
 - Weekly Roundup batches, accepted-recipient ledger, provider outcome and cursor progress.
 - First-party analytics subsection latency and scanner/bot noise.
 - Sitemap, crawler metadata and representative Search Console state.
@@ -149,9 +148,9 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 
 - Broad credentialed CORS.
 - Unverified credential rotation/history exposure.
-- Render memory peaks from remaining full reads, visible-pool work, allocator
-  high-water behaviour or newsletter materialisation despite the operationally
-  verified duplicate-cleanup lifecycle mitigation.
+- Render memory peaks from first duplicate Stage 1, visible-pool and feed work,
+  short-content cursor/decoded-string behaviour, allocator retention or newsletter
+  materialisation despite the structurally successful cleanup mitigations.
 - Scheduler ownership degradation if lock acquisition errors continue fail-open.
 - Public API latency.
 - Newsletter provider/recipient conclusions without reconciled evidence.
@@ -166,12 +165,11 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 - **Completed locally:** Authority synchronisation across the rebuilt set.
 - **Completed locally:** Archive privacy/preservation decision; exact archive
   excluded and privacy-safe repository copy prepared.
-- **Next:** Final read-only documentation review after synchronisation and archive decision.
-- **Blocked:** Documentation commit and push until successful final review and approval.
+- **Next:** Final read-only review and approved commit of the 11 August authority reconciliation.
 - **Blocked:** ChatGPT export reconciliation until export is received.
 - **Next:** Systematic Codex-history integration when records are collected and source-ranked.
 - **Deferred:** Historical PDF reconciliation pending source availability and prioritisation.
-- **Monitoring:** Post-HEAD production evidence pending preservation and reconciliation.
+- **Monitoring:** Production evidence after the 11 August 12:00 run pending preservation and reconciliation.
 
 ## Related records
 

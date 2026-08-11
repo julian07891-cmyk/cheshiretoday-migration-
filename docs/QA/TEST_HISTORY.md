@@ -88,6 +88,9 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 | 4 Aug 2026 | `8043fdd`/`5e1a875` | Phase 2A/2B focused | 54 passed | Not recorded | Similarity contracts | No calibration proof | [Project State](../PROJECT_STATE.md) |
 | 4 Aug 2026 | same | Related Version 1 group | 178 passed, 12 skipped | Not recorded | Import/duplicate/scheduler/Manual Review/memory | Bounded regression group | [Project State](../PROJECT_STATE.md) |
 | 6 Aug 2026 | `1601ae4` | `python3 -m compileall -q backend tests` | Pass | None emitted | Repository compilation | Not runtime test | Phase 5 validation |
+| 11 Aug 2026 | `1811430` | `python3 -m pytest -q tests` | 1,889 passed, 55 skipped | 385 | Full local backend test tree | Skips include deliberately unavailable/external paths; no production mutation | Current QA reconciliation |
+| 11 Aug 2026 | `1811430` | Complete frontend Jest suite | 312 passed, 28 suites | Not consolidated | Current frontend regression baseline | JSDOM cannot prove physical-browser/platform state | Current QA reconciliation |
+| 11 Aug 2026 | `1811430` | `python3 -m compileall -q backend tests` | Pass | None emitted | Current repository compilation | Static validation only | Current QA reconciliation |
 
 ## Reconstruction limitations
 

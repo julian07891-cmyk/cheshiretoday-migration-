@@ -1,14 +1,14 @@
 # Cheshire Today — Project Master
 
-> - **Status:** Permanent first-read project index; Phases 1–7.3 complete locally and awaiting final read-only review, commit and push
+> - **Status:** Permanent first-read project index; Version 1 complete, with production hardening, QA and reliability monitoring active
 > - **Primary branch:** `full-scrape-prod`
-> - **Operational authority:** [Project State](PROJECT_STATE.md), rebuilt locally as the concise operational source; repository-wide transition awaits the approved documentation commit and push
+> - **Operational authority:** [Project State](PROJECT_STATE.md), the concise repository operational source
 > - **Architecture authority:** [Architecture Master](ARCHITECTURE_MASTER.md) and its detailed records
 > - **QA authority:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
 > - **Roadmap authority:** [Roadmap Master](ROADMAP_MASTER.md)
 > - **Historical reconstruction status:** Substantial repository reconstruction completed; ChatGPT, Codex, PDF and post-HEAD reconciliation remain incomplete
-> - **Last repository reconciliation date:** 8 August 2026
-> **Current repository baseline:** `full-scrape-prod` at `49e5fe49cc35e0ca020e8520db6365d356760060`
+> - **Last repository reconciliation date:** 11 August 2026
+> **Current repository baseline:** `full-scrape-prod` at `1811430070cfa73084c8b5ded830fa88076d3cc7`
 
 This metadata describes the repository baseline used for reconstruction. It does
 not assert that the same commit is currently deployed or that every production
@@ -47,9 +47,9 @@ temporary checkpoints back into this file.
 Read this document first in every new engineering, editorial, operational, SEO,
 newsletter, social or commercial session.
 
-Then read [Project State](PROJECT_STATE.md), the concise local operational source
+Then read [Project State](PROJECT_STATE.md), the concise repository operational source
 of truth. The authority transition is locally complete and becomes repository-wide
-after the approved documentation commit and push. Read only the architecture, QA,
+through the current repository commit. Read only the architecture, QA,
 operations, history and roadmap records relevant to the task.
 
 ### Document roles
@@ -57,7 +57,7 @@ operations, history and roadmap records relevant to the task.
 | Record | Role | Update responsibility |
 |---|---|---|
 | `PROJECT_MASTER.md` | Permanent first-read index, governance, mission and system-wide boundaries | Update only for project-wide governance, architecture index, strategy or major milestone changes |
-| [Project State](PROJECT_STATE.md) | Concise local operational authority; repository-wide transition awaits the approved documentation commit and push | Update after meaningful current operational change; do not turn it into a second history master |
+| [Project State](PROJECT_STATE.md) | Concise repository operational authority | Update after meaningful current operational change; do not turn it into a second history master |
 | [Roadmap Master](ROADMAP_MASTER.md) | Priorities, statuses, dependencies and gates | Update when evidence changes priority or an item changes approved status |
 | [Architecture Master](ARCHITECTURE_MASTER.md) | Current architecture index | Update when current component or data-flow ownership changes |
 | [Detailed architecture](ARCHITECTURE/SYSTEM_OVERVIEW.md) | Subsystem contracts and protected boundaries | Update the affected subsystem after reviewed architecture change |
@@ -180,7 +180,7 @@ Avoid:
 
 - Repository: `CT29january26-new-website-migration`
 - Primary production branch: `full-scrape-prod`
-- Reconciliation HEAD: `49e5fe49cc35e0ca020e8520db6365d356760060`
+- Reconciliation HEAD: `1811430070cfa73084c8b5ded830fa88076d3cc7`
 
 Always verify the actual branch, HEAD and working tree. Preserve intentional
 untracked documentation and unrelated user changes.
@@ -663,6 +663,13 @@ The detailed chronology is in [Production Timeline](PRODUCTION_TIMELINE.md).
   read; three normal post-fix runs completed without OOM, including a high-start
   run ending at 473.6 MB. The immediate defect is operationally mitigated, but
   broader memory monitoring remains required.
+- **Later cleanup hardening:** `c06c837` streamed the short-content scan,
+  `cd3f093` streamed the first duplicate scan, and `0cdc089` separated first-pass
+  Stage 2 observability. On 11 August at 12:00, `1811430` completed normally with
+  current RSS 202.3→338.6 MB. First Stage 2 was 0.0 MB, while first Stage 1,
+  visible-pool and short-content intervals were +44.2, +33.6 and +28.5 MB. The
+  string change was safe but did not demonstrate a material RSS improvement over
+  the prior +26.0 MB comparison; another natural observation is the next gate.
 - **Newsletter delivery and memory:** provider transitions, caps, rotating cursors,
   zero-success diagnostics and accepted-recipient accounting followed incidents.
   Provider acceptance and subscriber engagement remain separate evidence.
@@ -721,16 +728,14 @@ and [Completed Phases](QA/COMPLETED_PHASES.md) for QA boundaries.
 
 ## 17. Current operational status
 
-[Project State](PROJECT_STATE.md) is the concise local operational authority. The
-authority transition becomes repository-wide after final consistency review and
-the approved documentation commit and push. Do not copy an older July “current
-checkpoint” into this master.
+[Project State](PROJECT_STATE.md) is the concise repository operational authority.
+Do not copy an older July “current checkpoint” into this master.
 
 The current repository reconstruction baseline is:
 
 ```text
 Branch: full-scrape-prod
-HEAD: 49e5fe49cc35e0ca020e8520db6365d356760060
+HEAD: 1811430070cfa73084c8b5ded830fa88076d3cc7
 ```
 
 At session start, verify:
@@ -742,9 +747,10 @@ At session start, verify:
 - mutable provider, scheduler or production facts needed by the task.
 
 Editorial Similarity remains deployed into passive scheduled observation. The
-7–8 August duplicate-cleanup memory incident, fix and three-run production
-verification are reconciled in the repository records. Other later production
-investigations remain outside this baseline until reconciled. Do not claim
+7–11 August duplicate-cleanup investigation, staged optimisations and natural
+production observations through the 11 August 12:00 run are reconciled in the
+repository records. Later production investigations remain outside this baseline
+until reconciled. Do not claim
 similarity calibration, threshold approval, Similar Stories UI or production
 detection quality.
 
@@ -756,8 +762,9 @@ The authoritative prioritisation is [Roadmap Master](ROADMAP_MASTER.md).
 
 - obtain credential rotation/revocation evidence;
 - restrict and verify wildcard credentialed CORS;
-- continue broader production-memory monitoring after the operationally verified
-  duplicate-cleanup lifecycle mitigation;
+- continue broader production-memory monitoring and obtain another natural run
+  before choosing among first duplicate Stage 1, visible-pool or short-content
+  work;
 - keep Editorial Similarity shadow-only; consider calibration or later product
   decisions only through separate evidence and approval;
 - complete documentation reconstruction.
@@ -787,7 +794,7 @@ Security and production stability remain ahead of discretionary features.
 
 ### Current state and preservation
 
-- [Project State](PROJECT_STATE.md) — concise local operational authority; repository-wide transition pending approved commit and push.
+- [Project State](PROJECT_STATE.md) — concise repository operational authority.
 - [Privacy-safe preserved state](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md) —
   repository historical copy derived from the exact local archive with explicit
   privacy redactions.
@@ -897,18 +904,16 @@ pushed, deployed or changed in production.
 - receipt and reconciliation of the ChatGPT export;
 - structured preservation and reconciliation of Codex history;
 - historical PDF reconciliation;
-- post-HEAD production-evidence reconciliation;
-- final documentation consistency review and corrections;
-- approved documentation commit and push.
+- production-evidence reconciliation after the stated HEAD;
+- final review and approved commit of this 11 August authority update.
 
 Complete historical reconstruction has **not** yet been achieved. The current set
 is an evidence-backed repository reconstruction through the stated HEAD, with
 explicit unresolved sources and production gaps.
 
-Phases 1–7.3 are complete locally. Project State is the concise local operational
+Phases 1–7.3 are committed. Project State is the concise repository operational
 authority, while this document is the permanent navigation/governance entry point
-rather than the source of mutable live state. Repository-wide authority transition
-still awaits final review and the approved documentation commit and push.
+rather than the source of mutable live state.
 
 The byte-exact archive remains local, unchanged and hash-verified but is excluded
 from the proposed Git commit because it contains inherited personal/local-path

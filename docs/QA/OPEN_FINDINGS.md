@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `49e5fe4`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `1811430`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 
@@ -159,15 +159,15 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Area:** Render memory and operations
 - **Original finding:** OOM risk was only partially evidenced after newsletter and import memory incidents.
 - **Current status:** Monitoring — immediate duplicate-cleanup lifecycle OOM risk operationally mitigated; broader process-memory stability not proven.
-- **Current-code evidence:** Twelve bounded markers in `backend/app/article_generation_observability.py`; RSS concurrency eight; scheduler locks; `49e5fe4` releases `group`, `article`, `duplicate_groups` and `articles` before the second cleanup materialisation. Full unrestricted reads, visible-pool work and newsletter materialisation remain.
-- **Fixing commits:** Observability `42736f9`; lifecycle release `49e5fe4`.
+- **Current-code evidence:** Thirteen bounded markers include current RSS and isolate first-pass Stage 2. `49e5fe4` removed simultaneous full-list retention; `c06c837` streams/projects the short-content scan; `cd3f093` streams/projects the first duplicate scan; `1811430` avoids joined full-article strings in short-content qualification. Scheduler locks and RSS concurrency eight remain.
+- **Fixing commits:** Observability `42736f9`, `fd7cc82`, `0cdc089`; cleanup lifecycle/scan changes `49e5fe4`, `c06c837`, `cd3f093`, `1811430`.
 - **Test evidence:** Five focused lifecycle regressions, 28 related cleanup/auth/memory/live-pool regressions, compilation and diff checks passed before commit `49e5fe4`.
 - **Deployment evidence:** Render automatically deployed `49e5fe4` on 7 August 2026; startup completed and the service became live before the 12:00 scheduled run.
-- **Production evidence:** The pre-fix 7 August 06:00 run reached 530.0 MB against the verified 512 MB ceiling and was followed by an OOM. Post-fix normal runs at 12:00 and 18:00 on 7 August and 06:00 on 8 August completed without OOM; second-read increases were 29.4 MB, 8.6 MB and 40.7 MB respectively, versus 63.4 MB pre-fix. The high-start 8 August run ended at 473.6 MB, 38.4 MB below the ceiling.
-- **Remaining gap:** Broader stability across future workloads, full unrestricted reads, visible-pool growth, allocator high-water behaviour and newsletter memory remain under observation.
+- **Production evidence:** The pre-fix 7 August 06:00 run reached 530.0 MB against the verified 512 MB ceiling and was followed by an OOM. Later normal observations established structural improvement. On 11 August at 12:00, `1811430` completed normally at 338.6 MB current RSS (202.3 MB start; +136.3 MB net). First-pass Stage 2 was 0.0 MB, first Stage 1 +44.2 MB, visible-pool +33.6 MB and the short-content scan +28.5 MB. The latter was similar to the prior +26.0 MB baseline, so no material RSS benefit from the string change is claimed.
+- **Remaining gap:** Cumulative process RSS still rises materially and may remain elevated. First duplicate Stage 1, visible-pool work, short-content cursor/decoded-string behaviour, feed work, allocator retention and high-start workloads remain under observation; no single next implementation target is yet dominant.
 - **Closure criteria:** A sustained evidence-backed stability window covering scheduled imports and newsletter workloads, or separately reviewed further optimisation followed by normal-run production verification.
 - **Owner/documentation responsibility:** Production operations owner; [Monitoring](../OPERATIONS/MONITORING.md).
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, [Production Timeline](../PRODUCTION_TIMELINE.md).
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`, [Production Timeline](../PRODUCTION_TIMELINE.md).
 
 ### QA-DOC-001
 
@@ -212,14 +212,14 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Current severity:** Medium
 - **Area:** Documentation authority
 - **Original finding:** Operational truth, history, QA and chat-derived evidence were spread across a near-million-byte Project State and multiple records.
-- **Current status:** Phases 1–7.3, including the archive privacy decision and clean-checkout-safe archive-link correction, are complete locally, but the reconstruction has not yet passed the final documentation commit gate.
+- **Current status:** Repository reconstruction and its authority transition were committed in `a6e0f98`; external-source reconciliation remains incomplete.
 - **Current-code evidence:** Not a runtime defect; repository documentation inventory and [Source Register](../HISTORY/SOURCE_REGISTER.md) establish the sprawl.
-- **Fixing commits:** None for the untracked reconstruction set.
+- **Fixing commits:** Documentation reconstruction `a6e0f98`; later authority updates `f5e4094` and this 11 August reconciliation.
 - **Test evidence:** Hash, link, heading and content validations by phase.
 - **Deployment evidence:** Not applicable.
 - **Production evidence:** Not applicable.
-- **Remaining gap:** Pass final review, obtain approval for commit/push, and reconcile pending ChatGPT, structured Codex, historical PDF and post-HEAD production evidence.
-- **Closure criteria:** Approved tracked master set containing the privacy-safe archive; exact local archive excluded and preserved unchanged; and a durable plan for the remaining external and post-HEAD sources.
+- **Remaining gap:** Reconcile pending ChatGPT export, structured Codex history, historical PDFs and production evidence after the stated baseline.
+- **Closure criteria:** The tracked master set and privacy-safe archive are complete; closure additionally requires a durable reconciliation of the remaining external evidence sources.
 - **Owner/documentation responsibility:** Documentation reconstruction owner.
 - **Roadmap mapping:** [Roadmap Master](../ROADMAP_MASTER.md), Documentation reconstruction roadmap.
 - **Sources:** [Source Register](../HISTORY/SOURCE_REGISTER.md), [Architecture Master](../ARCHITECTURE_MASTER.md).

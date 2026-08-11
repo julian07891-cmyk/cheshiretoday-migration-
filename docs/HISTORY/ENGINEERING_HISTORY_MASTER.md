@@ -1,7 +1,7 @@
 # Cheshire Today — Engineering History Master
 
 > **Reconstruction status:** repository-evidence history through commit
-> `49e5fe49cc35e0ca020e8520db6365d356760060` on 7 August 2026. ChatGPT export,
+> `1811430070cfa73084c8b5ded830fa88076d3cc7` on 11 August 2026. ChatGPT export,
 > systematic Codex history and post-HEAD production evidence remain unreconciled.
 
 ## Document purpose
@@ -447,6 +447,26 @@ listed below are reconciled.
   provider decode buffers and newsletter workloads remain monitoring concerns.
 - **Sources:** [Production Timeline](../PRODUCTION_TIMELINE.md), [Open Findings](../QA/OPEN_FINDINGS.md), Git `49e5fe4`; authenticated Render evidence reconciled 8 August.
 
+#### Duplicate-cleanup streaming and separated memory validation — 9–11 August
+
+- **Problem:** Current-RSS markers showed that both cleanup collection scans still
+  materially increased live process memory after the initial lifecycle fix.
+- **Implementation:** `fd7cc82` added current RSS; `c06c837` streamed/projected the
+  short-content scan with full candidate re-fetch; `cd3f093` streamed/projected the
+  first duplicate scan with group-wide re-fetch/revalidation; `0cdc089` added the
+  thirteenth marker separating first-pass Stage 2; `1811430` removed full joined
+  and joined-lower strings from short-content qualification without semantic change.
+- **Production evidence:** The 11 August 06:00 run isolated first-pass Stage 2 at
+  -0.9 MB and the short scan at +26.0 MB. The 12:00 natural run on `1811430`
+  completed in 94.63 seconds with current RSS 202.3→338.6 MB. First scan, first
+  Stage 2, visible pool and short scan were +44.2, 0.0, +33.6 and +28.5 MB.
+- **Conclusion:** Both unrestricted cleanup reads were removed and first-pass Stage
+  2 is not the current hotspot. The string change is semantically safe but its
+  first production comparison is similar, not materially improved. Cumulative
+  memory remains Monitoring/Medium and another natural run is required before a
+  further code target is selected.
+- **Sources:** [Production Timeline](../PRODUCTION_TIMELINE.md), [Open Findings](../QA/OPEN_FINDINGS.md), Git `fd7cc82`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`; authenticated Render evidence reconciled 11 August.
+
 ## Failed, reverted and deferred work
 
 ### Rolled-back homepage and feed experiments
@@ -489,8 +509,8 @@ optimisation were not approved at HEAD.
 
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
-- Production evidence after commit `49e5fe4` is outside this reconstruction unless
-  already present in repository sources. The 7–8 August duplicate-cleanup evidence
+- Production evidence after the 11 August 12:00 run on `1811430` is outside this reconstruction unless
+  already present in repository sources. The 7–11 August duplicate-cleanup evidence
   is reconciled in the production and QA records.
 - Historical PDFs named in the preserved state are missing from the checkout; the
   tracked `CheshireToday_Project_History.pdf` remains unreconciled.

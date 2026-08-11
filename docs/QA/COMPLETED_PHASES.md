@@ -174,12 +174,12 @@ Use this to avoid repeating completed work. Follow residual-risk links before ex
 
 - **Date range:** Began 4 August 2026
 - **Objective:** Observe at least three normal runs before threshold or UI work.
-- **Scope:** Health, duration, twelve memory phases, pool/shortlist/comparison counts, bands/reasons/provenance and unchanged outcomes.
+- **Scope:** Health, duration, thirteen memory phases (including isolated first-pass Stage 2), pool/shortlist/comparison counts, bands/reasons/provenance and unchanged outcomes.
 - **Changes:** None; observation-only.
 - **Tests:** Automated contract tests support log bounds but cannot replace production observation.
 - **Deployment status:** Shadow integration deployed.
-- **Production verification:** **Incomplete at current HEAD; this phase is not complete.**
-- **Residual risks:** Unknown production recall/precision and runtime cost distribution.
+- **Production verification:** Numerical three-normal-run observation-count gate satisfied; Version 1 outcomes remained unchanged.
+- **Residual risks:** Calibration, production recall/precision, thresholds, UI and enforcement remain unapproved and incomplete.
 - **Sources:** [Open Findings](OPEN_FINDINGS.md#ct-qa-2026-002); [Monitoring](../OPERATIONS/MONITORING.md).
 
 ## Related documents

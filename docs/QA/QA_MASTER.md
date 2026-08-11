@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `49e5fe49cc35e0ca020e8520db6365d356760060`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `1811430070cfa73084c8b5ded830fa88076d3cc7`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -63,12 +63,15 @@ Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2d
 
 The public article-list latency finding lacks a measured remediation. Memory markers
 added by `42736f9` isolated a 7 August scheduled-import OOM to simultaneous
-duplicate-cleanup materialisations. Commit `49e5fe4` released first-pass references
-before the second read; deployment and three normal runs production-verified the
-immediate lifecycle mitigation, including a high-start run finishing 38.4 MB below
-the verified 512 MB ceiling. This does not prove all Render memory stability:
-unrestricted reads, visible-pool work, allocator high-water behaviour and
-newsletter materialisation remain evidence-led monitoring priorities.
+duplicate-cleanup materialisations. Commit `49e5fe4` removed that overlap;
+`c06c837` and `cd3f093` then streamed/projected both cleanup scans, and `0cdc089`
+added a thirteenth marker to isolate first-pass Stage 2. The natural 11 August
+12:00 run on `1811430` completed normally at 338.6 MB current RSS. First-pass Stage
+2 added 0.0 MB, while first Stage 1, visible-pool and short-content scan intervals
+added 44.2, 33.6 and 28.5 MB. The short-content string change was semantically safe
+but its +28.5 MB result was similar to the prior +26.0 MB baseline. Broader
+cumulative process-memory stability therefore remains Monitoring/Medium; another
+natural observation precedes any further optimisation target.
 
 ## Operations and monitoring
 

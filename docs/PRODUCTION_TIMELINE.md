@@ -1,7 +1,7 @@
 # Cheshire Today — Production Timeline
 
 > **Reconstruction status:** repository-evidenced production chronology through
-> commit `49e5fe49cc35e0ca020e8520db6365d356760060`. A historical “deployed” statement
+> commit `1811430070cfa73084c8b5ded830fa88076d3cc7`. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose
@@ -83,14 +83,20 @@ verification gates from general engineering history.
 | 7 August, 12:00 BST | Render production | Post-fix verification | Duplicate cleanup memory | First normal run after `49e5fe4` | `49e5fe4` | 123.6 MB start, 228.9 MB visible cap, 236.4 MB first read, 265.8 MB second/final; second-read increase 29.4 MB; runtime 103.07 seconds; no OOM or restart | Lifecycle release behaved safely; cleanup removed zero records | Continue normal-run monitoring | Authenticated Render logs reconciled 8 August |
 | 7 August, 18:00 BST | Render production | Post-fix verification | Duplicate cleanup memory | Second normal run after `49e5fe4` | `49e5fe4` | 314.8 MB start, 341.8 MB visible cap, 343.0 MB first read, 351.6 MB second/final; second-read increase 8.6 MB; runtime 49.45 seconds; no OOM or restart | Strengthened evidence that simultaneous-list amplification was removed | Require high-start comparison | Authenticated Render logs reconciled 8 August |
 | 8 August, 06:00 BST | Render production | Post-fix verification | Duplicate cleanup memory | High-start comparison with the pre-fix OOM run | `49e5fe4` | 377.2 MB start, 406.4 MB visible cap, 432.9 MB first read, 473.6 MB second/final; second-read increase 40.7 MB; runtime 77.32 seconds; 38.4 MB below ceiling; zero removals and no OOM/restart during the observed window | Immediate duplicate-cleanup lifecycle OOM risk classified as operationally mitigated | Continue broader memory monitoring; do not infer all memory risk is gone | Authenticated Render logs reconciled 8 August |
+| 10 August | Render production | Cleanup hardening | Duplicate cleanup memory | Stream/project the second short-content scan, then the first duplicate scan | `c06c837`, `cd3f093` | Natural runs showed structural improvement; first-pass Stage 2 remained mixed with the short scan until a later marker | Removed both unrestricted cleanup materialisations while preserving full archive payloads through re-fetch/revalidation | Separate remaining intervals before selecting more work | Git and authenticated Render evidence reconciled 11 August |
+| 10 August, 19:13 BST | Render production | Observability deployment | Duplicate cleanup memory | Add `duplicate_cleanup_first_stage2_completed` and retain current-RSS logging | `0cdc089` | Healthy deployment on instance `tdc7g`; phase inventory increased from 12 to 13 | Isolated first-pass Stage 2 from the projected short-content scan | Observe natural runs only | Git and authenticated Render evidence reconciled 11 August |
+| 11 August, 06:00 BST | Render production | Separated observation | Duplicate cleanup memory | First natural 13-marker run | `0cdc089` | Current RSS: visible pool 210.0 MB, first scan 232.4 MB, first Stage 2 231.5 MB, short scan/completion 257.5 MB; 4,066 documents scanned | First Stage 2 negligible (-0.9 MB); short-content projected scan dominated cleanup at +26.0 MB | Audit string allocation without changing cursor semantics | Authenticated Render logs reconciled 11 August |
+| 11 August, 07:06 BST | Render production | Automatic deployment | Short-content memory | Avoid full joined and joined-lower article strings while preserving qualification semantics | `1811430070cfa73084c8b5ded830fa88076d3cc7` | Build/startup/health succeeded; instance `jpk6g` became live | Safe bounded allocation change | Validate on the natural 12:00 run | Git and authenticated Render deployment evidence reconciled 11 August |
+| 11 August, 12:00–12:01 BST | Render production | Natural validation | Article generation memory | Validate `1811430` using all 13 markers | `1811430` | Lock `article_gen_2026081111`; runtime 94.63 s; current RSS 202.3→338.6 MB; first scan +44.2 MB, first Stage 2 0.0 MB, short scan +28.5 MB over 4,087 records; no OOM/restart/failure; health 200 | String change remained semantically safe but showed no material RSS improvement versus +26.0 MB; cumulative memory stays Monitoring/Medium | Obtain another natural run before selecting a new target | Authenticated Render scheduler, memory and health evidence reconciled 11 August |
 
 ## Unreconciled later production evidence
 
-- The 7–8 August duplicate-cleanup incident, deployment and three-run verification
-  are reconciled above. Other later Render logs, Admin observations and production
+- The 7–11 August duplicate-cleanup incident, deployments and natural-run evidence
+  through 11 August 12:00 are reconciled above. Later Render logs, Admin observations and production
   investigations may exist in Codex tasks but are not yet systematically preserved.
 - The requested ChatGPT export is unavailable.
-- The Editorial Similarity three-run gate is not marked complete by repository HEAD.
+- The Editorial Similarity numerical three-run observation-count gate is satisfied;
+  calibration, thresholds, UI and enforcement remain unapproved.
 - Repository history does not independently prove production credential rotation
   following `QA-SEC-001`.
 - Historical PDFs remain unreconciled and cannot establish live state.
