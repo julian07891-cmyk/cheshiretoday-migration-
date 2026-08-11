@@ -257,10 +257,15 @@ See [Monetisation Architecture](ARCHITECTURE/MONETISATION.md) and
 The current evidence-backed QA posture is summarised in [QA Master](QA/QA_MASTER.md).
 Detailed closure criteria are in [Open Findings](QA/OPEN_FINDINGS.md).
 
+`QA-SEC-001` retained its original Critical severity but closed on 11 August
+2026 after production Admin-password rotation, invalidation of nine pre-rotation
+Admin sessions, successful replacement-credential and bearer-token verification,
+and HTTP 401 rejection of the historical password. The current tracked tree
+remains contained; reachable Git history still retains the revoked historical
+credential and was not rewritten. Production remained healthy.
+
 Highest-priority unresolved or monitoring items are:
 
-- **Critical:** production credential rotation/revocation evidence remains
-  unresolved despite current-tree containment.
 - **High:** wildcard credentialed CORS remains open in current code.
 - **Medium:** duplicate-cleanup memory is structurally and materially improved by
   `49e5fe4`, `c06c837` and `cd3f093`, with 13 phase markers now isolating cleanup
@@ -327,14 +332,13 @@ No manual import should be triggered solely to accelerate observation.
 
 1. Observe at least one further natural article-generation run before selecting
    another memory implementation target.
-2. Reconcile current production credential rotation/revocation evidence.
-3. Restrict and verify wildcard credentialed CORS.
-4. Continue broader Render memory monitoring; do not infer that `1811430` reduced
+2. Restrict and verify wildcard credentialed CORS.
+3. Continue broader Render memory monitoring; do not infer that `1811430` reduced
    RSS from its first similar natural-run comparison.
-5. Complete Weekly Roundup QA using normal scheduled evidence.
-6. Continue inactive-subscriber evidence gathering without speculative
+4. Complete Weekly Roundup QA using normal scheduled evidence.
+5. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
-7. Complete ChatGPT and Codex historical reconciliation.
+6. Complete ChatGPT and Codex historical reconciliation.
 
 Security and reliability take precedence over speculative features.
 

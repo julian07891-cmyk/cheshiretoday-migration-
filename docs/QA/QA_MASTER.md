@@ -22,9 +22,9 @@ Evidence-backed status totals for the eleven original findings are:
 
 | Classification | Count |
 |---|---:|
-| Open or not fully production verified | 8 |
+| Open or not fully production verified | 7 |
 | Remediated and verified by tests at repository level | 2 |
-| Remediated, deployed and production verified | 1 |
+| Remediated, deployed and production verified | 2 |
 
 Three additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
@@ -41,7 +41,11 @@ The authoritative row-by-row reconciliation is [Open Findings](OPEN_FINDINGS.md)
 
 ## Security
 
-Current tracked-tree credential scans and loopback-only external test boundaries are covered by `tests/test_committed_admin_credential_hygiene.py` and `tests/test_external_http_test_safety.py`. Production credential rotation/revocation is not established by repository evidence, so `QA-SEC-001` remains open. `backend/server.py` still uses `allow_origins=["*"]` with credentials, keeping `QA-SEC-002` open.
+Current tracked-tree credential scans and loopback-only external test boundaries are covered by `tests/test_committed_admin_credential_hygiene.py` and `tests/test_external_http_test_safety.py`.
+
+`QA-SEC-001` is **CLOSED — ROTATION/REVOCATION PROVEN** as of 11 August 2026. Its original severity remains **Critical**. Only `ADMIN_PASSWORD` required production rotation; nine pre-rotation Admin sessions were invalidated, replacement login and bearer-token verification passed, and the historical password was rejected with HTTP 401. The current residual risk is that reachable Git history still retains the revoked historical credential; production no longer accepts it and history was not rewritten.
+
+`QA-SEC-002` is now the highest-priority unresolved security finding. `backend/server.py` still uses `allow_origins=["*"]` with credentials, so its existing High/Open classification is unchanged.
 
 ## Test safety and hermeticity
 
@@ -126,4 +130,4 @@ they are not treated as current truth here.
 
 ## Known limitations
 
-Exact full-suite counts are unavailable for some later milestones; none are invented. Render, Search Console, GA4, provider and credential-rotation state cannot be proven from Git alone.
+Exact full-suite counts are unavailable for some later milestones; none are invented. Search Console, GA4 and provider state cannot be proven from Git alone. Credential rotation is supported by dated production evidence rather than Git state alone.

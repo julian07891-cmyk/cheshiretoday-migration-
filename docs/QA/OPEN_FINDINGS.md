@@ -19,19 +19,19 @@ Work highest current severity first. Update an entry only when evidence changes;
 ### QA-SEC-001
 
 - **Original severity:** Critical
-- **Current severity:** Critical
+- **Current severity:** Closed
 - **Area:** Security / credentials
 - **Original finding:** A production Admin credential was committed in legacy tests and historical tracked artefacts.
-- **Current status:** Open — contained in current tree and test-verified; rotation/revocation and history exposure are not production-verified.
+- **Current status:** **CLOSED — ROTATION/REVOCATION PROVEN** on 11 August 2026. The current tree was already contained; production rotation, session revocation and old-access rejection are now verified.
 - **Current-code evidence:** `tests/external_admin_test_safety.py` reads credentials only after loopback target approval; current hygiene tests scan tracked content.
 - **Fixing commits:** `b804cdd`, `603e11b`.
 - **Test evidence:** 29 July remediation records 31 focused safety/hygiene passes, 48 affected-group passes with 55 safe skips, a production-URL refusal subprocess, and 45 related authentication/mutation passes.
-- **Deployment evidence:** Not sufficient; test containment is repository behaviour.
-- **Production evidence:** No repository evidence that the exposed credential and associated tokens were rotated/revoked and retested.
-- **Remaining gap:** Operational rotation/revocation proof and a safe confirmation that old access no longer works; Git history still retains the secret.
-- **Closure criteria:** Record dated rotation/revocation, invalidate affected sessions/tokens as required, verify old access fails without exposing values, rescan current tree/history policy, and retain loopback tests.
+- **Deployment evidence:** On Render service `cheshiretoday-migration-` (`srv-d5virmm3jp1c73c9d6tg`), only `ADMIN_PASSWORD` was rotated. Final deployment `dep-d9tiku142hec738apl80` ran revision `3b3f4c9` on instance `6xgfs`; build succeeded at 14:59:53 BST, application startup completed at 15:00:49 and the service was live at 15:00:55. `ADMIN_PERMANENT_TOKEN` was unchanged.
+- **Production evidence:** Replacement-credential login and new bearer-token verification passed; the historical password was rejected with HTTP 401; unauthenticated `/api/admin/verify` returned 401 and `/api/health` returned 200. Nine pre-rotation Admin tokens were invalidated at the 14:42:29 BST cutoff, and the Render restart eliminated old-instance in-memory tokens. One verified post-rotation session was active. No startup, Mongo, scheduler, OOM, restart-loop or material 5xx failure was observed.
+- **Residual risk:** Reachable Git history still contains the revoked historical credential and was not rewritten. Production no longer accepts that password.
+- **Closure criteria:** Met: current-tree containment retained, dated production rotation recorded, affected sessions invalidated, replacement login/token verified, historical access rejected and service health confirmed without recording secret material.
 - **Owner/documentation responsibility:** Production security owner; record evidence in Project State/production timeline without secret material.
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `b804cdd`, `603e11b`; `tests/test_committed_admin_credential_hygiene.py`.
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `b804cdd`, `603e11b`; `tests/test_committed_admin_credential_hygiene.py`; authenticated Render/Admin/Mongo verification reconciled 11 August 2026.
 
 ### QA-TEST-001
 

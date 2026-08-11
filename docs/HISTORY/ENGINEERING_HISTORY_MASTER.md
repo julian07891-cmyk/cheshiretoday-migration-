@@ -467,6 +467,25 @@ listed below are reconciled.
   further code target is selected.
 - **Sources:** [Production Timeline](../PRODUCTION_TIMELINE.md), [Open Findings](../QA/OPEN_FINDINGS.md), Git `fd7cc82`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`; authenticated Render evidence reconciled 11 August.
 
+#### Admin credential rotation and QA-SEC-001 closure — 11 August
+
+- **Reason:** current-tree containment did not neutralise the production Admin
+  password retained in reachable Git history; history was not rewritten.
+- **Action:** only `ADMIN_PASSWORD` was rotated on Render service
+  `cheshiretoday-migration-` (`srv-d5virmm3jp1c73c9d6tg`).
+  `ADMIN_PERMANENT_TOKEN` remained separate and unchanged. Nine pre-rotation
+  Admin tokens were invalidated, and the service restart removed old-instance
+  in-memory sessions.
+- **Deployment and verification:** final deployment `dep-d9tiku142hec738apl80`
+  ran revision `3b3f4c9` on instance `6xgfs`. Replacement login and bearer-token
+  verification passed; the historical password was rejected with HTTP 401;
+  public health returned 200. Build, startup, Mongo and scheduler checks were
+  healthy with no OOM, restart loop or material 5xx evidence.
+- **Result:** `QA-SEC-001` closed as **ROTATION/REVOCATION PROVEN**. Reachable Git
+  history still contains the revoked credential, but production no longer accepts
+  it. No secret value, hash or derivation is preserved here.
+- **Sources:** [Open Findings](../QA/OPEN_FINDINGS.md), [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render/Admin/Mongo verification reconciled 11 August 2026.
+
 ## Failed, reverted and deferred work
 
 ### Rolled-back homepage and feed experiments
