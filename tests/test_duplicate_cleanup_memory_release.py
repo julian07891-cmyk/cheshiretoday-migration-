@@ -40,6 +40,11 @@ SHORT_CONTENT_PROJECTION = {
     "manual_edit_protected": 1,
     "source": 1,
 }
+BOILERPLATE_MARKERS = [
+    "this story has been reported by",
+    "more details are expected to emerge soon",
+    "for the latest news from across the region, keep following",
+]
 
 
 class TrackedArticle(dict):
@@ -48,6 +53,17 @@ class TrackedArticle(dict):
 
 class TrackedContent(str):
     pass
+
+
+class NoFullBlobJoinText(str):
+    def __deepcopy__(self, _memo):
+        return self
+
+    def strip(self):
+        return self
+
+    def __add__(self, _other):
+        raise AssertionError("short-content assessment must not build a full joined blob")
 
 
 class CleanupCursor:
@@ -227,6 +243,31 @@ def run_cleanup(
     )
     result = asyncio.run(server._remove_duplicates_internal())
     return result, articles, archive
+
+
+def old_short_content_assessment(article_record):
+    content = (article_record.get("content") or "").strip()
+    summary = (article_record.get("summary") or "").strip()
+    text_blob = (content + " " + summary).strip()
+    blob_len = len(text_blob)
+    text_l = text_blob.lower()
+    return (
+        blob_len
+        if blob_len < 1000 or any(marker in text_l for marker in BOILERPLATE_MARKERS)
+        else None
+    )
+
+
+def assert_short_content_matches_old_assessment(monkeypatch, content, summary):
+    record = article("candidate", "Qualification candidate", content=content, summary=summary)
+    expected = old_short_content_assessment(record)
+
+    result, active, archive = run_cleanup(monkeypatch, [record])
+
+    assert result["success"] is True
+    assert result["short_articles_removed"] == (1 if expected is not None else 0)
+    assert active.deleted_ids == (["candidate"] if expected is not None else [])
+    assert len(archive.inserted) == (1 if expected is not None else 0)
 
 
 def test_duplicate_source_url_keeps_best_and_archives_before_delete(monkeypatch):
@@ -889,6 +930,114 @@ def test_second_pass_removes_short_content_but_preserves_manual_review(monkeypat
         "total_removed": 1,
         "remaining_articles": 1,
     }
+
+
+@pytest.mark.parametrize(
+    ("content", "summary"),
+    [
+        ("", ""),
+        ("short content", ""),
+        ("", "short summary"),
+        ("a" * 499, "b" * 499),
+        ("a" * 499, "b" * 500),
+        ("a" * 500, "b" * 500),
+        ("  " + ("a" * 499) + "  ", "\t" + ("b" * 499) + "\n"),
+        ("\u2003" + ("a" * 499) + "\u2003", "\u00a0" + ("b" * 500) + "\u00a0"),
+    ],
+    ids=[
+        "both-empty",
+        "content-only",
+        "summary-only",
+        "effective-999",
+        "effective-1000",
+        "effective-1001",
+        "ordinary-whitespace",
+        "unicode-whitespace",
+    ],
+)
+def test_short_content_length_matches_old_joined_blob_semantics(
+    monkeypatch, content, summary
+):
+    assert_short_content_matches_old_assessment(monkeypatch, content, summary)
+
+
+def _mixed_case(value):
+    return "".join(
+        character.upper() if index % 2 == 0 else character.lower()
+        for index, character in enumerate(value)
+    )
+
+
+@pytest.mark.parametrize("marker", BOILERPLATE_MARKERS)
+@pytest.mark.parametrize("placement", ["content", "summary", "boundary"])
+def test_each_boilerplate_marker_matches_old_case_and_boundary_semantics(
+    monkeypatch, marker, placement
+):
+    if placement == "content":
+        content = ("x" * 1000) + marker.upper()
+        summary = ""
+    elif placement == "summary":
+        content = "x" * 1000
+        summary = _mixed_case(marker)
+    else:
+        variant = _mixed_case(marker)
+        split_at = variant.find(" ", len(variant) // 3)
+        assert split_at > 0
+        content = ("x" * 1000) + variant[:split_at]
+        summary = variant[split_at + 1 :]
+
+    assert_short_content_matches_old_assessment(monkeypatch, content, summary)
+
+
+def test_lower_semantics_do_not_become_casefold_semantics(monkeypatch):
+    marker_lookalike = BOILERPLATE_MARKERS[2].replace("across", "acroß")
+    assert marker_lookalike.lower() == marker_lookalike
+    assert marker_lookalike.casefold() != marker_lookalike
+
+    assert_short_content_matches_old_assessment(
+        monkeypatch,
+        ("x" * 1000) + marker_lookalike,
+        "",
+    )
+
+
+def test_short_content_assessment_does_not_join_full_article_text(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [
+            article(
+                "complete",
+                "Complete article",
+                content=NoFullBlobJoinText("x" * 1000),
+                summary=NoFullBlobJoinText("complete summary"),
+            )
+        ],
+    )
+
+    assert result["success"] is True
+    assert result["short_articles_removed"] == 0
+    assert active.deleted_ids == []
+    assert archive.inserted == []
+
+
+@pytest.mark.parametrize(
+    ("content", "summary"),
+    [
+        (123, ""),
+        ("complete", ["not", "a", "string"]),
+    ],
+)
+def test_truthy_non_string_text_preserves_strip_failure(monkeypatch, content, summary):
+    record = article("malformed", "Malformed text", content=content, summary=summary)
+    with pytest.raises(AttributeError):
+        old_short_content_assessment(record)
+
+    result, active, archive = run_cleanup(monkeypatch, [record])
+
+    assert result["success"] is False
+    assert result["total_removed"] == 0
+    assert active.deleted_ids == []
+    assert archive.inserted == []
 
 
 def test_first_pass_articles_are_unreachable_before_second_materialisation(monkeypatch):

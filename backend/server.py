@@ -4002,6 +4002,7 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
             "more details are expected to emerge soon",
             "for the latest news from across the region, keep following",
         ]
+        max_boilerplate_marker_len = max(len(m) for m in boilerplate_markers)
 
         def short_content_assessment(article):
             if article.get("manual_review_hidden_from_public") is True:
@@ -4010,13 +4011,24 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
                 return None
             content = (article.get('content') or '').strip()
             summary = (article.get('summary') or '').strip()
-            text_blob = ((content + " " + summary).strip())
-            blob_len = len(text_blob)
-            text_l = text_blob.lower()
+            blob_len = len(content) + len(summary)
+            if content and summary:
+                blob_len += 1
+            if blob_len < 1000:
+                return blob_len
 
-            is_low_quality_short = blob_len < 1000
-            is_boilerplate_fallback = any(m in text_l for m in boilerplate_markers)
-            return blob_len if is_low_quality_short or is_boilerplate_fallback else None
+            content_l = content.lower()
+            summary_l = summary.lower()
+            if any(m in content_l or m in summary_l for m in boilerplate_markers):
+                return blob_len
+
+            if content and summary:
+                boundary_size = max_boilerplate_marker_len - 1
+                boundary = content_l[-boundary_size:] + " " + summary_l[:boundary_size]
+                if any(m in boundary for m in boilerplate_markers):
+                    return blob_len
+
+            return None
 
         short_candidate_ids = []
         second_read_count = 0
