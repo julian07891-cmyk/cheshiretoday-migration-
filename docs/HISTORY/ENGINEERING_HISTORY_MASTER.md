@@ -524,6 +524,21 @@ optimisation were not approved at HEAD.
 
 - **Sources:** preserved state, final July/August sections; Git `42736f9`, `1601ae4`.
 
+### QA-SEC-002 credentialed CORS closure — 12 August 2026
+
+The High-severity credentialed wildcard-origin finding was confirmed, corrected
+and production-verified. Commit `b497635` introduced the reviewed explicit origin
+list while retaining the existing credentials, methods and headers policy. Eight
+focused CORS tests passed. Render deployment `dep-d9u594oae00c73bs1lvg` became
+live on instance `qmqjs` at 12:12:56 BST. Production returned the canonical origin
+for an approved preflight and rejected `https://evil.example` without ACAO or
+wildcard reflection. Fresh Admin login compatibility, health and public frontend
+smoke checks passed, with no startup, Mongo, scheduler, OOM, restart-loop or
+material 5xx regression. `QA-SEC-002` therefore closed.
+
+- **Sources:** Git `b497635`; focused CORS regression evidence; authenticated
+  Render/Admin and bounded production preflight verification on 12 August 2026.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.

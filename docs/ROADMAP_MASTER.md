@@ -36,7 +36,7 @@ reliability risk.
 
 | Status | Priority | Work | Evidence/gate |
 |---|---|---|---|
-| Next | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Reviewed allow-list, positive/negative tests, deploy and live preflight |
+| Completed | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Commit `b497635`, eight focused tests, deployment `dep-d9u594oae00c73bs1lvg`, positive/negative live preflights and Admin compatibility verified 12 August 2026 |
 | Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | Thirteen markers show multiple variable contributors; observe at least one more natural run before selecting another implementation target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
@@ -56,7 +56,7 @@ Security and production stability precede feature expansion.
 | Next | Compilation/warning maintenance | Lifecycle, multipart/gzip, Browserslist and backup artefacts as separate low-risk changes |
 | Monitoring | Public article-list performance | Current TTFB and Mongo plan/index evidence before optimisation |
 | Next | `QA-DOC-001` Threads/operator-documentation consistency | Reconcile current implementation and operator wording without rewriting the dated QA baseline |
-| Next | `CT-QA-2026-003` scheduler lock-acquisition review | Decide fail-closed ownership policy, add focused tests and preserve normal scheduler availability safeguards |
+| Next | `CT-QA-2026-003` scheduler lock-acquisition review | Highest-priority unresolved security/reliability item: decide fail-closed ownership policy, add focused tests and preserve normal scheduler availability safeguards |
 
 ## Medium-term priorities
 
@@ -148,7 +148,6 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 
 ## Current risks
 
-- Broad credentialed CORS.
 - Render memory peaks from first duplicate Stage 1, visible-pool and feed work,
   short-content cursor/decoded-string behaviour, allocator retention or newsletter
   materialisation despite the structurally successful cleanup mitigations.

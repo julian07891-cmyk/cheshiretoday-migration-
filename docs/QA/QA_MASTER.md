@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `1811430070cfa73084c8b5ded830fa88076d3cc7`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `b4976357776f7414a3edcb49fc69ee046c525c23`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -22,9 +22,9 @@ Evidence-backed status totals for the eleven original findings are:
 
 | Classification | Count |
 |---|---:|
-| Open or not fully production verified | 7 |
+| Open or not fully production verified | 6 |
 | Remediated and verified by tests at repository level | 2 |
-| Remediated, deployed and production verified | 2 |
+| Remediated, deployed and production verified | 3 |
 
 Three additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
@@ -45,7 +45,15 @@ Current tracked-tree credential scans and loopback-only external test boundaries
 
 `QA-SEC-001` is **CLOSED — ROTATION/REVOCATION PROVEN** as of 11 August 2026. Its original severity remains **Critical**. Only `ADMIN_PASSWORD` required production rotation; nine pre-rotation Admin sessions were invalidated, replacement login and bearer-token verification passed, and the historical password was rejected with HTTP 401. The current residual risk is that reachable Git history still retains the revoked historical credential; production no longer accepts it and history was not rewritten.
 
-`QA-SEC-002` is now the highest-priority unresolved security finding. `backend/server.py` still uses `allow_origins=["*"]` with credentials, so its existing High/Open classification is unchanged.
+`QA-SEC-002` is **CLOSED — PRODUCTION CORS RESTRICTION VERIFIED** as of
+12 August 2026. Its original severity remains **High**. Commit `b497635`
+replaced wildcard browser origins with the canonical production origin and two
+explicit local-development origins. Deployment `dep-d9u594oae00c73bs1lvg`
+became live on instance `qmqjs` at 12:12:56 BST. Focused tests, canonical and
+hostile production preflights, fresh Admin login compatibility, public health and
+frontend smoke checks passed. There is no residual risk for the wildcard-origin
+defect itself; unchanged credential, method and header policy is separate future
+hardening rather than a closure blocker.
 
 ## Test safety and hermeticity
 

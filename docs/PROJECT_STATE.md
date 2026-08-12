@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `1811430070cfa73084c8b5ded830fa88076d3cc7`
-> - **Last repository reconciliation:** 11 August 2026
-> - **Production-verification status:** Commit `1811430` was deployed and the natural 11 August 12:00 run was verified healthy; cumulative process-memory risk remains under monitoring
+> - **Repository baseline:** `b4976357776f7414a3edcb49fc69ee046c525c23`
+> - **Last repository reconciliation:** 12 August 2026
+> - **Production-verification status:** Commit `b497635` is live and QA-SEC-002 is closed after production CORS verification; cumulative process-memory risk remains under monitoring
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `1811430070cfa73084c8b5ded830fa88076d3cc7`
-- **Latest baseline commit:** `Reduce short-content scan string allocations`
+- **Current reconciled HEAD:** `b4976357776f7414a3edcb49fc69ee046c525c23`
+- **Latest baseline commit:** `Restrict credentialed CORS origins`
 
-This is the repository and production baseline reconciled on 11 August 2026, not
+This is the repository and production baseline reconciled on 12 August 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -264,9 +264,18 @@ and HTTP 401 rejection of the historical password. The current tracked tree
 remains contained; reachable Git history still retains the revoked historical
 credential and was not rewritten. Production remained healthy.
 
+`QA-SEC-002` retained its original High severity and closed on 12 August 2026
+after commit `b497635` replaced wildcard browser origins with the canonical
+production origin and two explicit local-development origins. Deployment
+`dep-d9u594oae00c73bs1lvg` became live on instance `qmqjs` at 12:12:56 BST.
+Canonical-origin and hostile-origin preflights, Admin authentication compatibility,
+health and public frontend smoke checks passed without a production regression.
+
 Highest-priority unresolved or monitoring items are:
 
-- **High:** wildcard credentialed CORS remains open in current code.
+- **Medium:** scheduler lock-acquisition fail-open behaviour is the
+  highest-priority unresolved security/reliability review and retains its existing
+  classification; no original High security finding remains open.
 - **Medium:** duplicate-cleanup memory is structurally and materially improved by
   `49e5fe4`, `c06c837` and `cd3f093`, with 13 phase markers now isolating cleanup
   intervals. The `1811430` string-allocation change was semantically safe but its
@@ -332,7 +341,8 @@ No manual import should be triggered solely to accelerate observation.
 
 1. Observe at least one further natural article-generation run before selecting
    another memory implementation target.
-2. Restrict and verify wildcard credentialed CORS.
+2. Review scheduler lock-acquisition fail-open behaviour without changing its
+   classification or normal availability safeguards.
 3. Continue broader Render memory monitoring; do not infer that `1811430` reduced
    RSS from its first similar natural-run comparison.
 4. Complete Weekly Roundup QA using normal scheduled evidence.

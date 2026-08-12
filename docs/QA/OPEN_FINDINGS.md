@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `1811430`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `b497635`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 
@@ -70,19 +70,21 @@ Work highest current severity first. Update an entry only when evidence changes;
 ### QA-SEC-002
 
 - **Original severity:** High
-- **Current severity:** High
+- **Current severity:** Closed
 - **Area:** Security / CORS
 - **Original finding:** Credentialed CORS accepted arbitrary origins.
-- **Current status:** Open.
-- **Current-code evidence:** `backend/server.py` still declares `allow_origins=["*"]`, `allow_credentials=True`, all methods and headers.
-- **Fixing commits:** None.
-- **Test evidence:** Original live hostile-origin preflight; no current positive/negative allow-list regression.
-- **Deployment evidence:** Current code remains broad.
-- **Production evidence:** 29 July production preflight confirmed the defect; no later live retest proves remediation.
-- **Remaining gap:** Validated production/local origin allow-list and regression coverage.
-- **Closure criteria:** Implement reviewed origin configuration, pass allowed/disallowed credentialed preflight tests, deploy exact commit, and repeat bounded live preflight verification.
+- **Current status:** **CLOSED — PRODUCTION CORS RESTRICTION VERIFIED** on 12 August 2026.
+- **Current-code evidence:** Commit `b497635` replaces the wildcard origin with explicit `https://cheshiretoday.co.uk`, `http://localhost:3000` and `http://127.0.0.1:3000` origins. Credentials, methods and headers remain intentionally unchanged.
+- **Fixing commit:** `b4976357776f7414a3edcb49fc69ee046c525c23`.
+- **Test evidence:** Eight focused CORS contract tests passed, including approved origins, hostile-origin rejection, credentialed preflight, no-Origin compatibility, public API and authenticated Admin verification.
+- **Deployment evidence:** Render deployment `dep-d9u594oae00c73bs1lvg` ran revision `b497635` on instance `qmqjs` and became live at 12:12:56 BST on 12 August 2026.
+- **Production evidence:** Canonical-origin preflight returned HTTP 200 with the exact origin and credentials enabled, with no wildcard ACAO. A hostile `https://evil.example` preflight returned HTTP 400 `Disallowed CORS origin`, without ACAO, reflection or wildcard. Health and homepage/article/newsletter smoke checks returned 200; unauthenticated Admin verification returned 401; an authorised operator confirmed fresh Admin login and authenticated access after deployment. No startup, Mongo, scheduler, OOM, restart-loop or material 5xx regression was observed.
+- **Residual risk:** None for the wildcard-origin defect itself. The unchanged broad methods/headers and credential support are separate future-hardening questions, not blockers for this closure.
+- **Closure criteria:** Met: reviewed explicit origins, focused tests, exact deployment identity, bounded positive and negative production preflights, Admin compatibility and healthy production are recorded.
 - **Owner/documentation responsibility:** Backend/security owner; deployment and QA records.
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), `backend/server.py` CORS middleware.
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `b497635`,
+  `backend/server.py` CORS middleware; focused tests and authenticated
+  Render/Admin/preflight verification reconciled 12 August 2026.
 
 ### QA-A11Y-001
 
