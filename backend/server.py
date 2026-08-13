@@ -18838,7 +18838,10 @@ async def daily_article_generation(count: int = 12):
                 memory_started_at,
             )
         except Exception as lock_error:
-            logger.warning(f"Lock warning (continuing): {lock_error}")
+            logger.error(
+                f"Article generation lock acquisition failed; skipping run: {lock_error}"
+            )
+            return
         
         logger.info(f"Starting daily article generation (target: {count})...")
         
