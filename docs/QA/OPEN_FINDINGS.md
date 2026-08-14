@@ -165,8 +165,8 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Fixing commits:** Observability `42736f9`, `fd7cc82`, `0cdc089`; cleanup lifecycle/scan changes `49e5fe4`, `c06c837`, `cd3f093`, `1811430`.
 - **Test evidence:** Five focused lifecycle regressions, 28 related cleanup/auth/memory/live-pool regressions, compilation and diff checks passed before commit `49e5fe4`.
 - **Deployment evidence:** Render automatically deployed `49e5fe4` on 7 August 2026; startup completed and the service became live before the 12:00 scheduled run.
-- **Production evidence:** The pre-fix 7 August 06:00 run reached 530.0 MB against the verified 512 MB ceiling and was followed by an OOM. Later normal observations established structural improvement. On 11 August at 12:00, `1811430` completed normally at 338.6 MB current RSS (202.3 MB start; +136.3 MB net). First-pass Stage 2 was 0.0 MB, first Stage 1 +44.2 MB, visible-pool +33.6 MB and the short-content scan +28.5 MB. The latter was similar to the prior +26.0 MB baseline, so no material RSS benefit from the string change is claimed.
-- **Remaining gap:** Cumulative process RSS still rises materially and may remain elevated. First duplicate Stage 1, visible-pool work, short-content cursor/decoded-string behaviour, feed work, allocator retention and high-start workloads remain under observation; no single next implementation target is yet dominant.
+- **Production evidence:** The pre-fix 7 August 06:00 run reached 530.0 MB against the verified 512 MB ceiling and was followed by an OOM. Later normal observations established structural improvement. On 13 August at 18:00, `d8943e8` completed normally at 305.5 MB current RSS (130.7 MB start; +174.8 MB net), leaving 206.5 MB marker-level headroom. Visible-pool, first duplicate Stage 1, first Stage 2 and short-content scan intervals were +32.7, +41.0, 0.0 and +42.0 MB; cleanup from visible-pool completion to job completion was +83.0 MB. No OOM or restart occurred. This run was worse than recent reconciled observations, but one noisier run does not prove a worsening trend or identify a new implementation target.
+- **Remaining gap:** Cumulative process RSS still rises materially and may remain elevated. First duplicate Stage 1, visible-pool work, short-content cursor/decoded-string behaviour, feed work, allocator retention and high-start workloads remain under observation; obtain another normal 13-marker run before selecting a target.
 - **Closure criteria:** A sustained evidence-backed stability window covering scheduled imports and newsletter workloads, or separately reviewed further optimisation followed by normal-run production verification.
 - **Owner/documentation responsibility:** Production operations owner; [Monitoring](../OPERATIONS/MONITORING.md).
 - **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`, [Production Timeline](../PRODUCTION_TIMELINE.md).
@@ -245,20 +245,20 @@ Work highest current severity first. Update an entry only when evidence changes;
 
 ### CT-QA-2026-003
 
-- **Original severity:** Not applicable
+- **Original severity:** Medium
 - **Current severity:** Medium
 - **Area:** Scheduler failure isolation
-- **Original finding:** `daily_article_generation` logs a scheduler-lock exception and continues, so database/lock failure can remove the ownership guarantee.
-- **Current status:** Open for evidence-led design review; no observed duplicate run is asserted.
-- **Current-code evidence:** Lock acquisition is inside a `try/except`; the exception branch warns and continues to generation.
-- **Fixing commits:** None.
-- **Test evidence:** Existing scheduler-lock tests cover normal ownership/stale takeover, not an approved fail-closed policy change.
-- **Deployment evidence:** Current deployed-code status must be checked separately.
-- **Production evidence:** No duplicate generation caused by this branch is preserved at HEAD.
-- **Remaining gap:** Determine intended availability-versus-duplication policy and quantify real lock failures before change.
-- **Closure criteria:** Evidence review, explicit decision, focused failure-path tests, safe implementation if approved, and normal scheduled production verification.
+- **Original finding:** `daily_article_generation` logged a scheduler-lock exception and continued, so database/lock failure could remove the ownership guarantee.
+- **Current status:** **CLOSED — FAIL-CLOSED ARTICLE LOCK VERIFIED** on 13 August 2026.
+- **Current-code evidence:** Commit `d8943e8c7284781b8fefb915e00b4e53f831c3bb` logs a lock-acquisition error and returns, preventing unlocked generation. Lock key, stale timeout, acquisition/release queries, schedules and downstream work are unchanged.
+- **Fixing commits:** `d8943e8`.
+- **Test evidence:** Seven focused tests prove seed-operation and atomic-acquisition exceptions skip generation, cleanup and lock deletion; held locks skip; successful and stale acquisitions execute; scheduler registrations remain unchanged.
+- **Deployment evidence:** `d8943e8` was deployed on Render instance `qc88z` before the natural 13 August 18:00 run.
+- **Production evidence:** The natural run started at 18:00:00.001 BST, acquired `article_gen_2026081317` at 18:00:00.245, and completed at 18:01:45.983 in 105.98 seconds. Logs showed exactly one start, acquisition, generation, cleanup and completion, with no competing instance, unlocked execution or lock-acquisition failure. APScheduler succeeded and `/api/health` returned HTTP 200.
+- **Residual boundary:** No production lock failure was deliberately induced. Hermetic tests verify the exception branch; production verifies normal-path compatibility. Broader lock release/finally ownership questions were outside this fix and are not silently closed.
+- **Closure criteria:** Satisfied by the explicit fail-closed decision, focused failure-path tests, deployed implementation and single-execution natural production verification.
 - **Owner/documentation responsibility:** Scheduler/backend owner; [Scheduler](../OPERATIONS/SCHEDULER.md).
-- **Roadmap mapping:** [Roadmap Master](../ROADMAP_MASTER.md), `CT-QA-2026-003` fail-closed lock-acquisition review.
+- **Roadmap mapping:** [Roadmap Master](../ROADMAP_MASTER.md), completed `CT-QA-2026-003` fail-closed article lock.
 - **Sources:** `backend/server.py` `daily_article_generation`; [Article Pipeline](../ARCHITECTURE/ARTICLE_PIPELINE.md).
 
 ## Related documents

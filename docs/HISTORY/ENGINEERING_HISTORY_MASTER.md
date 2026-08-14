@@ -539,13 +539,35 @@ material 5xx regression. `QA-SEC-002` therefore closed.
 - **Sources:** Git `b497635`; focused CORS regression evidence; authenticated
   Render/Admin and bounded production preflight verification on 12 August 2026.
 
+### Article scheduler lock fail-closed closure — 13 August 2026
+
+- **Finding and implementation:** `CT-QA-2026-003` identified that article lock
+  seed/acquisition exceptions warned and continued without ownership. Commit
+  `d8943e8` changed only that exception path to log an error and return.
+- **Tests and deployment:** Seven focused tests covered seed and atomic-acquisition
+  exceptions, held locks, successful/stale acquisition and unchanged scheduler
+  registration. The commit deployed on Render instance `qc88z`.
+- **Natural verification:** The 18:00 run acquired `article_gen_2026081317` once,
+  executed one generation and cleanup sequence, and completed in 105.98 seconds
+  with APScheduler success and health 200. No production lock failure was induced;
+  hermetic tests verify the fail-closed branch and the natural run verifies normal
+  compatibility. `CT-QA-2026-003` closed.
+- **Memory observation:** All thirteen markers were present. Current RSS rose
+  130.7→305.5 MB (+174.8 MB), with +32.7 MB visible-pool, +41.0 MB first duplicate
+  Stage 1, 0.0 MB first Stage 2 and +42.0 MB short-content scan intervals. No OOM
+  or restart occurred, but the worse observation does not prove a trend;
+  `QA-OPS-001` remains open pending another normal run.
+- **Sources:** Git `d8943e8`; [Open Findings](../QA/OPEN_FINDINGS.md);
+  [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render logs and
+  health evidence reconciled 13 August 2026.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
-- Production evidence after the 11 August 12:00 run on `1811430` is outside this reconstruction unless
-  already present in repository sources. The 7–11 August duplicate-cleanup evidence
-  is reconciled in the production and QA records.
+- Production evidence through the 13 August 18:00 run on `d8943e8` is reconciled
+  in the production and QA records. Later evidence remains outside this
+  reconstruction unless already present in repository sources.
 - Historical PDFs named in the preserved state are missing from the checkout; the
   tracked `CheshireToday_Project_History.pdf` remains unreconciled.
 - Some historical paragraphs say “deployed” without a matching retained Render

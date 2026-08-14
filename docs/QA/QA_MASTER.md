@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `b4976357776f7414a3edcb49fc69ee046c525c23`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `d8943e8c7284781b8fefb915e00b4e53f831c3bb`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -28,8 +28,8 @@ Evidence-backed status totals for the eleven original findings are:
 
 Three additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
-of the numerical observation-count gate, and scheduler lock-failure continuation
-risk. These totals describe evidence status, not severity totals.
+of the numerical observation-count gate, and the now-closed scheduler
+lock-failure continuation risk. These totals describe evidence status, not severity totals.
 
 ## Original 29 July QA baseline
 
@@ -77,17 +77,24 @@ The public article-list latency finding lacks a measured remediation. Memory mar
 added by `42736f9` isolated a 7 August scheduled-import OOM to simultaneous
 duplicate-cleanup materialisations. Commit `49e5fe4` removed that overlap;
 `c06c837` and `cd3f093` then streamed/projected both cleanup scans, and `0cdc089`
-added a thirteenth marker to isolate first-pass Stage 2. The natural 11 August
-12:00 run on `1811430` completed normally at 338.6 MB current RSS. First-pass Stage
-2 added 0.0 MB, while first Stage 1, visible-pool and short-content scan intervals
-added 44.2, 33.6 and 28.5 MB. The short-content string change was semantically safe
-but its +28.5 MB result was similar to the prior +26.0 MB baseline. Broader
-cumulative process-memory stability therefore remains Monitoring/Medium; another
-natural observation precedes any further optimisation target.
+added a thirteenth marker to isolate first-pass Stage 2. The natural 13 August
+18:00 run on `d8943e8` completed normally at 305.5 MB current RSS from a 130.7 MB
+start (+174.8 MB net), leaving 206.5 MB marker-level headroom. Visible-pool, first
+duplicate Stage 1, first Stage 2 and short-content scan intervals added 32.7, 41.0,
+0.0 and 42.0 MB. This observation was worse than recent reconciled runs, but it
+does not establish a trend or a new optimisation target. Broader cumulative
+process-memory stability remains Monitoring/Medium; another natural observation
+precedes any further optimisation target.
 
 ## Operations and monitoring
 
-The Phase 4 runbooks define health, scheduler, memory, similarity and newsletter evidence capture. Current scheduler code is explicitly guarded and locked, but lock-acquisition exceptions warn and continue. Production investigation must precede changes.
+The Phase 4 runbooks define health, scheduler, memory, similarity and newsletter
+evidence capture. `CT-QA-2026-003` is **CLOSED — FAIL-CLOSED ARTICLE LOCK
+VERIFIED**: `d8943e8` returns on lock seed or atomic-acquisition error. Seven
+focused tests cover the failure and normal/stale paths, while the natural 13
+August 18:00 run on `qc88z` verified one acquisition and one complete execution
+without scheduler or Mongo regression. No production failure was induced, and
+broader release/finally ownership questions were outside this closure.
 
 ## Newsletter
 
@@ -130,8 +137,8 @@ Every finding requires: an identified current-code state; a fixing or supersedin
 
 ## Reconstruction status
 
-Repository evidence through HEAD, including the 7–8 August duplicate-cleanup
-incident and post-fix verification, is reconciled. Pending ChatGPT export,
+Repository evidence through HEAD, including the 13 August scheduler-lock closure
+and memory observation, is reconciled. Pending ChatGPT export,
 systematic Codex-history integration, historical PDF reconciliation and other
 post-HEAD production investigations can change evidence classifications later;
 they are not treated as current truth here.

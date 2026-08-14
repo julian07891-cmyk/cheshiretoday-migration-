@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `b4976357776f7414a3edcb49fc69ee046c525c23`
-> - **Last repository reconciliation:** 12 August 2026
-> - **Production-verification status:** Commit `b497635` is live and QA-SEC-002 is closed after production CORS verification; cumulative process-memory risk remains under monitoring
+> - **Repository baseline:** `d8943e8c7284781b8fefb915e00b4e53f831c3bb`
+> - **Last repository reconciliation:** 13 August 2026
+> - **Production-verification status:** Commit `d8943e8` is live and CT-QA-2026-003 is closed after natural-run verification of the fail-closed article lock; cumulative process-memory risk remains under monitoring
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `b4976357776f7414a3edcb49fc69ee046c525c23`
-- **Latest baseline commit:** `Restrict credentialed CORS origins`
+- **Current reconciled HEAD:** `d8943e8c7284781b8fefb915e00b4e53f831c3bb`
+- **Latest baseline commit:** `Fail closed on article scheduler lock errors`
 
-This is the repository and production baseline reconciled on 12 August 2026, not
+This is the repository and production baseline reconciled on 13 August 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -271,16 +271,25 @@ production origin and two explicit local-development origins. Deployment
 Canonical-origin and hostile-origin preflights, Admin authentication compatibility,
 health and public frontend smoke checks passed without a production regression.
 
+`CT-QA-2026-003` retained its Medium severity and closed on 13 August 2026.
+Commit `d8943e8` changed article lock-acquisition errors from warn-and-continue to
+error-and-skip. Seven focused tests prove seed and atomic-acquisition exceptions
+cannot proceed to generation, cleanup or lock deletion while held, successful and
+stale-lock paths remain intact. The natural 18:00 run on instance `qc88z` acquired
+`article_gen_2026081317` once, completed one generation and cleanup sequence in
+105.98 seconds, and remained healthy with HTTP 200. No production lock failure was
+deliberately induced; the natural run verifies normal-path compatibility.
+
 Highest-priority unresolved or monitoring items are:
 
-- **Medium:** scheduler lock-acquisition fail-open behaviour is the
-  highest-priority unresolved security/reliability review and retains its existing
-  classification; no original High security finding remains open.
 - **Medium:** duplicate-cleanup memory is structurally and materially improved by
   `49e5fe4`, `c06c837` and `cd3f093`, with 13 phase markers now isolating cleanup
   intervals. The `1811430` string-allocation change was semantically safe but its
   first natural comparison was similar (+28.5 MB versus +26.0 MB). Broader
-  cumulative Render memory/OOM stability remains under monitoring.
+  cumulative Render memory/OOM stability remains under monitoring. The 13 August
+  18:00 observation was worse than recent runs (130.7→305.5 MB current RSS,
+  +174.8 MB net), but one noisier run does not establish a worsening trend or a
+  new optimisation target.
 - **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
   satisfied. Calibration, threshold, UI and enforcement decisions remain
   unapproved; the scorer remains scheduled-only and shadow-only.
@@ -315,7 +324,7 @@ Completed and committed:
 
 Still pending:
 
-- reconcile this 11 August authority update through final review and an approved
+- reconcile this 13 August authority update through final review and an approved
   documentation commit;
 - receive and reconcile the ChatGPT export;
 - preserve and reconcile structured Codex history;
@@ -341,14 +350,12 @@ No manual import should be triggered solely to accelerate observation.
 
 1. Observe at least one further natural article-generation run before selecting
    another memory implementation target.
-2. Review scheduler lock-acquisition fail-open behaviour without changing its
-   classification or normal availability safeguards.
-3. Continue broader Render memory monitoring; do not infer that `1811430` reduced
+2. Continue broader Render memory monitoring; do not infer that `1811430` reduced
    RSS from its first similar natural-run comparison.
-4. Complete Weekly Roundup QA using normal scheduled evidence.
-5. Continue inactive-subscriber evidence gathering without speculative
+3. Complete Weekly Roundup QA using normal scheduled evidence.
+4. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
-6. Complete ChatGPT and Codex historical reconciliation.
+5. Complete ChatGPT and Codex historical reconciliation.
 
 Security and reliability take precedence over speculative features.
 

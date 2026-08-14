@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `1811430070cfa73084c8b5ded830fa88076d3cc7`, including production memory evidence through the natural 11 August 12:00 run.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `d8943e8c7284781b8fefb915e00b4e53f831c3bb`, including production memory and scheduler-lock evidence through the natural 13 August 18:00 run.
 
 ## Document purpose
 
@@ -37,10 +37,10 @@ reliability risk.
 | Status | Priority | Work | Evidence/gate |
 |---|---|---|---|
 | Completed | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Commit `b497635`, eight focused tests, deployment `dep-d9u594oae00c73bs1lvg`, positive/negative live preflights and Admin compatibility verified 12 August 2026 |
-| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | Thirteen markers show multiple variable contributors; observe at least one more natural run before selecting another implementation target |
+| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | The 13 August 18:00 run was worse (+174.8 MB net; +83.0 MB cleanup) but does not prove a trend; observe another natural run before selecting a target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
-| Next | P1 | Current authority reconciliation review | Review and approve the 11 August evidence update before its documentation-only commit |
+| Next | P1 | Current authority reconciliation review | Review and approve the 13 August scheduler/memory evidence update before its documentation-only commit |
 
 Security and production stability precede feature expansion.
 
@@ -56,7 +56,6 @@ Security and production stability precede feature expansion.
 | Next | Compilation/warning maintenance | Lifecycle, multipart/gzip, Browserslist and backup artefacts as separate low-risk changes |
 | Monitoring | Public article-list performance | Current TTFB and Mongo plan/index evidence before optimisation |
 | Next | `QA-DOC-001` Threads/operator-documentation consistency | Reconcile current implementation and operator wording without rewriting the dated QA baseline |
-| Next | `CT-QA-2026-003` scheduler lock-acquisition review | Highest-priority unresolved security/reliability item: decide fail-closed ownership policy, add focused tests and preserve normal scheduler availability safeguards |
 
 ## Medium-term priorities
 
@@ -126,6 +125,8 @@ Monitoring does not authorise imports, sends, restarts, indexing requests or dat
   finding while retaining the revoked credential as reachable Git history.
 - Core Admin mobile Safari/editor containment and accessible close control.
 - Editorial Similarity Phase 2A pure scorer and Phase 2B scheduled shadow integration.
+- `CT-QA-2026-003` fail-closed article lock: `d8943e8`, seven focused tests and
+  the single-execution 13 August 18:00 natural run closed the Medium finding.
 - Phases 1–7.3 documentation inventory, preservation, history, architecture,
   operations, QA, roadmap, Project Master and concise Project State reconstruction
   completed locally, including privacy-safe archive creation and clean-checkout-safe
@@ -151,7 +152,6 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 - Render memory peaks from first duplicate Stage 1, visible-pool and feed work,
   short-content cursor/decoded-string behaviour, allocator retention or newsletter
   materialisation despite the structurally successful cleanup mitigations.
-- Scheduler ownership degradation if lock acquisition errors continue fail-open.
 - Public API latency.
 - Newsletter provider/recipient conclusions without reconciled evidence.
 - Documentation/history gaps affecting operational decisions.
@@ -165,11 +165,11 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 - **Completed locally:** Authority synchronisation across the rebuilt set.
 - **Completed locally:** Archive privacy/preservation decision; exact archive
   excluded and privacy-safe repository copy prepared.
-- **Next:** Final read-only review and approved commit of the 11 August authority reconciliation.
+- **Next:** Final read-only review and approved commit of the 13 August authority reconciliation.
 - **Blocked:** ChatGPT export reconciliation until export is received.
 - **Next:** Systematic Codex-history integration when records are collected and source-ranked.
 - **Deferred:** Historical PDF reconciliation pending source availability and prioritisation.
-- **Monitoring:** Production evidence after the 11 August 12:00 run pending preservation and reconciliation.
+- **Monitoring:** Production evidence after the 13 August 18:00 run pending preservation and reconciliation.
 
 ## Related records
 

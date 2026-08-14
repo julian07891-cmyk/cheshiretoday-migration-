@@ -1,7 +1,7 @@
 # Cheshire Today — Production Timeline
 
 > **Reconstruction status:** repository-evidenced production chronology through
-> commit `1811430070cfa73084c8b5ded830fa88076d3cc7`. A historical “deployed” statement
+> commit `d8943e8c7284781b8fefb915e00b4e53f831c3bb`. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose
@@ -90,11 +90,38 @@ verification gates from general engineering history.
 | 11 August, 12:00–12:01 BST | Render production | Natural validation | Article generation memory | Validate `1811430` using all 13 markers | `1811430` | Lock `article_gen_2026081111`; runtime 94.63 s; current RSS 202.3→338.6 MB; first scan +44.2 MB, first Stage 2 0.0 MB, short scan +28.5 MB over 4,087 records; no OOM/restart/failure; health 200 | String change remained semantically safe but showed no material RSS improvement versus +26.0 MB; cumulative memory stays Monitoring/Medium | Obtain another natural run before selecting a new target | Authenticated Render scheduler, memory and health evidence reconciled 11 August |
 | 11 August, 14:42–15:03 BST | Render production | Security closure | Admin authentication | Rotate the Git-history-exposed Admin password and invalidate pre-rotation sessions | Deployment `dep-d9tiku142hec738apl80`; revision `3b3f4c9`; instance `6xgfs` | Only `ADMIN_PASSWORD` changed; nine pre-rotation tokens invalidated at 14:42:29; build succeeded 14:59:53, startup completed 15:00:49 and service became live 15:00:55; replacement login/token verification passed, historical login returned 401 and health returned 200 | Revoked the historical password without rewriting Git history or changing `ADMIN_PERMANENT_TOKEN`; `QA-SEC-001` closed | Retain current-tree hygiene and treat credentialed wildcard CORS as the highest-priority unresolved security finding | Authenticated Render/Admin/Mongo verification reconciled 11 August 2026 |
 | 12 August, 12:10–12:13 BST | Render production | Security closure | Credentialed CORS | Replace wildcard browser origins with the canonical production origin and explicit local-development origins | Deployment `dep-d9u594oae00c73bs1lvg`; revision `b497635`; instance `qmqjs` | Build and startup succeeded; service live at 12:12:56; health 200; canonical-origin preflight 200 with exact ACAO and credentials; hostile-origin preflight 400 without ACAO; fresh Admin login and authenticated access passed; homepage, article and newsletter returned 200 | Restored an explicit browser-origin boundary without changing credentials, methods or headers; `QA-SEC-002` closed | Scheduler lock fail-open review becomes the highest-priority unresolved security/reliability item; no production regression observed | Git `b497635`; focused tests and authenticated Render/Admin/preflight verification reconciled 12 August 2026 |
+| 13 August, 18:00–18:01 BST | Render production | Reliability closure and observation | Article scheduler and memory | Verify fail-closed article-lock compatibility on the natural scheduled run and capture all thirteen memory markers | Revision `d8943e8`; instance `qc88z` | Start 18:00:00.001; lock `article_gen_2026081317` acquired 18:00:00.245; one start/acquisition/generation/cleanup/completion; finish 18:01:45.983; runtime 105.98 s; APScheduler success and health 200 | `CT-QA-2026-003` closed without inducing a production lock failure. Current RSS rose 130.7→305.5 MB (+174.8 MB), leaving 206.5 MB marker-level headroom; no OOM/restart | `QA-OPS-001` remains open: +32.7 MB visible-pool, +41.0 MB first duplicate Stage 1, 0.0 MB first Stage 2 and +42.0 MB short-content scan; obtain another normal run before choosing work | Git `d8943e8`; seven focused lock tests; authenticated Render scheduler, marker and health evidence reconciled 13 August 2026 |
+
+### 13 August 18:00 article-generation memory markers
+
+| Phase | `rss_mb` | `current_rss_mb` |
+|---|---:|---:|
+| `job_started` | 129.8 | 130.7 |
+| `lock_acquired` | 129.8 | 130.7 |
+| `existing_record_index_completed` | 139.0 | 139.9 |
+| `all_feed_fetch_completed` | 167.4 | 168.1 |
+| `uk_finance_processing_completed` | 167.7 | 168.4 |
+| `local_feed_fetch_completed` | 178.8 | 179.5 |
+| `local_processing_completed` | 188.9 | 189.8 |
+| `business_tech_processing_completed` | 188.9 | 189.8 |
+| `visible_pool_cap_completed` | 236.0 | 222.5 |
+| `duplicate_cleanup_first_read_completed` | 262.6 | 263.5 |
+| `duplicate_cleanup_first_stage2_completed` | 262.6 | 263.5 |
+| `duplicate_cleanup_second_read_completed` | 304.4 | 305.5 |
+| `job_completed` | 304.4 | 305.5 |
+
+Logged counts were active/archived indexes 4,224/3,649; all-feed candidates
+1,782; UK candidates/imported 237/4; finance 61/0; local 180/2; business/technology
+imports 3/1; both cleanup scans 4,253; and zero cleanup removals. Current RSS rose
+174.8 MB overall. The 83.0 MB visible-pool-to-completion interval comprised
++41.0 MB first duplicate Stage 1, 0.0 MB first Stage 2 and +42.0 MB short-content
+scan after the +32.7 MB visible-pool interval. This was a worse observation, not a
+proven trend or approval for another optimisation.
 
 ## Unreconciled later production evidence
 
-- The 7–11 August duplicate-cleanup incident, deployments and natural-run evidence
-  through 11 August 12:00 are reconciled above. Later Render logs, Admin observations and production
+- The 7–13 August duplicate-cleanup and scheduler-lock incidents, deployments and
+  natural-run evidence through 13 August 18:00 are reconciled above. Later Render logs, Admin observations and production
   investigations may exist in Codex tasks but are not yet systematically preserved.
 - The requested ChatGPT export is unavailable.
 - The Editorial Similarity numerical three-run observation-count gate is satisfied;
