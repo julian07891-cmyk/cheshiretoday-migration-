@@ -50,6 +50,7 @@ Security and production stability precede feature expansion.
 |---|---|---|
 | Next | Public search accessibility | Semantics, label, keyboard/no-results tests and live desktop verification |
 | Next | Admin first-byte noindex/robots alignment | Server/crawler contract, tests and non-authenticated live verification |
+| Next | Cross-source same-event advisory design review (`CT-QA-2026-004`) | Evaluate strong matches with Manual Review as the preferred safe destination; preserve legitimate updates and distinct angles, with no automatic blocking, deletion, merging or similarity enforcement |
 | Monitoring | Weekly Roundup QA | Normal Sunday batch evidence, provider diagnostics, ledger/cursor reconciliation; no test send by default |
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |
 | Next | Legacy/non-hermetic suite organisation | Preserve loopback refusal; document safe default; separate read-only smoke tests if justified |
@@ -156,6 +157,9 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 - Newsletter provider/recipient conclusions without reconciled evidence.
 - Documentation/history gaps affecting operational decisions.
 - Premature interpretation of similarity shadow scores.
+- Cross-source and localised same-event reports whose differing URLs, titles,
+  images or formats evade deterministic identity checks; archived-record reimport
+  was not reproduced in the 10–14 August audit.
 
 ## Documentation reconstruction roadmap
 

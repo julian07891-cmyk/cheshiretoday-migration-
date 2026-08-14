@@ -293,6 +293,14 @@ Highest-priority unresolved or monitoring items are:
 - **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
   satisfied. Calibration, threshold, UI and enforcement decisions remain
   unapproved; the scorer remains scheduled-only and shadow-only.
+- **Medium:** `CT-QA-2026-004` records a cross-source same-event duplicate-identity
+  limitation. A 10–14 August read-only ledger found zero confirmed or probable
+  archived-to-reimport cases through the normal scheduled hybrid importer, whose
+  exact active/archive identity protection is functioning. Four strong
+  cross-source or cross-format same-event clusters remain evidence that changed
+  URLs, titles and images can bypass deterministic identity checks. No
+  implementation is approved; the next step is design review only, preserving
+  legitimate updates and Editorial Similarity's advisory, non-blocking policy.
 - **Medium:** public desktop search accessibility remains open.
 - **Medium:** Admin first-byte server-level noindex/robots alignment is not fully
   proven.

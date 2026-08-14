@@ -261,6 +261,24 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Roadmap mapping:** [Roadmap Master](../ROADMAP_MASTER.md), completed `CT-QA-2026-003` fail-closed article lock.
 - **Sources:** `backend/server.py` `daily_article_generation`; [Article Pipeline](../ARCHITECTURE/ARTICLE_PIPELINE.md).
 
+### CT-QA-2026-004
+
+- **Original severity:** Not applicable
+- **Current severity:** Medium
+- **Area:** Editorial quality / duplicate identity limitation
+- **Original finding:** Cross-source and localised reports of the same underlying event can enter as separate records when their exact URL, title and image identities differ.
+- **Current status:** **OPEN — DESIGN REVIEW REQUIRED.** The normal scheduled hybrid importer is not evidenced to be reimporting archived records; the limitation is event-level identity across publishers, localisations and formats.
+- **Current-code evidence:** The scheduled hybrid importer checks both active `articles` and `archived_articles` using deterministic normalized-title, source-URL and image-URL identity signals. Editorial Similarity remains `scheduled_log_only`, advisory, non-mutating and non-blocking; no enforced event-level identity exists.
+- **Audit evidence:** A read-only 10–14 August 2026 ledger covered 266 imported records: 229 remained active and 37 were subsequently archived. It considered 3,060 archive records/events, including 2,881 timestamped in the primary window; those events were overwhelmingly visible-pool capping (`auto_cap` 2,844, `needs_manual_review` 24, `admin_delete` 13), not manual archival. Confirmed and probable archived-to-reimport cases were both zero.
+- **Editorial evidence:** Four strong same-event clusters were identified: BBC/Sky water-company bill increases; Guardian/BBC/Sky UK GDP coverage; BBC article/BBC video/The Register Twitch-Amazon AI coverage; and Nantwich News/Chester Standard/Cheshire Live coverage of the Crewe 2,100-home proposal. A contextual solar-eclipse pair was better classified as localised/syndicated same-event reuse, not an exact archived-record return.
+- **Source-identity evidence:** None of the 266 audited records exposed a usable feed GUID or source-original identifier, so publisher revisions cannot currently be joined through stable source identity.
+- **Current risk:** Repeated same-event coverage can dilute the public pool and editorial choice, but the evidence does not establish an importer, archive or cleanup regression. Medium severity reflects a material editorial-quality limitation without data loss, security impact or proven publication failure.
+- **Remaining gap:** Review a bounded advisory design for strong cross-source same-event matches, with Manual Review as the preferred safe destination to evaluate. Preserve legitimate updates and distinct angles; do not enable automatic blocking, deletion, merging, rerouting or similarity enforcement.
+- **Closure criteria:** A separately approved design decision either accepts the limitation with documented editorial handling or implements a narrowly tested advisory safeguard and verifies it without changing Version 1 publication authority.
+- **Owner/documentation responsibility:** Editorial/import product owner and backend QA owner.
+- **Roadmap mapping:** [Roadmap Master](../ROADMAP_MASTER.md), cross-source same-event advisory design review.
+- **Sources:** Read-only production active/archive ledger reconciled 14 August 2026; [Project State](../PROJECT_STATE.md); [Editorial Similarity architecture](../ARCHITECTURE/EDITORIAL_SIMILARITY.md).
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Completed Phases](COMPLETED_PHASES.md), [Test History](TEST_HISTORY.md), [Roadmap Master](../ROADMAP_MASTER.md), and [29 July QA report](QA_REPORT_2026-07-29.md).
