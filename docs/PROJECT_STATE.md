@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `d8943e8c7284781b8fefb915e00b4e53f831c3bb`
-> - **Last repository reconciliation:** 13 August 2026
-> - **Production-verification status:** Commit `d8943e8` is live and CT-QA-2026-003 is closed after natural-run verification of the fail-closed article lock; cumulative process-memory risk remains under monitoring
+> - **Repository baseline:** `5e8f0ef411b2ca63b454620b333a635d7c5057c5`
+> - **Last repository reconciliation:** 15 August 2026
+> - **Production-verification status:** Commit `5e8f0ef` is live and its bounded shadow event-anchor evidence was verified on the natural 15 August 12:00 run; CT-QA-2026-004 remains open for calibration and cumulative process-memory risk remains under monitoring
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `d8943e8c7284781b8fefb915e00b4e53f831c3bb`
-- **Latest baseline commit:** `Fail closed on article scheduler lock errors`
+- **Current reconciled HEAD:** `5e8f0ef411b2ca63b454620b333a635d7c5057c5`
+- **Latest baseline commit:** `Add bounded shadow event-anchor evidence`
 
-This is the repository and production baseline reconciled on 13 August 2026, not
+This is the repository and production baseline reconciled on 15 August 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -133,10 +133,13 @@ unique-index and duplicate-key controls remain authoritative.
 
 Editorial Similarity Phase 2B is explicitly enabled only on normal scheduled
 hybrid imports. It is shadow-only and log-only. It cannot block, merge, archive,
-delete, publish, reroute or alter an article. Two labelled-pair calibration
-rounds show that neither the current score/bands nor the tested composite is safe
-for routing. No threshold, event-anchor rule, UI or publication-state decision is
-approved at this baseline.
+delete, publish, reroute or alter an article. Commit `5e8f0ef` added bounded,
+deterministic `phase2a_event_anchors_v1` evidence for entities/event phrases,
+typed quantities, ordered/outcome-aware stages, format/angle and exact-boundary
+locality. Scorer weights and bands remain unchanged; the corpus remains 50 active
+plus 50 archived and the shortlist remains 20. No database scan or publication
+behaviour was added. The first natural run verified execution and compact logging,
+not routing precision. No threshold, UI or publication-state decision is approved.
 
 See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md) and
@@ -290,7 +293,9 @@ Highest-priority unresolved or monitoring items are:
   first natural comparison was similar (+28.5 MB versus +26.0 MB). Broader
   cumulative Render memory/OOM stability remains under monitoring. The 13 August
   18:00 observation was worse than recent runs (130.7→305.5 MB current RSS,
-  +174.8 MB net), but one noisier run does not establish a worsening trend or a
+  +174.8 MB net). The 15 August 12:00 event-anchor verification completed at
+  129.8→291.9 MB (+162.1 MB) with no observable material feature regression, but
+  retained growth remained material. Neither run alone establishes a trend or a
   new optimisation target.
 - **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
   satisfied. Two bounded calibration rounds covered 27 labelled pairs and found
@@ -305,10 +310,13 @@ Highest-priority unresolved or monitoring items are:
   cross-source or cross-format same-event clusters remain evidence that changed
   URLs, titles and images can bypass deterministic identity checks. Score-only,
   band-only and the tested cross-source composite are not safe for Manual Review
-  routing. No implementation is approved; the next step is a bounded read-only
-  deterministic event-anchor design review against the full 27-pair regression
-  matrix, preserving legitimate updates and Editorial Similarity's advisory,
-  non-blocking policy.
+  routing. Commit `5e8f0ef` implements the approved bounded deterministic evidence
+  layer without enforcement. Its healthy 15 August 12:00 natural run logged 20
+  `phase2a_event_anchors_v1` evaluations (19 scored and one `no_match`) in
+  `scheduled_log_only` mode. Seventeen emitted compact codes, limited in this run
+  to `format_guard`, `cross_source`, `same_run` and noisy `locality_overlap`.
+  No high-specificity positive or `same_run_event_compatible` case occurred, so
+  calibration remains open and Manual Review routing remains unapproved.
 - **Medium:** public desktop search accessibility remains open.
 - **Medium:** Admin first-byte server-level noindex/robots alignment is not fully
   proven.
@@ -340,7 +348,7 @@ Completed and committed:
 
 Still pending:
 
-- reconcile this 13 August authority update through final review and an approved
+- reconcile this 15 August authority update through final review and an approved
   documentation commit;
 - receive and reconcile the ChatGPT export;
 - preserve and reconcile structured Codex history;
@@ -356,6 +364,8 @@ Still pending:
   visible-pool work, short-content scan variability and high-start process memory
   remain material evidence areas;
 - retain bounded Editorial Similarity score, band, reason and provenance evidence;
+- continue labelled calibration of bounded event-anchor evidence using natural,
+  high-specificity same-run cross-source cases;
 - confirm Version 1 decisions, Manual Review and publication remain unchanged;
 - make no calibration, threshold, UI or enforcement decision without a separate
   reviewed evidence gate and approval.
@@ -364,8 +374,9 @@ No manual import should be triggered solely to accelerate observation.
 
 ## 12. Immediate approved priorities
 
-1. Observe at least one further natural article-generation run before selecting
-   another memory implementation target.
+1. Continue natural article-generation memory observation before selecting another
+   implementation target; the 15 August 12:00 run showed 129.8→291.9 MB current
+   RSS (+162.1 MB) with no observable material event-anchor memory regression.
 2. Continue broader Render memory monitoring; do not infer that `1811430` reduced
    RSS from its first similar natural-run comparison.
 3. Complete Weekly Roundup QA using normal scheduled evidence.

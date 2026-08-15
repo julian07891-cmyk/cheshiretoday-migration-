@@ -561,11 +561,38 @@ material 5xx regression. `QA-SEC-002` therefore closed.
   [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render logs and
   health evidence reconciled 13 August 2026.
 
+### Bounded event-anchor shadow verification — 14–15 August 2026
+
+- **Reason and calibration:** `CT-QA-2026-004` records that different publishers,
+  titles, images and URLs can describe one event without sharing deterministic
+  identity. A 27-pair labelled matrix showed the existing scores/bands and tested
+  composite were unsafe for routing.
+- **Implementation:** Commit `5e8f0ef` added bounded deterministic entity/event-
+  phrase, typed quantitative, ordered/outcome-aware stage, format/angle and exact-
+  boundary locality evidence under `phase2a_event_anchors_v1`. Scorer weights,
+  bands, the 50+50 corpus, 20-item shortlist and publication behaviour did not
+  change; the feature remained scheduled-only, advisory and non-mutating.
+- **Deployment and natural verification:** Deployment `dep-da01o93ncjis738c7m8g`
+  became live on instance `65q7v` at 09:01:05 BST on 15 August. The natural 12:00
+  run acquired one lock, completed once in 98.70 seconds and remained healthy.
+  Twenty shadow evaluations (19 scored, one `no_match`) all used the new version
+  and `scheduled_log_only`; 17 emitted compact evidence codes.
+- **Conclusion/follow-up:** The observed codes were limited to format, source,
+  same-run and locality evidence; no high-specificity positive or future-compatible
+  event identity appeared. Locality remained noisy, including an ambiguous garden-
+  waste-fire pair. Publication state was unchanged. Current RSS rose 129.8→291.9
+  MB, with no observable material event-anchor regression, while `QA-OPS-001`
+  remains open. CT-QA-2026-004 remains open for labelled natural calibration and
+  routing remains separately gated and unapproved.
+- **Sources:** Git `5e8f0ef`; [Open Findings](../QA/OPEN_FINDINGS.md);
+  [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render, scheduler,
+  shadow-log and health evidence reconciled 15 August 2026.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
-- Production evidence through the 13 August 18:00 run on `d8943e8` is reconciled
+- Production evidence through the 15 August 12:00 run on `5e8f0ef` is reconciled
   in the production and QA records. Later evidence remains outside this
   reconstruction unless already present in repository sources.
 - Historical PDFs named in the preserved state are missing from the checkout; the

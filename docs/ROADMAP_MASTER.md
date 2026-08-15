@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `d8943e8c7284781b8fefb915e00b4e53f831c3bb`, including production memory and scheduler-lock evidence through the natural 13 August 18:00 run.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `5e8f0ef411b2ca63b454620b333a635d7c5057c5`, including bounded event-anchor deployment and natural verification through the 15 August 12:00 run.
 
 ## Document purpose
 
@@ -37,7 +37,7 @@ reliability risk.
 | Status | Priority | Work | Evidence/gate |
 |---|---|---|---|
 | Completed | P0 | Restrict credentialed wildcard CORS (`QA-SEC-002`) | Commit `b497635`, eight focused tests, deployment `dep-d9u594oae00c73bs1lvg`, positive/negative live preflights and Admin compatibility verified 12 August 2026 |
-| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | The 13 August 18:00 run was worse (+174.8 MB net; +83.0 MB cleanup) but does not prove a trend; observe another natural run before selecting a target |
+| Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | The 13 August run was +174.8 MB net; the 15 August 12:00 run was +162.1 MB with no observable material event-anchor regression. Retained growth remains material and variable; require a broader comparable window before selecting a target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
 | Next | P1 | Current authority reconciliation review | Review and approve the 13 August scheduler/memory evidence update before its documentation-only commit |
@@ -50,7 +50,7 @@ Security and production stability precede feature expansion.
 |---|---|---|
 | Next | Public search accessibility | Semantics, label, keyboard/no-results tests and live desktop verification |
 | Next | Admin first-byte noindex/robots alignment | Server/crawler contract, tests and non-authenticated live verification |
-| Next | Bounded deterministic event-anchor design review (`CT-QA-2026-004`) | Evaluate high-specificity entities, normalized event-defining quantities, stage compatibility, format guards and exact locality matching against the full 27-pair regression matrix; preserve bounded corpus/shortlist behaviour and legitimate updates, with no routing or automatic enforcement |
+| Monitoring | Bounded labelled event-anchor calibration (`CT-QA-2026-004`) | Implementation, deployment and first natural run are verified. Continue natural high-specificity same-run cross-source calibration; keep Manual Review routing, historical routing and all enforcement behind a separate evidence review and approval gate |
 | Monitoring | Weekly Roundup QA | Normal Sunday batch evidence, provider diagnostics, ledger/cursor reconciliation; no test send by default |
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |
 | Next | Legacy/non-hermetic suite organisation | Preserve loopback refusal; document safe default; separate read-only smoke tests if justified |
@@ -75,15 +75,16 @@ Security and production stability precede feature expansion.
 | Status | Work | Scope and gate |
 |---|---|---|
 | Deferred | Version 2 branding | Coordinated professional rollout only when audience/business value justifies it |
-| Deferred | Editorial Similarity UI or Similar Stories | Numerical observation-count gate is satisfied, but two calibration rounds show that the current scorer and tested composite are unsafe for routing; bounded event-identity feature design and separate product approval are required first |
+| Deferred | Editorial Similarity UI or Similar Stories | Numerical observation-count gate and bounded shadow event-anchor implementation are complete, but routing precision is not proven; labelled natural calibration and separate product approval remain required |
 | Deferred | Broader Admin navigation redesign | Separate from resolved mobile editor/card containment |
 | Deferred | Database/index optimisation programme | Requires measured production evidence per query/workload |
 
 ## Monitoring-only work
 
 - Editorial Similarity pool, shortlist, comparison, band, reason and provenance
-  evidence after satisfaction of the numerical three-run gate; the completed
-  27-pair calibration does not authorise routing, UI or enforcement.
+  evidence after satisfaction of the numerical three-run gate. The completed
+  27-pair calibration and verified `phase2a_event_anchors_v1` natural execution do
+  not authorise routing, UI or enforcement.
 - All thirteen article-generation memory phases, scheduler duration and post-run stability.
 - First duplicate Stage 1, visible-pool, short-content scan and high-start memory
   behaviour after the staged cleanup optimisations. `1811430` was safe but its
@@ -127,6 +128,9 @@ Monitoring does not authorise imports, sends, restarts, indexing requests or dat
   finding while retaining the revoked credential as reachable Git history.
 - Core Admin mobile Safari/editor containment and accessible close control.
 - Editorial Similarity Phase 2A pure scorer and Phase 2B scheduled shadow integration.
+- Bounded deterministic event-anchor shadow evidence: `5e8f0ef`, healthy deployment
+  `dep-da01o93ncjis738c7m8g` and first natural 15 August run verified execution,
+  compact logging and unchanged publication behaviour; calibration remains open.
 - `CT-QA-2026-003` fail-closed article lock: `d8943e8`, seven focused tests and
   the single-execution 13 August 18:00 natural run closed the Medium finding.
 - Phases 1–7.3 documentation inventory, preservation, history, architecture,
@@ -140,8 +144,9 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 
 1. Security findings precede discretionary deployment.
 2. Memory evidence precedes scheduler/import optimisation.
-3. The numerical three-run similarity gate is satisfied; calibration, UI and
-   enforcement still require separate reviewed evidence and approval.
+3. The numerical three-run gate and bounded event-anchor shadow implementation are
+   complete; labelled calibration, routing, UI and enforcement still require
+   separate reviewed evidence and approval.
 4. Provider/ledger evidence precedes newsletter recipient-state changes.
 5. Query measurements precede indexes or caching.
 6. Tests precede deployment; deployed commit evidence precedes production verification.
