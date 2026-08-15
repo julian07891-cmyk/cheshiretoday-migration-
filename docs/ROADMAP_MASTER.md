@@ -50,7 +50,7 @@ Security and production stability precede feature expansion.
 |---|---|---|
 | Next | Public search accessibility | Semantics, label, keyboard/no-results tests and live desktop verification |
 | Next | Admin first-byte noindex/robots alignment | Server/crawler contract, tests and non-authenticated live verification |
-| Next | Cross-source same-event advisory design review (`CT-QA-2026-004`) | Evaluate strong matches with Manual Review as the preferred safe destination; preserve legitimate updates and distinct angles, with no automatic blocking, deletion, merging or similarity enforcement |
+| Next | Bounded deterministic event-anchor design review (`CT-QA-2026-004`) | Evaluate high-specificity entities, normalized event-defining quantities, stage compatibility, format guards and exact locality matching against the full 27-pair regression matrix; preserve bounded corpus/shortlist behaviour and legitimate updates, with no routing or automatic enforcement |
 | Monitoring | Weekly Roundup QA | Normal Sunday batch evidence, provider diagnostics, ledger/cursor reconciliation; no test send by default |
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |
 | Next | Legacy/non-hermetic suite organisation | Preserve loopback refusal; document safe default; separate read-only smoke tests if justified |
@@ -75,15 +75,15 @@ Security and production stability precede feature expansion.
 | Status | Work | Scope and gate |
 |---|---|---|
 | Deferred | Version 2 branding | Coordinated professional rollout only when audience/business value justifies it |
-| Deferred | Editorial Similarity UI or Similar Stories | Numerical observation-count gate is satisfied; calibration, product review and separately approved thresholds are still required |
+| Deferred | Editorial Similarity UI or Similar Stories | Numerical observation-count gate is satisfied, but two calibration rounds show that the current scorer and tested composite are unsafe for routing; bounded event-identity feature design and separate product approval are required first |
 | Deferred | Broader Admin navigation redesign | Separate from resolved mobile editor/card containment |
 | Deferred | Database/index optimisation programme | Requires measured production evidence per query/workload |
 
 ## Monitoring-only work
 
 - Editorial Similarity pool, shortlist, comparison, band, reason and provenance
-  evidence after satisfaction of the numerical three-run gate; continued monitoring
-  does not authorise calibration, UI or enforcement.
+  evidence after satisfaction of the numerical three-run gate; the completed
+  27-pair calibration does not authorise routing, UI or enforcement.
 - All thirteen article-generation memory phases, scheduler duration and post-run stability.
 - First duplicate Stage 1, visible-pool, short-content scan and high-start memory
   behaviour after the staged cleanup optimisations. `1811430` was safe but its
@@ -100,7 +100,8 @@ Monitoring does not authorise imports, sends, restarts, indexing requests or dat
 - Version 2 brand refresh.
 - Sticky editor action toolbar, word count/reading time and general unsaved-change warnings.
 - New Save Draft or Publish endpoint.
-- Similarity thresholds, automatic routing, merge/archive/delete actions or Admin panel.
+- Similarity thresholds, automatic routing, merge/archive/delete actions or Admin panel;
+  no score, band or tested composite is currently approved.
 - Broad Admin navigation and Archive-row redesign.
 
 ## Rejected or superseded work

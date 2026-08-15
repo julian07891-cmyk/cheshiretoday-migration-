@@ -133,7 +133,9 @@ unique-index and duplicate-key controls remain authoritative.
 
 Editorial Similarity Phase 2B is explicitly enabled only on normal scheduled
 hybrid imports. It is shadow-only and log-only. It cannot block, merge, archive,
-delete, publish, reroute or alter an article. No threshold or UI decision is
+delete, publish, reroute or alter an article. Two labelled-pair calibration
+rounds show that neither the current score/bands nor the tested composite is safe
+for routing. No threshold, event-anchor rule, UI or publication-state decision is
 approved at this baseline.
 
 See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
@@ -291,16 +293,22 @@ Highest-priority unresolved or monitoring items are:
   +174.8 MB net), but one noisier run does not establish a worsening trend or a
   new optimisation target.
 - **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
-  satisfied. Calibration, threshold, UI and enforcement decisions remain
-  unapproved; the scorer remains scheduled-only and shadow-only.
+  satisfied. Two bounded calibration rounds covered 27 labelled pairs and found
+  overlapping positive/negative score ranges plus four false positives from the
+  tested composite. The current scorer needs deterministic event-identity feature
+  design before routing; thresholds, UI and enforcement remain unapproved and the
+  scorer remains scheduled-only and shadow-only.
 - **Medium:** `CT-QA-2026-004` records a cross-source same-event duplicate-identity
   limitation. A 10–14 August read-only ledger found zero confirmed or probable
   archived-to-reimport cases through the normal scheduled hybrid importer, whose
   exact active/archive identity protection is functioning. Four strong
   cross-source or cross-format same-event clusters remain evidence that changed
-  URLs, titles and images can bypass deterministic identity checks. No
-  implementation is approved; the next step is design review only, preserving
-  legitimate updates and Editorial Similarity's advisory, non-blocking policy.
+  URLs, titles and images can bypass deterministic identity checks. Score-only,
+  band-only and the tested cross-source composite are not safe for Manual Review
+  routing. No implementation is approved; the next step is a bounded read-only
+  deterministic event-anchor design review against the full 27-pair regression
+  matrix, preserving legitimate updates and Editorial Similarity's advisory,
+  non-blocking policy.
 - **Medium:** public desktop search accessibility remains open.
 - **Medium:** Admin first-byte server-level noindex/robots alignment is not fully
   proven.
