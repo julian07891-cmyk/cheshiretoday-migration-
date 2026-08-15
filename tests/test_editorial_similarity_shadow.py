@@ -433,6 +433,7 @@ def test_log_has_exact_allow_listed_schema_and_safe_values():
         "comparison_count",
         "shortlist_count",
         "reason_codes",
+        "event_evidence_codes",
         "scorer_version",
         "shadow_mode",
     }
@@ -454,6 +455,7 @@ def test_invalid_log_values_are_normalised_without_custom_string_leakage():
         score=1_000,
         band="secret-band",
         reason_codes=("secret-reason", "location"),
+        event_evidence_codes=("secret-event", "entity_overlap"),
         comparison_count=1_000,
         shortlist_count=1_000,
         matched_article_id="unsafe id",
@@ -469,6 +471,7 @@ def test_invalid_log_values_are_normalised_without_custom_string_leakage():
     assert "secretvalue" not in message
     assert "secret-band" not in message
     assert "secret-reason" not in message
+    assert "secret-event" not in message
     assert fields["candidate_article_id"] == "none"
     assert fields["matched_article_id"] == "none"
     assert fields["matched_provenance"] == "none"
@@ -477,6 +480,25 @@ def test_invalid_log_values_are_normalised_without_custom_string_leakage():
     assert fields["score"] == "0"
     assert fields["comparison_count"] == "100"
     assert fields["shortlist_count"] == "20"
+    assert fields["event_evidence_codes"] == "none"
+
+
+def test_shadow_version_and_event_evidence_are_bounded_and_allow_listed():
+    evaluation = shadow.EditorialSimilarityShadowEvaluator(
+        [existing_article(_editorial_similarity_provenance="same_run")]
+    ).evaluate(candidate_article())
+    message = shadow.format_shadow_log(
+        evaluation,
+        candidate_article_id="candidate-id",
+        context="local_rss",
+    )
+    fields = _log_fields(message)
+
+    assert shadow.SCORER_VERSION == "phase2a_event_anchors_v1"
+    assert fields["scorer_version"] == shadow.SCORER_VERSION
+    codes = set(fields["event_evidence_codes"].split(",")) - {"none"}
+    assert len(codes) <= 8
+    assert codes <= shadow.ALLOWED_EVENT_EVIDENCE_CODES
 
 
 def test_no_match_log_is_emitted_after_successful_insert():

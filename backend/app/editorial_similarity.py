@@ -32,6 +32,12 @@ MAX_ARTICLE_CHARACTERS = (
 MAX_URL_CHARACTERS = 2_048
 MAX_TOKENS = 600
 MAX_REASONS = 5
+MAX_EVENT_ENTITY_ANCHORS = 8
+MAX_EVENT_PHRASE_ANCHORS = 8
+MAX_EVENT_QUANTITY_ANCHORS = 12
+MAX_EVENT_LOCALITY_ANCHORS = 6
+MAX_EVENT_EVIDENCE_CODES = 8
+MAX_EVENT_ANCHOR_CHARACTERS = 80
 
 _TRACKING_PARAMETERS = {
     "at_campaign",
@@ -189,6 +195,12 @@ _SINGULAR_UNITS = {
     "units": "unit",
 }
 
+_EVENT_SINGULAR_UNITS = {
+    **_SINGULAR_UNITS,
+    "hectares": "hectare",
+    "votes": "vote",
+}
+
 _ORGANISATION_SUFFIXES = (
     "Council",
     "NHS",
@@ -218,6 +230,119 @@ _ORG_RE = re.compile(
     + r"))\b"
 )
 
+_EVENT_ENTITY_PHRASES = frozenset(
+    {
+        "amazon",
+        "bigzy",
+        "british steel",
+        "nigel farage",
+        "ofgem",
+        "reform uk",
+        "south east water",
+        "southern water",
+        "thames water",
+        "twitch",
+    }
+)
+_EVENT_ENTITY_SUFFIX_RE = re.compile(
+    r"\b([A-Z][A-Za-z&'’-]*(?:\s+[A-Z][A-Za-z&'’-]*){0,5}\s+"
+    r"(?:Academy|College|Hospital|School|Steel|Trust|University|Water))\b"
+)
+_GENERIC_EVENT_ENTITIES = frozenset(
+    {
+        "cheshire",
+        "chester",
+        "council",
+        "economy",
+        "energy",
+        "school",
+    }
+)
+
+_CURRENCY_RE = re.compile(
+    r"(?P<symbol>[£$€])\s*(?P<number>[0-9][0-9,]*(?:\.[0-9]+)?)\s*"
+    r"(?P<magnitude>bn|billion|m|million)?\b",
+    re.IGNORECASE,
+)
+_PERCENTAGE_RE = re.compile(r"\b([0-9]+(?:\.[0-9]+)?)\s*%")
+_COUNT_UNIT_RE = re.compile(
+    r"\b([0-9][0-9,]*)[-\s]+"
+    r"(apartments?|business(?:es)?|flats?|hectares?|homes?|houses?|jobs?|"
+    r"miles?|schools?|storeys?|units?|votes?)\b",
+    re.IGNORECASE,
+)
+_CLOCK_TIME_RE = re.compile(r"\b([0-9]{1,2})(?::([0-9]{2}))?\s*(am|pm)\b", re.I)
+_TEMPERATURE_RE = re.compile(r"\b(-?[0-9]+(?:\.[0-9]+)?)\s*°?\s*([cf])\b", re.I)
+_REPORTING_PERIOD_RE = re.compile(
+    r"\b(?:q([1-4])\s*(20[0-9]{2})|(20[0-9]{2})\s*q([1-4]))\b", re.I
+)
+
+_EVENT_STAGE_PATTERNS = (
+    ("fatal_outcome", re.compile(r"\b(die|died|dies|dead|death|fatal|killed)\b", re.I)),
+    (
+        "opening",
+        re.compile(r"\b(opened|opens|opening|completed|completion|finished)\b", re.I),
+    ),
+    (
+        "construction",
+        re.compile(
+            r"\b(under construction|construction began|work begins|building work|built)\b",
+            re.I,
+        ),
+    ),
+    ("appeal", re.compile(r"\b(appeal|appealed|planning inspector)\b", re.I)),
+    ("refusal", re.compile(r"\b(refused|refusal|rejected)\b", re.I)),
+    (
+        "approval",
+        re.compile(r"\b(approved|approval|green light|permission granted)\b", re.I),
+    ),
+    (
+        "expected_decision",
+        re.compile(
+            r"\b(expected to|set to|likely to|clear (?:a )?(?:vital )?hurdle)\b", re.I
+        ),
+    ),
+    ("consultation", re.compile(r"\b(consultation|consulting|views invited)\b", re.I)),
+    (
+        "proposal",
+        re.compile(
+            r"\b(proposal|proposed|application submitted|plans? (?:lodged|submitted|unveiled))\b",
+            re.I,
+        ),
+    ),
+    ("warning", re.compile(r"\b(warning|warned|alert|advisory)\b", re.I)),
+    (
+        "incident",
+        re.compile(r"\b(incident|rescue|emergency|critical condition)\b", re.I),
+    ),
+)
+_PROGRESS_STAGES = {
+    "proposal": 10,
+    "consultation": 20,
+    "expected_decision": 30,
+    "approval": 40,
+    "refusal": 40,
+    "appeal": 50,
+    "construction": 60,
+    "opening": 70,
+}
+
+_FORMAT_PATTERNS = (
+    ("live_blog", re.compile(r"\b(?:live blog|live updates?|politics live)\b", re.I)),
+    ("video", re.compile(r"\b(?:video|watch:)\b", re.I)),
+    ("roundup", re.compile(r"\b(?:roundup|the papers|morning briefing)\b", re.I)),
+    ("explainer", re.compile(r"\b(?:explainer|explained|what .* mean|why is)\b", re.I)),
+    (
+        "analysis",
+        re.compile(
+            r"\b(?:analysis|commentary)\b|\|\s*[A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){0,2}\s*$",
+            re.I,
+        ),
+    ),
+    ("opinion", re.compile(r"\b(?:opinion|comment)\b", re.I)),
+    ("follow_up", re.compile(r"\b(?:follow-up|update:)\b", re.I)),
+)
+
 
 @dataclass(frozen=True)
 class EditorialSimilarityResult:
@@ -227,6 +352,20 @@ class EditorialSimilarityResult:
     score: int
     band: ConfidenceBand
     reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class EventAnchorEvidence:
+    """Bounded shadow evidence; never an editorial or publication decision."""
+
+    shared_entities: tuple[str, ...]
+    shared_event_phrases: tuple[str, ...]
+    shared_quantities: tuple[str, ...]
+    shared_localities: tuple[str, ...]
+    stage_relation: str
+    format_relation: str
+    evidence_codes: tuple[str, ...]
+    same_run_cross_source_compatible: bool
 
 
 def _bounded_text(value: Any, limit: int) -> str:
@@ -396,6 +535,338 @@ def _event_stages(text: str) -> frozenset[str]:
     return frozenset(stages)
 
 
+def _bounded_sorted(values: set[str], limit: int) -> tuple[str, ...]:
+    return tuple(sorted(value[:MAX_EVENT_ANCHOR_CHARACTERS] for value in values))[
+        :limit
+    ]
+
+
+def _event_entity_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
+    text = _article_text(article)
+    normalised = _normalise_text(text)
+    anchors = {
+        phrase
+        for phrase in _EVENT_ENTITY_PHRASES
+        if re.search(rf"(?:^| ){re.escape(phrase)}(?: |$)", normalised)
+    }
+    for value in _EVENT_ENTITY_SUFFIX_RE.findall(
+        _bounded_text(text, MAX_ARTICLE_CHARACTERS)
+    ):
+        anchor = _normalise_text(value, MAX_EVENT_ANCHOR_CHARACTERS)
+        if anchor and anchor not in _GENERIC_EVENT_ENTITIES:
+            anchors.add(anchor)
+    return _bounded_sorted(anchors, MAX_EVENT_ENTITY_ANCHORS)
+
+
+def _normalise_decimal(value: str) -> str:
+    number = value.replace(",", "")
+    if "." in number:
+        number = number.rstrip("0").rstrip(".")
+    return number
+
+
+def _event_quantitative_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
+    text = _article_text(article)
+    anchors: set[str] = set()
+    currencies = {"£": "gbp", "$": "usd", "€": "eur"}
+    magnitudes = {"m": "million", "bn": "billion"}
+    for match in _CURRENCY_RE.finditer(text):
+        magnitude = (match.group("magnitude") or "").casefold()
+        magnitude = magnitudes.get(magnitude, magnitude)
+        anchors.add(
+            ":".join(
+                part
+                for part in (
+                    "currency",
+                    currencies[match.group("symbol")],
+                    _normalise_decimal(match.group("number")),
+                    magnitude,
+                )
+                if part
+            )
+        )
+    for value in _PERCENTAGE_RE.findall(text):
+        anchors.add(f"percentage:{_normalise_decimal(value)}")
+    for number, unit in _COUNT_UNIT_RE.findall(text):
+        unit_key = unit.casefold()
+        unit_key = _EVENT_SINGULAR_UNITS.get(unit_key, unit_key)
+        anchors.add(f"count:{number.replace(',', '')}:{unit_key}")
+    for hour_value, minute_value, period in _CLOCK_TIME_RE.findall(text):
+        hour = int(hour_value) % 12
+        if period.casefold() == "pm":
+            hour += 12
+        anchors.add(f"time:{hour:02d}:{int(minute_value or 0):02d}")
+    for value, unit in _TEMPERATURE_RE.findall(text):
+        anchors.add(f"temperature:{_normalise_decimal(value)}:{unit.casefold()}")
+    for (
+        first_quarter,
+        first_year,
+        second_year,
+        second_quarter,
+    ) in _REPORTING_PERIOD_RE.findall(text):
+        anchors.add(
+            f"reporting_period:{first_year or second_year}:q{first_quarter or second_quarter}"
+        )
+    return _bounded_sorted(anchors, MAX_EVENT_QUANTITY_ANCHORS)
+
+
+def _event_phrase_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
+    text = _normalise_text(_article_text(article))
+    tokens = set(text.split())
+    anchors: set[str] = set()
+
+    def has_all(*values: str) -> bool:
+        return all(value in tokens for value in values)
+
+    if has_all("water", "bills") and tokens & {
+        "funding",
+        "permitted",
+        "permission",
+        "raise",
+        "rise",
+    }:
+        anchors.add("water_bill_funding_decision")
+    if (
+        ("uk" in tokens or "britain" in tokens)
+        and tokens & {"economy", "gdp"}
+        and tokens
+        & {
+            "grow",
+            "grows",
+            "growth",
+            "expansion",
+        }
+    ):
+        anchors.add("uk_economic_growth_release")
+    if (
+        "twitch" in tokens
+        and tokens & {"ai", "artificial"}
+        and tokens
+        & {
+            "train",
+            "training",
+        }
+        and tokens & {"content", "data", "streams"}
+    ):
+        anchors.add("twitch_ai_training_policy")
+    quantities = set(_event_quantitative_anchors(article))
+    if (
+        "crewe" in tokens
+        and "count:2100:home" in quantities
+        and tokens
+        & {
+            "plans",
+            "planning",
+            "proposed",
+            "submitted",
+        }
+    ):
+        anchors.add("crewe_2100_home_plan")
+    if "british steel" in text and (
+        "public ownership" in text
+        or "nationalised" in tokens
+        or "nationalized" in tokens
+    ):
+        anchors.add("british_steel_public_ownership")
+    if (
+        has_all("england", "mexico")
+        and tokens & {"pub", "pubs"}
+        and tokens
+        & {
+            "open",
+            "opening",
+        }
+    ):
+        anchors.add("england_mexico_pub_hours")
+    if (
+        "bigzy" in tokens
+        and tokens & {"cocaine", "heroin"}
+        and tokens
+        & {
+            "controller",
+            "line",
+        }
+    ):
+        anchors.add("bigzy_drug_line")
+    if (
+        tokens & {"china", "chinese"}
+        and tokens & {"robot", "robots"}
+        and tokens
+        & {
+            "ban",
+            "bans",
+            "banned",
+            "import",
+            "imported",
+            "prohibition",
+        }
+    ):
+        anchors.add("china_robot_import_prohibition")
+    return _bounded_sorted(anchors, MAX_EVENT_PHRASE_ANCHORS)
+
+
+def _event_locality_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
+    normalised_text = _normalise_text(_article_text(article))
+    anchors = {
+        place
+        for place in _CHESHIRE_PLACES
+        if re.search(rf"(?:^| ){re.escape(place)}(?: |$)", normalised_text)
+    }
+    for field in ("location", "priority_location"):
+        value = _normalise_text(article.get(field), MAX_TITLE_CHARACTERS)
+        if value:
+            anchors.add(value)
+    return _bounded_sorted(anchors, MAX_EVENT_LOCALITY_ANCHORS)
+
+
+def _event_stage_tags(article: Mapping[str, Any]) -> tuple[str, ...]:
+    title = _bounded_text(article.get("title"), MAX_TITLE_CHARACTERS)
+    text = _article_text(article)
+    title_tags = [
+        name for name, pattern in _EVENT_STAGE_PATTERNS if pattern.search(title)
+    ]
+    text_tags = [
+        name for name, pattern in _EVENT_STAGE_PATTERNS if pattern.search(text)
+    ]
+    return tuple(dict.fromkeys(title_tags + text_tags))[:6]
+
+
+def _dominant_stage(tags: tuple[str, ...]) -> Optional[str]:
+    progression = [tag for tag in tags if tag in _PROGRESS_STAGES]
+    if progression:
+        return max(progression, key=_PROGRESS_STAGES.__getitem__)
+    if "fatal_outcome" in tags:
+        return "fatal_outcome"
+    if "incident" in tags:
+        return "incident"
+    if "warning" in tags:
+        return "warning"
+    return None
+
+
+def _dominant_article_stage(article: Mapping[str, Any]) -> Optional[str]:
+    title = _bounded_text(article.get("title"), MAX_TITLE_CHARACTERS)
+    title_tags = tuple(
+        name for name, pattern in _EVENT_STAGE_PATTERNS if pattern.search(title)
+    )
+    return _dominant_stage(title_tags) or _dominant_stage(_event_stage_tags(article))
+
+
+def _stage_relation(candidate: Mapping[str, Any], existing: Mapping[str, Any]) -> str:
+    candidate_stage = _dominant_article_stage(candidate)
+    existing_stage = _dominant_article_stage(existing)
+    if candidate_stage is None or existing_stage is None:
+        return "unknown"
+    if candidate_stage == existing_stage:
+        return "compatible"
+    if candidate_stage in _PROGRESS_STAGES and existing_stage in _PROGRESS_STAGES:
+        return "material_transition"
+    if {candidate_stage, existing_stage} == {"incident", "fatal_outcome"}:
+        return "material_transition"
+    return "different"
+
+
+def _format_tags(article: Mapping[str, Any]) -> tuple[str, ...]:
+    title = _bounded_text(article.get("title"), MAX_TITLE_CHARACTERS)
+    tags = [name for name, pattern in _FORMAT_PATTERNS if pattern.search(title)]
+    return tuple(tags[:3]) or ("straight",)
+
+
+def _format_relation(candidate: Mapping[str, Any], existing: Mapping[str, Any]) -> str:
+    candidate_tags = _format_tags(candidate)
+    existing_tags = _format_tags(existing)
+    return "compatible" if candidate_tags == existing_tags == ("straight",) else "guard"
+
+
+def _source_host(article: Mapping[str, Any]) -> str:
+    value = article.get("source_url") or article.get("url") or article.get("link")
+    if not isinstance(value, str) or len(value) > MAX_URL_CHARACTERS:
+        return ""
+    try:
+        host = urlsplit(value.strip()).netloc.casefold()
+        return host[4:] if host.startswith("www.") else host
+    except ValueError:
+        return ""
+
+
+def _event_anchor_evidence(
+    candidate: Mapping[str, Any],
+    existing: Mapping[str, Any],
+    *,
+    provenance: str,
+) -> EventAnchorEvidence:
+    shared_entities = set(_event_entity_anchors(candidate)) & set(
+        _event_entity_anchors(existing)
+    )
+    shared_event_phrases = set(_event_phrase_anchors(candidate)) & set(
+        _event_phrase_anchors(existing)
+    )
+    shared_quantities = set(_event_quantitative_anchors(candidate)) & set(
+        _event_quantitative_anchors(existing)
+    )
+    shared_localities = set(_event_locality_anchors(candidate)) & set(
+        _event_locality_anchors(existing)
+    )
+    stage_relation = _stage_relation(candidate, existing)
+    format_relation = _format_relation(candidate, existing)
+    candidate_host = _source_host(candidate)
+    existing_host = _source_host(existing)
+    cross_source = bool(
+        candidate_host and existing_host and candidate_host != existing_host
+    )
+    compatible = bool(
+        provenance == "same_run"
+        and cross_source
+        and shared_event_phrases
+        and stage_relation in {"compatible", "unknown"}
+        and format_relation == "compatible"
+    )
+    codes = []
+    for condition, code in (
+        (bool(shared_entities), "entity_overlap"),
+        (bool(shared_event_phrases), "event_phrase_overlap"),
+        (bool(shared_quantities), "quantity_overlap"),
+        (bool(shared_localities), "locality_overlap"),
+        (stage_relation == "material_transition", "stage_transition_guard"),
+        (format_relation == "guard", "format_guard"),
+        (cross_source, "cross_source"),
+        (provenance == "same_run", "same_run"),
+        (compatible, "same_run_event_compatible"),
+    ):
+        if condition:
+            codes.append(code)
+    return EventAnchorEvidence(
+        shared_entities=_bounded_sorted(shared_entities, MAX_EVENT_ENTITY_ANCHORS),
+        shared_event_phrases=_bounded_sorted(
+            shared_event_phrases, MAX_EVENT_PHRASE_ANCHORS
+        ),
+        shared_quantities=_bounded_sorted(
+            shared_quantities, MAX_EVENT_QUANTITY_ANCHORS
+        ),
+        shared_localities=_bounded_sorted(
+            shared_localities, MAX_EVENT_LOCALITY_ANCHORS
+        ),
+        stage_relation=stage_relation,
+        format_relation=format_relation,
+        evidence_codes=tuple(codes[:MAX_EVENT_EVIDENCE_CODES]),
+        same_run_cross_source_compatible=compatible,
+    )
+
+
+def event_anchor_evidence(
+    candidate: Mapping[str, Any],
+    existing: Mapping[str, Any],
+    *,
+    provenance: str,
+) -> EventAnchorEvidence:
+    """Return bounded deterministic shadow evidence without changing score/state."""
+
+    try:
+        return _event_anchor_evidence(candidate, existing, provenance=provenance)
+    except Exception:
+        return EventAnchorEvidence((), (), (), (), "unknown", "guard", (), False)
+
+
 def _score_editorial_similarity(
     candidate: Mapping[str, Any],
     existing: Mapping[str, Any],
@@ -550,6 +1021,8 @@ def score_editorial_similarity(
 
 
 __all__ = [
+    "EventAnchorEvidence",
     "EditorialSimilarityResult",
+    "event_anchor_evidence",
     "score_editorial_similarity",
 ]

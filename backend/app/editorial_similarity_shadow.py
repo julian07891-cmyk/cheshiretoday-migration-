@@ -18,6 +18,7 @@ try:
         MAX_TITLE_CHARACTERS,
         MAX_URL_CHARACTERS,
         EditorialSimilarityResult,
+        event_anchor_evidence,
         score_editorial_similarity,
     )
 except ModuleNotFoundError:
@@ -27,12 +28,13 @@ except ModuleNotFoundError:
         MAX_TITLE_CHARACTERS,
         MAX_URL_CHARACTERS,
         EditorialSimilarityResult,
+        event_anchor_evidence,
         score_editorial_similarity,
     )
 
 
 LOG_PREFIX = "editorial_similarity_shadow"
-SCORER_VERSION = "phase2a_v1"
+SCORER_VERSION = "phase2a_event_anchors_v1"
 SHADOW_MODE = "scheduled_log_only"
 ACTIVE_COMPARISON_LIMIT = 50
 ARCHIVED_COMPARISON_LIMIT = 50
@@ -63,6 +65,19 @@ _REASON_CODES = {
     "Published within six hours": "publication_time",
 }
 ALLOWED_REASON_CODES = frozenset(_REASON_CODES.values())
+ALLOWED_EVENT_EVIDENCE_CODES = frozenset(
+    {
+        "cross_source",
+        "entity_overlap",
+        "event_phrase_overlap",
+        "format_guard",
+        "locality_overlap",
+        "quantity_overlap",
+        "same_run",
+        "same_run_event_compatible",
+        "stage_transition_guard",
+    }
+)
 
 _SAFE_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -133,6 +148,7 @@ class EditorialSimilarityShadowEvaluation:
     score: int
     band: str
     reason_codes: tuple[str, ...]
+    event_evidence_codes: tuple[str, ...]
     comparison_count: int
     shortlist_count: int
     matched_article_id: Optional[str]
@@ -299,6 +315,7 @@ def _empty_evaluation(comparison_count: int = 0) -> EditorialSimilarityShadowEva
         score=0,
         band="low",
         reason_codes=(),
+        event_evidence_codes=(),
         comparison_count=max(0, min(COMPARISON_POOL_LIMIT, comparison_count)),
         shortlist_count=0,
         matched_article_id=None,
@@ -398,16 +415,23 @@ class EditorialSimilarityShadowEvaluator:
                 score=0,
                 band="low",
                 reason_codes=(),
+                event_evidence_codes=(),
                 comparison_count=len(self._records),
                 shortlist_count=len(shortlist),
                 matched_article_id=None,
                 matched_provenance=None,
             )
+        anchor_evidence = event_anchor_evidence(
+            candidate_snapshot,
+            best_record.article,
+            provenance=best_record.provenance,
+        )
         return EditorialSimilarityShadowEvaluation(
             eligible=best_result.eligible,
             score=best_result.score,
             band=best_result.band,
             reason_codes=_reason_codes(best_result),
+            event_evidence_codes=anchor_evidence.evidence_codes,
             comparison_count=len(self._records),
             shortlist_count=len(shortlist),
             matched_article_id=best_record.article_id,
@@ -458,10 +482,16 @@ def format_shadow_log(
         score = 0
         band = "low"
         reason_source = ()
+        event_evidence_source = ()
     else:
         reason_source = (
             evaluation.reason_codes
             if isinstance(evaluation.reason_codes, (tuple, list))
+            else ()
+        )
+        event_evidence_source = (
+            evaluation.event_evidence_codes
+            if isinstance(evaluation.event_evidence_codes, (tuple, list))
             else ()
         )
     reason_codes = tuple(
@@ -469,6 +499,11 @@ def format_shadow_log(
         for reason in reason_source
         if isinstance(reason, str) and reason in ALLOWED_REASON_CODES
     )[:5]
+    event_evidence_codes = tuple(
+        code
+        for code in event_evidence_source
+        if isinstance(code, str) and code in ALLOWED_EVENT_EVIDENCE_CODES
+    )[:8]
     status = "scored" if matched_id else "no_match"
     return " ".join(
         [
@@ -484,6 +519,7 @@ def format_shadow_log(
             f"comparison_count={comparison_count}",
             f"shortlist_count={shortlist_count}",
             f"reason_codes={','.join(reason_codes) or 'none'}",
+            f"event_evidence_codes={','.join(event_evidence_codes) or 'none'}",
             f"scorer_version={SCORER_VERSION}",
             f"shadow_mode={SHADOW_MODE}",
         ]
@@ -530,6 +566,7 @@ __all__ = [
     "ACTIVE_COMPARISON_LIMIT",
     "ALLOWED_BANDS",
     "ALLOWED_CONTEXTS",
+    "ALLOWED_EVENT_EVIDENCE_CODES",
     "ALLOWED_PROVENANCE",
     "ALLOWED_REASON_CODES",
     "ARCHIVED_COMPARISON_LIMIT",
