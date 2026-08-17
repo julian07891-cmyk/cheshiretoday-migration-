@@ -173,6 +173,13 @@ OpenAI remains Admin-only and draft/review-only. It must never auto-publish.
 Manual Review is a first-class hidden editorial state. No automatic AI
 publication is permitted.
 
+Commit `fcb801b` (`Show dates on Manual Review cards`) was deployed and
+production-verified on 17 August 2026. Manual Review cards now show the
+published date and the date/time added to review, with review timestamps
+displayed in `Europe/London`. Desktop and mobile verification passed. This was
+a frontend-only Admin UX improvement; the existing API, sorting, Manual Review
+actions and editorial behaviour are unchanged.
+
 See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md).
 
