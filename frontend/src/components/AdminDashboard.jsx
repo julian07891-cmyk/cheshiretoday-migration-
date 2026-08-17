@@ -55,6 +55,32 @@ StatCard.displayName = 'StatCard';
 const TOKEN_KEY = 'cheshire_admin_token';
 const QUICK_ACTION_BUTTON_LAYOUT = 'min-h-12 h-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm text-center leading-tight whitespace-normal';
 const CANONICAL_NEWSLETTER_MANAGEMENT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const ADMIN_DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'Europe/London',
+});
+const ADMIN_TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Europe/London',
+});
+
+const formatAdminArticleDate = (values, includeTime = false) => {
+  for (const value of values) {
+    if (!value) continue;
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) continue;
+
+    const formattedDate = ADMIN_DATE_FORMATTER.format(date);
+    return includeTime
+      ? `${formattedDate} · ${ADMIN_TIME_FORMATTER.format(date)}`
+      : formattedDate;
+  }
+  return 'Date unavailable';
+};
 
 const AdminDashboard = ({ onBack }) => {
   const [stats, setStats] = useState(null);
@@ -4276,6 +4302,24 @@ const handleDeleteArticle = async (articleId) => {
                                 </span>
                               </>
                             )}
+                          </div>
+                          <div
+                            data-testid={`manual-review-dates-${article.id}`}
+                            className="mt-1 flex min-w-0 max-w-full flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground dark:text-gray-400"
+                          >
+                            <span data-testid={`manual-review-published-date-${article.id}`}>
+                              Published: {formatAdminArticleDate([
+                                article.publishedDate,
+                                article.created_at,
+                              ])}
+                            </span>
+                            <span data-testid={`manual-review-added-date-${article.id}`}>
+                              Added to review: {formatAdminArticleDate([
+                                article.manual_review_created_at,
+                                article.created_at,
+                                article.publishedDate,
+                              ], true)}
+                            </span>
                           </div>
                         </div>
                         <div
