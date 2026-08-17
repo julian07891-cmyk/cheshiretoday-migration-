@@ -108,7 +108,10 @@ from app.newsletter_management_email import (
     NewsletterManagementEmailRequest,
 )
 from app.perplexity_service import perplexity_service, ai_budget_available
-from app.article_generation_observability import log_article_generation_memory
+from app.article_generation_observability import (
+    log_article_generation_memory,
+    prepare_article_generation_memory_observability,
+)
 from app.editorial_similarity import (
     MAX_CONTENT_CHARACTERS as EDITORIAL_SIMILARITY_CONTENT_LIMIT,
     MAX_SUMMARY_CHARACTERS as EDITORIAL_SIMILARITY_SUMMARY_LIMIT,
@@ -18779,6 +18782,7 @@ async def cap_visible_articles(keep: int = 200):
 
 async def daily_article_generation(count: int = 12):
     """Generate new articles daily with fault tolerance and distributed locking"""
+    prepare_article_generation_memory_observability()
     memory_started_at = time.monotonic()
     log_article_generation_memory(
         logger,
@@ -18858,6 +18862,11 @@ async def daily_article_generation(count: int = 12):
                 memory_started_at=memory_started_at,
                 enable_editorial_similarity_shadow=True,
             )
+            log_article_generation_memory(
+                logger,
+                "article_import_returned",
+                memory_started_at,
+            )
         except Exception as gen_error:
             logger.error(f"Error during article generation (will retry): {str(gen_error)}")
             # Don't fail the entire job, just log and continue
@@ -18867,6 +18876,11 @@ async def daily_article_generation(count: int = 12):
         try:
             cleanup_result = await _remove_duplicates_internal(
                 memory_started_at=memory_started_at,
+            )
+            log_article_generation_memory(
+                logger,
+                "duplicate_cleanup_returned",
+                memory_started_at,
             )
             logger.info(f"Auto-cleanup after generation: removed {cleanup_result.get('total_removed', 0)} duplicates/short articles")
         except Exception as dup_error:

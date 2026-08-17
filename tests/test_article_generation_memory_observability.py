@@ -171,6 +171,124 @@ def test_phase_log_contains_peak_and_current_rss(monkeypatch):
     ]
 
 
+def test_python_heap_diagnostics_are_fixed_numeric_fields(monkeypatch):
+    logger = RecordingLogger()
+    monkeypatch.setattr(observability.time, "monotonic", lambda: 5.0)
+    monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: None)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: None)
+    monkeypatch.setattr(
+        observability,
+        "_sample_python_heap_diagnostics",
+        lambda: {
+            "python_heap_current_mb": 12.25,
+            "python_heap_peak_mb": 18.75,
+            "python_allocated_blocks": 12345,
+            "gc_gen0_count": 10,
+            "gc_gen1_count": 2,
+            "gc_gen2_count": 1,
+            "not_approved": 999,
+        },
+    )
+
+    observability.log_article_generation_memory(logger, "job_started", 2.0)
+
+    assert logger.messages == [
+        "article_generation_memory phase=job_started elapsed_seconds=3.00 "
+        "python_heap_current_mb=12.2 python_heap_peak_mb=18.8 "
+        "python_allocated_blocks=12345 gc_gen0_count=10 gc_gen1_count=2 "
+        "gc_gen2_count=1"
+    ]
+
+
+def test_prepare_starts_tracemalloc_once_with_minimum_depth(monkeypatch):
+    starts = []
+    tracing = {"active": False}
+
+    monkeypatch.setattr(
+        observability.tracemalloc,
+        "is_tracing",
+        lambda: tracing["active"],
+    )
+
+    def start(depth):
+        starts.append(depth)
+        tracing["active"] = True
+
+    monkeypatch.setattr(observability.tracemalloc, "start", start)
+    monkeypatch.setattr(observability, "_python_heap_diagnostics_enabled", False)
+
+    observability.prepare_article_generation_memory_observability()
+    observability.prepare_article_generation_memory_observability()
+
+    assert starts == [1]
+    assert observability._python_heap_diagnostics_enabled is True
+
+
+def test_prepare_respects_preexisting_tracemalloc(monkeypatch):
+    monkeypatch.setattr(observability.tracemalloc, "is_tracing", lambda: True)
+    monkeypatch.setattr(
+        observability.tracemalloc,
+        "start",
+        lambda _depth: pytest.fail("must not restart existing tracing"),
+    )
+    monkeypatch.setattr(observability, "_python_heap_diagnostics_enabled", False)
+
+    observability.prepare_article_generation_memory_observability()
+
+    assert observability._python_heap_diagnostics_enabled is True
+
+
+def test_prepare_failure_is_non_fatal(monkeypatch):
+    monkeypatch.setattr(
+        observability.tracemalloc,
+        "is_tracing",
+        lambda: (_ for _ in ()).throw(RuntimeError("unavailable")),
+    )
+    monkeypatch.setattr(observability, "_python_heap_diagnostics_enabled", True)
+
+    observability.prepare_article_generation_memory_observability()
+
+    assert observability._python_heap_diagnostics_enabled is False
+
+
+def test_python_heap_sampler_reads_bounded_runtime_counters(monkeypatch):
+    monkeypatch.setattr(observability, "_python_heap_diagnostics_enabled", True)
+    monkeypatch.setattr(
+        observability.tracemalloc,
+        "get_traced_memory",
+        lambda: (2 * 1024 * 1024, 3 * 1024 * 1024),
+    )
+    monkeypatch.setattr(observability.sys, "getallocatedblocks", lambda: 4321)
+    monkeypatch.setattr(observability.gc, "get_count", lambda: (7, 8, 9))
+
+    assert observability._sample_python_heap_diagnostics() == {
+        "python_heap_current_mb": 2.0,
+        "python_heap_peak_mb": 3.0,
+        "python_allocated_blocks": 4321,
+        "gc_gen0_count": 7,
+        "gc_gen1_count": 8,
+        "gc_gen2_count": 9,
+    }
+
+
+def test_python_diagnostic_sampling_failure_keeps_article_marker(monkeypatch):
+    logger = RecordingLogger()
+    monkeypatch.setattr(observability.time, "monotonic", lambda: 3.0)
+    monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: None)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: None)
+    monkeypatch.setattr(
+        observability,
+        "_sample_python_heap_diagnostics",
+        lambda: (_ for _ in ()).throw(RuntimeError("unavailable")),
+    )
+
+    observability.log_article_generation_memory(logger, "job_started", 1.0)
+
+    assert logger.messages == [
+        "article_generation_memory phase=job_started elapsed_seconds=2.00"
+    ]
+
+
 def test_current_rss_failure_keeps_peak_rss_log(monkeypatch):
     logger = RecordingLogger()
     monkeypatch.setattr(observability.time, "monotonic", lambda: 5.0)
@@ -382,6 +500,11 @@ def test_scheduled_workflow_reaches_all_phase_markers_in_order(monkeypatch):
 
     monkeypatch.setattr(server, "db", SimpleNamespace(scheduler_locks=Locks()))
     monkeypatch.setattr(server, "log_article_generation_memory", record)
+    monkeypatch.setattr(
+        server,
+        "prepare_article_generation_memory_observability",
+        lambda: None,
+    )
     monkeypatch.setattr(server, "_generate_articles_internal", fake_generate)
     monkeypatch.setattr(server, "_remove_duplicates_internal", fake_cleanup)
 
@@ -397,9 +520,11 @@ def test_scheduled_workflow_reaches_all_phase_markers_in_order(monkeypatch):
         "local_processing_completed",
         "business_tech_processing_completed",
         "visible_pool_cap_completed",
+        "article_import_returned",
         "duplicate_cleanup_first_read_completed",
         "duplicate_cleanup_first_stage2_completed",
         "duplicate_cleanup_second_read_completed",
+        "duplicate_cleanup_returned",
         "job_completed",
     ]
 
@@ -415,8 +540,66 @@ def test_required_phase_inventory_is_exact():
         "local_processing_completed",
         "business_tech_processing_completed",
         "visible_pool_cap_completed",
+        "article_import_returned",
         "duplicate_cleanup_first_read_completed",
         "duplicate_cleanup_first_stage2_completed",
         "duplicate_cleanup_second_read_completed",
+        "duplicate_cleanup_returned",
         "job_completed",
     }
+
+
+def test_scope_return_markers_follow_completed_helpers(monkeypatch):
+    events = []
+
+    class Locks:
+        async def update_one(self, *_args, **_kwargs):
+            return None
+
+        async def find_one_and_update(self, *_args, **_kwargs):
+            return {"locked": True}
+
+        async def delete_one(self, *_args, **_kwargs):
+            return None
+
+    async def fake_generate(*_args, **_kwargs):
+        events.append("import_helper_returning")
+
+    async def fake_cleanup(*_args, **_kwargs):
+        events.append("cleanup_helper_returning")
+        return {"total_removed": 0}
+
+    def record(_logger, phase, _started_at, counts=None):
+        if phase in {"article_import_returned", "duplicate_cleanup_returned"}:
+            events.append(phase)
+
+    monkeypatch.setattr(server, "db", SimpleNamespace(scheduler_locks=Locks()))
+    monkeypatch.setattr(server, "log_article_generation_memory", record)
+    monkeypatch.setattr(
+        server,
+        "prepare_article_generation_memory_observability",
+        lambda: None,
+    )
+    monkeypatch.setattr(server, "_generate_articles_internal", fake_generate)
+    monkeypatch.setattr(server, "_remove_duplicates_internal", fake_cleanup)
+
+    asyncio.run(server.daily_article_generation(count=12))
+
+    assert events == [
+        "import_helper_returning",
+        "article_import_returned",
+        "cleanup_helper_returning",
+        "duplicate_cleanup_returned",
+    ]
+
+
+def test_observability_uses_no_forced_collection_or_native_trim():
+    import inspect
+
+    observability_source = inspect.getsource(observability)
+    scheduled_source = inspect.getsource(server.daily_article_generation)
+
+    assert "gc.collect(" not in observability_source
+    assert "gc.collect(" not in scheduled_source
+    assert "malloc_trim" not in observability_source
+    assert "malloc_trim" not in scheduled_source

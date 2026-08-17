@@ -207,8 +207,8 @@ def test_manual_import_routes_do_not_enable_shadow_mode():
     assert "enable_editorial_similarity_shadow" not in clear_source
 
 
-def test_shadow_integration_does_not_change_memory_marker_allow_list():
+def test_shadow_integration_adds_no_similarity_memory_phase():
     from backend.app.article_generation_observability import APPROVED_PHASES
 
-    assert len(APPROVED_PHASES) == 13
+    assert len(APPROVED_PHASES) == 15
     assert all("similarity" not in phase for phase in APPROVED_PHASES)
