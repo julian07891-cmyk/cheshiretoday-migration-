@@ -49,6 +49,10 @@ def test_internal_remove_duplicates_remains_directly_callable(monkeypatch):
         async def to_list(self, _length):
             return []
 
+        def batch_size(self, value):
+            assert value == 250
+            return self
+
         def __aiter__(self):
             return self
 

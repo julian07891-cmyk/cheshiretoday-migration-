@@ -428,6 +428,10 @@ def test_duplicate_cleanup_reaches_both_read_markers_in_order(monkeypatch):
         async def to_list(self, _length):
             return []
 
+        def batch_size(self, value):
+            assert value == 250
+            return self
+
         def __aiter__(self):
             return self
 

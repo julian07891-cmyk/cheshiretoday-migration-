@@ -72,11 +72,18 @@ class CleanupCursor:
         self.read_number = read_number
         self.projection = projection
         self.index = 0
+        self.iteration_started = False
+
+    def batch_size(self, value):
+        assert self.iteration_started is False
+        self.collection.batch_size_calls.append((self.read_number, value))
+        return self
 
     async def to_list(self, _length):
         raise AssertionError("cleanup collection scans must stream asynchronously")
 
     def __aiter__(self):
+        self.iteration_started = True
         if self.read_number == 1:
             self.collection.duplicate_scan_iterated = True
         else:
@@ -139,6 +146,7 @@ class CleanupArticles:
         self.short_projection = None
         self.duplicate_scan_iterated = False
         self.short_scan_iterated = False
+        self.batch_size_calls = []
         self.after_duplicate_scan = after_duplicate_scan
         self.after_short_scan = after_short_scan
         self.delete_count = delete_count
@@ -1066,7 +1074,24 @@ def test_second_pass_streams_exact_projection_without_full_fetch_for_non_candida
     assert result["success"] is True
     assert active.short_projection == SHORT_CONTENT_PROJECTION
     assert active.short_scan_iterated is True
+    assert active.batch_size_calls == [(2, 250)]
     assert active.find_calls == 2
+    assert active.find_one_calls == []
+    assert archive.inserted == []
+
+
+def test_batch_size_is_applied_only_to_short_scan_before_iteration(monkeypatch):
+    result, active, archive = run_cleanup(
+        monkeypatch,
+        [article("kept", "Complete public story")],
+    )
+
+    assert result["success"] is True
+    assert active.batch_size_calls == [(2, 250)]
+    assert active.duplicate_scan_iterated is True
+    assert active.short_scan_iterated is True
+    assert active.duplicate_projection == DUPLICATE_PROJECTION
+    assert active.short_projection == SHORT_CONTENT_PROJECTION
     assert active.find_one_calls == []
     assert archive.inserted == []
 

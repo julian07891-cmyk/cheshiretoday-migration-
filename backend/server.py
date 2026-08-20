@@ -4035,7 +4035,9 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
 
         short_candidate_ids = []
         second_read_count = 0
-        short_scan_cursor = db.articles.find({}, short_content_projection)
+        short_scan_cursor = db.articles.find(
+            {}, short_content_projection
+        ).batch_size(250)
         async for projected_article in short_scan_cursor:
             second_read_count += 1
             if short_content_assessment(projected_article) is not None:
