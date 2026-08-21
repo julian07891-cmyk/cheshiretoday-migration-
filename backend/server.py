@@ -128,6 +128,14 @@ from app.admin_analytics import (
     ALLOWED_ANALYTICS_PERIODS,
     build_admin_analytics_summary,
 )
+from app.commercial_event_measurement import (
+    COMMERCIAL_EVENT_MAX_BODY_BYTES,
+    CommercialEventPayload,
+    build_commercial_analytics,
+    commercial_event_document,
+    commercial_reporting_period,
+    ensure_commercial_event_indexes,
+)
 from app.article_view_attribution import (
     InvalidArticleViewAttribution,
     normalise_article_view_attribution,
@@ -1480,6 +1488,35 @@ async def track_sponsored_placement_click(slug: str):
     except Exception as e:
         logger.error(f"Error tracking sponsored placement click: {str(e)}")
         return {"success": False}
+
+
+async def enforce_commercial_event_body_size(request: Request):
+    """Reject declared oversized event bodies before endpoint processing."""
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > COMMERCIAL_EVENT_MAX_BODY_BYTES:
+                raise HTTPException(status_code=413, detail="Commercial event payload too large")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length header")
+
+
+@api_router.post("/commercial-events", status_code=202)
+async def record_commercial_event(
+    payload: CommercialEventPayload,
+    _body_size: None = Depends(enforce_commercial_event_body_size),
+):
+    """Accept one bounded, anonymous commercial measurement event."""
+
+    document = commercial_event_document(payload)
+    try:
+        await db.commercial_events.insert_one(document)
+    except DuplicateKeyError:
+        pass
+    except Exception:
+        logger.exception("Commercial event recording failed")
+        raise HTTPException(status_code=503, detail="Commercial event recording unavailable")
+    return {"accepted": True}
 
 
 @api_router.get("/admin/sponsored-placements")
@@ -14363,6 +14400,20 @@ async def get_admin_analytics_summary(
     return await build_admin_analytics_summary(db, period)
 
 
+@api_router.get("/admin/analytics/commercial")
+async def get_admin_commercial_analytics(
+    from_date: str | None = Query(default=None, alias="from"),
+    to_date: str | None = Query(default=None, alias="to"),
+    auth: bool = Depends(get_admin_auth),
+):
+    """Return a bounded first-party commercial funnel aggregate."""
+    try:
+        period = commercial_reporting_period(from_date, to_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return await build_commercial_analytics(db.commercial_events, period)
+
+
 @api_router.get("/admin/email-analytics/trends")
 async def get_email_analytics_trends(auth: bool = Depends(get_admin_auth)):
     """
@@ -20193,6 +20244,13 @@ async def startup_event():
                 logger.info("✅ Unique index on admin_tokens.token already exists")
             else:
                 logger.warning(f"Could not create admin_tokens index: {idx_error}")
+
+        # Bounded first-party commercial-event storage: dedupe, TTL and reporting.
+        try:
+            await ensure_commercial_event_indexes(db.commercial_events)
+            logger.info("✅ Created commercial event indexes")
+        except Exception as idx_error:
+            logger.warning(f"Could not create commercial event indexes: {idx_error}")
         
         # ============================================
         # CREATE UNIQUE INDEX ON ARTICLE TITLES
