@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `b497635`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `b3550c0`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 
@@ -157,19 +157,19 @@ Work highest current severity first. Update an entry only when evidence changes;
 ### QA-OPS-001
 
 - **Original severity:** Medium
-- **Current severity:** Medium
+- **Current severity:** High
 - **Area:** Render memory and operations
 - **Original finding:** OOM risk was only partially evidenced after newsletter and import memory incidents.
-- **Current status:** Monitoring — immediate duplicate-cleanup lifecycle OOM risk operationally mitigated; broader process-memory stability not proven.
-- **Current-code evidence:** Thirteen bounded markers include current RSS and isolate first-pass Stage 2. `49e5fe4` removed simultaneous full-list retention; `c06c837` streams/projects the short-content scan; `cd3f093` streams/projects the first duplicate scan; `1811430` avoids joined full-article strings in short-content qualification. Scheduler locks and RSS concurrency eight remain.
-- **Fixing commits:** Observability `42736f9`, `fd7cc82`, `0cdc089`; cleanup lifecycle/scan changes `49e5fe4`, `c06c837`, `cd3f093`, `1811430`.
+- **Current status:** **HIGH OPEN — RECURRENT PRODUCTION OOM CONFIRMED.** The isolated short-content batching experiment is provisionally successful, but allocator/native retention and cumulative process-memory stability remain unresolved.
+- **Current-code evidence:** Fifteen bounded markers include current RSS, traced Python heap, allocated blocks, GC counters and helper-return boundaries. `49e5fe4` removed simultaneous full-list retention; `c06c837` streams/projects the short-content scan; `cd3f093` streams/projects the first duplicate scan; `1811430` avoids joined full-article strings in short-content qualification. Commit `b3550c0` adds `batch_size(250)` only to the projected short-content cursor; the first duplicate cursor, visible-pool query, projections, qualification/protection logic, Stage 2 re-fetch/revalidation, archive-before-delete and scheduler behaviour remain unchanged.
+- **Fixing/diagnostic commits:** Observability `42736f9`, `fd7cc82`, `0cdc089`, `6ffcede`; cleanup lifecycle/scan changes `49e5fe4`, `c06c837`, `cd3f093`, `1811430`; hermetic allocator diagnostics `0052b68`; isolated short-content batching `b3550c0`.
 - **Test evidence:** Five focused lifecycle regressions, 28 related cleanup/auth/memory/live-pool regressions, compilation and diff checks passed before commit `49e5fe4`.
 - **Deployment evidence:** Render automatically deployed `49e5fe4` on 7 August 2026; startup completed and the service became live before the 12:00 scheduled run.
-- **Production evidence:** The pre-fix 7 August 06:00 run reached 530.0 MB against the verified 512 MB ceiling and was followed by an OOM. Later normal observations established structural improvement. On 13 August at 18:00, `d8943e8` completed normally at 305.5 MB current RSS (130.7 MB start; +174.8 MB net). On 15 August at 12:00, `5e8f0ef` completed normally at 291.9 MB (129.8 MB start; +162.1 MB net), leaving about 220.1 MB marker-level headroom. Its visible-pool, first duplicate Stage 1, first Stage 2 and short-content scan intervals were +31.8, +35.7, 0.0 and +43.0 MB. No OOM or restart occurred and no observable material event-anchor memory regression was identified. Retained growth remains material and variable; neither run alone proves a trend or identifies a new target.
-- **Remaining gap:** Cumulative process RSS still rises materially and may remain elevated. First duplicate Stage 1, visible-pool work, short-content cursor/decoded-string behaviour, feed work, allocator retention and high-start workloads remain under observation; require a broader comparable stability window before selecting a target.
+- **Production evidence:** Recurrent Starter OOM evidence remains authoritative, and Standard 2 GB is temporary safety headroom rather than a fix. After `b3550c0`, two natural runs on instance `zthtp` strongly replicated a reduced short-content interval: 247.5→251.4 MB (+3.9 MB) over 4,249 records in 2.68 seconds on 20 August 18:00, and 381.3→382.3 MB (+1.0 MB) over 4,264 records in 2.65 seconds on 21 August 06:00. Full runtimes were 101.62 and 92.06 seconds; both removed zero records, completed normally and remained healthy. The two-run mean was +2.45 MB versus the supplied pre-batch mean of about +39.5 MB and range of about +26 to +51 MB. Matching first/second scan counts, unchanged marker order, normal Stage 2 completion and absence of cleanup, Manual Review or archive/delete warnings support semantic preservation. Because both runs removed zero records, archive-before-delete was not dynamically exercised; its preservation rests on unchanged implementation and regression tests.
+- **Remaining gap:** Heap release with RSS retention persists, the process baseline remains elevated and the broader allocator/native root cause is unresolved. The 21 August Business/Tech-to-visible-pool interval was +57.7 MB and is a material candidate for separate evidence-led review, not an approved change. Continue cumulative monitoring on Standard and do not infer that 512 MB is safe.
 - **Closure criteria:** A sustained evidence-backed stability window covering scheduled imports and newsletter workloads, or separately reviewed further optimisation followed by normal-run production verification.
 - **Owner/documentation responsibility:** Production operations owner; [Monitoring](../OPERATIONS/MONITORING.md).
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`, `5e8f0ef`, [Production Timeline](../PRODUCTION_TIMELINE.md).
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`, `6ffcede`, `0052b68`, `b3550c0`, [Production Timeline](../PRODUCTION_TIMELINE.md).
 
 ### QA-DOC-001
 

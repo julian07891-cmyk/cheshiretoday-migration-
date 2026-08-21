@@ -1,7 +1,7 @@
 # Cheshire Today — Engineering History Master
 
 > **Reconstruction status:** repository-evidence history through commit
-> `1811430070cfa73084c8b5ded830fa88076d3cc7` on 11 August 2026. ChatGPT export,
+> `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd` on 21 August 2026. ChatGPT export,
 > systematic Codex history and post-HEAD production evidence remain unreconciled.
 
 ## Document purpose
@@ -588,11 +588,42 @@ material 5xx regression. `QA-SEC-002` therefore closed.
   [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render, scheduler,
   shadow-log and health evidence reconciled 15 August 2026.
 
+### Allocator diagnostics and short-content cursor batching — 17–21 August 2026
+
+- **Problem and diagnosis:** Recurrent Starter OOM evidence and heap/RSS markers
+  showed that released Python heap did not imply returned process RSS. Commit
+  `0052b68` added a hermetic, process-isolated allocator/PyMongo diagnostic harness;
+  its synthetic short-content workload supported testing smaller cursor batches
+  without treating local results as proof of Motor production behaviour.
+- **Isolated implementation:** Commit `b3550c0` applied `batch_size(250)` only to
+  the projected short-content cursor in `_remove_duplicates_internal()`. The first
+  duplicate cursor, visible-pool materialisation, queries, projections, protection
+  and qualification rules, Stage 2 revalidation, archive-before-delete, scheduler
+  and marker contracts were unchanged.
+- **Natural production evidence:** On instance `zthtp`, the 20 August 18:00 run
+  scanned 4,249 records in 2.68 seconds with short-scan RSS 247.5→251.4 MB
+  (+3.9 MB) and completed in 101.62 seconds. The 21 August 06:00 run scanned 4,264
+  records in 2.65 seconds with 381.3→382.3 MB (+1.0 MB) and completed in 92.06
+  seconds. Both acquired one natural-run lock, removed zero records, completed
+  normally and remained healthy. The +2.45 MB mean compares with the supplied
+  pre-batch mean of about +39.5 MB and range of about +26 to +51 MB.
+- **Decision and limits:** The strong replicated isolated improvement supports a
+  **provisional keep** of `batch_size(250)` with no material runtime regression.
+  Heap release plus RSS retention remains, cumulative baseline risk is unresolved,
+  and archive-before-delete was not dynamically exercised because both runs had
+  zero removals; unchanged code and regression tests support its preservation.
+  `QA-OPS-001` remains **HIGH OPEN — RECURRENT PRODUCTION OOM CONFIRMED**. Standard
+  2 GB remains temporary mitigation. The 21 August visible-pool interval added
+  +57.7 MB and requires a separate evidence-led review before any change.
+- **Sources:** Git `0052b68`, `b3550c0`; [Open Findings](../QA/OPEN_FINDINGS.md);
+  [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render scheduler,
+  memory-marker and health evidence reconciled 21 August 2026.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
-- Production evidence through the 15 August 12:00 run on `5e8f0ef` is reconciled
+- Production evidence through the 21 August 06:00 run on `b3550c0` is reconciled
   in the production and QA records. Later evidence remains outside this
   reconstruction unless already present in repository sources.
 - Historical PDFs named in the preserved state are missing from the checkout; the

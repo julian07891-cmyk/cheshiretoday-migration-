@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `d8943e8c7284781b8fefb915e00b4e53f831c3bb`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -73,18 +73,19 @@ Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2d
 
 ## Performance and memory
 
-The public article-list latency finding lacks a measured remediation. Memory markers
-added by `42736f9` isolated a 7 August scheduled-import OOM to simultaneous
-duplicate-cleanup materialisations. Commit `49e5fe4` removed that overlap;
-`c06c837` and `cd3f093` then streamed/projected both cleanup scans, and `0cdc089`
-added a thirteenth marker to isolate first-pass Stage 2. The natural 13 August
-18:00 run on `d8943e8` completed normally at 305.5 MB current RSS from a 130.7 MB
-start (+174.8 MB net), leaving 206.5 MB marker-level headroom. Visible-pool, first
-duplicate Stage 1, first Stage 2 and short-content scan intervals added 32.7, 41.0,
-0.0 and 42.0 MB. This observation was worse than recent reconciled runs, but it
-does not establish a trend or a new optimisation target. Broader cumulative
-process-memory stability remains Monitoring/Medium; another natural observation
-precedes any further optimisation target.
+The public article-list latency finding lacks a measured remediation. Article-
+generation observability now provides fifteen RSS/Python-heap lifecycle markers,
+and hermetic allocator diagnostics in `0052b68` supported one isolated production
+experiment. Commit `b3550c0` applies `batch_size(250)` only to the projected short-
+content cursor. Natural runs on 20 August 18:00 and 21 August 06:00 reduced that
+phase to +3.9 MB over 4,249 records in 2.68 seconds and +1.0 MB over 4,264 records
+in 2.65 seconds. The +2.45 MB two-run mean compares with a supplied pre-batch mean
+of about +39.5 MB; both full jobs completed normally in 101.62 and 92.06 seconds
+with zero removals and no material runtime or semantic regression. The change is a
+**provisional keep**. `QA-OPS-001` remains **High Open** because recurrent OOM,
+allocator/native retention and an elevated cumulative baseline are unresolved.
+Standard 2 GB remains temporary headroom. The +57.7 MB visible-pool interval on
+21 August is evidence for separate review, not approval for another change.
 
 ## Operations and monitoring
 

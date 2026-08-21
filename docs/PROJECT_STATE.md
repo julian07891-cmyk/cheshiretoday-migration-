@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `5e8f0ef411b2ca63b454620b333a635d7c5057c5`
-> - **Last repository reconciliation:** 15 August 2026
-> - **Production-verification status:** Commit `5e8f0ef` is live and its bounded shadow event-anchor evidence was verified on the natural 15 August 12:00 run; CT-QA-2026-004 remains open for calibration and cumulative process-memory risk remains under monitoring
+> - **Repository baseline:** `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`
+> - **Last repository reconciliation:** 21 August 2026
+> - **Production-verification status:** Commit `b3550c0` is live on the temporary Standard instance; two natural runs strongly replicated reduced short-content scan RSS expansion with `batch_size(250)`, which is provisionally retained, while `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `5e8f0ef411b2ca63b454620b333a635d7c5057c5`
-- **Latest baseline commit:** `Add bounded shadow event-anchor evidence`
+- **Current reconciled HEAD:** `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`
+- **Latest baseline commit:** `Limit short-content cursor batches`
 
-This is the repository and production baseline reconciled on 15 August 2026, not
+This is the repository and production baseline reconciled on 21 August 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -294,16 +294,19 @@ deliberately induced; the natural run verifies normal-path compatibility.
 
 Highest-priority unresolved or monitoring items are:
 
-- **Medium:** duplicate-cleanup memory is structurally and materially improved by
-  `49e5fe4`, `c06c837` and `cd3f093`, with 13 phase markers now isolating cleanup
-  intervals. The `1811430` string-allocation change was semantically safe but its
-  first natural comparison was similar (+28.5 MB versus +26.0 MB). Broader
-  cumulative Render memory/OOM stability remains under monitoring. The 13 August
-  18:00 observation was worse than recent runs (130.7→305.5 MB current RSS,
-  +174.8 MB net). The 15 August 12:00 event-anchor verification completed at
-  129.8→291.9 MB (+162.1 MB) with no observable material feature regression, but
-  retained growth remained material. Neither run alone establishes a trend or a
-  new optimisation target.
+- **High:** `QA-OPS-001` remains **HIGH OPEN — RECURRENT PRODUCTION OOM
+  CONFIRMED**. Cleanup lifecycle and projection changes remain structurally safe,
+  and commit `b3550c0` added `batch_size(250)` only to the projected short-content
+  cursor. Natural runs on instance `zthtp` reduced that isolated RSS interval to
+  +3.9 MB over 4,249 records in 2.68 seconds on 20 August 18:00 and +1.0 MB over
+  4,264 records in 2.65 seconds on 21 August 06:00, versus a supplied pre-batch
+  range of about +26 to +51 MB and mean of about +39.5 MB. Both runs removed zero
+  records, completed normally and showed no material runtime regression, so
+  `batch_size(250)` is a **provisional keep**. This does not resolve allocator/native
+  retention, elevated cumulative RSS or the wider OOM risk. Standard 2 GB remains
+  temporary production-safety headroom. The 21 August Business/Tech-to-visible-
+  pool interval added +57.7 MB and is evidence for a separate review, not approval
+  for a visible-pool change.
 - **Medium:** Editorial Similarity’s numerical three-run observation-count gate is
   satisfied. Two bounded calibration rounds covered 27 labelled pairs and found
   overlapping positive/negative score ranges plus four false positives from the
@@ -365,7 +368,8 @@ Still pending:
 ### Track 2 — Production observation
 
 - observe normal scheduler runs only;
-- capture all thirteen article-generation memory markers;
+- capture all fifteen article-generation memory markers, including both helper-
+  return boundaries and bounded Python-heap diagnostics;
 - continue post-run stability monitoring after the duplicate-cleanup lifecycle,
   projected-scan and observability improvements; first duplicate Stage 1,
   visible-pool work, short-content scan variability and high-start process memory
@@ -381,11 +385,11 @@ No manual import should be triggered solely to accelerate observation.
 
 ## 12. Immediate approved priorities
 
-1. Continue natural article-generation memory observation before selecting another
-   implementation target; the 15 August 12:00 run showed 129.8→291.9 MB current
-   RSS (+162.1 MB) with no observable material event-anchor memory regression.
-2. Continue broader Render memory monitoring; do not infer that `1811430` reduced
-   RSS from its first similar natural-run comparison.
+1. Keep the isolated short-content `batch_size(250)` change provisionally and
+   continue cumulative memory monitoring; its two-run phase improvement does not
+   close `QA-OPS-001`.
+2. Review the visible-pool lifecycle separately using current heap/RSS evidence;
+   do not combine another memory change with the batching decision.
 3. Complete Weekly Roundup QA using normal scheduled evidence.
 4. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
