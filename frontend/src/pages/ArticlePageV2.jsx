@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
 import NewsHeader from "../components/NewsHeader";
@@ -19,10 +19,15 @@ import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import SectionHeader from "../components/homepage/SectionHeader";
 import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import SponsoredPlacement from "../components/SponsoredPlacement";
+import ContextualRecommendationCard from "../components/monetisation/ContextualRecommendationCard";
 import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
 
 import { FEATURES } from "../config/features";
 import { monetisationTools } from "../config/monetisationTools";
+import {
+  normaliseContextualCategory,
+  selectContextualRecommendation,
+} from "../config/contextualRecommendations";
 import { trackEvent } from "../utils/trackEvent";
 import { loadPublicArticle } from "../services/articleViewTracking";
 
@@ -721,6 +726,7 @@ const GuidesInlinePromo = ({ guides, pillarLabel, contextToolType, articleId, sl
 
 export default function ArticlePageV2({ categories }) {
   const { articleId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [isMobileView, setIsMobileView] = useState(
     typeof window !== "undefined" ? window.innerWidth < 640 : false
@@ -943,6 +949,15 @@ export default function ArticlePageV2({ categories }) {
     const picked = pickGuidesForPillar(guides, pillarLabel, contextToolType);
     return picked.some((item) => String(item?.slug || "").trim() !== "council-tax-bands-cheshire");
   }, [guides, pillarLabel, contextToolType]);
+
+  const contextualRecommendation = useMemo(
+    () => selectContextualRecommendation(article),
+    [article]
+  );
+  const contextualArticleCategory = useMemo(
+    () => normaliseContextualCategory(article?.category),
+    [article?.category]
+  );
 
 
 
@@ -1278,11 +1293,20 @@ export default function ArticlePageV2({ categories }) {
               </div>
 )}
 
+              {contextualRecommendation && (!isMobileView || !mobileRemainingContent || articleExpanded) && (
+                <ContextualRecommendationCard
+                  recommendation={contextualRecommendation}
+                  articleId={articleId}
+                  articleCategory={contextualArticleCategory}
+                  navigationKey={location.key}
+                />
+              )}
+
               <div className="sm:hidden mt-6">
                 <SponsoredPlacement placement="article_mobile" compact />
               </div>
 
-              {shouldShowArticleGuidePromo && (
+              {shouldShowArticleGuidePromo && !contextualRecommendation && (
               <section className="mt-8 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-4 md:p-5 lg:hidden">
                 <div className="mb-3">
                   <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
@@ -1429,6 +1453,7 @@ export default function ArticlePageV2({ categories }) {
                   />
                 </div>
 
+                {!contextualRecommendation && (
                 <section className="rounded-xl border border-[#E6E1D8] dark:border-gray-800 bg-white/80 dark:bg-gray-950/40 p-4">
                   <div className="mb-3">
                     <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-sky-800 dark:text-sky-300">
@@ -1462,6 +1487,7 @@ export default function ArticlePageV2({ categories }) {
                   </div>
                   <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
                 </section>
+                )}
 
 
                 {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}                {/* Latest (fills sidebar height, compact) */}
