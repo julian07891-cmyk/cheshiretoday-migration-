@@ -17,7 +17,6 @@ import { SubscribeInlineBanner } from "../components/JobsWidget";
 import CompactArticleCard from "../components/CompactArticleCard";
 import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
 import SectionHeader from "../components/homepage/SectionHeader";
-import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import SponsoredPlacement from "../components/SponsoredPlacement";
 import ContextualRecommendationCard from "../components/monetisation/ContextualRecommendationCard";
 import { filterEditorialPool, getPrimaryPillar } from "../utils/editorialPolicy";
@@ -807,6 +806,7 @@ export default function ArticlePageV2({ categories }) {
 
   const [article, setArticle] = useState(null);
   const [guides, setGuides] = useState([]);
+  const [desktopSponsorAvailable, setDesktopSponsorAvailable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -1302,46 +1302,21 @@ export default function ArticlePageV2({ categories }) {
                 />
               )}
 
-              <div className="sm:hidden mt-6">
-                <SponsoredPlacement placement="article_mobile" compact />
-              </div>
-
-              {shouldShowArticleGuidePromo && !contextualRecommendation && (
-              <section className="mt-8 rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-white/70 dark:bg-gray-950/40 p-4 md:p-5 lg:hidden">
-                <div className="mb-3">
-                  <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-sky-800 dark:text-sky-300">
-                    {getGuideSectionHeading(contextToolType, pillarLabel)}
-                  </div>
-                  <div className="mt-1 flex items-center justify-between gap-3">
-                    {primaryGuideHref ? (
-                      <a
-                        href={primaryGuideHref}
-                        className="text-lg font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
-                      >
-                        Useful guides
-                      </a>
-                    ) : (
-                      <h2 className="text-lg font-black tracking-tight text-slate-950 dark:text-white">
-                        Useful guides
-                      </h2>
-                    )}
-                    {primaryGuideHref && (
-                      <a
-                        href={primaryGuideHref}
-                        className="shrink-0 text-xs font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
-                      >
-                        Open guide →
-                      </a>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-gray-300">
-                    Further reading and practical resources linked to this topic.
-                  </p>
+              {!contextualRecommendation && (!isMobileView || !mobileRemainingContent || articleExpanded) && (
+                <div className="sm:hidden mt-6">
+                  <SponsoredPlacement
+                    placement="article_mobile"
+                    compact
+                    suppressFallback
+                  />
                 </div>
-                <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
-                
-              {/* GuidePromoBlock intentionally disabled for controlled non-Amazon rollout */}
-              </section>
+              )}
+
+              {(!isMobileView || !mobileRemainingContent || articleExpanded) &&
+                (isMobileView || desktopSponsorAvailable === true) && (
+                <div className="mt-10">
+                  <SubscribeInlineBanner />
+                </div>
               )}
 
               {/* More stories — match homepage layout */}
@@ -1426,18 +1401,10 @@ export default function ArticlePageV2({ categories }) {
                 </section>
               )}
 
-              <div className="mt-10">
-                <SubscribeInlineBanner />
-              </div>
-                        
-
-
             </article>
 
             <aside className="hidden lg:block lg:col-span-4 space-y-3 [overflow-anchor:none]">
               <div className="space-y-6 md:space-y-8">
-                <SponsoredPlacement placement="article_sidebar" prominent />
-
                 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold">More in {pillarLabel}</h3>
@@ -1453,41 +1420,12 @@ export default function ArticlePageV2({ categories }) {
                   />
                 </div>
 
-                {!contextualRecommendation && (
-                <section className="rounded-xl border border-[#E6E1D8] dark:border-gray-800 bg-white/80 dark:bg-gray-950/40 p-4">
-                  <div className="mb-3">
-                    <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-sky-800 dark:text-sky-300">
-                      {getGuideSectionHeading(contextToolType, pillarLabel)}
-                    </div>
-                    <div className="mt-1 flex items-center justify-between gap-3">
-                      {primaryGuideHref ? (
-                        <a
-                          href={primaryGuideHref}
-                          className="text-sm font-black tracking-tight text-slate-950 hover:underline underline-offset-4 dark:text-white"
-                        >
-                          Useful guides
-                        </a>
-                      ) : (
-                        <h3 className="text-sm font-black tracking-tight text-slate-950 dark:text-white">
-                          Useful guides
-                        </h3>
-                      )}
-                      {primaryGuideHref && (
-                        <a
-                          href={primaryGuideHref}
-                          className="shrink-0 text-[11px] font-semibold text-sky-800 hover:underline underline-offset-4 dark:text-sky-300"
-                        >
-                          Open guide →
-                        </a>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-gray-300">
-                      Further reading and practical resources linked to this topic.
-                    </p>
-                  </div>
-                  <GuidesInlinePromo guides={guides} pillarLabel={pillarLabel} contextToolType={contextToolType} articleId={articleId} compact />
-                </section>
-                )}
+                <SponsoredPlacement
+                  placement="article_sidebar"
+                  prominent
+                  suppressFallback
+                  onAvailabilityChange={setDesktopSponsorAvailable}
+                />
 
 
                 {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}                {/* Latest (fills sidebar height, compact) */}
@@ -1558,19 +1496,11 @@ export default function ArticlePageV2({ categories }) {
                 )}
 
 
-                {/* Sponsored (Amazon affiliate) */}
-                <AffiliateWidgetSidebar 
-                  category={
-                    pillarLabel?.toLowerCase().includes("ai") ? "tech" :
-                    pillarLabel?.toLowerCase().includes("business") ? "business" :
-                    pillarLabel?.toLowerCase().includes("finance") ? "business" :
-                    "default"
-                  }
-                />
-
-<div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                  <SubscribeSection compact />
-                </div>
+                {!isMobileView && desktopSponsorAvailable === false && (
+                  <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
+                    <SubscribeSection compact />
+                  </div>
+                )}
                 </div>
             </aside>
           </div>

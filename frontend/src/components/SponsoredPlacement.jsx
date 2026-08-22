@@ -9,7 +9,13 @@ const fallbackCopy = {
   cta: "View advertising options",
 };
 
-const SponsoredPlacement = ({ placement = "article_sidebar", compact = false, prominent = false }) => {
+const SponsoredPlacement = ({
+  placement = "article_sidebar",
+  compact = false,
+  prominent = false,
+  suppressFallback = false,
+  onAvailabilityChange,
+}) => {
   const [ad, setAd] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const impressionTrackedRef = useRef(null);
@@ -106,6 +112,12 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false, pr
     !isPaidPlacement && usesProminentSidebarStyle;
 
   useEffect(() => {
+    if (loaded && typeof onAvailabilityChange === "function") {
+      onAvailabilityChange(isPaidPlacement);
+    }
+  }, [isPaidPlacement, loaded, onAvailabilityChange]);
+
+  useEffect(() => {
     if (!isPaidPlacement || ad?.preview || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
 
     impressionTrackedRef.current = ad.slug;
@@ -115,7 +127,11 @@ const SponsoredPlacement = ({ placement = "article_sidebar", compact = false, pr
     }).catch(() => {});
   }, [isPaidPlacement, ad?.slug]);
 
-  if (!loaded && !compact) {
+  if (!loaded && (!compact || suppressFallback)) {
+    return null;
+  }
+
+  if (loaded && !isPaidPlacement && suppressFallback) {
     return null;
   }
 
