@@ -37,7 +37,18 @@ const renderPlacement = async (props = {}, placements = []) => {
   });
 };
 
-test("article placements can suppress the house fallback without changing availability semantics", async () => {
+const houseGuide = {
+  slug: "house-guide",
+  campaign_id: "ct_house_guides_affiliate",
+  package_tier: "house_affiliate",
+  sponsor_name: "Cheshire Today Guides",
+  title: "AI tools for small businesses",
+  description: "A house guide campaign.",
+  cta_text: "View guide",
+  target_url: "/guides/ai-tools-small-business",
+};
+
+test("article placements suppress no-inventory fallback and report unavailable", async () => {
   const onAvailabilityChange = jest.fn();
   await renderPlacement(
     {
@@ -50,6 +61,22 @@ test("article placements can suppress the house fallback without changing availa
 
   expect(container.textContent).toBe("");
   expect(onAvailabilityChange).toHaveBeenLastCalledWith(false);
+});
+
+test("article placements suppress database-backed house-guide inventory", async () => {
+  const onAvailabilityChange = jest.fn();
+  await renderPlacement(
+    {
+      placement: "article_sidebar",
+      suppressFallback: true,
+      onAvailabilityChange,
+    },
+    [houseGuide]
+  );
+
+  expect(container.textContent).toBe("");
+  expect(onAvailabilityChange).toHaveBeenLastCalledWith(false);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
 test("compact article placement does not flash the house fallback while loading", async () => {
@@ -73,6 +100,13 @@ test("the existing homepage house fallback remains the default", async () => {
 
   expect(container.textContent).toContain("Reach Cheshire readers from £49/month");
   expect(container.textContent).toContain("View advertising options");
+});
+
+test("house-guide inventory still renders when fallback suppression is disabled", async () => {
+  await renderPlacement({ placement: "homepage_sidebar" }, [houseGuide]);
+
+  expect(container.textContent).toContain("Affiliate guide");
+  expect(container.textContent).toContain("AI tools for small businesses");
 });
 
 test("genuine sponsor inventory still renders and reports availability", async () => {

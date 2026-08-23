@@ -95,6 +95,7 @@ const SponsoredPlacement = ({
     String(ad?.package_tier || "").toLowerCase().includes("house") ||
     String(ad?.campaign_id || "").toLowerCase().includes("ct_house")
   );
+  const isAvailablePlacement = isPaidPlacement && !(suppressFallback && isHouseGuide);
   const placementLabel = isPaidPlacement ? (isHouseGuide ? "Affiliate guide" : "Sponsored") : fallbackCopy.eyebrow;
   const targetUrl = isPaidPlacement ? ad.target_url : "/advertise";
   const title = isPaidPlacement ? ad.title : fallbackCopy.title;
@@ -113,25 +114,25 @@ const SponsoredPlacement = ({
 
   useEffect(() => {
     if (loaded && typeof onAvailabilityChange === "function") {
-      onAvailabilityChange(isPaidPlacement);
+      onAvailabilityChange(isAvailablePlacement);
     }
-  }, [isPaidPlacement, loaded, onAvailabilityChange]);
+  }, [isAvailablePlacement, loaded, onAvailabilityChange]);
 
   useEffect(() => {
-    if (!isPaidPlacement || ad?.preview || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
+    if (!isAvailablePlacement || ad?.preview || !ad?.slug || impressionTrackedRef.current === ad.slug) return;
 
     impressionTrackedRef.current = ad.slug;
     const api = getApiUrl().replace(/\/$/, "");
     fetch(`${api}/api/sponsored-placements/${encodeURIComponent(ad.slug)}/impression`, {
       method: "POST"
     }).catch(() => {});
-  }, [isPaidPlacement, ad?.slug]);
+  }, [isAvailablePlacement, ad?.preview, ad?.slug]);
 
   if (!loaded && (!compact || suppressFallback)) {
     return null;
   }
 
-  if (loaded && !isPaidPlacement && suppressFallback) {
+  if (loaded && suppressFallback && (!isPaidPlacement || isHouseGuide)) {
     return null;
   }
 

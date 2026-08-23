@@ -6,7 +6,7 @@ import ArticlePageV2 from "./ArticlePageV2";
 
 const mockLoadPublicArticle = jest.fn();
 const mockSelectContextualRecommendation = jest.fn();
-let mockSponsorAvailable = false;
+let mockSponsorKind = "none";
 
 jest.mock("react-helmet-async", () => ({ Helmet: ({ children }) => <>{children}</> }));
 jest.mock("../services/articleViewTracking", () => ({
@@ -32,13 +32,16 @@ jest.mock("../components/monetisation/ContextualRecommendationCard", () => ({ re
 ));
 jest.mock("../components/SponsoredPlacement", () => function MockSponsoredPlacement(props) {
   const ReactModule = require("react");
+  const available = mockSponsorKind === "genuine" || (
+    mockSponsorKind === "house" && !props.suppressFallback
+  );
   ReactModule.useEffect(() => {
     if (props.placement === "article_sidebar") {
-      props.onAvailabilityChange?.(mockSponsorAvailable);
+      props.onAvailabilityChange?.(available);
     }
-  }, [props.onAvailabilityChange, props.placement]);
+  }, [available, props.onAvailabilityChange, props.placement]);
 
-  if (!mockSponsorAvailable && props.suppressFallback) return null;
+  if (!available && props.suppressFallback) return null;
   return <div data-testid={`sponsor-${props.placement}`}>Genuine sponsor</div>;
 });
 jest.mock("../components/ui/toaster", () => ({ Toaster: () => null }));
@@ -65,7 +68,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  mockSponsorAvailable = false;
+  mockSponsorKind = "none";
   mockSelectContextualRecommendation.mockReturnValue(null);
   mockLoadPublicArticle.mockResolvedValue(article);
   global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
@@ -95,7 +98,7 @@ const renderArticle = async (width) => {
 };
 
 test("desktop keeps a genuine sponsor after related editorial content and one inline newsletter", async () => {
-  mockSponsorAvailable = true;
+  mockSponsorKind = "genuine";
   await renderArticle(1440);
 
   const related = container.querySelector('[data-testid="related-articles"]');
@@ -118,7 +121,7 @@ test("desktop without sponsor uses one sidebar newsletter and no house fallback"
 });
 
 test("mobile contextual recommendation suppresses sponsor and keeps one newsletter after full content", async () => {
-  mockSponsorAvailable = true;
+  mockSponsorKind = "genuine";
   mockSelectContextualRecommendation.mockReturnValue({ card_id: "accounting-card" });
   await renderArticle(390);
 
@@ -138,7 +141,7 @@ test("mobile contextual recommendation suppresses sponsor and keeps one newslett
 });
 
 test("mobile renders a genuine sponsor only when contextual targeting has no match", async () => {
-  mockSponsorAvailable = true;
+  mockSponsorKind = "genuine";
   await renderArticle(390);
 
   const readMore = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("Read more"));
@@ -147,6 +150,20 @@ test("mobile renders a genuine sponsor only when contextual targeting has no mat
   });
 
   expect(container.querySelectorAll('[data-testid="sponsor-article_mobile"]')).toHaveLength(1);
+  expect(container.querySelector('[data-testid="contextual-card"]')).toBeNull();
+  expect(container.querySelectorAll('[data-testid="inline-newsletter"]')).toHaveLength(1);
+});
+
+test("mobile house-guide inventory renders no commercial card and keeps one newsletter", async () => {
+  mockSponsorKind = "house";
+  await renderArticle(390);
+
+  const readMore = Array.from(container.querySelectorAll("button")).find((button) => button.textContent.includes("Read more"));
+  await act(async () => {
+    readMore.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+
+  expect(container.querySelector('[data-testid="sponsor-article_mobile"]')).toBeNull();
   expect(container.querySelector('[data-testid="contextual-card"]')).toBeNull();
   expect(container.querySelectorAll('[data-testid="inline-newsletter"]')).toHaveLength(1);
 });
