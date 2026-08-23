@@ -258,6 +258,21 @@ Payment does not automatically publish an advert. Commercial presentation must
 remain clearly labelled, relevant and non-intrusive. No revenue or conversion
 performance is claimed here.
 
+Commits `89916c4` (`Reduce article monetisation clutter`) and `5256bd7`
+(`Suppress article house-guide sponsor fallback`) were deployed and
+production-verified on desktop and mobile through Render deployment
+`dep-da5bvarl550s7385krgg`, instance `f594w`. Normal article pages no longer
+show generic Useful Guides, Amazon Top Picks or article house-guide/
+house-affiliate fallback placements; genuine paid/local sponsor capability and
+one article-specific newsletter invitation remain available. The contextual
+recommendation system and homepage monetisation are unchanged. Verification
+found no empty-gap or layout regression, health returned HTTP 200, and no OOM,
+restart or material 5xx was observed. **ARTICLE MONETISATION RESTRAINT
+PRODUCTION VERIFIED.** This is visual/placement evidence only: it does not show
+improved monetisation performance, CTR or revenue, does not fully validate
+contextual recommendations, and did not dynamically exercise paid sponsor
+delivery.
+
 Dynamic affiliate inventory and sponsor-impression bot filtering remain open or
 deferred roadmap work, not completed operating capabilities.
 
