@@ -180,6 +180,22 @@ displayed in `Europe/London`. Desktop and mobile verification passed. This was
 a frontend-only Admin UX improvement; the existing API, sorting, Manual Review
 actions and editorial behaviour are unchanged.
 
+Commits `075214b` (`Stabilise Manual Review ordering`) and `fa9ffe9` (`Add
+Manual Review load more`) were deployed through Render deployment
+`dep-da6ag1dg1s2s739anklg` on Standard instance `9rtcd` (2 GB RAM / 1 CPU).
+Production verification observed a live total of 354: the initial state showed
+100 of 354, authenticated GET-only pages at `skip=100`, `skip=200` and
+`skip=300` appended successfully, and the final state showed 354 of 354. All
+354 cards had unique IDs, with no duplicate across page boundaries; API order
+was preserved without a frontend re-sort. Published and Added to review dates,
+Editorial assessment, Source, Edit, Create OpenAI Draft and Archive remained
+present, and `Select loaded` wording was verified. Desktop 1440×900 and mobile
+390×844 checks passed. No mutation was invoked; bulk-action and Force
+Live/restoration paths were not dynamically exercised, and transactional
+snapshot consistency during concurrent mutations is not claimed. Health
+returned HTTP 200, with no OOM, restart or material 5xx observed. **MANUAL
+REVIEW LOAD MORE PRODUCTION VERIFIED.**
+
 See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md).
 
