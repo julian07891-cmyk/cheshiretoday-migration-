@@ -19015,6 +19015,10 @@ async def _save_email_send_opportunities(
     tracking_id: str,
     accepted_recipients: list,
     provider: str,
+    *,
+    date_key: str = None,
+    weekly_roundup_batch_slot: int = None,
+    batch_key: str = None,
 ):
     """Store privacy-preserving recipient hashes for a successfully accepted newsletter send."""
     import hashlib
@@ -19049,6 +19053,12 @@ async def _save_email_send_opportunities(
         "accepted_count": len(recipient_hashes),
         "recipient_hashes": recipient_hashes,
     }
+    if date_key:
+        ledger_doc["date_key"] = date_key
+    if weekly_roundup_batch_slot is not None:
+        ledger_doc["weekly_roundup_batch_slot"] = int(weekly_roundup_batch_slot)
+    if batch_key:
+        ledger_doc["batch_key"] = batch_key
 
     await db.email_send_opportunities.update_one(
         {"tracking_id": tracking_id},
@@ -19061,6 +19071,89 @@ async def _save_email_send_opportunities(
         f"tracking={tracking_id} accepted={len(recipient_hashes)}"
     )
     return len(recipient_hashes)
+
+
+WEEKLY_ROUNDUP_DIGEST_TIME = "WeeklyRoundup"
+WEEKLY_ROUNDUP_DIGEST_INDEX = "digest_time_date_key_weekly_slot_unique_v1"
+weekly_roundup_digest_index_ready = False
+
+
+def _weekly_roundup_digest_identity(date_key: str, batch_slot: int):
+    return {
+        "digest_time": WEEKLY_ROUNDUP_DIGEST_TIME,
+        "date_key": date_key,
+        "weekly_roundup_batch_slot": int(batch_slot),
+    }
+
+
+async def _claim_weekly_roundup_batch(
+    date_key: str,
+    batch_slot: int,
+    instance_id: str,
+    claimed_at: datetime,
+):
+    """Atomically claim one Weekly Roundup slot or return its blocking state."""
+    identity = _weekly_roundup_digest_identity(date_key, batch_slot)
+    claim_doc = {
+        **identity,
+        "type": WEEKLY_ROUNDUP_DIGEST_TIME,
+        "weekly_roundup_batch_label": f"batch_{int(batch_slot)}",
+        "status": "claimed",
+        "instance_id": instance_id,
+        "claimed_at": claimed_at,
+        "subscribers_count": 0,
+        "success_count": 0,
+        "accepted_count": 0,
+    }
+
+    try:
+        result = await db.digest_log.insert_one(claim_doc)
+        claim_doc["_id"] = result.inserted_id
+        return claim_doc, "claimed"
+    except DuplicateKeyError:
+        existing = await db.digest_log.find_one(identity)
+        if not existing:
+            return None, "identity_conflict"
+
+        existing_status = existing.get("status")
+        failed_without_acceptance = (
+            existing_status == "failed"
+            and int(existing.get("success_count") or 0) == 0
+            and int(existing.get("accepted_count") or 0) == 0
+        )
+        if not failed_without_acceptance:
+            return None, existing_status or "historical_completed"
+
+        reclaimed = await db.digest_log.find_one_and_update(
+            {
+                **identity,
+                "status": "failed",
+                "success_count": {"$in": [0, None]},
+                "accepted_count": {"$in": [0, None]},
+            },
+            {
+                "$set": {
+                    "status": "claimed",
+                    "instance_id": instance_id,
+                    "claimed_at": claimed_at,
+                    "subscribers_count": 0,
+                    "success_count": 0,
+                    "accepted_count": 0,
+                },
+                "$unset": {
+                    "error": "",
+                    "error_type": "",
+                    "failed_at": "",
+                    "completed_at": "",
+                    "sent_at": "",
+                    "tracking_id": "",
+                },
+            },
+            return_document=True,
+        )
+        if reclaimed and reclaimed.get("instance_id") == instance_id:
+            return reclaimed, "reclaimed"
+        return None, "claim_race_lost"
 
 
 async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
@@ -19636,6 +19729,10 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
     from datetime import timedelta
     
     try:
+        if not weekly_roundup_digest_index_ready:
+            logger.error("Weekly Roundup skipped because slot-aware digest idempotence is not ready")
+            return
+
         now = datetime.now(timezone.utc)
         date_key = now.strftime('%Y%m%d')
         roundup_batch_slot = max(1, int(batch_slot or 1))
@@ -19643,17 +19740,6 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         # DISTRIBUTED LOCK - Same pattern as daily brief, but per Sunday batch slot.
         lock_key = f"weekly_roundup_{date_key}_batch_{roundup_batch_slot}"
         lock_id = str(uuid4())
-        
-        # Check if this specific Sunday batch slot was already sent.
-        recent_digest = await db.digest_log.find_one({
-            "date_key": date_key,
-            "digest_time": "WeeklyRoundup",
-            "weekly_roundup_batch_slot": roundup_batch_slot
-        })
-        
-        if recent_digest:
-            logger.info(f"⏭️ Weekly Roundup batch {roundup_batch_slot} already sent at {recent_digest.get('sent_at')}, skipping...")
-            return
         
         # Acquire lock
         await db.scheduler_locks.update_one(
@@ -19676,6 +19762,20 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         
         if lock_result is None or lock_result.get("lock_id") != lock_id:
             logger.info("⏭️ Another server acquired lock for Weekly Roundup, skipping...")
+            return
+
+        claim, claim_result = await _claim_weekly_roundup_batch(
+            date_key,
+            roundup_batch_slot,
+            lock_id,
+            now,
+        )
+        if not claim:
+            logger.info(
+                f"⏭️ Weekly Roundup batch {roundup_batch_slot} is not retryable "
+                f"(state={claim_result}), skipping..."
+            )
+            await db.scheduler_locks.delete_one({"job": lock_key, "lock_id": lock_id})
             return
         
         logger.info("📰 Proceeding with Weekly Roundup email send...")
@@ -19707,6 +19807,14 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         
         if not subscribers:
             logger.info("No subscribers found for Weekly Roundup - skipping")
+            await db.digest_log.update_one(
+                {"_id": claim["_id"], "instance_id": lock_id, "status": "claimed"},
+                {"$set": {
+                    "status": "failed",
+                    "failed_at": datetime.now(timezone.utc),
+                    "error": "No eligible subscribers were found before provider contact",
+                }},
+            )
             await db.scheduler_locks.delete_one({"job": lock_key})
             return
         
@@ -19785,6 +19893,14 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 f"⏭️ Weekly Roundup batch {roundup_batch_slot} has no remaining priority/engaged recipients "
                 f"(engaged_pool={rotating_total}, engaged_start={engaged_start})"
             )
+            await db.digest_log.update_one(
+                {"_id": claim["_id"], "instance_id": lock_id, "status": "claimed"},
+                {"$set": {
+                    "status": "failed",
+                    "failed_at": datetime.now(timezone.utc),
+                    "error": "No recipients remained for this batch before provider contact",
+                }},
+            )
             await db.scheduler_locks.delete_one({"job": lock_key})
             return
 
@@ -19823,6 +19939,14 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         
         if not big_read:
             logger.warning("No articles found for Weekly Roundup")
+            await db.digest_log.update_one(
+                {"_id": claim["_id"], "instance_id": lock_id, "status": "claimed"},
+                {"$set": {
+                    "status": "failed",
+                    "failed_at": datetime.now(timezone.utc),
+                    "error": "No eligible articles were found before provider contact",
+                }},
+            )
             await db.scheduler_locks.delete_one({"job": lock_key})
             return
         
@@ -19854,14 +19978,51 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 if len(icymi_articles) >= 5:
                     break
         
-        # Send the Weekly Roundup
-        success_count = email_service.send_weekly_roundup(
-            to_emails=subscriber_emails,
-            big_read=big_read,
-            icymi_articles=icymi_articles,
-            property_of_week=None,  # TODO: Add property integration
-            food_review=None  # TODO: Add food review integration
+        sending_at = datetime.now(timezone.utc)
+        sending_result = await db.digest_log.update_one(
+            {"_id": claim["_id"], "instance_id": lock_id, "status": "claimed"},
+            {"$set": {
+                "status": "sending",
+                "sending_at": sending_at,
+                "subscribers_count": len(subscriber_emails),
+                "articles_count": 1 + len(icymi_articles),
+            }},
         )
+        if getattr(sending_result, "matched_count", 1) != 1:
+            logger.error(
+                f"Weekly Roundup batch {roundup_batch_slot} lost durable claim ownership before provider contact"
+            )
+            await db.scheduler_locks.delete_one({"job": lock_key, "lock_id": lock_id})
+            return
+
+        # Send the Weekly Roundup only after the durable slot claim is in sending state.
+        try:
+            success_count = email_service.send_weekly_roundup(
+                to_emails=subscriber_emails,
+                big_read=big_read,
+                icymi_articles=icymi_articles,
+                property_of_week=None,  # TODO: Add property integration
+                food_review=None  # TODO: Add food review integration
+            )
+        except Exception as provider_error:
+            provider_error_type = type(provider_error).__name__
+            logger.error(
+                f"Weekly Roundup provider outcome is ambiguous ({provider_error_type})"
+            )
+            try:
+                await db.digest_log.update_one(
+                    {"_id": claim["_id"], "instance_id": lock_id, "status": "sending"},
+                    {"$set": {
+                        "status": "ambiguous",
+                        "completed_at": datetime.now(timezone.utc),
+                        "error": "Provider call raised before outcome could be classified",
+                        "error_type": provider_error_type,
+                    }},
+                )
+            except Exception as ambiguity_error:
+                logger.error(f"Could not persist ambiguous Weekly Roundup outcome: {ambiguity_error}")
+            await db.scheduler_locks.delete_one({"job": lock_key, "lock_id": lock_id})
+            return
         
         # Handle tuple return (success_count, tracking_id)
         if isinstance(success_count, tuple):
@@ -19870,23 +20031,56 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             tracking_id = None
         
         logger.info(f"✅ Weekly Roundup sent to {success_count}/{len(subscriber_emails)} subscribers")
-        
-        # Log the send
+
+        success_count = int(success_count or 0)
+        if success_count >= len(subscriber_emails):
+            completion_status = "sent"
+        elif success_count > 0:
+            completion_status = "partial"
+        else:
+            completion_status = "failed"
+
+        completion_time = datetime.now(timezone.utc)
+        completion_fields = {
+            "status": completion_status,
+            "sent_at": completion_time,
+            "completed_at": completion_time,
+            "articles_count": 1 + len(icymi_articles),
+            "subscribers_count": len(subscriber_emails),
+            "success_count": success_count,
+            "accepted_count": success_count,
+            "tracking_id": tracking_id,
+        }
+        if completion_status == "failed":
+            completion_fields["failed_at"] = completion_time
+            completion_fields["error"] = "Provider reported zero accepted recipients"
+
         try:
-            await db.digest_log.insert_one({
-                "sent_at": datetime.now(timezone.utc),
-                "digest_time": "WeeklyRoundup",
-                "date_key": date_key,
-                "type": "WeeklyRoundup",
-                "weekly_roundup_batch_slot": roundup_batch_slot,
-                "weekly_roundup_batch_label": f"batch_{roundup_batch_slot}",
-                "articles_count": 1 + len(icymi_articles),
-                "subscribers_count": len(subscriber_emails),
-                "success_count": success_count,
-                "tracking_id": tracking_id  # For email analytics
-            })
+            completion_result = await db.digest_log.update_one(
+                {"_id": claim["_id"], "instance_id": lock_id, "status": "sending"},
+                {"$set": completion_fields},
+            )
+            if getattr(completion_result, "matched_count", 1) != 1:
+                raise RuntimeError("durable Weekly Roundup completion ownership was lost")
         except Exception as log_error:
-            logger.warning(f"Could not log weekly roundup send: {log_error}")
+            logger.error(f"Could not persist Weekly Roundup completion: {log_error}")
+            try:
+                await db.digest_log.update_one(
+                    {"_id": claim["_id"], "instance_id": lock_id, "status": "sending"},
+                    {"$set": {
+                        "status": "ambiguous",
+                        "completed_at": completion_time,
+                        "success_count": success_count,
+                        "accepted_count": success_count,
+                        "tracking_id": tracking_id,
+                        "error": "Provider returned but durable completion could not be persisted",
+                        "error_type": type(log_error).__name__,
+                    }},
+                )
+            except Exception as ambiguity_error:
+                logger.error(f"Could not persist ambiguous Weekly Roundup completion: {ambiguity_error}")
+            await db.scheduler_locks.delete_one({"job": lock_key, "lock_id": lock_id})
+            return
         
         if success_count > 0:
             accepted_recipients = list(
@@ -19902,6 +20096,9 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 tracking_id,
                 accepted_recipients,
                 weekly_provider,
+                date_key=date_key,
+                weekly_roundup_batch_slot=roundup_batch_slot,
+                batch_key=f"WeeklyRoundup:{date_key}:batch:{roundup_batch_slot}",
             )
             if ledger_count != int(success_count or 0):
                 logger.warning(
@@ -19921,7 +20118,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             logger.warning("Weekly Roundup batch cursor not advanced because success_count was 0")
 
         # Release lock
-        await db.scheduler_locks.delete_one({"job": lock_key})
+        await db.scheduler_locks.delete_one({"job": lock_key, "lock_id": lock_id})
         
     except Exception as e:
         logger.error(f"Error sending Weekly Roundup: {str(e)}")
@@ -20092,6 +20289,129 @@ async def auto_clean_duplicate_articles():
     except Exception as e:
         logger.error(f"Error during auto duplicate article cleanup: {str(e)}")
 
+async def _ensure_digest_log_slot_aware_index():
+    """Migrate digest idempotence to one row per digest/date/Weekly slot."""
+    global weekly_roundup_digest_index_ready
+    weekly_roundup_digest_index_ready = False
+    try:
+        backfill_result = await db.digest_log.update_many(
+            {
+                "digest_time": WEEKLY_ROUNDUP_DIGEST_TIME,
+                "$or": [
+                    {"weekly_roundup_batch_slot": {"$exists": False}},
+                    {"weekly_roundup_batch_slot": None},
+                ],
+            },
+            {"$set": {"weekly_roundup_batch_slot": 1}},
+        )
+        if getattr(backfill_result, "modified_count", 0):
+            logger.info(
+                f"Backfilled {backfill_result.modified_count} historical Weekly Roundup rows to batch slot 1"
+            )
+    except Exception as backfill_error:
+        logger.warning(f"Could not backfill Weekly Roundup batch slots: {backfill_error}")
+        return False
+
+    try:
+        pipeline = [
+            {"$match": {"digest_time": {"$ne": None}, "date_key": {"$ne": None}}},
+            {"$group": {
+                "_id": {
+                    "digest_time": "$digest_time",
+                    "date_key": "$date_key",
+                    "weekly_roundup_batch_slot": "$weekly_roundup_batch_slot",
+                },
+                "count": {"$sum": 1},
+                "docs": {"$push": {"_id": "$_id", "sent_at": "$sent_at", "status": "$status"}},
+            }},
+            {"$match": {"count": {"$gt": 1}}},
+        ]
+        duplicates = await db.digest_log.aggregate(pipeline).to_list(100)
+        for duplicate in duplicates:
+            sorted_docs = sorted(duplicate["docs"], key=lambda value: (
+                0 if value.get("status") == "sent" else 1,
+                value.get("sent_at") or datetime.min.replace(tzinfo=timezone.utc),
+            ))
+            for document in sorted_docs[1:]:
+                await db.digest_log.delete_one({"_id": document["_id"]})
+            logger.info(
+                f"Cleaned up {len(sorted_docs) - 1} duplicate digest_log entries for {duplicate['_id']}"
+            )
+    except Exception as cleanup_error:
+        logger.warning(f"Could not cleanup slot-aware digest_log duplicates: {cleanup_error}")
+        return False
+
+    try:
+        null_count = await db.digest_log.count_documents({
+            "$or": [
+                {"digest_time": None},
+                {"date_key": None},
+                {"digest_time": {"$exists": False}},
+                {"date_key": {"$exists": False}},
+            ]
+        })
+        if null_count > 0:
+            async for document in db.digest_log.find({
+                "$or": [
+                    {"digest_time": None},
+                    {"date_key": None},
+                    {"digest_time": {"$exists": False}},
+                    {"date_key": {"$exists": False}},
+                ]
+            }):
+                await db.digest_log.update_one(
+                    {"_id": document["_id"]},
+                    {"$set": {
+                        "digest_time": document.get("digest_time") or document.get("type") or "Legacy",
+                        "date_key": f"legacy_{str(document['_id'])}",
+                    }},
+                )
+            logger.info(f"Fixed {null_count} digest_log entries with null fields")
+    except Exception as null_fix_error:
+        logger.warning(f"Could not fix null digest_log entries: {null_fix_error}")
+        return False
+
+    try:
+        await db.digest_log.create_index(
+            [
+                ("digest_time", 1),
+                ("date_key", 1),
+                ("weekly_roundup_batch_slot", 1),
+            ],
+            unique=True,
+            sparse=False,
+            background=True,
+            name=WEEKLY_ROUNDUP_DIGEST_INDEX,
+        )
+        logger.info(
+            "✅ Created slot-aware unique index on digest_log "
+            "(digest_time + date_key + weekly_roundup_batch_slot)"
+        )
+    except Exception as index_error:
+        if "already exists" in str(index_error).lower():
+            logger.info("✅ Slot-aware unique index on digest_log already exists")
+        else:
+            logger.warning(f"Could not create slot-aware digest_log index: {index_error}")
+            return False
+
+    old_index_names = (
+        "digest_time_1_date_key_1",
+        "digest_time_date_key_unique_v3",
+        "digest_time_date_key_unique_sparse",
+    )
+    for index_name in old_index_names:
+        try:
+            await db.digest_log.drop_index(index_name)
+            logger.info(f"Dropped old digest_log index: {index_name}")
+        except Exception as drop_error:
+            if "not found" not in str(drop_error).lower():
+                logger.warning(f"Could not drop old digest_log index {index_name}: {drop_error}")
+                return False
+
+    weekly_roundup_digest_index_ready = True
+    return True
+
+
 @app.on_event("startup")
 async def startup_event():
     """Start scheduler and queue background tasks - fast startup for Kubernetes"""
@@ -20127,110 +20447,7 @@ async def startup_event():
         except Exception as cleanup_err:
             logger.warning(f"Could not cleanup scheduler_locks duplicates: {cleanup_err}")
         
-        # ============================================
-        # CLEANUP DUPLICATE DIGEST_LOG ENTRIES (fixes index creation & duplicate emails)
-        # ============================================
-        try:
-            # Find duplicate digest_log entries (same digest_time + date_key)
-            pipeline = [
-                {"$match": {"digest_time": {"$ne": None}, "date_key": {"$ne": None}}},
-                {"$group": {
-                    "_id": {"digest_time": "$digest_time", "date_key": "$date_key"},
-                    "count": {"$sum": 1},
-                    "docs": {"$push": {"_id": "$_id", "sent_at": "$sent_at", "status": "$status"}}
-                }},
-                {"$match": {"count": {"$gt": 1}}}
-            ]
-            duplicates = await db.digest_log.aggregate(pipeline).to_list(100)
-            
-            for dup in duplicates:
-                # Sort by sent_at to keep the earliest, or by status to keep 'sent'
-                sorted_docs = sorted(dup['docs'], key=lambda x: (
-                    0 if x.get('status') == 'sent' else 1,  # Prefer 'sent' status
-                    x.get('sent_at') or datetime.min.replace(tzinfo=timezone.utc)  # Then earliest
-                ))
-                # Delete all except the first (best) one
-                for doc in sorted_docs[1:]:
-                    await db.digest_log.delete_one({"_id": doc['_id']})
-                logger.info(f"Cleaned up {len(sorted_docs)-1} duplicate digest_log entries for {dup['_id']}")
-        except Exception as cleanup_err:
-            logger.warning(f"Could not cleanup digest_log duplicates: {cleanup_err}")
-        
-        # Also clean up entries with null digest_time or date_key (these block non-sparse index)
-        try:
-            null_count = await db.digest_log.count_documents({
-                "$or": [
-                    {"digest_time": None},
-                    {"date_key": None},
-                    {"digest_time": {"$exists": False}},
-                    {"date_key": {"$exists": False}}
-                ]
-            })
-            if null_count > 0:
-                # Update old entries to have unique date_keys based on their _id
-                async for doc in db.digest_log.find({
-                    "$or": [
-                        {"digest_time": None},
-                        {"date_key": None},
-                        {"digest_time": {"$exists": False}},
-                        {"date_key": {"$exists": False}}
-                    ]
-                }):
-                    new_digest_time = doc.get('digest_time') or doc.get('type') or 'Legacy'
-                    new_date_key = f"legacy_{str(doc['_id'])}"
-                    await db.digest_log.update_one(
-                        {"_id": doc['_id']},
-                        {"$set": {"digest_time": new_digest_time, "date_key": new_date_key}}
-                    )
-                logger.info(f"Fixed {null_count} digest_log entries with null fields")
-        except Exception as null_fix_err:
-            logger.warning(f"Could not fix null digest_log entries: {null_fix_err}")
-        
-        # ============================================
-        # DROP OLD SPARSE INDEX AND CREATE NON-SPARSE INDEX
-        # ============================================
-        try:
-            # First try to drop the old sparse index
-            await db.digest_log.drop_index("digest_time_1_date_key_1")
-            logger.info("Dropped old sparse digest_log index")
-        except Exception as drop_err:
-            # Index might not exist, that's fine
-            if "not found" not in str(drop_err).lower():
-                logger.info(f"Could not drop old index (may not exist): {drop_err}")
-        
-        # ============================================
-        # ENSURE UNIQUE INDEX ON DIGEST_LOG
-        # Prevents duplicate digests even if lock fails
-        # ============================================
-        try:
-            # Create compound index: one digest per type per day (NOT sparse for better enforcement)
-            await db.digest_log.create_index(
-                [("digest_time", 1), ("date_key", 1)], 
-                unique=True,
-                sparse=False,  # Non-sparse for stronger enforcement
-                background=True,
-                name="digest_time_date_key_unique_v3"  # New name to avoid conflicts
-            )
-            logger.info("✅ Created unique index on digest_log (digest_time + date_key)")
-        except Exception as idx_error:
-            if "already exists" in str(idx_error).lower():
-                logger.info("✅ Unique index on digest_log already exists")
-            elif "duplicate key" in str(idx_error).lower():
-                # If still failing due to duplicates, try with sparse=True as fallback
-                logger.warning("Duplicates still exist, trying sparse index as fallback...")
-                try:
-                    await db.digest_log.create_index(
-                        [("digest_time", 1), ("date_key", 1)], 
-                        unique=True,
-                        sparse=True,
-                        background=True,
-                        name="digest_time_date_key_unique_sparse"
-                    )
-                    logger.info("✅ Created sparse unique index on digest_log (fallback)")
-                except Exception as sparse_err:
-                    logger.warning(f"Could not create digest_log index (even sparse): {sparse_err}")
-            else:
-                logger.warning(f"Could not create digest_log index: {idx_error}")
+        await _ensure_digest_log_slot_aware_index()
         
         # ============================================
         # CREATE INDEX ON ADMIN_TOKENS FOR DISTRIBUTED AUTH
