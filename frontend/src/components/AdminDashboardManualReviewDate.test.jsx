@@ -175,7 +175,7 @@ describe('Admin Manual Review dates', () => {
       .map(([url]) => String(url))
       .filter((url) => url.includes('/api/admin/articles/manual-review'));
     expect(manualReviewCalls).toEqual([
-      expect.stringContaining('/api/admin/articles/manual-review?limit=100'),
+      expect.stringContaining('/api/admin/articles/manual-review?limit=100&skip=0'),
     ]);
 
     const renderedTitles = Array.from(container.querySelectorAll('[data-testid^="manual-review-card-"] h4'))

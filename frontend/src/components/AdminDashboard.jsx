@@ -53,6 +53,7 @@ const StatCard = memo(({ title, value, icon: Icon, color }) => (
 StatCard.displayName = 'StatCard';
 // Token storage key
 const TOKEN_KEY = 'cheshire_admin_token';
+const MANUAL_REVIEW_PAGE_SIZE = 100;
 const QUICK_ACTION_BUTTON_LAYOUT = 'min-h-12 h-auto px-2 py-2 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm text-center leading-tight whitespace-normal';
 const CANONICAL_NEWSLETTER_MANAGEMENT_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const ADMIN_DATE_FORMATTER = new Intl.DateTimeFormat('en-GB', {
@@ -80,6 +81,18 @@ const formatAdminArticleDate = (values, includeTime = false) => {
       : formattedDate;
   }
   return 'Date unavailable';
+};
+
+const appendUniqueManualReviewArticles = (existingArticles, incomingArticles) => {
+  const seenIds = new Set();
+
+  return [...existingArticles, ...incomingArticles].filter((article) => {
+    const articleId = String(article?.id || '');
+    if (!articleId) return true;
+    if (seenIds.has(articleId)) return false;
+    seenIds.add(articleId);
+    return true;
+  });
 };
 
 const AdminDashboard = ({ onBack }) => {
@@ -181,6 +194,14 @@ const AdminDashboard = ({ onBack }) => {
   const [archivedArticleTotal, setArchivedArticleTotal] = useState(0);
   const [archivedArticlesLoading, setArchivedArticlesLoading] = useState(false);
   const [manualReviewArticles, setManualReviewArticles] = useState([]);
+  const [manualReviewTotal, setManualReviewTotal] = useState(0);
+  const [manualReviewNextOffset, setManualReviewNextOffset] = useState(0);
+  const [manualReviewInitialLoading, setManualReviewInitialLoading] = useState(false);
+  const [manualReviewLoadMoreLoading, setManualReviewLoadMoreLoading] = useState(false);
+  const [manualReviewInitialError, setManualReviewInitialError] = useState('');
+  const [manualReviewLoadMoreError, setManualReviewLoadMoreError] = useState('');
+  const manualReviewRequestInFlightRef = useRef(false);
+  const manualReviewRefreshPendingRef = useRef(false);
   const [articleStats, setArticleStats] = useState(null);
   const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
   const [articlesPage, setArticlesPage] = useState(0);
@@ -1077,18 +1098,83 @@ const AdminDashboard = ({ onBack }) => {
     }
   };
 
-  const fetchManualReviewArticles = async () => {
+  const fetchManualReviewArticles = async ({
+    append = false,
+    offset = 0,
+    queueAfterCurrent = false,
+  } = {}) => {
+    if (manualReviewRequestInFlightRef.current) {
+      if (!append && queueAfterCurrent) {
+        manualReviewRefreshPendingRef.current = true;
+      }
+      return false;
+    }
+
+    manualReviewRequestInFlightRef.current = true;
+    if (append) {
+      setManualReviewLoadMoreLoading(true);
+      setManualReviewLoadMoreError('');
+    } else {
+      setManualReviewInitialLoading(true);
+      setManualReviewInitialError('');
+      setManualReviewLoadMoreError('');
+    }
+
     const authHeaders = getAuthHeaders();
     try {
-      const response = await fetch(`${getApiUrl()}/api/admin/articles/manual-review?limit=100`, { headers: authHeaders });
-      if (response.ok) {
-        const data = await response.json();
-        setManualReviewArticles(data.articles || []);
-      }
+      const params = new URLSearchParams({
+        limit: String(MANUAL_REVIEW_PAGE_SIZE),
+        skip: String(offset),
+      });
+      const response = await fetch(
+        `${getApiUrl()}/api/admin/articles/manual-review?${params.toString()}`,
+        { headers: authHeaders }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not load Manual Review articles');
+
+      const incomingArticles = Array.isArray(data.articles) ? data.articles : [];
+      const responseSkip = Number.isFinite(Number(data.skip)) ? Number(data.skip) : offset;
+
+      setManualReviewArticles(previousArticles => append
+        ? appendUniqueManualReviewArticles(previousArticles, incomingArticles)
+        : appendUniqueManualReviewArticles([], incomingArticles));
+      if (!append) setSelectedManualReviewArticles(new Set());
+      setManualReviewTotal(Number(data.total || 0));
+      setManualReviewNextOffset(responseSkip + incomingArticles.length);
+      setManualReviewInitialError('');
+      setManualReviewLoadMoreError('');
+      return true;
     } catch (error) {
       console.error('Error fetching manual review articles:', error);
+      const message = error.message || 'Could not load Manual Review articles';
+      if (append) {
+        setManualReviewLoadMoreError(message);
+      } else {
+        setManualReviewInitialError(message);
+        toast({
+          title: "❌ Manual Review Load Failed",
+          description: message,
+          variant: "destructive"
+        });
+      }
+      return false;
+    } finally {
+      manualReviewRequestInFlightRef.current = false;
+      setManualReviewInitialLoading(false);
+      setManualReviewLoadMoreLoading(false);
+
+      if (manualReviewRefreshPendingRef.current) {
+        manualReviewRefreshPendingRef.current = false;
+        void fetchManualReviewArticles();
+      }
     }
   };
+
+  const handleLoadMoreManualReview = () => fetchManualReviewArticles({
+    append: true,
+    offset: manualReviewNextOffset,
+  });
 
   const fetchArticleStats = async () => {
     const authHeaders = getAuthHeaders();
@@ -1115,6 +1201,7 @@ const AdminDashboard = ({ onBack }) => {
         toast({ title: "✅ Archived", description: "Article moved to archive" });
         fetchAllData();
         fetchArchivedArticles();
+        fetchManualReviewArticles({ queueAfterCurrent: true });
       } else {
         toast({ title: "❌ Error", description: data.detail || "Failed to archive", variant: "destructive" });
       }
@@ -1191,7 +1278,7 @@ const AdminDashboard = ({ onBack }) => {
           description: "Article hidden from the public site and added to Manual Review"
         });
         fetchAllData();
-        fetchManualReviewArticles();
+        fetchManualReviewArticles({ queueAfterCurrent: true });
         fetchArticleStats();
       } else {
         toast({
@@ -1508,7 +1595,7 @@ const AdminDashboard = ({ onBack }) => {
           updated_at: new Date().toISOString()
         };
         setArticles(prev => [savedArticle, ...prev.filter(a => a.id !== savedArticle.id)]);
-        fetchManualReviewArticles();
+        fetchManualReviewArticles({ queueAfterCurrent: true });
         if (data.restored_from_manual_review) {
           setManualReviewArticles(prev => prev.filter(a => a.id !== savedArticle.id));
           fetchArchivedArticles();
@@ -2452,7 +2539,7 @@ const handleDeleteArticle = async (articleId) => {
         });
         setArticles(articles.filter(a => a.id !== articleId));
         setManualReviewArticles(prev => prev.filter(a => a.id !== articleId));
-        fetchManualReviewArticles();
+        fetchManualReviewArticles({ queueAfterCurrent: true });
         fetchArchivedArticles();
         fetchAllData();
       } else {
@@ -2512,7 +2599,7 @@ const handleDeleteArticle = async (articleId) => {
       setSelectedManualReviewArticles(new Set());
 
       await Promise.all([
-        fetchManualReviewArticles(),
+        fetchManualReviewArticles({ queueAfterCurrent: true }),
         fetchArchivedArticles(),
         fetchArticleStats()
       ]);
@@ -4155,7 +4242,10 @@ const handleDeleteArticle = async (articleId) => {
                   <div>
                     <CardTitle>Manual Review Articles</CardTitle>
                     <CardDescription>
-                      {manualReviewArticles.length} articles withheld from public publication pending editorial review
+                      <span data-testid="manual-review-count">
+                        Showing {manualReviewArticles.length} of {manualReviewTotal}
+                      </span>
+                      {' '}articles withheld from public publication pending editorial review
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -4180,12 +4270,12 @@ const handleDeleteArticle = async (articleId) => {
                       selectedManualReviewArticles.size === manualReviewArticles.length ? (
                         <>
                           <Square className="h-4 w-4 mr-1" />
-                          Deselect All
+                          Deselect loaded
                         </>
                       ) : (
                         <>
                           <CheckSquare className="h-4 w-4 mr-1" />
-                          Select All
+                          Select loaded
                         </>
                       )}
                     </Button>
@@ -4210,22 +4300,48 @@ const handleDeleteArticle = async (articleId) => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={fetchManualReviewArticles}
+                      onClick={() => fetchManualReviewArticles()}
+                      disabled={manualReviewInitialLoading || manualReviewLoadMoreLoading}
+                      data-testid="manual-review-refresh"
                     >
-                      <RefreshCw className="h-4 w-4" />
+                      {manualReviewInitialLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {manualReviewArticles.length === 0 ? (
+                {manualReviewInitialLoading && manualReviewArticles.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground" data-testid="manual-review-initial-loading">
+                    <Loader2 className="h-6 w-6 mx-auto mb-2 animate-spin" />
+                    <p>Loading Manual Review articles…</p>
+                  </div>
+                ) : manualReviewInitialError && manualReviewArticles.length === 0 ? (
+                  <div className="text-center py-6 text-destructive" data-testid="manual-review-initial-error">
+                    <AlertCircle className="h-6 w-6 mx-auto mb-2" />
+                    <p>{manualReviewInitialError}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => fetchManualReviewArticles()}
+                      disabled={manualReviewInitialLoading}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : manualReviewArticles.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
                     <CheckCircle className="h-10 w-10 mx-auto mb-2 text-green-400" />
                     <p>No live manual-review articles</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[360px] overflow-x-hidden overflow-y-auto">
-                    {manualReviewArticles.map((article) => (
+                  <>
+                    <div className="space-y-2 max-h-[360px] overflow-x-hidden overflow-y-auto">
+                      {manualReviewArticles.map((article) => (
                       <div
                         key={article.id}
                         data-testid={`manual-review-card-${article.id}`}
@@ -4430,8 +4546,48 @@ const handleDeleteArticle = async (articleId) => {
                             </Button>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    {manualReviewLoadMoreError && (
+                      <div
+                        className="mt-3 flex flex-col items-center gap-2 text-center text-sm text-red-700 dark:text-red-300 sm:flex-row sm:justify-center"
+                        data-testid="manual-review-load-more-error"
+                      >
+                        <span>{manualReviewLoadMoreError}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleLoadMoreManualReview}
+                          disabled={manualReviewLoadMoreLoading}
+                        >
+                          Retry
+                        </Button>
+                      </div>
+                    )}
+                    {manualReviewArticles.length < manualReviewTotal && !manualReviewLoadMoreError && (
+                      <div className="pt-4 text-center" data-testid="manual-review-load-more-container">
+                        <Button
+                          variant="outline"
+                          onClick={handleLoadMoreManualReview}
+                          disabled={manualReviewLoadMoreLoading}
+                          className="min-h-11 w-full sm:w-auto"
+                          data-testid="manual-review-load-more"
+                        >
+                          {manualReviewLoadMoreLoading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Loading…
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4 mr-2" />
+                              Load 100 more
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
