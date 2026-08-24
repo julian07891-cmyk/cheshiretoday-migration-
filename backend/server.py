@@ -10029,7 +10029,10 @@ async def get_manual_review_articles(
         }
 
         total = await db.articles.count_documents(query)
-        articles = await db.articles.find(query, projection).sort("publishedDate", -1).skip(safe_skip).limit(safe_limit).to_list(safe_limit)
+        articles = await db.articles.find(query, projection).sort([
+            ("publishedDate", -1),
+            ("_id", -1),
+        ]).skip(safe_skip).limit(safe_limit).to_list(safe_limit)
 
         for article in articles:
             # Older Manual Review records predate persisted editorial metadata.

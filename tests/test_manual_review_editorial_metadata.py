@@ -1,6 +1,7 @@
 import os
 import asyncio
 import copy
+import inspect
 from types import SimpleNamespace
 
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
@@ -174,31 +175,51 @@ def test_existing_manual_review_record_without_metadata_remains_compatible():
 
 class ManualReviewCursor:
     def __init__(self, documents):
-        self.documents = documents
+        self.documents = copy.deepcopy(documents)
+        self.sort_spec = None
+        self.skip_value = 0
+        self.limit_value = None
 
-    def sort(self, *_args):
+    def sort(self, sort_spec):
+        self.sort_spec = sort_spec
+        for field, direction in reversed(sort_spec):
+            self.documents.sort(
+                key=lambda document: str(document.get(field) or ""),
+                reverse=direction == -1,
+            )
         return self
 
-    def skip(self, _value):
+    def skip(self, value):
+        self.skip_value = value
         return self
 
-    def limit(self, _value):
+    def limit(self, value):
+        self.limit_value = value
         return self
 
-    async def to_list(self, _limit):
-        return copy.deepcopy(self.documents)
+    async def to_list(self, limit):
+        end = self.skip_value + min(limit, self.limit_value)
+        return copy.deepcopy(self.documents[self.skip_value:end])
 
 
 class ManualReviewCollection:
     def __init__(self, documents):
         self.documents = documents
+        self.count_query = None
+        self.find_query = None
+        self.projection = None
+        self.last_cursor = None
 
-    async def count_documents(self, _query):
+    async def count_documents(self, query):
+        self.count_query = query
         return len(self.documents)
 
-    def find(self, _query, projection):
+    def find(self, query, projection):
+        self.find_query = query
+        self.projection = projection
         assert projection["editorial_metadata"] == 1
-        return ManualReviewCursor(self.documents)
+        self.last_cursor = ManualReviewCursor(self.documents)
+        return self.last_cursor
 
 
 def test_admin_list_exposes_derived_metadata_for_legacy_records(monkeypatch):
@@ -218,3 +239,58 @@ def test_admin_list_exposes_derived_metadata_for_legacy_records(monkeypatch):
     assert result["articles"][0]["editorial_metadata"] == (
         server.build_manual_review_editorial_metadata(legacy)
     )
+
+
+def test_admin_manual_review_pagination_contract_and_deterministic_sort(monkeypatch):
+    documents = [
+        manual_review_article(_id="same-a", publishedDate="2026-07-24T09:00:00+00:00"),
+        manual_review_article(_id="older-z", publishedDate="2026-07-23T09:00:00+00:00"),
+        manual_review_article(_id="same-c", publishedDate="2026-07-24T09:00:00+00:00"),
+        manual_review_article(_id="same-b", publishedDate="2026-07-24T09:00:00+00:00"),
+    ]
+    collection = ManualReviewCollection(documents)
+    monkeypatch.setattr(server, "db", SimpleNamespace(articles=collection))
+
+    result = asyncio.run(server.get_manual_review_articles(auth=True))
+
+    expected_query = {
+        "manual_review_hidden_from_public": True,
+        "$or": [{"archived": {"$exists": False}}, {"archived": False}],
+    }
+    assert collection.count_query == expected_query
+    assert collection.find_query == expected_query
+    assert collection.last_cursor.sort_spec == [
+        ("publishedDate", -1),
+        ("_id", -1),
+    ]
+    assert collection.last_cursor.skip_value == 0
+    assert collection.last_cursor.limit_value == 100
+    assert list(result) == ["success", "articles", "total", "skip", "limit"]
+    assert result["success"] is True
+    assert result["total"] == 4
+    assert result["skip"] == 0
+    assert result["limit"] == 100
+    assert [article["id"] for article in result["articles"]] == [
+        "same-c",
+        "same-b",
+        "same-a",
+        "older-z",
+    ]
+
+
+def test_admin_manual_review_pagination_bounds_and_auth_dependency(monkeypatch):
+    collection = ManualReviewCollection([])
+    monkeypatch.setattr(server, "db", SimpleNamespace(articles=collection))
+
+    result = asyncio.run(
+        server.get_manual_review_articles(skip=-10, limit=999, auth=True)
+    )
+
+    auth_default = inspect.signature(
+        server.get_manual_review_articles
+    ).parameters["auth"].default
+    assert auth_default.dependency is server.get_admin_auth
+    assert result["skip"] == 0
+    assert result["limit"] == 250
+    assert collection.last_cursor.skip_value == 0
+    assert collection.last_cursor.limit_value == 250
