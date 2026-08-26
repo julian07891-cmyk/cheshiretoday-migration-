@@ -158,6 +158,7 @@ def test_unsupported_paths_are_absent_from_spa_allowlist(path):
 def test_supported_spa_path_serves_frontend_index(monkeypatch):
     sentinel = object()
     monkeypatch.setattr(server, "_spa_index_or_500", lambda: sentinel)
+    monkeypatch.setattr(server, "_admin_spa_index_or_500", lambda: sentinel)
 
     for path in sorted(SUPPORTED_EXACT_PATHS):
         assert asyncio.run(server.serve_react_spa(path, request_for(path))) is sentinel

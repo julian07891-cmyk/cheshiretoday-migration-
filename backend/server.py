@@ -16718,6 +16718,8 @@ User-agent: Googlebot
 Allow: /
 Allow: /article/
 Allow: /api/seo/article/
+Disallow: /admin
+Disallow: /api/admin/
 Crawl-delay: 0
 
 User-agent: Googlebot-Image
@@ -16731,6 +16733,8 @@ Allow: /*.webp$
 User-agent: Googlebot-News
 Allow: /
 Allow: /article/
+Disallow: /admin
+Disallow: /api/admin/
 
 # =============================================
 # Bing specific rules
@@ -18010,6 +18014,12 @@ def _spa_index_or_500():
     raise HTTPException(status_code=500, detail="frontend_build missing (React build not present)")
 
 
+def _admin_spa_index_or_500():
+    response = _spa_index_or_500()
+    response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return response
+
+
 def _newsletter_landing_crawler_response():
     from fastapi.responses import HTMLResponse
 
@@ -18153,6 +18163,8 @@ async def serve_react_spa(full_path: str, request: Request):
         ):
             return await serve_public_hub_html(full_path)
     if _is_supported_public_spa_path(full_path):
+        if full_path.strip("/") == "admin":
+            return _admin_spa_index_or_500()
         return _spa_index_or_500()
     return _public_not_found_response(full_path)
 
@@ -18164,6 +18176,8 @@ async def head_react_spa(full_path: str):
     if candidate.is_file():
         return _spa_file_response(candidate)
     if _is_supported_public_spa_path(full_path):
+        if full_path.strip("/") == "admin":
+            return _admin_spa_index_or_500()
         return _spa_index_or_500()
     return _public_not_found_response(full_path)
 
