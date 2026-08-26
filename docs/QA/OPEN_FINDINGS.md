@@ -123,19 +123,19 @@ Work highest current severity first. Update an entry only when evidence changes;
 ### QA-SEO-002
 
 - **Original severity:** Medium
-- **Current severity:** Medium
+- **Current severity:** Closed
 - **Area:** SEO/privacy / Admin
 - **Original finding:** Unauthenticated Admin login lacked first-byte `noindex`; Googlebot rules did not repeat the wildcard disallow.
-- **Current status:** Partially remediated — homepage metadata leakage is gone after React settles; server-level first-byte and robots-group criteria remain unproven.
-- **Current-code evidence:** Runtime metadata cleanup removes homepage fields on `/admin`; authenticated `AdminDashboard` has robots metadata, but ordinary SPA delivery is not an evidenced server-level Admin noindex response.
-- **Fixing commits:** Metadata portion `6bfe896`, `1e5c2da`.
-- **Test evidence:** Admin isolation in `PublicMetadataUniqueness.test.jsx`.
-- **Deployment evidence:** Metadata reconciliation deployed.
-- **Production evidence:** Live `/admin` showed no homepage canonical/description/social metadata after settling; first-byte noindex was not established.
-- **Remaining gap:** Server-delivered Admin robots directive and aligned Googlebot rules.
-- **Closure criteria:** Add focused root-response/robots tests, deploy, verify initial HTML and direct Googlebot response without authenticating.
+- **Current status:** **CLOSED — PRODUCTION VERIFIED.** Commit `24f381e` provides first-byte Admin indexing protection and explicit crawler-specific robots exclusions without changing the Admin access-control boundary.
+- **Current-code evidence:** `/admin` and `/admin/` responses carry `X-Robots-Tag: noindex, nofollow, noarchive`; unsupported nested Admin paths retain first-byte noindex. Wildcard, Googlebot and Googlebot-News groups explicitly disallow `/admin` and `/api/admin/`.
+- **Fixing commits:** Metadata portion `6bfe896`, `1e5c2da`; closure `24f381e`.
+- **Test evidence:** 11 focused tests, 74 related regressions and 9 sitemap regressions passed; `compileall` and `git diff --check` passed.
+- **Deployment evidence:** Deployment `dep-da7ala710e5c738ovtm0`, instance `824s7`, Standard 2 GB RAM / 1 CPU.
+- **Production evidence:** On 26 August 2026, GET and HEAD `/admin` returned 200 without redirect and with the exact first-byte header; GET/HEAD `/admin/` returned 200 with the same protection; `/admin/settings` remained unsupported 404 with first-byte noindex. Public homepage, category and article indexing signals, canonical, Open Graph, Twitter metadata, JSON-LD and both sitemaps were preserved. Unauthenticated `/api/admin/verify` remained 401; health was 200; no OOM, restart, material 5xx, Mongo/scheduler failure or traceback was observed.
+- **Remaining gap:** None for this finding; Search Console sampling remains separate external validation.
+- **Closure criteria:** Met. Robots and `X-Robots-Tag` are indexing controls only; Admin authentication and API authorization remain the security boundary.
 - **Owner/documentation responsibility:** Backend SEO/security owner.
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), [SEO architecture](../ARCHITECTURE/SEO_AND_CRAWLERS.md).
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), [SEO architecture](../ARCHITECTURE/SEO_AND_CRAWLERS.md), Git `24f381e`, production verification 26 August 2026.
 
 ### QA-PERF-001
 

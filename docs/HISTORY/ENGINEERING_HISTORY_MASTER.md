@@ -1,7 +1,7 @@
 # Cheshire Today — Engineering History Master
 
 > **Reconstruction status:** repository-evidence history through commit
-> `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd` on 21 August 2026. ChatGPT export,
+> `24f381e50fce90a2c21c4f4ec9b1698e34ecc2cb` on 26 August 2026. ChatGPT export,
 > systematic Codex history and post-HEAD production evidence remain unreconciled.
 
 ## Document purpose
@@ -618,6 +618,28 @@ material 5xx regression. `QA-SEC-002` therefore closed.
 - **Sources:** Git `0052b68`, `b3550c0`; [Open Findings](../QA/OPEN_FINDINGS.md);
   [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render scheduler,
   memory-marker and health evidence reconciled 21 August 2026.
+
+### Admin first-byte indexing protection — 26 August 2026
+
+- **Finding:** `QA-SEO-002` retained a Medium gap after rendered metadata cleanup:
+  the Admin entry route lacked proven first-byte noindex protection and crawler-
+  specific robots exclusions were not explicit.
+- **Implementation:** Commit `24f381e` added the exact response directive
+  `X-Robots-Tag: noindex, nofollow, noarchive` for `/admin` and `/admin/`, retained
+  first-byte protection on unsupported nested Admin paths, and explicitly
+  disallowed `/admin` and `/api/admin/` for wildcard, Googlebot and Googlebot-News.
+- **Verification:** 11 focused, 74 related and 9 sitemap tests passed with
+  compilation and diff hygiene. Deployment `dep-da7ala710e5c738ovtm0` on instance
+  `824s7` (Standard, 2 GB RAM / 1 CPU) was production-verified: GET/HEAD Admin
+  routes and the nested-path 404 behaved as designed, public SEO and both
+  sitemaps were preserved, unauthenticated Admin verify remained 401, health was
+  200 and no material runtime anomaly was observed.
+- **Outcome:** `QA-SEO-002` is **CLOSED — PRODUCTION VERIFIED**. Robots and
+  `X-Robots-Tag` are indexing controls only; Admin authentication and API
+  authorization remain the security boundary.
+- **Sources:** Git `24f381e`; [Open Findings](../QA/OPEN_FINDINGS.md#qa-seo-002);
+  [Production Timeline](../PRODUCTION_TIMELINE.md); production verification on
+  26 August 2026.
 
 ## Unreconciled history
 

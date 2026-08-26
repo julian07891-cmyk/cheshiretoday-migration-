@@ -359,8 +359,15 @@ Highest-priority unresolved or monitoring items are:
   No high-specificity positive or `same_run_event_compatible` case occurred, so
   calibration remains open and Manual Review routing remains unapproved.
 - **Medium:** public desktop search accessibility remains open.
-- **Medium:** Admin first-byte server-level noindex/robots alignment is not fully
-  proven.
+- **Closed — production verified:** `QA-SEO-002`. Commit `24f381e` added
+  first-byte `X-Robots-Tag: noindex, nofollow, noarchive` protection for `/admin`
+  and `/admin/`, retained first-byte noindex on unsupported nested Admin paths,
+  and made wildcard, Googlebot and Googlebot-News exclusions for `/admin` and
+  `/api/admin/` explicit. Deployment `dep-da7ala710e5c738ovtm0` on instance
+  `824s7` (Standard, 2 GB RAM / 1 CPU) was production-verified on 26 August 2026.
+  Public homepage, category and article SEO, canonical/social metadata, JSON-LD
+  and both sitemaps were preserved. Robots and noindex are indexing controls only;
+  Admin authentication and API authorization remain the security boundary.
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
@@ -431,7 +438,6 @@ Security and reliability take precedence over speculative features.
 ## 13. Near-term priorities
 
 - repair and verify public search accessibility;
-- provide and verify Admin first-byte noindex/robots alignment;
 - measure current article-list performance before optimisation;
 - preserve and improve hermetic test isolation;
 - reduce compilation/build/test warning debt in bounded changes;

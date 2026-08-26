@@ -49,7 +49,6 @@ Security and production stability precede feature expansion.
 | Status | Work | Scope and gate |
 |---|---|---|
 | Next | Public search accessibility | Semantics, label, keyboard/no-results tests and live desktop verification |
-| Next | Admin first-byte noindex/robots alignment | Server/crawler contract, tests and non-authenticated live verification |
 | Monitoring | Bounded labelled event-anchor calibration (`CT-QA-2026-004`) | Implementation, deployment and first natural run are verified. Continue natural high-specificity same-run cross-source calibration; keep Manual Review routing, historical routing and all enforcement behind a separate evidence review and approval gate |
 | Monitoring | Weekly Roundup QA | Normal Sunday batch evidence, provider diagnostics, ledger/cursor reconciliation; no test send by default |
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |

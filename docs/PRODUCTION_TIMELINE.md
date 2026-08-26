@@ -1,7 +1,7 @@
 # Cheshire Today — Production Timeline
 
 > **Reconstruction status:** repository-evidenced production chronology through
-> commit `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`. A historical “deployed” statement
+> commit `24f381e50fce90a2c21c4f4ec9b1698e34ecc2cb`. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose
@@ -41,6 +41,7 @@ verification gates from general engineering history.
 | 1–2 August | Production/Admin | Mobile deployment | Admin editor/cards | Mobile Safari input, editor containment/sticky close and responsive Admin cards | `2d7ed9f`, `6328cf3`, `a6bfb78`, `cf0ae79`, `761a7c2`, `f43c4ef` | Real-iPhone evidence recorded for editor; Page Zoom 100% requirement identified | Restored usable mobile Admin editing and card containment | Broader navigation/dialog work deferred | Preserved state, August mobile sections; cited Git |
 | 4 August, approximately 14:15 BST | Render production | Shadow activation | Editorial Similarity | Scheduled-only log-only Phase 2B deployed | Scorer `8043fdd`; integration `5e1a875`; deployment record `1601ae4` | Render marked `5e1a875` live according to repository record | Added advisory evidence only; no publication decision changed | Observe at least three normal runs | Preserved state, “Editorial Similarity deployment and production-observation gate”; cited Git |
 | 7 August, 11:16–11:19 BST | Render production | Automatic deployment | Duplicate cleanup | Lifecycle-only release of first-pass duplicate-cleanup references before the second full read | `49e5fe49cc35e0ca020e8520db6365d356760060` | Build succeeded; Uvicorn startup completed; service became live before the 12:00 run; health returned 200 | Removed simultaneous reachability of both decoded collection lists without changing cleanup semantics | Verify only through normal scheduled runs | Git `49e5fe4`; authenticated Render deployment and health evidence reconciled 8 August |
+| 26 August 2026 | Render production | SEO closure deployment | Admin indexing protection | Add first-byte Admin response directives and explicit crawler-specific robots exclusions | Revision `24f381e`; deployment `dep-da7ala710e5c738ovtm0`; instance `824s7`; Standard 2 GB / 1 CPU | GET/HEAD `/admin` and `/admin/` returned 200 without redirect with exact `X-Robots-Tag`; `/admin/settings` remained 404 with first-byte noindex; public routes, metadata, JSON-LD, both sitemaps, Admin API protection and health passed | Closed `QA-SEO-002` without changing Admin access control or public indexing behaviour | **CLOSED — PRODUCTION VERIFIED**; indexing controls are not authentication or authorization | Git `24f381e`; authenticated production verification reconciled 26 August 2026 |
 
 ## Production incidents
 

@@ -69,7 +69,7 @@ Admin mobile Safari received substantial responsive and touch hardening with rea
 
 ## SEO and metadata
 
-Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2da`, deployed, and recorded as production-verified in `7ca1269`. This closes `QA-SEO-001`. Admin homepage-metadata leakage was corrected, but the original first-byte server-level Admin `noindex` and Googlebot robots alignment requirement is not evidenced as complete; `QA-SEO-002` remains open. Search Console and GA4 validation remain external work.
+Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2da`, deployed, and recorded as production-verified in `7ca1269`. This closes `QA-SEO-001`. Commit `24f381e` then added first-byte Admin `noindex, nofollow, noarchive` protection and explicit wildcard, Googlebot and Googlebot-News exclusions for `/admin` and `/api/admin/`. Deployment `dep-da7ala710e5c738ovtm0` on instance `824s7` was production-verified on 26 August 2026 with public SEO preserved, so `QA-SEO-002` is **CLOSED — PRODUCTION VERIFIED**. These are indexing controls only; Admin authentication and API authorization remain the security boundary. Search Console and GA4 validation remain external work.
 
 ## Performance and memory
 

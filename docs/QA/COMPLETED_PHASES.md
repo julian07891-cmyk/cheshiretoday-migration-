@@ -131,7 +131,7 @@ Use this to avoid repeating completed work. Follow residual-risk links before ex
 - **Tests:** Real static shell plus Home, Article, hubs, newsletter, Contact, secure management, Admin, guide and unsupported routes.
 - **Deployment status:** Deployed.
 - **Production verification:** Settled DOM, SPA, crawler HTML, structured data, sitemaps and robots passed; no indexing recovery claimed.
-- **Residual risks:** Admin first-byte noindex and Search Console sampling.
+- **Residual risks:** Search Console sampling.
 - **Sources:** [SEO architecture](../ARCHITECTURE/SEO_AND_CRAWLERS.md); [Open Findings](OPEN_FINDINGS.md#qa-seo-002).
 
 ## Admin mobile Safari QA
@@ -145,6 +145,18 @@ Use this to avoid repeating completed work. Follow residual-risk links before ex
 - **Production verification:** Real iPhone verified login/editor/close at Safari Page Zoom 100%; zoom remained enabled.
 - **Residual risks:** Navigation, action-row consistency and broader touch targets.
 - **Sources:** [Project State](../PROJECT_STATE.md); Git history.
+
+## Admin indexing protection
+
+- **Date:** 26 August 2026
+- **Objective:** Close `QA-SEO-002` with first-byte Admin indexing protection while preserving public SEO and the existing access-control boundary.
+- **Scope:** GET/HEAD `/admin` and `/admin/`, unsupported nested Admin paths, wildcard/Googlebot/Googlebot-News robots groups, public metadata and sitemap regressions.
+- **Changes:** `24f381e` — `Protect Admin from indexing`.
+- **Tests:** 11 focused tests, 74 related regression tests and 9 sitemap regression tests passed; `python3 -m compileall -q backend tests` and `git diff --check` passed.
+- **Deployment status:** Deployment `dep-da7ala710e5c738ovtm0`; instance `824s7`; Standard 2 GB RAM / 1 CPU.
+- **Production verification:** GET/HEAD `/admin` and `/admin/` returned 200 without redirect and with `X-Robots-Tag: noindex, nofollow, noarchive`; `/admin/settings` remained 404 with first-byte noindex. All three crawler groups explicitly disallow `/admin` and `/api/admin/`. Homepage, category, article, canonical, Open Graph, Twitter, JSON-LD and sitemap behaviour remained intact; unauthenticated Admin verify remained 401 and health returned 200.
+- **Status:** **CLOSED — PRODUCTION VERIFIED.** Robots and response directives control indexing only; Admin authentication and API authorization remain the security boundary.
+- **Sources:** [Open Findings](OPEN_FINDINGS.md#qa-seo-002); [Project State](../PROJECT_STATE.md); Git `24f381e`; production verification 26 August 2026.
 
 ## Editorial Similarity Phase 2A
 

@@ -91,6 +91,10 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 | 11 Aug 2026 | `1811430` | `python3 -m pytest -q tests` | 1,889 passed, 55 skipped | 385 | Full local backend test tree | Skips include deliberately unavailable/external paths; no production mutation | Current QA reconciliation |
 | 11 Aug 2026 | `1811430` | Complete frontend Jest suite | 312 passed, 28 suites | Not consolidated | Current frontend regression baseline | JSDOM cannot prove physical-browser/platform state | Current QA reconciliation |
 | 11 Aug 2026 | `1811430` | `python3 -m compileall -q backend tests` | Pass | None emitted | Current repository compilation | Static validation only | Current QA reconciliation |
+| 26 Aug 2026 | `24f381e` | Admin indexing focused suite | 11 passed | Not recorded | First-byte Admin header, paths and robots contract | Functional implementation verification; production checked separately | QA-SEO-002 closure |
+| 26 Aug 2026 | `24f381e` | Related regression suites | 74 passed | Not recorded | Admin/static delivery, auth and public SEO compatibility | Bounded related regression set | QA-SEO-002 closure |
+| 26 Aug 2026 | `24f381e` | Sitemap regression suite | 9 passed | Not recorded | Public and news sitemap preservation | Functional, not external indexing proof | QA-SEO-002 closure |
+| 26 Aug 2026 | `24f381e` | `python3 -m compileall -q backend tests`; `git diff --check` | Pass | None emitted | Compilation and diff hygiene | Static validation only | QA-SEO-002 closure |
 
 ## Reconstruction limitations
 
