@@ -18704,12 +18704,47 @@ def _counts_towards_visible_cap(article: dict) -> bool:
     )
 
 
+def _plan_visible_pool_scalars(eligible: list, protected_ids: set, keep: int) -> dict:
+    """Plan the existing visible-pool mutations from bounded scalar state."""
+    # Scalar tuple: id, priority, parsed date, scan ordinal, protected, archived,
+    # archive reason. Earlier scan ordinals reproduce stable equal-key ordering.
+    eligible.sort(
+        key=lambda candidate: (candidate[1], candidate[2], -candidate[3]),
+        reverse=True,
+    )
+    newest_ids = [
+        candidate[0]
+        for candidate in eligible[:keep]
+        if candidate[0] is not None
+    ]
+    keep_ids = list(protected_ids.union(newest_ids))
+    eligible_ids = [
+        candidate[0]
+        for candidate in eligible
+        if candidate[0] is not None
+        and candidate[0] not in protected_ids
+    ]
+    restore_ids = [
+        candidate[0]
+        for candidate in eligible
+        if candidate[0] in keep_ids
+        and candidate[5] is True
+        and candidate[6] in {"auto_cap", "ratio_rebalance"}
+    ]
+    return {
+        "newest_ids": newest_ids,
+        "keep_ids": keep_ids,
+        "eligible_ids": eligible_ids,
+        "restore_ids": restore_ids,
+    }
+
+
 async def cap_visible_articles(keep: int = 200):
     """
     Keep the newest eligible records visible while protecting owner-approved work.
     """
     try:
-        candidates = await db.articles.find(
+        candidates_cursor = db.articles.find(
             {
                 "$or": [
                     {"archived": {"$exists": False}},
@@ -18740,7 +18775,7 @@ async def cap_visible_articles(keep: int = 200):
                 "manual_edited": 1,
                 "manual_edit_protected": 1,
             },
-        ).to_list(10000)
+        ).limit(10000)
 
         def _dt(v):
             if isinstance(v, datetime):
@@ -18753,55 +18788,53 @@ async def cap_visible_articles(keep: int = 200):
             except Exception:
                 return datetime.fromtimestamp(0, tz=timezone.utc)
 
-        candidates.sort(
-            key=lambda article: (
-                1
-                if article.get("force_live") is True
-                or article.get("featured") is True
-                or article.get("is_priority_cheshire") is True
-                else 0,
-                max(
-                    _dt(article.get("publishedDate")),
-                    _dt(article.get("created_at")),
-                ),
-            ),
-            reverse=True,
-        )
-        protected_ids = {
-            article["_id"]
-            for article in candidates
-            if article.get("_id") is not None
-            and _is_owner_protected_article(article)
-        }
-        eligible = [
-            article
-            for article in candidates
-            if _counts_towards_visible_cap(article)
-        ]
-        newest_ids = [
-            article["_id"]
-            for article in eligible[:keep]
-            if article.get("_id") is not None
-        ]
-        keep_ids = list(protected_ids.union(newest_ids))
+        protected_ids = set()
+        eligible = []
+        scanned_count = 0
+        async for article in candidates_cursor:
+            if scanned_count >= 10000:
+                break
+
+            scan_ordinal = scanned_count
+            scanned_count += 1
+            article_id = article.get("_id")
+            owner_protected = _is_owner_protected_article(article)
+            if article_id is not None and owner_protected:
+                protected_ids.add(article_id)
+
+            if _counts_towards_visible_cap(article):
+                priority = (
+                    1
+                    if article.get("force_live") is True
+                    or article.get("featured") is True
+                    or article.get("is_priority_cheshire") is True
+                    else 0
+                )
+                eligible.append(
+                    (
+                        article_id,
+                        priority,
+                        max(
+                            _dt(article.get("publishedDate")),
+                            _dt(article.get("created_at")),
+                        ),
+                        scan_ordinal,
+                        owner_protected,
+                        article.get("archived") is True,
+                        article.get("archive_reason"),
+                    )
+                )
+
+            article = None
+
+        plan = _plan_visible_pool_scalars(eligible, protected_ids, keep)
+        keep_ids = plan["keep_ids"]
 
         # Metadata and unpublished review records do not consume cap slots.
         # They retain their existing visibility/review state; only eligible
         # non-protected records outside the cap are automatically archived.
-        eligible_ids = [
-            article["_id"]
-            for article in eligible
-            if article.get("_id") is not None
-            and article["_id"] not in protected_ids
-        ]
-        restore_ids = [
-            article["_id"]
-            for article in eligible
-            if article.get("_id") in keep_ids
-            and article.get("archived") is True
-            and article.get("archive_reason")
-            in {"auto_cap", "ratio_rebalance"}
-        ]
+        eligible_ids = plan["eligible_ids"]
+        restore_ids = plan["restore_ids"]
         if restore_ids:
             await db.articles.update_many(
                 {
