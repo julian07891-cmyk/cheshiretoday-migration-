@@ -49,7 +49,7 @@ export const articleService = {
       );
     } catch (error) {
       console.error('Error searching articles:', error);
-      return [];
+      throw error;
     }
   },
 

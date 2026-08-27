@@ -29,9 +29,11 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
   });
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [searchStatus, setSearchStatus] = useState('');
   const [isFestive, setIsFestive] = useState(false);
   const searchRef = useRef(null);
   const mobileSearchRef = useRef(null);
+  const searchRequestIdRef = useRef(0);
 
   useEffect(() => {
     const now = new Date();
@@ -45,8 +47,11 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
       const clickedDesktopSearch = searchRef.current && searchRef.current.contains(event.target);
       const clickedMobileSearch = mobileSearchRef.current && mobileSearchRef.current.contains(event.target);
       if (!clickedDesktopSearch && !clickedMobileSearch) {
+        searchRequestIdRef.current += 1;
         setSearchOpen(false);
         setSearchResults([]);
+        setSearchLoading(false);
+        setSearchStatus('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -55,35 +60,78 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
 
   // Search functionality with debounce
   useEffect(() => {
+    const requestId = ++searchRequestIdRef.current;
+    let cancelled = false;
+
+    if (searchQuery.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchStatus('');
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.length >= 2) {
-        setSearchLoading(true);
-        try {
-          const results = await articleService.searchArticles(searchQuery);
-          setSearchResults(results.slice(0, 5));
-        } catch (error) {
-          console.error('Search error:', error);
-          setSearchResults([]);
-        }
-        setSearchLoading(false);
-      } else {
+      if (cancelled || requestId !== searchRequestIdRef.current) return;
+      setSearchLoading(true);
+      setSearchStatus('Searching…');
+      try {
+        const results = await articleService.searchArticles(searchQuery);
+        if (cancelled || requestId !== searchRequestIdRef.current) return;
+
+        const limitedResults = results.slice(0, 5);
+        setSearchResults(limitedResults);
+        setSearchStatus(
+          limitedResults.length === 0
+            ? 'No articles found'
+            : `${limitedResults.length} search ${limitedResults.length === 1 ? 'result' : 'results'}`
+        );
+      } catch (error) {
+        if (cancelled || requestId !== searchRequestIdRef.current) return;
+        console.error('Search error:', error);
         setSearchResults([]);
+        setSearchStatus('Search is unavailable. Please try again.');
+      } finally {
+        if (!cancelled && requestId === searchRequestIdRef.current) {
+          setSearchLoading(false);
+        }
       }
     }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => {
+      cancelled = true;
+      clearTimeout(delayDebounceFn);
+    };
   }, [searchQuery]);
 
-  const handleSearchResultClick = (article) => {
-    if (onArticleClick) {
-      onArticleClick(article);
-    } else {
-      window.location.href = buildArticleUrl(article);
-    }
+  const handleSearchResultClick = (event, article) => {
+    const modifiedClick = event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+    if (modifiedClick || event.defaultPrevented || !onArticleClick) return;
+
+    event.preventDefault();
+    onArticleClick(article);
     setSearchOpen(false);
     setMobileMenuOpen(false);
     setSearchQuery('');
     setSearchResults([]);
+    setSearchStatus('');
+  };
+
+  const handleSearchKeyDown = (event) => {
+    if (event.key !== 'Escape' || !searchOpen) return;
+
+    event.preventDefault();
+    searchRequestIdRef.current += 1;
+    setSearchOpen(false);
+    setSearchResults([]);
+    setSearchLoading(false);
+    setSearchStatus('');
+  };
+
+  const handleSearchQueryChange = (event) => {
+    setSearchQuery(event.target.value);
+    setSearchOpen(true);
   };
 
   const isHomeCategory = (category) => {
@@ -137,6 +185,9 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
 
       {/* Main Header - Simplified on mobile */}
       <header className="bg-slate-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40 backdrop-blur-md bg-white/95 dark:bg-gray-800/95">
+        <p role="status" aria-live="polite" className="sr-only">
+          {searchStatus}
+        </p>
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between py-3 md:py-4">
             {/* Logo - Compact on mobile */}
@@ -175,25 +226,28 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
               <div className="relative" ref={searchRef}>
                 <input
                   type="text"
+                  aria-label="Search news"
                   placeholder="Search news..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchQueryChange}
                   onFocus={() => setSearchOpen(true)}
+                  onKeyDown={handleSearchKeyDown}
                   className="w-64 h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 {searchLoading ? (
-                  <Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
+                  <Loader2 aria-hidden="true" className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
                 ) : (
-                  <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Search aria-hidden="true" className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
                 )}
 
                 {/* Search Results Dropdown */}
                 {searchOpen && searchResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-slate-50 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
                     {searchResults.map((article) => (
-                      <div
+                      <a
                         key={article.id}
-                        onClick={() => handleSearchResultClick(article)}
+                        href={buildArticleUrl(article)}
+                        onClick={(event) => handleSearchResultClick(event, article)}
                         className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0"
                       >
                         <img
@@ -209,8 +263,13 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                             {article.category}
                           </span>
                         </div>
-                      </div>
+                      </a>
                     ))}
+                  </div>
+                )}
+                {searchOpen && !searchLoading && searchResults.length === 0 && searchStatus && (
+                  <div aria-hidden="true" className="absolute top-full left-0 right-0 mt-2 bg-slate-50 dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-sm text-gray-700 dark:text-gray-200 z-50">
+                    {searchStatus}
                   </div>
                 )}
               </div>
@@ -301,25 +360,27 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
               <div className="relative mb-4" ref={mobileSearchRef}>
                 <input
                   type="text"
+                  aria-label="Search news"
                   placeholder="Search news..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchQueryChange}
                   onFocus={() => setSearchOpen(true)}
+                  onKeyDown={handleSearchKeyDown}
                   className="w-full h-10 px-4 py-2 border border-slate-300/50 dark:border-gray-700 shadow-sm hover:border-slate-400/60 dark:hover:border-gray-500 transition-all rounded-full focus:outline-none focus:ring-2 focus:ring-[#1E3A8A] focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 {searchLoading ? (
-                  <Loader2 className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
+                  <Loader2 aria-hidden="true" className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 animate-spin" />
                 ) : (
-                  <Search className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
+                  <Search aria-hidden="true" className="absolute right-3 top-2.5 h-5 w-5 text-gray-400" />
                 )}
 
                 {searchOpen && searchResults.length > 0 && (
                   <div className="mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
                     {searchResults.map((article) => (
-                      <button
-                        type="button"
+                      <a
                         key={article.id}
-                        onClick={() => handleSearchResultClick(article)}
+                        href={buildArticleUrl(article)}
+                        onClick={(event) => handleSearchResultClick(event, article)}
                         className="flex w-full items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0 text-left"
                       >
                         <img
@@ -335,8 +396,13 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
                             {article.category}
                           </span>
                         </div>
-                      </button>
+                      </a>
                     ))}
+                  </div>
+                )}
+                {searchOpen && !searchLoading && searchResults.length === 0 && searchStatus && (
+                  <div aria-hidden="true" className="mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 p-3 text-sm text-gray-700 dark:text-gray-200 z-50">
+                    {searchStatus}
                   </div>
                 )}
               </div>
