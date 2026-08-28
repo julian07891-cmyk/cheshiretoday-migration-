@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `b3550c0`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `dcd5cfa`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 
@@ -89,19 +89,19 @@ Work highest current severity first. Update an entry only when evidence changes;
 ### QA-A11Y-001
 
 - **Original severity:** Medium
-- **Current severity:** Medium
+- **Current severity:** Closed
 - **Area:** Accessibility / public search
 - **Original finding:** Desktop search results lacked semantic keyboard operation, labelled input and no-results feedback.
-- **Current status:** Open; unrelated Admin mobile accessibility work does not close it.
-- **Current-code evidence:** No evidenced fixing commit for the `NewsHeader` desktop search contract.
-- **Fixing commits:** None identified.
-- **Test evidence:** Original live/source audit only.
-- **Deployment evidence:** None.
-- **Production evidence:** Original keyboard/no-results behaviour; no later retest.
-- **Remaining gap:** Semantic links/buttons, programmatic label, keyboard selection and polite status.
-- **Closure criteria:** Behavioural accessibility tests, complete frontend regression/build, deployment and desktop keyboard/screen-reader-oriented production check.
+- **Current status:** **CLOSED — PRODUCTION VERIFIED** on 27 August 2026.
+- **Current-code evidence:** Commit `dcd5cfa` gives both live `NewsHeader` inputs the durable accessible name `Search news`; desktop and mobile results are native article links with real `href` values. Ordinary Tab/Enter and browser modifier/new-tab/copy-link semantics remain native. Escape dismisses suggestions while retaining input focus. One polite status reports `Searching…`, singular/plural result counts, `No articles found` and a bounded failure message. Request-generation and effect-cancellation guards prevent stale responses replacing newer state. No ARIA combobox, arrow-key selection state or backend search change was introduced.
+- **Fixing commit:** `dcd5cfa` — `Improve public search accessibility`.
+- **Test evidence:** 7 focused tests, 42 related tests and the complete 367-test frontend suite passed. The production frontend build and `git diff --check` passed.
+- **Deployment evidence:** Render deployment `dep-da82j9uk1f9s73dgc1mg`; instance `9sflp`; Standard 2 GB RAM / 1 CPU.
+- **Production evidence:** Desktop verification confirmed programmatic naming, preserved placeholder and focus ring, two-character search threshold, five native result links with real destinations, Escape dismissal/focus retention, and live `Searching…`, `5 search results` and `No articles found` feedback. At 390×844, naming, native links, usable touch targets and no clipping or horizontal overflow were verified. Homepage, public article, Local category and authority guide remained healthy; `/api/health` returned 200 and no browser-console error, traceback, Mongo/scheduler failure, OOM, exit 137, restart loop or material 5xx was observed.
+- **Remaining gap:** None for the original finding. This closure is not screen-reader certification, full WCAG conformance or complete site-wide accessibility closure. Production API failure was not manufactured; the deployed failure message `Search is unavailable. Please try again.` and stale-response protection are code/test evidence.
+- **Closure criteria:** Met: semantic naming/results, native keyboard navigation, Escape/focus handling, polite status/no-results feedback, complete frontend regression/build, exact deployment identity and bounded desktop/mobile production verification.
 - **Owner/documentation responsibility:** Frontend accessibility owner.
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), `frontend/src/components/NewsHeader.jsx`.
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `dcd5cfa`, `frontend/src/components/NewsHeader.jsx`, `frontend/src/components/NewsHeaderAccessibility.test.jsx`, production verification 27 August 2026.
 
 ### QA-SEO-001
 

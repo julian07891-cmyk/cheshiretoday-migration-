@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `5e8f0ef411b2ca63b454620b333a635d7c5057c5`, including bounded event-anchor deployment and natural verification through the 15 August 12:00 run.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `dcd5cfa1bfc4e396ccd23d52878306e23e307501`, including the production-verified closure of `QA-A11Y-001`.
 
 ## Document purpose
 
@@ -48,7 +48,7 @@ Security and production stability precede feature expansion.
 
 | Status | Work | Scope and gate |
 |---|---|---|
-| Next | Public search accessibility | Semantics, label, keyboard/no-results tests and live desktop verification |
+| Completed | Public search accessibility (`QA-A11Y-001`) | Commit `dcd5cfa`, 7 focused/42 related/367 total frontend tests, production build, deployment `dep-da82j9uk1f9s73dgc1mg`, and bounded desktop/mobile production verification completed 27 August 2026 |
 | Monitoring | Bounded labelled event-anchor calibration (`CT-QA-2026-004`) | Implementation, deployment and first natural run are verified. Continue natural high-specificity same-run cross-source calibration; keep Manual Review routing, historical routing and all enforcement behind a separate evidence review and approval gate |
 | Monitoring | Weekly Roundup QA | Normal Sunday batch evidence, provider diagnostics, ledger/cursor reconciliation; no test send by default |
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |

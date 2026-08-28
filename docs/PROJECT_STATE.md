@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`
-> - **Last repository reconciliation:** 21 August 2026
-> - **Production-verification status:** Commit `b3550c0` is live on the temporary Standard instance; two natural runs strongly replicated reduced short-content scan RSS expansion with `batch_size(250)`, which is provisionally retained, while `QA-OPS-001` remains High Open
+> - **Repository baseline:** `dcd5cfa1bfc4e396ccd23d52878306e23e307501`
+> - **Last repository reconciliation:** 27 August 2026
+> - **Production-verification status:** Commit `dcd5cfa` is live and its public-search accessibility contract is production-verified; `QA-A11Y-001` is closed while `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`
-- **Latest baseline commit:** `Limit short-content cursor batches`
+- **Current reconciled HEAD:** `dcd5cfa1bfc4e396ccd23d52878306e23e307501`
+- **Latest baseline commit:** `Improve public search accessibility`
 
-This is the repository and production baseline reconciled on 21 August 2026, not
+This is the repository and production baseline reconciled on 27 August 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -358,7 +358,20 @@ Highest-priority unresolved or monitoring items are:
   to `format_guard`, `cross_source`, `same_run` and noisy `locality_overlap`.
   No high-specificity positive or `same_run_event_compatible` case occurred, so
   calibration remains open and Manual Review routing remains unapproved.
-- **Medium:** public desktop search accessibility remains open.
+- **Closed — production verified:** `QA-A11Y-001`. Commit `dcd5cfa`
+  (`Improve public search accessibility`) added durable `Search news` naming,
+  native article-result links, ordinary Tab/Enter semantics, Escape dismissal
+  with input-focus retention, and polite loading/result/no-result feedback.
+  Deployment `dep-da82j9uk1f9s73dgc1mg` ran on Standard instance `9sflp`
+  (2 GB RAM / 1 CPU). Desktop and 390×844 mobile production checks preserved
+  the two-character threshold, five-result limit, real article destinations,
+  modifier/new-tab/copy-link semantics, visible focus, usable touch targets,
+  layout and public homepage/article/category/authority surfaces. Health was
+  HTTP 200 with no browser-console, startup, Mongo, scheduler, OOM, restart or
+  material 5xx anomaly. Failure messaging and stale-response cancellation are
+  deployed and test-covered; no production failure was manufactured. This
+  closes the identified search defect, not site-wide accessibility or WCAG
+  conformance, and no arrow-key combobox behaviour was introduced.
 - **Closed — production verified:** `QA-SEO-002`. Commit `24f381e` added
   first-byte `X-Robots-Tag: noindex, nofollow, noarchive` protection for `/admin`
   and `/admin/`, retained first-byte noindex on unsupported nested Admin paths,
@@ -437,7 +450,6 @@ Security and reliability take precedence over speculative features.
 
 ## 13. Near-term priorities
 
-- repair and verify public search accessibility;
 - measure current article-list performance before optimisation;
 - preserve and improve hermetic test isolation;
 - reduce compilation/build/test warning debt in bounded changes;

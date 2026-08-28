@@ -194,6 +194,18 @@ Use this to avoid repeating completed work. Follow residual-risk links before ex
 - **Residual risks:** Calibration, production recall/precision, thresholds, UI and enforcement remain unapproved and incomplete.
 - **Sources:** [Open Findings](OPEN_FINDINGS.md#ct-qa-2026-002); [Monitoring](../OPERATIONS/MONITORING.md).
 
+## Public search accessibility closure
+
+- **Date:** 27 August 2026
+- **Objective:** Close `QA-A11Y-001` without redesigning the header or introducing a custom combobox.
+- **Scope:** Desktop/mobile input naming, native article-result links, ordinary keyboard navigation, Escape/focus handling, bounded polite status feedback and stale-request safety.
+- **Change:** `dcd5cfa` — `Improve public search accessibility`.
+- **Tests:** 7 focused tests, 42 related tests and 367 total frontend tests passed; the production frontend build and `git diff --check` passed.
+- **Deployment status:** Deployment `dep-da82j9uk1f9s73dgc1mg`; instance `9sflp`; Standard 2 GB RAM / 1 CPU.
+- **Production verification:** Desktop and 390×844 mobile checks verified `Search news` naming, native links and real destinations, visible focus, preserved two-character/five-result behavior, Escape focus retention, `Searching…`, result-count and `No articles found` feedback, usable mobile targets and no overflow. Homepage, article, Local category and authority guide remained healthy; health returned HTTP 200 without observed browser-console, OOM, restart or material 5xx regression.
+- **Status:** **CLOSED — PRODUCTION VERIFIED.** Failure messaging and stale-response cancellation are deployed and test-covered; no production failure was manufactured. This is not screen-reader certification, full WCAG conformance, site-wide accessibility closure or arrow-key combobox approval.
+- **Sources:** [Open Findings](OPEN_FINDINGS.md#qa-a11y-001); [Project State](../PROJECT_STATE.md); Git `dcd5cfa`; production verification 27 August 2026.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Test History](TEST_HISTORY.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Production Timeline](../PRODUCTION_TIMELINE.md).

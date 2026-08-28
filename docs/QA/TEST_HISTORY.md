@@ -24,7 +24,7 @@ Pytest tests live under `tests/`. Current coverage spans APIs, authentication, i
 
 ## Frontend tests
 
-CRACO/Jest tests live beside components and services. They cover public routes, metadata, Admin workflows, responsive contracts, analytics, newsletter and social publishing. JSDOM cannot prove real Safari layout; physical-device checks remain final acceptance where required.
+CRACO/Jest tests live beside components and services. They cover public routes, metadata, Admin workflows, responsive contracts, analytics, newsletter and social publishing. Commit `dcd5cfa` added seven focused public-search accessibility tests; 42 related and 367 total frontend tests passed before deployment. JSDOM cannot prove real browser or assistive-technology behaviour, so bounded production checks remain separate and no screen-reader certification is inferred.
 
 ## Compilation checks
 
@@ -95,6 +95,10 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 | 26 Aug 2026 | `24f381e` | Related regression suites | 74 passed | Not recorded | Admin/static delivery, auth and public SEO compatibility | Bounded related regression set | QA-SEO-002 closure |
 | 26 Aug 2026 | `24f381e` | Sitemap regression suite | 9 passed | Not recorded | Public and news sitemap preservation | Functional, not external indexing proof | QA-SEO-002 closure |
 | 26 Aug 2026 | `24f381e` | `python3 -m compileall -q backend tests`; `git diff --check` | Pass | None emitted | Compilation and diff hygiene | Static validation only | QA-SEO-002 closure |
+| 27 Aug 2026 | `dcd5cfa` | Public search accessibility focused | 7 passed | None | Input names, native links, Escape/focus, polite status, stale-response safety | No screen-reader certification or manufactured production failure | Current QA reconciliation |
+| 27 Aug 2026 | `dcd5cfa` | Public search related regressions | 42 passed | Existing diagnostic output only | Public metadata, hub/category/authority, homepage and article surfaces | Bounded related set | Current QA reconciliation |
+| 27 Aug 2026 | `dcd5cfa` | Complete frontend Jest suite | 367 passed, 37 suites | Existing unrelated diagnostic output only | Full safe frontend baseline | Browser production verification recorded separately | Current QA reconciliation |
+| 27 Aug 2026 | `dcd5cfa` | Production frontend build and `git diff --check` | Pass | Stale Browserslist-data notice | Production bundle and whitespace validation | Build does not prove deployment | Current QA reconciliation |
 
 ## Reconstruction limitations
 

@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `b3550c0cd2b1d64303d6e32ef6eb399d33ca31dd`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `dcd5cfa1bfc4e396ccd23d52878306e23e307501`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -22,9 +22,9 @@ Evidence-backed status totals for the eleven original findings are:
 
 | Classification | Count |
 |---|---:|
-| Open or not fully production verified | 6 |
+| Open or not fully production verified | 5 |
 | Remediated and verified by tests at repository level | 2 |
-| Remediated, deployed and production verified | 3 |
+| Remediated, deployed and production verified | 4 |
 
 Three additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
@@ -65,7 +65,7 @@ Commit `7c2ac62` repaired the three tracked Python syntax defects. Repository-wi
 
 ## Accessibility
 
-Admin mobile Safari received substantial responsive and touch hardening with real-iPhone verification under Safari Page Zoom 100%. The original public desktop header-search semantics, label and no-results concerns have no evidenced fixing commit and remain open.
+Admin mobile Safari received substantial responsive and touch hardening with real-iPhone verification under Safari Page Zoom 100%. `QA-A11Y-001` is **CLOSED — PRODUCTION VERIFIED** as of 27 August 2026. Commit `dcd5cfa` added durable public-search naming, native article-result links, ordinary Tab/Enter semantics, Escape dismissal with input-focus retention and polite loading/result/no-result feedback. Seven focused, 42 related and 367 total frontend tests plus the production build passed. Deployment `dep-da82j9uk1f9s73dgc1mg` on Standard instance `9sflp` passed bounded desktop and 390×844 mobile verification with public surfaces and HTTP 200 health preserved. No production request failure was manufactured; failure and stale-response handling rest on deployed code and tests. This closes the identified search defect, not site-wide accessibility or WCAG conformance.
 
 ## SEO and metadata
 

@@ -641,6 +641,14 @@ material 5xx regression. `QA-SEC-002` therefore closed.
   [Production Timeline](../PRODUCTION_TIMELINE.md); production verification on
   26 August 2026.
 
+### Public search accessibility closure — 27 August 2026
+
+- **Finding:** `QA-A11Y-001` originally recorded placeholder-only search naming, pointer-only desktop results and absent no-results feedback.
+- **Implementation:** Commit `dcd5cfa` (`Improve public search accessibility`) added durable `Search news` labels, native article links on desktop/mobile, native Tab/Enter and browser modifier semantics, Escape dismissal with focus retention, polite status feedback and stale-request cancellation. It deliberately did not add a custom combobox or arrow-key selection model.
+- **Verification:** Seven focused, 42 related and 367 total frontend tests passed with a successful production build and diff check. Render deployment `dep-da82j9uk1f9s73dgc1mg` ran on Standard instance `9sflp` (2 GB RAM / 1 CPU). Desktop and 390×844 mobile checks verified naming, links, focus, status/no-results feedback, layout and public-route preservation; health returned HTTP 200 without observed browser-console, Mongo/scheduler, OOM, restart or material 5xx failure.
+- **Decision:** `QA-A11Y-001` closed as production verified. Failure messaging and stale-response protection were verified from deployed immutable code/tests rather than a manufactured production failure. No screen-reader certification, full WCAG conformance or site-wide accessibility closure is claimed.
+- **Sources:** Git `dcd5cfa`; [Open Findings](../QA/OPEN_FINDINGS.md#qa-a11y-001); [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render and public-browser verification 27 August 2026.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.
