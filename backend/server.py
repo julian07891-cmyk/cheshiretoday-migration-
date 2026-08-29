@@ -4682,6 +4682,44 @@ async def get_articles(
     with_total: bool = False  # Return {articles,total} envelope when true
 ):
     """Get all articles with optional filtering by category, source type, and search"""
+    homepage_timing_enabled = (
+        os.getenv("HOMEPAGE_ARTICLE_LIST_TIMING", "").strip().lower()
+        in ("1", "true", "yes", "on")
+        and not category
+        and not search
+        and not source_type
+        and skip == 0
+        and limit == 80
+        and not include_archived
+        and not with_total
+    )
+    homepage_timing_started = time.perf_counter() if homepage_timing_enabled else None
+    homepage_timing = {
+        "count_ms": 0.0,
+        "force_materialise_ms": 0.0,
+        "local_materialise_ms": 0.0,
+        "uk_materialise_ms": 0.0,
+        "editorial_filter_ms": 0.0,
+        "selection_ms": 0.0,
+        "fallback_ms": 0.0,
+        "post_selection_ms": 0.0,
+        "final_shape_ms": 0.0,
+        "force_candidates": 0,
+        "local_candidates_before_filter": 0,
+        "local_candidates_after_filter": 0,
+        "uk_candidates_before_filter": 0,
+        "uk_candidates_after_filter": 0,
+        "curated_before_fallback": 0,
+        "deferred_lead_incidents": 0,
+        "deferred_lead_crime": 0,
+        "deferred_overcap_incidents": 0,
+        "deferred_overcap_crime": 0,
+        "fallback_ran": 0,
+        "fallback_candidates": 0,
+        "pre_dedupe_count": 0,
+        "dedupe_removed_count": 0,
+        "final_count": 0,
+    } if homepage_timing_enabled else None
     try:
         # Check cache for default homepage request (most common)
         cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{with_total}:{search or ''}"
@@ -4771,7 +4809,10 @@ async def get_articles(
 
         # Total count for pagination/UI (respects include_archived + filters)
         try:
+            count_started = time.perf_counter() if homepage_timing_enabled else None
             total_count = await db.articles.count_documents(query)
+            if homepage_timing_enabled:
+                homepage_timing["count_ms"] = (time.perf_counter() - count_started) * 1000
         except Exception:
             total_count = 0
         
@@ -4794,6 +4835,7 @@ async def get_articles(
                 uk_q = {'$and': [uk_q] + public_visibility_clauses}
                 force_q = {'$and': [force_q] + public_visibility_clauses}
 
+            force_started = time.perf_counter() if homepage_timing_enabled else None
             force_articles = await db.articles.find(force_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
@@ -4802,7 +4844,11 @@ async def get_articles(
                     'location': 1, 'priority_location': 1, 'force_live': 1
                 }
             ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*5).to_list(limit*5)
+            if homepage_timing_enabled:
+                homepage_timing["force_materialise_ms"] = (time.perf_counter() - force_started) * 1000
+                homepage_timing["force_candidates"] = len(force_articles)
 
+            local_started = time.perf_counter() if homepage_timing_enabled else None
             local_articles = await db.articles.find(local_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
@@ -4811,7 +4857,11 @@ async def get_articles(
                     'location': 1, 'priority_location': 1
                 }
             ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*6).to_list(limit*6)
+            if homepage_timing_enabled:
+                homepage_timing["local_materialise_ms"] = (time.perf_counter() - local_started) * 1000
+                homepage_timing["local_candidates_before_filter"] = len(local_articles)
             
+            uk_started = time.perf_counter() if homepage_timing_enabled else None
             uk_articles = await db.articles.find(uk_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
@@ -4820,9 +4870,13 @@ async def get_articles(
                     'location': 1, 'priority_location': 1
                 }
             ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*4).to_list(limit*4)
+            if homepage_timing_enabled:
+                homepage_timing["uk_materialise_ms"] = (time.perf_counter() - uk_started) * 1000
+                homepage_timing["uk_candidates_before_filter"] = len(uk_articles)
 
             # UK homepage noise filter (removes sport/video/tabloid-politics filler from 'all' feed)
             # Toggle: UK_FILTER_NOISE=0 to disable.
+            editorial_filter_started = time.perf_counter() if homepage_timing_enabled else None
             UK_FILTER_NOISE = os.getenv("UK_FILTER_NOISE", "1") not in ("0", "false", "False")
             if UK_FILTER_NOISE and (uk_articles or local_articles):
                 import re
@@ -4957,7 +5011,13 @@ async def get_articles(
                 local_articles = [a for a in local_articles if not is_local_editorial_noise(a)]
                 uk_articles = [a for a in uk_articles if not is_editorial_noise(a)]
 
+            if homepage_timing_enabled:
+                homepage_timing["editorial_filter_ms"] = (time.perf_counter() - editorial_filter_started) * 1000
+                homepage_timing["local_candidates_after_filter"] = len(local_articles)
+                homepage_timing["uk_candidates_after_filter"] = len(uk_articles)
+
             # Interleave: 2 local, 2 UK, repeat (with presentation-time crime cap)
+            selection_started = time.perf_counter() if homepage_timing_enabled else None
             # Keeps crime-like stories to a very low cap in the TOP feed (default 1).
             crime_cap_top = int(os.getenv("CRIME_MAX_TOP", "1") or "1")
             incident_cap_top = int(os.getenv("INCIDENT_MAX_TOP", "2") or "2")
@@ -5180,10 +5240,21 @@ async def get_articles(
                     crime_count_top += 1
                     articles.append(a)
 
+            if homepage_timing_enabled:
+                homepage_timing["selection_ms"] = (time.perf_counter() - selection_started) * 1000
+                homepage_timing["curated_before_fallback"] = len(articles)
+                homepage_timing["deferred_lead_incidents"] = len(deferred_lead_incident)
+                homepage_timing["deferred_lead_crime"] = len(deferred_lead_crime)
+                homepage_timing["deferred_overcap_incidents"] = len(deferred_overcap_incident)
+                homepage_timing["deferred_overcap_crime"] = len(deferred_overcap_crime)
+
             # Final fallback: if curation/filtering leaves the homepage short,
             # top up from the normal visible pool so /api/articles can still
             # return the requested number of items.
             if len(articles) < limit:
+                fallback_started = time.perf_counter() if homepage_timing_enabled else None
+                if homepage_timing_enabled:
+                    homepage_timing["fallback_ran"] = 1
                 seen_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
                 fallback_q = {
                     "$or": [{"archived": {"$exists": False}}, {"archived": False}],
@@ -5198,6 +5269,9 @@ async def get_articles(
                         'is_local_source': 1, 'location': 1, 'priority_location': 1
                     }
                 ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit * 6).to_list(limit * 6)
+
+                if homepage_timing_enabled:
+                    homepage_timing["fallback_candidates"] = len(fallback_items)
 
                 for a in fallback_items:
                     aid = str(a.get('_id'))
@@ -5226,9 +5300,13 @@ async def get_articles(
                     if len(articles) >= limit:
                         break
 
+                if homepage_timing_enabled:
+                    homepage_timing["fallback_ms"] = (time.perf_counter() - fallback_started) * 1000
+
             
             # Prepend recent force_live articles so admin-picked stories can lead briefly,
             # but older manual/promoted articles do not permanently make the homepage look stale.
+            post_selection_started = time.perf_counter() if homepage_timing_enabled else None
             if force_articles:
                 existing_ids = {str(a.get('_id')) for a in articles if a.get('_id')}
                 forced_front = []
@@ -5308,6 +5386,10 @@ async def get_articles(
 
                 articles = fixed + rest2 + tail
 
+            if homepage_timing_enabled:
+                homepage_timing["post_selection_ms"] = (time.perf_counter() - post_selection_started) * 1000
+                final_shape_started = time.perf_counter()
+
             # Apply skip if needed
             if skip > 0:
                 articles = articles[skip:]
@@ -5366,6 +5448,9 @@ async def get_articles(
                 for w in words
                 if len(w.strip(".,:;!?()[]'\"")) > 3 and w.strip(".,:;!?()[]'\"") not in stop_words
             )
+
+        if homepage_timing_enabled:
+            homepage_timing["pre_dedupe_count"] = len(articles)
 
         for article in articles:
             article['id'] = str(article['_id'])
@@ -5456,9 +5541,57 @@ async def get_articles(
 
             unique_articles.append(article)
 
+        if homepage_timing_enabled:
+            homepage_timing["dedupe_removed_count"] = max(
+                0, homepage_timing["pre_dedupe_count"] - len(unique_articles)
+            )
+
         # Enforce requested API limit after force-live prepending, boosting, skip, and dedupe.
         # This keeps /api/articles?limit=N predictable for homepage, admin QA, feeds, and consumers.
         unique_articles = unique_articles[:limit]
+        if homepage_timing_enabled:
+            homepage_timing["final_count"] = len(unique_articles)
+            homepage_timing["final_shape_ms"] = (time.perf_counter() - final_shape_started) * 1000
+            total_handler_ms = (time.perf_counter() - homepage_timing_started) * 1000
+            try:
+                timing_fields = [f"total_handler_ms={total_handler_ms:.3f}"]
+                timing_fields.extend(
+                    f"{name}={homepage_timing[name]:.3f}"
+                    for name in (
+                        "count_ms",
+                        "force_materialise_ms",
+                        "local_materialise_ms",
+                        "uk_materialise_ms",
+                        "editorial_filter_ms",
+                        "selection_ms",
+                        "fallback_ms",
+                        "post_selection_ms",
+                        "final_shape_ms",
+                    )
+                )
+                timing_fields.extend(
+                    f"{name}={homepage_timing[name]}"
+                    for name in (
+                        "force_candidates",
+                        "local_candidates_before_filter",
+                        "local_candidates_after_filter",
+                        "uk_candidates_before_filter",
+                        "uk_candidates_after_filter",
+                        "curated_before_fallback",
+                        "deferred_lead_incidents",
+                        "deferred_lead_crime",
+                        "deferred_overcap_incidents",
+                        "deferred_overcap_crime",
+                        "fallback_ran",
+                        "fallback_candidates",
+                        "pre_dedupe_count",
+                        "dedupe_removed_count",
+                        "final_count",
+                    )
+                )
+                logger.info("homepage_article_list_timing " + " ".join(timing_fields))
+            except Exception:
+                pass
         
         # Cache the result for homepage requests
         if not search and skip == 0 and limit == 20 and not category:
