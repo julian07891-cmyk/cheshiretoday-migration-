@@ -128,6 +128,23 @@ def _parse_marker(messages):
     return markers[0], dict(field.split("=", 1) for field in markers[0].split()[1:])
 
 
+def _find_call(collection, kind):
+    for call in collection.calls:
+        if call[0] != "find":
+            continue
+        query = call[1]
+        first_clause = query.get("$and", [{}])[0] if query.get("$and") else {}
+        if kind == "force" and first_clause.get("force_live") is True:
+            return call
+        if kind == "local" and first_clause.get("is_local_source") is True:
+            return call
+        if kind == "uk" and isinstance(first_clause.get("is_local_source"), dict):
+            return call
+        if kind == "fallback" and "$or" in query and "$and" not in query:
+            return call
+    raise AssertionError(f"No {kind} find call recorded")
+
+
 async def _run_homepage(monkeypatch, collection, *, enabled, logger=None, **kwargs):
     monkeypatch.setattr(server.db, "articles", collection)
     monkeypatch.setenv("HOMEPAGE_ARTICLE_LIST_TIMING", "true" if enabled else "false")
@@ -178,6 +195,121 @@ def test_exact_homepage_emits_one_bounded_complete_marker(monkeypatch):
     assert not re.search(r"article-\d+", marker)
 
 
+def test_exact_homepage_avoids_count_and_uses_bounded_candidate_caps(monkeypatch):
+    collection = FakeArticlesCollection(
+        local=[_article(i, local=True) for i in range(120)],
+        uk=[_article(i + 1000, local=False) for i in range(120)],
+        force=[_article(i + 2000, local=i % 2 == 0) for i in range(10)],
+    )
+
+    response, _ = asyncio.run(
+        _run_homepage(monkeypatch, collection, enabled=False)
+    )
+
+    assert not any(call[0] == "count_documents" for call in collection.calls)
+    assert ("limit", 400) in _find_call(collection, "force")[3]
+    assert ("limit", 100) in _find_call(collection, "local")[3]
+    assert ("to_list", 100) in _find_call(collection, "local")[3]
+    assert ("limit", 100) in _find_call(collection, "uk")[3]
+    assert ("to_list", 100) in _find_call(collection, "uk")[3]
+    expected_ids = []
+    for index in range(40):
+        expected_ids.extend(
+            [
+                f"article-{index * 2}",
+                f"article-{index * 2 + 1}",
+                f"article-{1000 + index * 2}",
+                f"article-{1000 + index * 2 + 1}",
+            ]
+        )
+    assert [article["id"] for article in response] == expected_ids[:80]
+
+
+def test_with_total_preserves_count_envelope_and_existing_caps(monkeypatch):
+    collection = FakeArticlesCollection(
+        local=[_article(i, local=True) for i in range(40)],
+        uk=[_article(i + 100, local=False) for i in range(40)],
+    )
+
+    response, _ = asyncio.run(
+        _run_homepage(
+            monkeypatch,
+            collection,
+            enabled=False,
+            with_total=True,
+        )
+    )
+
+    assert any(call[0] == "count_documents" for call in collection.calls)
+    assert ("limit", 480) in _find_call(collection, "local")[3]
+    assert ("limit", 320) in _find_call(collection, "uk")[3]
+    assert response["total"] == 80
+    assert response["skip"] == 0
+    assert response["limit"] == 80
+    assert len(response["articles"]) == 80
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_local_limit", "expected_uk_limit"),
+    [
+        ({"limit": 30}, 180, 120),
+        ({"limit": 80, "skip": 1}, 480, 320),
+    ],
+)
+def test_other_interleaved_shapes_preserve_count_and_existing_caps(
+    monkeypatch,
+    kwargs,
+    expected_local_limit,
+    expected_uk_limit,
+):
+    collection = FakeArticlesCollection(
+        local=[_article(i, local=True) for i in range(40)],
+        uk=[_article(i + 100, local=False) for i in range(40)],
+    )
+    monkeypatch.setattr(server.db, "articles", collection)
+    monkeypatch.setenv("UK_FILTER_NOISE", "0")
+
+    asyncio.run(server.get_articles(**kwargs))
+
+    assert any(call[0] == "count_documents" for call in collection.calls)
+    assert ("limit", expected_local_limit) in _find_call(collection, "local")[3]
+    assert ("limit", expected_uk_limit) in _find_call(collection, "uk")[3]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"category": "Business"},
+        {"source_type": "local"},
+    ],
+)
+def test_filtered_shapes_preserve_count_and_direct_query_contract(monkeypatch, kwargs):
+    collection = FakeArticlesCollection(local=[], uk=[])
+    monkeypatch.setattr(server.db, "articles", collection)
+
+    asyncio.run(server.get_articles(**kwargs))
+
+    assert any(call[0] == "count_documents" for call in collection.calls)
+    find_calls = [call for call in collection.calls if call[0] == "find"]
+    assert len(find_calls) == 1
+    assert ("skip", 0) in find_calls[0][3]
+    assert ("limit", 20) in find_calls[0][3]
+
+
+def test_search_preserves_existing_direct_query_without_count(monkeypatch):
+    collection = FakeArticlesCollection(local=[], uk=[])
+    monkeypatch.setattr(server.db, "articles", collection)
+
+    response = asyncio.run(server.get_articles(search="economy"))
+
+    assert not any(call[0] == "count_documents" for call in collection.calls)
+    find_calls = [call for call in collection.calls if call[0] == "find"]
+    assert len(find_calls) == 1
+    assert ("skip", 0) in find_calls[0][3]
+    assert ("limit", 20) in find_calls[0][3]
+    assert response == {"articles": [], "total": 0, "search": "economy"}
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [
@@ -221,6 +353,8 @@ def test_fallback_marker_records_candidates_and_elapsed_time(monkeypatch):
     assert fields["fallback_ran"] == "1"
     assert fields["fallback_candidates"] == "6"
     assert float(fields["fallback_ms"]) >= 0
+    assert ("limit", 480) in _find_call(collection, "fallback")[3]
+    assert ("to_list", 480) in _find_call(collection, "fallback")[3]
 
 
 def test_logging_failure_does_not_change_successful_response(monkeypatch):

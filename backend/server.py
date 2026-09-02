@@ -4682,16 +4682,19 @@ async def get_articles(
     with_total: bool = False  # Return {articles,total} envelope when true
 ):
     """Get all articles with optional filtering by category, source type, and search"""
-    homepage_timing_enabled = (
-        os.getenv("HOMEPAGE_ARTICLE_LIST_TIMING", "").strip().lower()
-        in ("1", "true", "yes", "on")
-        and not category
+    exact_homepage_list_request = (
+        not category
         and not search
         and not source_type
         and skip == 0
         and limit == 80
         and not include_archived
         and not with_total
+    )
+    homepage_timing_enabled = (
+        os.getenv("HOMEPAGE_ARTICLE_LIST_TIMING", "").strip().lower()
+        in ("1", "true", "yes", "on")
+        and exact_homepage_list_request
     )
     homepage_timing_started = time.perf_counter() if homepage_timing_enabled else None
     homepage_timing = {
@@ -4807,14 +4810,16 @@ async def get_articles(
         elif source_type == 'national':
             query['is_local_source'] = False
 
-        # Total count for pagination/UI (respects include_archived + filters)
-        try:
-            count_started = time.perf_counter() if homepage_timing_enabled else None
-            total_count = await db.articles.count_documents(query)
-            if homepage_timing_enabled:
-                homepage_timing["count_ms"] = (time.perf_counter() - count_started) * 1000
-        except Exception:
-            total_count = 0
+        # The exact homepage list response does not expose or otherwise consume a total.
+        # Other request shapes retain the existing pagination/UI count contract.
+        if not exact_homepage_list_request:
+            try:
+                count_started = time.perf_counter() if homepage_timing_enabled else None
+                total_count = await db.articles.count_documents(query)
+                if homepage_timing_enabled:
+                    homepage_timing["count_ms"] = (time.perf_counter() - count_started) * 1000
+            except Exception:
+                total_count = 0
         
         # For "all" category (Latest News), use interleaved ordering: Local, Local, UK, UK
         if (not category or category == 'all') and not source_type and not search:
@@ -4849,6 +4854,7 @@ async def get_articles(
                 homepage_timing["force_candidates"] = len(force_articles)
 
             local_started = time.perf_counter() if homepage_timing_enabled else None
+            local_candidate_limit = 100 if exact_homepage_list_request else limit * 6
             local_articles = await db.articles.find(local_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
@@ -4856,12 +4862,13 @@ async def get_articles(
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
-            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*6).to_list(limit*6)
+            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(local_candidate_limit).to_list(local_candidate_limit)
             if homepage_timing_enabled:
                 homepage_timing["local_materialise_ms"] = (time.perf_counter() - local_started) * 1000
                 homepage_timing["local_candidates_before_filter"] = len(local_articles)
             
             uk_started = time.perf_counter() if homepage_timing_enabled else None
+            uk_candidate_limit = 100 if exact_homepage_list_request else limit * 4
             uk_articles = await db.articles.find(uk_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
@@ -4869,7 +4876,7 @@ async def get_articles(
                     'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
                     'location': 1, 'priority_location': 1
                 }
-            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(limit*4).to_list(limit*4)
+            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(uk_candidate_limit).to_list(uk_candidate_limit)
             if homepage_timing_enabled:
                 homepage_timing["uk_materialise_ms"] = (time.perf_counter() - uk_started) * 1000
                 homepage_timing["uk_candidates_before_filter"] = len(uk_articles)
