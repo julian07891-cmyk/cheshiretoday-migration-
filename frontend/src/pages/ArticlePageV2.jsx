@@ -98,18 +98,53 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-function autoLinkContent(rawText, pillarLabel) {
+function extractNamedExternalLinks(text) {
+  const links = [];
+  let tokenPrefix = "\uE000CT_NAMED_LINK_";
+  while (text.includes(tokenPrefix)) tokenPrefix += "_";
+
+  const textWithTokens = text.replace(
+    /\[([^\]\r\n]+)\]\((https?:\/\/[^\s<>()]+)\)/gi,
+    (syntax, label, href) => {
+      try {
+        const parsed = new URL(href);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return syntax;
+      } catch (_) {
+        return syntax;
+      }
+
+      const token = `${tokenPrefix}${links.length}\uE001`;
+      links.push(
+        `<a href="${escapeHtml(href)}" target="_blank" rel="nofollow noopener noreferrer" class="underline underline-offset-2 font-semibold">${escapeHtml(label)}</a>`
+      );
+      return token;
+    }
+  );
+
+  return {
+    textWithTokens,
+    restoreLinks: (html) => links.reduce(
+      (result, link, index) => result.replace(`${tokenPrefix}${index}\uE001`, link),
+      html
+    ),
+  };
+}
+
+export function autoLinkContent(rawText, pillarLabel) {
   const text = String(rawText || "");
   if (!text.trim()) return "";
 
+  // Support only explicit [label](http(s)://...) links; everything else remains text.
+  const { textWithTokens, restoreLinks } = extractNamedExternalLinks(text);
+
   // 1) Escape first (safety)
-  let html = escapeHtml(text);
+  let html = escapeHtml(textWithTokens);
 
   // Non-Amazon monetisation OFF => do NOT auto-inject /guides/ links into article body.
   // Keep newline formatting consistent with existing rendering.
   if (!FEATURES.ARTICLE_INLINE_GUIDES_ENABLED) {
     html = html.replace(/\n/g, "<br/>");
-    return html;
+    return restoreLinks(html);
   }
 
   // 2) Protect plain URLs from being modified
@@ -139,7 +174,7 @@ function autoLinkContent(rawText, pillarLabel) {
   add(/\b(website\s+builder|website\s+builders)\b/i, "/guides/best-website-builders-small-business-uk");
   add(/\b(virtual\s+office|business\s+address|registered\s+office|mail\s+handling|mail\s+forwarding)\b/i, "/guides/best-virtual-office-services-small-business-uk");
   add(/\b(self-storage|self\s+storage|storage\s+unit|storage\s+units|storage\s+facility|storage\s+facilities|safestore)\b/i, "/guides/best-self-storage-services-uk-home-business");
-  add(/\b(will\s+writing|online\s+will|make\s+a\s+will|probate|inheritance|estate\s+planning|power\s+of\s+attorney)\b/i, "/guides/best-online-will-writing-services-uk");
+  add(/\b(will\s+writing|make\s+a\s+will|probate|inheritance|estate\s+planning|power\s+of\s+attorney)\b/i, "/guides/best-online-will-writing-services-uk");
   add(/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/i, "/guides/best-parcel-courier-services-small-business-uk");
   add(/\b(iso\s+9001|iso\s+14001|iso\s+27001|iso\s+certification|iso\s+training|audit\s+readiness)\b/i, "/guides/best-iso-training-certification-courses-uk-businesses");
 
@@ -170,7 +205,7 @@ function autoLinkContent(rawText, pillarLabel) {
     replaceOnce(/\b(website\s+builder|website\s+builders)\b/i, "/guides/best-website-builders-small-business-uk");
     replaceOnce(/\b(virtual\s+office|business\s+address|registered\s+office|mail\s+handling|mail\s+forwarding)\b/i, "/guides/best-virtual-office-services-small-business-uk");
     replaceOnce(/\b(self-storage|self\s+storage|storage\s+unit|storage\s+units|storage\s+facility|storage\s+facilities|safestore)\b/i, "/guides/best-self-storage-services-uk-home-business");
-    replaceOnce(/\b(will\s+writing|online\s+will|make\s+a\s+will|probate|inheritance|estate\s+planning|power\s+of\s+attorney)\b/i, "/guides/best-online-will-writing-services-uk");
+    replaceOnce(/\b(will\s+writing|make\s+a\s+will|probate|inheritance|estate\s+planning|power\s+of\s+attorney)\b/i, "/guides/best-online-will-writing-services-uk");
     replaceOnce(/\b(courier|parcel|shipping|delivery|fulfilment|fulfillment|multi-carrier)\b/i, "/guides/best-parcel-courier-services-small-business-uk");
     replaceOnce(/\b(iso\s+9001|iso\s+14001|iso\s+27001|iso\s+certification|iso\s+training|audit\s+readiness)\b/i, "/guides/best-iso-training-certification-courses-uk-businesses");
   } else if (pillar.includes("local")) {
@@ -198,7 +233,7 @@ function autoLinkContent(rawText, pillarLabel) {
     .filter(Boolean)
     .map((paragraph) => `<p>${paragraph.replace(/\n/g, "<br/>")}</p>`);
 
-  return paragraphs.join("");
+  return restoreLinks(paragraphs.join(""));
 }
 
 function formatDateTime(dateString) {
