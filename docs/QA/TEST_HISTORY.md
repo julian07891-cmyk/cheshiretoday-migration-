@@ -99,6 +99,8 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 | 27 Aug 2026 | `dcd5cfa` | Public search related regressions | 42 passed | Existing diagnostic output only | Public metadata, hub/category/authority, homepage and article surfaces | Bounded related set | Current QA reconciliation |
 | 27 Aug 2026 | `dcd5cfa` | Complete frontend Jest suite | 367 passed, 37 suites | Existing unrelated diagnostic output only | Full safe frontend baseline | Browser production verification recorded separately | Current QA reconciliation |
 | 27 Aug 2026 | `dcd5cfa` | Production frontend build and `git diff --check` | Pass | Stale Browserslist-data notice | Production bundle and whitespace validation | Build does not prove deployment | Current QA reconciliation |
+| 2 Sep 2026 | `70057e1` | Homepage article-list timing/materialisation focused regressions and static validation | Passed; exact total not preserved here | Not recorded | Exact homepage predicate, count bypass, 100/100 caps, unchanged request shapes/force/fallback/timing contracts | Functional evidence; production latency checked separately | Git `70057e1` and implementation review |
+| 4 Sep 2026 | `70057e1` | Five sequential production requests with temporary timing gate | 5/5 HTTP 200; exactly five correlated markers | None observed | Like-for-like homepage materialisation verification | Bounded five-request sample; does not identify the remaining client residual | Production deployments `dep-dad5jv2jnfac73ehqh20`, `dep-dad5pcgn74is73dd4mj0` |
 
 ## Reconstruction limitations
 

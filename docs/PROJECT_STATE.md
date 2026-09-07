@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `dcd5cfa1bfc4e396ccd23d52878306e23e307501`
-> - **Last repository reconciliation:** 27 August 2026
-> - **Production-verification status:** Commit `dcd5cfa` is live and its public-search accessibility contract is production-verified; `QA-A11Y-001` is closed while `QA-OPS-001` remains High Open
+> - **Repository baseline:** `70057e1b9e67bc74d89f23261271246b957cd065`
+> - **Last repository reconciliation:** 4 September 2026
+> - **Production-verification status:** Commit `70057e1` is live and its bounded homepage article-materialisation optimisation is production-verified; the remaining post-handler/client residual requires separate measurement while `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `dcd5cfa1bfc4e396ccd23d52878306e23e307501`
-- **Latest baseline commit:** `Improve public search accessibility`
+- **Current reconciled HEAD:** `70057e1b9e67bc74d89f23261271246b957cd065`
+- **Latest baseline commit:** `Optimise homepage article materialisation`
 
-This is the repository and production baseline reconciled on 27 August 2026, not
+This is the repository and production baseline reconciled on 4 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -381,6 +381,31 @@ Highest-priority unresolved or monitoring items are:
   Public homepage, category and article SEO, canonical/social metadata, JSON-LD
   and both sitemaps were preserved. Robots and noindex are indexing controls only;
   Admin authentication and API authorization remain the security boundary.
+- **Production-verified material improvement:** `QA-PERF-001` is narrowed to
+  record that its original homepage database/materialisation defect has received
+  an evidence-supported optimisation. Commit `70057e1` skips the unused
+  `count_documents()` call and caps Local and UK candidate materialisation at 100
+  each only for the exact public `GET /api/articles?limit=80` list shape. Force-
+  live and fallback caps and semantics, visibility, Mongo predicates, projections,
+  sorting, filtering, 2:2 interleaving, incident/crime handling, boosting, dedupe,
+  slicing and response contracts remain unchanged. Read-only sufficiency analysis
+  found deepest contributing Local/UK positions 42/58: 60/60 and 80/80 matched
+  but lacked the selected operational headroom, while 100/100 retained an exact
+  ordered match; force-live reduction was rejected and fallback was unchanged.
+  A bounded five-request comparison measured median handler time
+  1,081.639→708.314 ms (-373.325 ms, 34.5%), TTFB
+  1,868.333→1,544.086 ms (-324.247 ms, 17.4%), and total time
+  1,897.497→1,587.383 ms (-310.114 ms, 16.3%). Count time fell
+  123.102→0 ms, Local materialisation 366.840→255.975 ms (-30.2%),
+  and UK materialisation 248.688→132.848 ms (-46.6%). All five responses
+  returned HTTP 200 and 79 articles with stable bytes, force candidates 33,
+  pre-dedupe/final 80/79 and fallback 0/5; exactly five markers were emitted,
+  with no traceback, material 5xx, OOM, exit 137 or unexpected restart. This is
+  bounded evidence, not statistical or site-wide performance closure. The median
+  post-change TTFB-minus-handler residual is 839.327 ms; its framework, encoding,
+  compression, proxy/runtime, network or other composition is unmeasured and must
+  not be attributed without a separate read-only investigation. Classification:
+  **MATERIAL IMPROVEMENT — QA-PERF-001 OPTIMISATION VERIFIED.**
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
@@ -444,13 +469,15 @@ No manual import should be triggered solely to accelerate observation.
 3. Complete Weekly Roundup QA using normal scheduled evidence.
 4. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
-5. Complete ChatGPT and Codex historical reconciliation.
+5. Measure/design the remaining post-handler/client TTFB residual read-only before
+   any further performance optimisation.
 
 Security and reliability take precedence over speculative features.
 
 ## 13. Near-term priorities
 
-- measure current article-list performance before optimisation;
+- investigate the remaining homepage post-handler/client TTFB residual without
+  assuming a subsystem cause or proposing another Mongo/index/query change;
 - preserve and improve hermetic test isolation;
 - reduce compilation/build/test warning debt in bounded changes;
 - validate GA4 configuration and reporting separately from first-party analytics;

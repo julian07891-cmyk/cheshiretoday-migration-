@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `dcd5cfa1bfc4e396ccd23d52878306e23e307501`, including the production-verified closure of `QA-A11Y-001`.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `70057e1b9e67bc74d89f23261271246b957cd065`, including the production-verified homepage materialisation optimisation.
 
 ## Document purpose
 
@@ -54,7 +54,8 @@ Security and production stability precede feature expansion.
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |
 | Next | Legacy/non-hermetic suite organisation | Preserve loopback refusal; document safe default; separate read-only smoke tests if justified |
 | Next | Compilation/warning maintenance | Lifecycle, multipart/gzip, Browserslist and backup artefacts as separate low-risk changes |
-| Monitoring | Public article-list performance | Current TTFB and Mongo plan/index evidence before optimisation |
+| Completed | Homepage database/materialisation remediation (`QA-PERF-001`) | Commit `70057e1` skips the unused exact-homepage count and applies evidence-supported 100/100 Local/UK caps; five-request production comparison reduced median handler 34.5%, TTFB 17.4% and total 16.3% with observed response semantics preserved |
+| Next | Post-handler/client TTFB residual measurement | Median post-change TTFB-minus-handler is 839.327 ms; measure its composition read-only before attributing framework, encoding, compression, proxy/runtime, network or other work or proposing further optimisation |
 | Next | `QA-DOC-001` Threads/operator-documentation consistency | Reconcile current implementation and operator wording without rewriting the dated QA baseline |
 
 ## Medium-term priorities

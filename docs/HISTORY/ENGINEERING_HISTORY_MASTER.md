@@ -649,6 +649,36 @@ material 5xx regression. `QA-SEC-002` therefore closed.
 - **Decision:** `QA-A11Y-001` closed as production verified. Failure messaging and stale-response protection were verified from deployed immutable code/tests rather than a manufactured production failure. No screen-reader certification, full WCAG conformance or site-wide accessibility closure is claimed.
 - **Sources:** Git `dcd5cfa`; [Open Findings](../QA/OPEN_FINDINGS.md#qa-a11y-001); [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render and public-browser verification 27 August 2026.
 
+### Homepage materialisation optimisation — 30 August–4 September 2026
+
+- **Diagnosis and design:** Five production timing requests on diagnostic commit
+  `15695cb` measured median handler 1,081.639 ms, including count 123.102 ms,
+  Local materialisation 366.840 ms and UK materialisation 248.688 ms. A read-only
+  candidate replay found deepest contributing Local/UK positions 42/58. Although
+  60/60 and 80/80 matched, 100/100 was selected for safer operational headroom;
+  force-live reduction was rejected and fallback remained unchanged.
+- **Implementation:** Commit `70057e1` skips unused `count_documents()` and caps
+  Local and UK materialisation at 100 only for the exact public 80-item homepage
+  list request. Visibility, predicates, projections, sorting, filtering, 2:2
+  interleaving, incident/crime rules, force/fallback, boosting, dedupe, slicing
+  and response contracts remain unchanged.
+- **Production verification:** Deployment `dep-dabrjseq1p3s73fsvf7g` was initially
+  verified on instance `xmx4p`. Five gated sequential requests on deployment
+  `dep-dad5jv2jnfac73ehqh20`, instance `cs5n2`, reduced median handler to
+  708.314 ms (-34.5%), TTFB to 1,544.086 ms (-17.4%) and total to 1,587.383 ms
+  (-16.3%). All returned HTTP 200 and 79 articles with stable bytes, 33 force
+  candidates, 80/79 pre-dedupe/final and fallback 0/5; exactly five markers were
+  recorded without traceback, material 5xx, OOM/137 or unexpected restart.
+- **Decision and limit:** **MATERIAL IMPROVEMENT — QA-PERF-001 OPTIMISATION
+  VERIFIED.** This is bounded five-request evidence, not statistical or site-wide
+  closure. The gate was removed by `dep-dad5pcgn74is73dd4mj0`; SHA `70057e1`
+  remained live on instance `gldsq` with health 200. The 839.327 ms median
+  TTFB-minus-handler residual remains compositionally unmeasured and requires a
+  separate read-only investigation before any further optimisation.
+- **Sources:** Git `15695cb`, `70057e1`; [Open Findings](../QA/OPEN_FINDINGS.md#qa-perf-001);
+  [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render logs and
+  bounded production comparison reconciled 4 September 2026.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.

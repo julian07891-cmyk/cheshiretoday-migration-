@@ -143,16 +143,16 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Current severity:** Medium
 - **Area:** Performance
 - **Original finding:** Public article-list TTFB was consistently around 1.4–1.5 seconds warm, with slower larger request and visible homepage skeleton delay.
-- **Current status:** Open; no measured query/index/cache remediation.
-- **Current-code evidence:** Public article selection still performs database queries plus in-process eligibility/interleaving work.
-- **Fixing commits:** None identified.
-- **Test evidence:** Functional endpoint tests do not close latency.
-- **Deployment evidence:** None.
-- **Production evidence:** 29 July timings only; current timings unknown.
-- **Remaining gap:** Current bounded latency sample and Mongo execution-plan/index evidence.
-- **Closure criteria:** Profile without altering editorial selection, implement only evidence-supported optimisation, pass functional regressions, deploy and compare like-for-like latency.
+- **Current status:** **MATERIAL IMPROVEMENT — QA-PERF-001 OPTIMISATION VERIFIED.** The original homepage database/materialisation defect is remediated and production-verified; this does not close site-wide performance or explain the remaining client-observed latency.
+- **Current-code evidence:** For only the exact public `GET /api/articles?limit=80` list shape (`skip=0`, `with_total=False`, no category/search/source filter, archived disabled), commit `70057e1` skips unused `count_documents()` and caps Local and UK materialisation at 100 each. Force-live/fallback caps and semantics, visibility, Mongo predicates, projections, sorting, editorial/noise filtering, 2:2 interleaving, crime/incident handling, pinning, boosting, dedupe, slicing and response contracts are unchanged.
+- **Fixing commits:** Diagnostic baseline `15695cb`; bounded optimisation `70057e1b9e67bc74d89f23261271246b957cd065`.
+- **Test evidence:** Focused deterministic tests cover the exact optimisation predicate, count bypass, 100/100 candidate caps, unchanged force/fallback limits, other request shapes and timing eligibility. Candidate-sufficiency replay found deepest contributing Local/UK positions 42/58; 100/100 preserved the exact ordered baseline with better headroom than matching 60/60 or 80/80 alternatives.
+- **Deployment evidence:** Optimisation deployment `dep-dabrjseq1p3s73fsvf7g`, initially verified on instance `xmx4p`, Standard 1 CPU / 2 GB. The gated comparison ran on deployment `dep-dad5jv2jnfac73ehqh20`, instance `cs5n2`; the gate was then removed by `dep-dad5pcgn74is73dd4mj0`, leaving SHA `70057e1` live on instance `gldsq` with HTTP 200 health.
+- **Production evidence:** Five sequential pre/post observations measured median handler 1,081.639→708.314 ms (-34.5%), TTFB 1,868.333→1,544.086 ms (-17.4%), total 1,897.497→1,587.383 ms (-16.3%), count 123.102→0 ms, Local 366.840→255.975 ms (-30.2%) and UK 248.688→132.848 ms (-46.6%). Each post-change request returned HTTP 200 and 79 articles with stable bytes, force candidates 33, pre-dedupe/final 80/79 and fallback 0/5. Exactly five markers correlated one-to-one; no traceback, material 5xx, OOM/137 or unexpected restart occurred. These five samples do not establish broad statistical certainty.
+- **Remaining gap:** Median post-change client TTFB minus instrumented handler was 839.327 ms. That residual is outside current handler phases and may include framework response encoding, GZip, proxy/runtime/network or other work, but its composition is unmeasured. Treat it as a separate read-only measurement/design investigation, not justification for another Mongo/index/query change.
+- **Closure criteria:** Met for the original confirmed database/materialisation remediation. Any broader performance closure requires independent measurement and evidence for the remaining client residual.
 - **Owner/documentation responsibility:** Backend/performance owner; monitoring record.
-- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), [Monitoring](../OPERATIONS/MONITORING.md).
+- **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `15695cb`, `70057e1`, [Monitoring](../OPERATIONS/MONITORING.md), bounded production comparison 4 September 2026.
 
 ### QA-OPS-001
 

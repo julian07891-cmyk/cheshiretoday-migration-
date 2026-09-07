@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `dcd5cfa1bfc4e396ccd23d52878306e23e307501`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `70057e1b9e67bc74d89f23261271246b957cd065`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -22,9 +22,9 @@ Evidence-backed status totals for the eleven original findings are:
 
 | Classification | Count |
 |---|---:|
-| Open or not fully production verified | 5 |
+| Open or not fully production verified | 4 |
 | Remediated and verified by tests at repository level | 2 |
-| Remediated, deployed and production verified | 4 |
+| Remediated, deployed and production verified | 5 |
 
 Three additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
@@ -73,8 +73,21 @@ Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2d
 
 ## Performance and memory
 
-The public article-list latency finding lacks a measured remediation. Article-
-generation observability now provides fifteen RSS/Python-heap lifecycle markers,
+`QA-PERF-001` is narrowed to **MATERIAL IMPROVEMENT — OPTIMISATION VERIFIED**.
+After a five-request diagnostic baseline on `15695cb` identified Motor/database
+materialisation as dominant, read-only sufficiency replay found deepest contributing
+Local/UK positions 42/58 and selected 100/100 caps with exact ordered output and
+operational headroom. Commit `70057e1` skips unused homepage `count_documents()`
+and applies those caps only to the exact public 80-item homepage list shape. Its
+five-request production comparison reduced median handler 1,081.639→708.314 ms
+(-34.5%), TTFB 1,868.333→1,544.086 ms (-17.4%) and total
+1,897.497→1,587.383 ms (-16.3%), while all responses remained HTTP 200 with 79
+articles, stable bytes, unchanged 33 force candidates, 80/79 pre-dedupe/final and
+fallback 0/5. Five samples do not prove broad statistical certainty. The remaining
+839.327 ms median TTFB-minus-handler residual is unmeasured and becomes a separate
+read-only investigation; no subsystem cause or further query change is inferred.
+
+Article-generation observability now provides fifteen RSS/Python-heap lifecycle markers,
 and hermetic allocator diagnostics in `0052b68` supported one isolated production
 experiment. Commit `b3550c0` applies `batch_size(250)` only to the projected short-
 content cursor. Natural runs on 20 August 18:00 and 21 August 06:00 reduced that
