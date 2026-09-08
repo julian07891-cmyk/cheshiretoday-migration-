@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `70057e1b9e67bc74d89f23261271246b957cd065`
-> - **Last repository reconciliation:** 4 September 2026
-> - **Production-verification status:** Commit `70057e1` is live and its bounded homepage article-materialisation optimisation is production-verified; the remaining post-handler/client residual requires separate measurement while `QA-OPS-001` remains High Open
+> - **Repository baseline:** `de87f23203b76fb8685eee8d1df348a0e9a921a8`
+> - **Last repository reconciliation:** 7 September 2026
+> - **Production-verification status:** Commit `de87f232` is live; its safe named-link renderer is production-verified. The representative Search Console canonical audit found the current implementation healthy while external recrawl monitoring remains open; `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `70057e1b9e67bc74d89f23261271246b957cd065`
-- **Latest baseline commit:** `Optimise homepage article materialisation`
+- **Current reconciled HEAD:** `de87f23203b76fb8685eee8d1df348a0e9a921a8`
+- **Latest baseline commit:** `Add safe named article links`
 
-This is the repository and production baseline reconciled on 4 September 2026, not
+This is the repository and production baseline reconciled on 7 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -406,6 +406,17 @@ Highest-priority unresolved or monitoring items are:
   compression, proxy/runtime, network or other composition is unmeasured and must
   not be attributed without a separate read-only investigation. Classification:
   **MATERIAL IMPROVEMENT — QA-PERF-001 OPTIMISATION VERIFIED.**
+- **Search Console canonical audit — monitoring only:** representative inspection
+  on 7 September 2026 classified **Alternate page with proper canonical tag** as
+  **MOSTLY HISTORICAL ALTERNATE URLS — CURRENT IMPLEMENTATION HEALTHY**. The
+  report remained `Validation Failed` with 82 examples (validation 16–25 July;
+  latest report update observed 4 September), but sampled query consolidation,
+  historical UUID identities, current Mongo-ID canonicals, archived noindex,
+  sitemaps and internal links were coherent. No current canonical defect or code
+  change was justified. **DO NOT PRESS VALIDATE FIX NOW.** Allow natural Google
+  recrawl and recheck after a later report update or a newly crawled current
+  mismatch; the detailed evidence is in
+  [SEO and Crawler Architecture](ARCHITECTURE/SEO_AND_CRAWLERS.md).
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
@@ -481,7 +492,9 @@ Security and reliability take precedence over speculative features.
 - preserve and improve hermetic test isolation;
 - reduce compilation/build/test warning debt in bounded changes;
 - validate GA4 configuration and reporting separately from first-party analytics;
-- perform representative Search Console, Google News and Discover review;
+- monitor the 82-example Search Console canonical baseline after natural recrawl;
+  inspect any newly crawled current mismatch before changing code or requesting
+  validation, and continue separate Google News and Discover review;
 - continue quality-first commercial SEO and affiliate guide development;
 - design evidence-backed dynamic affiliate inventory;
 - complete sponsor workflow readiness and reporting checks.

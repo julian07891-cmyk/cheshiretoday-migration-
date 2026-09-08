@@ -50,6 +50,58 @@ Preserve Mongo-ID canonical identity, clean query-free canonical/OG URLs, hidden
 
 Crawler detection is user-agent based. Search engines decide indexing independently. Static first paint and settled browser DOM can differ transiently. Search Console representative sampling remains an operational investigation, not repository truth.
 
+## Search Console canonical audit — 7 September 2026
+
+The Search Console issue **Alternate page with proper canonical tag** remained in
+`Validation Failed` state (validation started 16 July and failed 25 July), with
+82 affected examples and a latest report update observed on 4 September 2026.
+That validation state alone is not evidence of a current implementation defect.
+
+Representative inspection classified the report as **MOSTLY HISTORICAL
+ALTERNATE URLS — CURRENT IMPLEMENTATION HEALTHY**:
+
+- current article identity is `/article/{Mongo _id}/{current-title-slug}`; the
+  slug is deterministic and capped at 80 characters, and resolvable stale or
+  wrong slugs redirect with HTTP 301 to the current canonical;
+- recognised crawlers receive server-rendered canonical, robots, title,
+  `NewsArticle` JSON-LD and crawlable article content without depending on
+  hydration;
+- the sampled `?category=AI%20%26%20Tech` homepage alternate returned HTTP 200
+  with the homepage canonical and `index, follow, max-image-preview:large`.
+  Search Console last crawled it on 18 August 2026 using Googlebot smartphone,
+  fetched it successfully, and agreed with the declared homepage canonical.
+  The dedicated hub remains `/category/ai-tech`;
+- sampled article alternates `69dcd11...`, `69db7f6...` and `69de221...` were
+  HTTP 200 archived records whose current Mongo-ID URLs were self-canonical and
+  intentionally `noindex, follow, max-image-preview:large`. For `69dcd11...`
+  and `69db7f6...`, Search Console's historical UUID canonicals
+  (`8bd18ee6-da58-4b20-9ac8-817ef7a53712` and
+  `dc405fcd-e719-4b67-84be-ab0a0f2f3663`) matched those same articles'
+  `internal_id` values, rather than a homepage, category, unrelated or missing
+  article. Their last crawls were 1 May 2026 at 09:36:21 and 30 April 2026 at
+  22:24:59 respectively, both successful Googlebot-smartphone fetches with the
+  declared and Google-selected historical UUID canonical aligned;
+- `/sitemap.xml` and `/news-sitemap.xml` returned HTTP 200. The sampled archived
+  Mongo URLs, historical UUID forms and query alternate were absent; current
+  sitemap logic emits eligible active Mongo-ID/current-slug URLs. This was
+  representative sampling, not inspection of all 82 examples;
+- the crawler homepage exposed 40 Mongo-ID/current-slug article links and no
+  `?category=` navigation links. Frontend category navigation uses
+  `/category/...`, article helpers use current slugs and public Mongo IDs, and
+  no inspected source emitted the sampled UUID or stale alternatives;
+- the homepage, a current Wilmslow article and `/category/ai-tech` were HTTP 200,
+  correctly canonical and indexable. The archived samples were intentionally
+  noindex, and no unintended public `X-Robots-Tag` was observed.
+
+Decision: **DO NOT PRESS VALIDATE FIX NOW.** The report contains intentional
+alternates and sampled historical identities for the same articles, while the
+current implementation, discovery files and internal links are healthy. Allow
+natural Google recrawl. Retain 82 affected examples and the 4 September report
+update as the monitoring baseline; recheck after a later report update or a
+newly crawled current mismatch. For any new current sample, inspect declared and
+Google-selected canonical, article identity, sitemap membership and internal
+link source before considering a code change.
+
 ## Related documents
 
 [Architecture Master](../ARCHITECTURE_MASTER.md), [Article Pipeline](ARTICLE_PIPELINE.md), [Monitoring](../OPERATIONS/MONITORING.md), and [Production Timeline](../PRODUCTION_TIMELINE.md).

@@ -63,7 +63,7 @@ Security and production stability precede feature expansion.
 | Status | Work | Scope and gate |
 |---|---|---|
 | Monitoring | GA4 validation | Confirm configured collection/consent/reporting separately from first-party analytics |
-| Monitoring | Search Console/Google News/Discover | Representative sampling; do not request indexing merely for QA |
+| Monitoring | Search Console/Google News/Discover | Canonical audit classified the 82-example alternate-page report as mostly historical with current implementation healthy; do not press Validate Fix now, allow natural recrawl, and recheck after a later report update or newly crawled current mismatch. Continue separate Google News/Discover sampling |
 | Next | Commercial SEO and affiliate guides | Quality-first authority pages, current inventory and crawler/index evidence |
 | Next | Sponsor readiness | Placement QA, advertiser workflow, checkout/webhook and reporting checks before campaigns |
 | Next | Server-side homepage crawl improvements | Preserve current crawler/browser metadata and public editorial allocation |

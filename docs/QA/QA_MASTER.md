@@ -69,7 +69,17 @@ Admin mobile Safari received substantial responsive and touch hardening with rea
 
 ## SEO and metadata
 
-Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2da`, deployed, and recorded as production-verified in `7ca1269`. This closes `QA-SEO-001`. Commit `24f381e` then added first-byte Admin `noindex, nofollow, noarchive` protection and explicit wildcard, Googlebot and Googlebot-News exclusions for `/admin` and `/api/admin/`. Deployment `dep-da7ala710e5c738ovtm0` on instance `824s7` was production-verified on 26 August 2026 with public SEO preserved, so `QA-SEO-002` is **CLOSED — PRODUCTION VERIFIED**. These are indexing controls only; Admin authentication and API authorization remain the security boundary. Search Console and GA4 validation remain external work.
+Rendered public metadata reconciliation was implemented in `6bfe896` and `1e5c2da`, deployed, and recorded as production-verified in `7ca1269`. This closes `QA-SEO-001`. Commit `24f381e` then added first-byte Admin `noindex, nofollow, noarchive` protection and explicit wildcard, Googlebot and Googlebot-News exclusions for `/admin` and `/api/admin/`. Deployment `dep-da7ala710e5c738ovtm0` on instance `824s7` was production-verified on 26 August 2026 with public SEO preserved, so `QA-SEO-002` is **CLOSED — PRODUCTION VERIFIED**. These are indexing controls only; Admin authentication and API authorization remain the security boundary.
+
+A representative Search Console canonical audit on 7 September 2026 classified
+the 82-example **Alternate page with proper canonical tag** report as **MOSTLY
+HISTORICAL ALTERNATE URLS — CURRENT IMPLEMENTATION HEALTHY**. Sampled historical
+UUIDs resolved to the same current Mongo articles, intentional query
+consolidation was coherent, and current canonicals, noindex boundaries,
+sitemaps and internal links were healthy. This does not claim all 82 examples
+were inspected or that Google indexing is solved. **DO NOT PRESS VALIDATE FIX
+NOW**; allow natural recrawl and reassess after a later report update or a newly
+crawled current mismatch. GA4 validation remains external work.
 
 ## Performance and memory
 
