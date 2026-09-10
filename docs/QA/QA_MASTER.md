@@ -122,7 +122,7 @@ broader release/finally ownership questions were outside this closure.
 
 ## Newsletter
 
-Secure request-link, challenge, replay, unsubscribe/reactivation, active-recipient exclusion, rotating batches, Resend diagnostics and accepted-recipient ledgers have extensive focused coverage. Weekly Roundup live reliability and inactive-subscriber conclusions still require dated operational evidence; provider acceptance is not inbox delivery.
+Secure request-link, challenge, replay, unsubscribe/reactivation, active-recipient exclusion, rotating batches, Resend diagnostics and accepted-recipient ledgers have extensive focused coverage. Weekly Roundup slot-aware idempotence is **NATURAL VERIFICATION COMPLETE**: on 6 September 2026, all four natural Sunday slots selected 1,000 recipients and recorded 1,000/1,000 successful application/provider-path acceptance, with distinct slot identities, cursor progression 996→1996→2996→3996, no observed `E11000` conflict and the slot-aware unique index confirmed at subsequent startup. This closes the idempotence reliability-validation loop, not delivery, bounce, engagement, inactive-subscriber, growth or commercial conclusions; provider acceptance is not inbox delivery.
 
 ## Editorial workflow
 

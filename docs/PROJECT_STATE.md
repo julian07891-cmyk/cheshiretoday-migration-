@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `de87f23203b76fb8685eee8d1df348a0e9a921a8`
-> - **Last repository reconciliation:** 7 September 2026
-> - **Production-verification status:** Commit `de87f232` is live; its safe named-link renderer is production-verified. The representative Search Console canonical audit found the current implementation healthy while external recrawl monitoring remains open; `QA-OPS-001` remains High Open
+> - **Repository baseline:** `ea3f1dc8bde5a32c7614862bebd8a24667f31a42`
+> - **Last repository reconciliation:** 10 September 2026
+> - **Production-verification status:** Commit `ea3f1dc` is live. Weekly Roundup slot-aware idempotence completed natural four-slot verification on 6 September; Search Console recrawl monitoring remains open and `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `de87f23203b76fb8685eee8d1df348a0e9a921a8`
-- **Latest baseline commit:** `Add safe named article links`
+- **Current reconciled HEAD:** `ea3f1dc8bde5a32c7614862bebd8a24667f31a42`
+- **Latest baseline commit:** `Document Search Console canonical audit`
 
-This is the repository and production baseline reconciled on 7 September 2026, not
+This is the repository and production baseline reconciled on 10 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -224,6 +224,20 @@ subscriber addresses, tokens or hashes.
 Code capability does not prove the current live provider, audience, delivery or
 inbox result. Verify production state and use normal scheduled evidence rather
 than an unapproved test send.
+
+Weekly Roundup slot-aware idempotence is **NATURAL VERIFICATION COMPLETE**.
+Commit `5559499` (`Fix Weekly Roundup batch idempotence`) established identity on
+`(digest_time, date_key, weekly_roundup_batch_slot)` with `claimed`, `sending`,
+`sent`, `partial`, `failed` and `ambiguous` lifecycle protection. On Sunday
+6 September 2026, the four scheduled slots ran naturally at 09:00, 10:00, 11:00
+and 12:00 BST. Each selected 1,000 recipients and recorded 1,000/1,000 successful
+application/provider-path acceptance, with distinct slot tracking identities and
+cursor progression to 996, 1996, 2996 and 3996. No `E11000` duplicate-key conflict
+was found, and subsequent production startup confirmed the slot-aware unique
+index. No manual newsletter send was used for verification. These results close
+the idempotence reliability-validation loop; they do not prove 4,000 inbox
+deliveries, readership, absence of delayed provider failures or perfect
+deliverability.
 
 See [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md) and
 [Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md).
@@ -477,7 +491,8 @@ No manual import should be triggered solely to accelerate observation.
    close `QA-OPS-001`.
 2. Review the visible-pool lifecycle separately using current heap/RSS evidence;
    do not combine another memory change with the batching decision.
-3. Complete Weekly Roundup QA using normal scheduled evidence.
+3. Continue Weekly Roundup delivery, bounce and engagement monitoring without
+   treating provider acceptance as final inbox delivery.
 4. Continue inactive-subscriber evidence gathering without speculative
    deactivation.
 5. Measure/design the remaining post-handler/client TTFB residual read-only before

@@ -26,6 +26,17 @@ Use this for design and code ownership. Operators should use [Newsletter Operati
 
 `send_weekly_roundup_email` uses four Sunday batch slots at 09:00, 10:00, 11:00 and 12:00. Batch one prioritises organic website subscribers before engaged readers; later batches continue without wraparound. Its content composition differs from the Daily Brief and can include a Big Read and other roundup sections.
 
+Commit `5559499` made the idempotence identity slot-aware on
+`(digest_time, date_key, weekly_roundup_batch_slot)` and protects the `claimed`,
+`sending`, `sent`, `partial`, `failed` and `ambiguous` lifecycle states. Natural
+production verification completed on 6 September 2026: all four scheduled slots
+recorded 1,000/1,000 application/provider-path acceptance, distinct tracking
+identities and sequential cursor advancement to 996, 1996, 2996 and 3996, with
+no observed `E11000` conflict. The slot-aware unique index was also confirmed at
+subsequent production startup. This verifies slot identity and natural execution,
+not final inbox delivery, readership, bounce-free delivery or perfect
+deliverability.
+
 ## Delivery providers and diagnostics
 
 `EmailService` supports Resend batch delivery and an explicitly configured SMTP path. Resend/SMTP selection is environment-dependent. Provider diagnostics and `last_accepted_recipients` are reset per send attempt. Successful acceptance is not equivalent to inbox delivery.

@@ -50,7 +50,7 @@ Security and production stability precede feature expansion.
 |---|---|---|
 | Completed | Public search accessibility (`QA-A11Y-001`) | Commit `dcd5cfa`, 7 focused/42 related/367 total frontend tests, production build, deployment `dep-da82j9uk1f9s73dgc1mg`, and bounded desktop/mobile production verification completed 27 August 2026 |
 | Monitoring | Bounded labelled event-anchor calibration (`CT-QA-2026-004`) | Implementation, deployment and first natural run are verified. Continue natural high-specificity same-run cross-source calibration; keep Manual Review routing, historical routing and all enforcement behind a separate evidence review and approval gate |
-| Monitoring | Weekly Roundup QA | Normal Sunday batch evidence, provider diagnostics, ledger/cursor reconciliation; no test send by default |
+| Completed | Weekly Roundup slot-aware idempotence verification | Commit `5559499`; four natural slots on 6 September each recorded 1,000/1,000 application/provider acceptance, distinct slot identities and cursor progression 996→1996→2996→3996 without observed `E11000`. Continue deliverability and engagement monitoring separately; acceptance is not inbox delivery |
 | Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |
 | Next | Legacy/non-hermetic suite organisation | Preserve loopback refusal; document safe default; separate read-only smoke tests if justified |
 | Next | Compilation/warning maintenance | Lifecycle, multipart/gzip, Browserslist and backup artefacts as separate low-risk changes |
@@ -89,7 +89,9 @@ Security and production stability precede feature expansion.
 - First duplicate Stage 1, visible-pool, short-content scan and high-start memory
   behaviour after the staged cleanup optimisations. `1811430` was safe but its
   first natural comparison (+28.5 MB versus +26.0 MB) did not show material RSS improvement.
-- Weekly Roundup batches, accepted-recipient ledger, provider outcome and cursor progress.
+- Weekly Roundup delivery/bounce, accepted-recipient ledger and engagement
+  monitoring after completed slot-aware idempotence verification; provider
+  acceptance remains distinct from inbox delivery.
 - First-party analytics subsection latency and scanner/bot noise.
 - Sitemap, crawler metadata and representative Search Console state.
 - Sponsored/affiliate event quality before revenue interpretation.
