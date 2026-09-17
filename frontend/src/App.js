@@ -33,6 +33,7 @@ import ContactPage from "./components/ContactPage";
 import HomePageV1 from "./pages/HomePageV1";
 import AuthorityPage from "./pages/AuthorityPage";
 import PublicMetadataDefaults from "./components/PublicMetadataDefaults";
+import AnalyticsConsentManager from "./components/AnalyticsConsentManager";
 
 
 import SponsoredSidebarBlock from "./components/SponsoredSidebarBlock";
@@ -221,6 +222,7 @@ function App() {
       <ThemeProvider>
       <PromoWidgetProvider>
         <BrowserRouter>
+          <AnalyticsConsentManager>
           <PublicMetadataDefaults />
           <Routes>
             <Route path="/" element={<HomePageV1 />} />
@@ -347,6 +349,7 @@ function App() {
             ))}
             <Route path="/:location" element={<LocationRouteWrapper />} />
           </Routes>
+          </AnalyticsConsentManager>
         </BrowserRouter>
       </PromoWidgetProvider>
     </ThemeProvider>

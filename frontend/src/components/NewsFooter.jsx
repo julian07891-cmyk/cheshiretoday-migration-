@@ -6,10 +6,12 @@ import NewsletterPreferences from './NewsletterPreferences';
 import { trackEvent } from '../utils/trackEvent';
 import { LOCATION_HUBS } from "../config/publicHubs";
 import { NEWSLETTER_SIGNUP_CONSENT } from "../constants/newsletterSignup";
+import { useAnalyticsConsent } from './AnalyticsConsentManager';
 
 const FACEBOOK_PAGE_URL = 'https://www.facebook.com/865430919994962';
 
 const NewsFooter = () => {
+  const { openAnalyticsPreferences } = useAnalyticsConsent();
   const currentYear = new Date().getFullYear();
   const [email, setEmail] = React.useState('');
   const [subscribed, setSubscribed] = React.useState(false);
@@ -205,6 +207,9 @@ const NewsFooter = () => {
             <div className="flex items-center space-x-4 flex-wrap justify-center">
               <Link to="/privacy" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Privacy Policy</Link>
               <Link to="/cookies" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Cookie Policy</Link>
+              <button type="button" onClick={openAnalyticsPreferences} className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                Cookie / privacy settings
+              </button>
 
               <span className="text-neutral-500 dark:text-slate-500 dark:text-slate-500">|</span>
               <Link to="/terms" className="text-sm hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors">Terms of Service</Link>
