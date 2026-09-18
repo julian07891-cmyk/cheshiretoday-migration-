@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `be0182b395edc1773ebd50c062ed24ff735c1d24`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -26,10 +26,12 @@ Evidence-backed status totals for the eleven original findings are:
 | Remediated and verified by tests at repository level | 2 |
 | Remediated, deployed and production verified | 5 |
 
-Three additional post-baseline findings are registered: documentation authority
+Four additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
-of the numerical observation-count gate, and the now-closed scheduler
-lock-failure continuation risk. These totals describe evidence status, not severity totals.
+of the numerical observation-count gate, the now-closed scheduler lock-failure
+continuation risk, and the High RSS-preview/imported-body-quality defect with
+partial natural acceptance. These totals describe evidence status, not severity
+totals.
 
 ## Original 29 July QA baseline
 
@@ -132,6 +134,20 @@ are recorded, with varying deployment evidence. Version 1 duplicate protection
 remains authoritative. Editorial Similarity is advisory, scheduled-only and
 shadow-only. Its numerical three-run observation-count gate is satisfied;
 calibration, threshold, UI and enforcement decisions remain unapproved.
+
+`CT-QA-2026-005` records a confirmed High imported-body-quality defect, not an
+AI-authored-content defect. A continuation-ended Guardian RSS preview became
+public, and tag deletion destroyed HTML block boundaries; five current records
+were found in a bounded audit, not a lifetime census. Commit `bbc526c` preserves
+block boundaries, classifies incompleteness before sanitisation and prevents
+`manual_review_without_ai` from bypassing hidden Manual Review. Focused and
+related suites passed (44; 130 with 12 skipped; 104), with compilation/diff and
+review gates approved. Deployment `dep-damij1btqb8s73fvesp0` was healthy, and
+the natural 18 September 18:00 run verified one incomplete Guardian candidate
+routed to Manual Review plus bounded clean structure/marker evidence. Overall
+status is **IMPORT ARTICLE QUALITY FIX NATURAL ACCEPTANCE PARTIAL**: the complete-
+replacement path is not naturally exercised, five historical records remain
+unrepaired, and `/api/import-real-news` remains a separate unchanged follow-up.
 
 ## Social publishing
 

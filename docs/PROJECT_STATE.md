@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `be0182b395edc1773ebd50c062ed24ff735c1d24`
-> - **Last repository reconciliation:** 17 September 2026
-> - **Production-verification status:** Commit `be0182b` is live. Third-party analytics consent implementation, deployment and observable browser behaviour are verified; event-level production network verification remains outstanding because suitable isolated request-inspection tooling was unavailable. `QA-OPS-001` remains High Open
+> - **Repository baseline:** `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`
+> - **Last repository reconciliation:** 18 September 2026
+> - **Production-verification status:** Commit `bbc526c` is live. The RSS-preview HTML-boundary fix and incomplete-preview routing are naturally verified on bounded post-deployment samples; the complete-replacement path is not naturally exercised, so overall acceptance remains partial. `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `be0182b395edc1773ebd50c062ed24ff735c1d24`
-- **Latest baseline commit:** `Add consent-gated analytics tracking`
+- **Current reconciled HEAD:** `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`
+- **Latest baseline commit:** `Fix incomplete RSS preview handling`
 
-This is the repository and production baseline reconciled on 17 September 2026, not
+This is the repository and production baseline reconciled on 18 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -165,6 +165,34 @@ Current standards require:
 - no clickbait, promotional language or invented facts;
 - no generic, repetitive or AI-shaped endings and openings;
 - minimum-content, image and source safeguards.
+
+Commit `bbc526c` (`Fix incomplete RSS preview handling`) addresses a confirmed
+High import-quality defect in which continuation-ended Guardian RSS preview
+content could remain public and HTML block boundaries could be destroyed. A
+bounded audit found five current Guardian-derived records containing
+case-insensitive `Continue reading`; this is not a lifetime count and those five
+historical records remain unrepaired. The implementation preserves block
+boundaries with BeautifulSoup, normalises line endings, recognises/removes only
+terminal continuation markers, classifies incomplete raw previews before
+sanitisation, and routes known incomplete fallback content to hidden Manual
+Review even when `manual_review_without_ai` applies. The existing 1,000-character
+completeness floor remains, genuinely distinct complete replacements remain
+eligible under existing controls, and no full Guardian-article fetching was
+introduced.
+
+Deployment `dep-damij1btqb8s73fvesp0` became live on Standard instance `klzb8`
+(1 CPU/2 GB) at 13:10:17 BST on 18 September. The natural 18:00 run completed
+once at 18:01:58 in 118.50 seconds, with normal imports, zero cleanup removals,
+final RSS about 302.0 MB and no attributable OOM, restart or material 5xx. It
+naturally routed Guardian record `6aad6e3245d0658a103d921e` to hidden Manual
+Review with the expected incomplete-preview reason and preserved source data.
+Bounded inspection of that record and public Guardian record
+`6aad6e7245d0658a103d9228` found no supported terminal marker or obvious joined
+HTML boundary. Classification: **HTML-BOUNDARY FIX NATURALLY VERIFIED** and
+**INCOMPLETE-PREVIEW ROUTING NATURALLY VERIFIED**, but **COMPLETE-REPLACEMENT
+PATH NOT NATURALLY EXERCISED**. Overall: **IMPORT ARTICLE QUALITY FIX NATURAL
+ACCEPTANCE PARTIAL**. `/api/import-real-news` remains a separate unchanged
+follow-up risk. Newsletter Funnel V1 remains paused and outside this work.
 
 Perplexity may provide bounded research/rewrite assistance in eligible import
 paths. Provider output still passes deterministic and editorial controls.
@@ -391,6 +419,13 @@ stale-lock paths remain intact. The natural 18:00 run on instance `qc88z` acquir
 deliberately induced; the natural run verifies normal-path compatibility.
 
 Highest-priority unresolved or monitoring items are:
+
+- **High — partial natural acceptance:** the confirmed RSS-preview import-quality
+  defect is implemented, tested and deployed in `bbc526c`. Core incomplete-preview
+  routing and bounded HTML-boundary behaviour are naturally verified without a
+  confirmed deployment defect. Natural evidence for a continuation-ended source
+  receiving a genuinely distinct complete public replacement remains outstanding;
+  the five historical affected Guardian records remain a separate editorial repair.
 
 - **High:** `QA-OPS-001` remains **HIGH OPEN — RECURRENT PRODUCTION OOM
   CONFIRMED**. Cleanup lifecycle and projection changes remain structurally safe,

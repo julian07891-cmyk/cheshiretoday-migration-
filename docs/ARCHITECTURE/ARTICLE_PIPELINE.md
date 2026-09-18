@@ -21,6 +21,11 @@ Use the sequence below before changing imports, visibility or cleanup. Validate 
 3. `_generate_articles_internal` calls `_import_hybrid_news_internal`. Existing active/archived title, source-URL and related Version 1 identity sets are built before insertion work.
 4. Feed discovery and parsing process category RSS and Local RSS inputs; concurrency is bounded in current importer code. Perplexity may research or expand eligible items when configured and within budget.
 5. Category, locality, age, content-length, source, crime/filler, AI-refusal and other editorial guards determine rejection, public eligibility or Manual Review routing.
+   For scheduled hybrid/category RSS imports, raw continuation-ended preview
+   evidence is classified before sanitisation. HTML cleaning preserves block
+   boundaries and normalises line endings; only supported terminal continuation
+   markers are removed. A known incomplete fallback is routed to hidden Manual
+   Review and cannot be made public merely by `manual_review_without_ai`.
 6. Four scheduled insertion contexts use the shared insert wrapper: `category_rss`, `local_rss_manual_review`, `local_rss`, and `cheshire_fallback`.
 7. Version 1 checks and article construction complete before the Phase 2B shadow comparison. Similarity never changes the insert decision.
 8. Successful inserts update the bounded same-run shadow corpus; a bounded advisory log is attempted after insertion.
@@ -41,11 +46,11 @@ Version 1 normalised-title/source-URL checks, batch sets, active and archived sn
 
 ## Failure-safe behaviour
 
-Generation and cleanup errors are caught separately so the scheduler process can continue. Similarity pool/scorer/log failures fail open and do not retry insertion. Mongo uniqueness remains the last deterministic duplicate barrier. A lock warning currently logs and continues, so database lock health is operationally important.
+Generation and cleanup errors are caught separately so the scheduler process can continue. Similarity pool/scorer/log failures fail open and do not retry insertion. Mongo uniqueness remains the last deterministic duplicate barrier. Article scheduler-lock acquisition errors fail closed and skip generation; database lock health remains operationally important.
 
 ## Tests
 
-Relevant coverage includes `tests/test_scheduler_lock.py`, `tests/test_sync_rss_editorial_guard.py`, `tests/test_local_rss_manual_review_routing.py`, `tests/test_article_generation_memory_observability.py`, `tests/test_editorial_similarity_shadow_runtime.py`, and Version 1 duplicate/import regressions.
+Relevant coverage includes `tests/test_scheduler_lock.py`, `tests/test_sync_rss_editorial_guard.py`, `tests/test_local_rss_manual_review_routing.py`, `tests/test_article_generation_memory_observability.py`, `tests/test_editorial_similarity_shadow_runtime.py`, RSS preview/body-quality regressions, and Version 1 duplicate/import regressions. The `bbc526c` gate recorded 44 focused tests, 130 importer/Manual Review/scheduler tests with 12 skipped, and 104 memory/similarity-isolation/cleanup tests.
 
 ## Protected boundaries
 
@@ -53,7 +58,7 @@ Do not alter Version 1 order, public caps, Manual Review rules, one-insert seman
 
 ## Known limitations
 
-The importer remains a large multi-context function. Cleanup can remove records after insertion under existing duplicate/short-content rules. Provider and feed quality vary. Shadow evidence needs multiple normal scheduled runs before thresholds or UI work.
+The importer remains a large multi-context function. Cleanup can remove records after insertion under existing duplicate/short-content rules. Provider and feed quality vary. The scheduled hybrid/category RSS path now protects known continuation-ended previews, but `/api/import-real-news` was not broadened or production-tested by `bbc526c`. Five pre-deployment Guardian records remain a separate editorial-repair issue. A natural continuation-ended source receiving a genuinely distinct complete public replacement has not yet been observed. Shadow evidence needs multiple normal scheduled runs before thresholds or UI work.
 
 ## Related documents
 

@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `be0182b395edc1773ebd50c062ed24ff735c1d24`, including the deployed analytics-consent implementation and its outstanding event-level evidence gate.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`, including the deployed RSS-preview protection and its partial natural-acceptance boundary.
 
 ## Document purpose
 
@@ -57,6 +57,9 @@ Security and production stability precede feature expansion.
 | Completed | Homepage database/materialisation remediation (`QA-PERF-001`) | Commit `70057e1` skips the unused exact-homepage count and applies evidence-supported 100/100 Local/UK caps; five-request production comparison reduced median handler 34.5%, TTFB 17.4% and total 16.3% with observed response semantics preserved |
 | Next | Post-handler/client TTFB residual measurement | Median post-change TTFB-minus-handler is 839.327 ms; measure its composition read-only before attributing framework, encoding, compression, proxy/runtime, network or other work or proposing further optimisation |
 | Next | `QA-DOC-001` Threads/operator-documentation consistency | Reconcile current implementation and operator wording without rewriting the dated QA baseline |
+| Monitoring | RSS-preview complete-replacement evidence (`CT-QA-2026-005`) | Core incomplete-preview routing and bounded HTML-boundary behaviour are naturally verified after `bbc526c`; observe a natural continuation-ended candidate receiving a genuinely distinct complete public replacement. Do not manufacture a candidate or block unrelated work |
+| Next | Historical Guardian article repair | Separately review and repair the five bounded pre-deployment affected records; do not treat deployment of future-import protection as historical cleanup |
+| Next | `/api/import-real-news` completeness review | **SEPARATE FOLLOW-UP RISK — UNCHANGED.** Audit/design independently; do not trigger the endpoint merely to manufacture evidence |
 
 ## Medium-term priorities
 
@@ -165,6 +168,7 @@ Completion refers to the defined item; residual findings remain in [Open Finding
   materialisation despite the structurally successful cleanup mitigations.
 - Public API latency.
 - Newsletter provider/recipient conclusions without reconciled evidence.
+- Five historical Guardian records remain affected by the pre-`bbc526c` preview/body defect; complete-replacement natural evidence and `/api/import-real-news` coverage remain separate follow-ups.
 - Documentation/history gaps affecting operational decisions.
 - Premature interpretation of similarity shadow scores.
 - Cross-source and localised same-event reports whose differing URLs, titles,
