@@ -2665,6 +2665,9 @@ async def _import_hybrid_news_internal(
 
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
+                    source_is_incomplete_preview = has_terminal_rss_continuation_marker(
+                        original_content
+                    )
                     ai_rewrite_used = False
                     manual_review_without_ai = (public_import_limit is not None and public_imported >= public_import_limit) or not ai_budget_available(0.05)
                     
@@ -2697,7 +2700,19 @@ async def _import_hybrid_news_internal(
                     # Any non-empty rewrite below 1000 characters is retained for
                     # editable Manual Review rather than silently discarded.
                     short_nonlocal_review_reason = ""
-                    if not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
+                    incomplete_preview_fallback = (
+                        source_is_incomplete_preview
+                        and not is_complete_rss_preview_replacement(
+                            original_content,
+                            detailed_content,
+                        )
+                    )
+                    if incomplete_preview_fallback:
+                        short_nonlocal_review_reason = (
+                            "Source-derived content is an incomplete RSS preview and "
+                            "needs manual review before publication."
+                        )
+                    elif not manual_review_without_ai and len((detailed_content or "").strip()) < 1000:
                         if (detailed_content or "").strip():
                             short_nonlocal_review_reason = (
                                 "UK RSS article needs manual review: "
@@ -18392,10 +18407,30 @@ def is_digest_excluded(article):
 # - Strip naked URLs (esp. the original source_url) from RSS content/summary
 # - Strip "Read more / Continue reading" tails
 # =====================================================================================
+RSS_TERMINAL_CONTINUATION_RE = re.compile(
+    r"(?i)(?:^|\n(?:[ \t]*\n)*)[ \t]*"
+    r"(?:read\s+more|continue\s+reading|full\s+story)"
+    r"[ \t]*(?:[:\-][ \t]*)?(?:\.{3}|…)?[ \t]*$"
+)
+
+
+def _normalize_rss_line_endings(text: str) -> str:
+    return str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def has_terminal_rss_continuation_marker(text: str) -> bool:
+    """Return whether a standalone final RSS line marks an incomplete preview."""
+    if not text:
+        return False
+    stripped = _normalize_rss_line_endings(text).rstrip()
+    match = RSS_TERMINAL_CONTINUATION_RE.search(stripped)
+    return bool(match and match.end() == len(stripped))
+
+
 def sanitize_rss_text(text: str, source_url: str = "", *, is_summary: bool = False) -> str:
     if text is None:
         return ""
-    t = str(text)
+    t = _normalize_rss_line_endings(text)
 
     su = (source_url or "").strip()
     if su:
@@ -18407,10 +18442,10 @@ def sanitize_rss_text(text: str, source_url: str = "", *, is_summary: bool = Fal
     # Remove lines that are ONLY a URL
     t = re.sub(r'(?im)^\s*https?://\S+\s*$', '', t)
 
-    # Remove leftover "Read more:" without URL (sometimes after replacement)
-    t = re.sub(r'(?im)^\s*(read\s+more|continue\s+reading|full\s+story)\s*[:\-]?\s*$', '', t)
+    # Remove a standalone terminal continuation marker while retaining the
+    # pre-sanitisation signal for callers that must route incomplete previews.
+    t = RSS_TERMINAL_CONTINUATION_RE.sub('', t)
 
-    t = t.replace('\r\n', '\n').replace('\r', '\n')
     t = re.sub(r'\n{3,}', '\n\n', t).strip()
 
     if is_summary:
@@ -18469,6 +18504,51 @@ def sanitize_rss_text(text: str, source_url: str = "", *, is_summary: bool = Fal
         return '\n\n'.join(chunks)
 
     return t
+
+
+def _normalise_rss_replacement_comparison(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(text or "").casefold()).strip()
+
+
+RSS_MEANINGFUL_SEGMENT_MIN_CHARS = 40
+
+
+def is_complete_rss_preview_replacement(
+    source_content: str,
+    replacement_content: str,
+) -> bool:
+    """Return whether a known RSS preview has a distinct, complete replacement."""
+    if not replacement_content or has_terminal_rss_continuation_marker(replacement_content):
+        return False
+
+    source_clean = sanitize_rss_text(source_content)
+    replacement_clean = sanitize_rss_text(replacement_content)
+    if len(replacement_clean.strip()) < 1000:
+        return False
+
+    source_normalised = _normalise_rss_replacement_comparison(source_clean)
+    replacement_normalised = _normalise_rss_replacement_comparison(replacement_clean)
+    if not source_normalised or not replacement_normalised:
+        return False
+    if (
+        source_normalised == replacement_normalised
+        or source_normalised in replacement_normalised
+        or replacement_normalised in source_normalised
+    ):
+        return False
+
+    source_segments = [
+        _normalise_rss_replacement_comparison(segment)
+        for segment in re.split(r"\n\s*\n+|(?<=[.!?])\s+", source_clean)
+    ]
+    if any(
+        len(segment) >= RSS_MEANINGFUL_SEGMENT_MIN_CHARS
+        and segment in replacement_normalised
+        for segment in source_segments
+    ):
+        return False
+
+    return True
 
 
 # =====================================================================================

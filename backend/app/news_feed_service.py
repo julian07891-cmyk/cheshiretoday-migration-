@@ -949,13 +949,28 @@ class NewsFeedService:
         """Remove HTML tags and clean up text"""
         if not text:
             return ""
-        # Unescape HTML entities
-        text = unescape(text)
-        # Remove HTML tags
-        text = re.sub(r'<[^>]+>', '', text)
-        # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
-        return text
+        soup = BeautifulSoup(unescape(text), "html.parser")
+        for tag in soup.find_all("br"):
+            tag.replace_with("\n")
+        for tag in soup.find_all(
+            [
+                "address", "article", "aside", "blockquote", "dd", "div", "dl",
+                "dt", "figcaption", "figure", "footer", "form", "h1", "h2",
+                "h3", "h4", "h5", "h6", "header", "li", "main", "nav", "ol",
+                "p", "pre", "section", "table", "tbody", "td", "tfoot", "th",
+                "thead", "tr", "ul",
+            ]
+        ):
+            tag.insert_before("\n\n")
+            tag.insert_after("\n\n")
+
+        text = soup.get_text("", strip=False)
+        paragraphs = [
+            re.sub(r"\s+", " ", part).strip()
+            for part in re.split(r"\n\s*\n+", text)
+            if part.strip()
+        ]
+        return "\n\n".join(paragraphs)
 
     @staticmethod
     def _match_allowed_feed_location(
