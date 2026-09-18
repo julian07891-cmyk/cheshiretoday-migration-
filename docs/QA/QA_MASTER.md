@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `70057e1b9e67bc74d89f23261271246b957cd065`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `be0182b395edc1773ebd50c062ed24ff735c1d24`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -139,7 +139,18 @@ Unified deterministic Facebook, Instagram and Threads preparation is covered by 
 
 ## Analytics
 
-Article-view and Most Read corrections were committed with focused regression evidence. Admin first-party analytics and Facebook attribution were implemented; repository records state functional production verification for Facebook Analytics, while GA4 remains separately environment-dependent.
+Article-view and Most Read corrections were committed with focused regression
+evidence. Admin first-party analytics and Facebook attribution were implemented.
+Commit `be0182b` added the bounded third-party consent layer; 4 focused suites/17
+tests, 10 regression suites/118 tests and the production build passed. Deployment
+`dep-dam3mb3ncjis73cit8mg` is verified live on instance `w8frn`, and observable
+consent behaviour passed without a confirmed defect. Event-level production
+network acceptance remains **INCONCLUSIVE / TOOLING UNAVAILABLE**: exact consent
+storage, provider event payloads/counts, SPA cardinality, transmitted URL
+normalisation, event-level sensitive-route exclusion and immediate withdrawal
+suppression still require a genuinely isolated request-inspection context. This
+external evidence item does not reopen implementation engineering or block
+unrelated analytics/growth work absent new defect evidence.
 
 ## Release-readiness model
 

@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `70057e1b9e67bc74d89f23261271246b957cd065`, including the production-verified homepage materialisation optimisation.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `be0182b395edc1773ebd50c062ed24ff735c1d24`, including the deployed analytics-consent implementation and its outstanding event-level evidence gate.
 
 ## Document purpose
 
@@ -62,7 +62,9 @@ Security and production stability precede feature expansion.
 
 | Status | Work | Scope and gate |
 |---|---|---|
-| Monitoring | GA4 validation | Confirm configured collection/consent/reporting separately from first-party analytics |
+| Monitoring | Third-party analytics event-level verification | Consent implementation, deployment and observable behaviour are verified without a confirmed defect. When suitable isolated DevTools/Playwright/CDP request inspection is available, verify exact consent storage, provider page-view payload/cardinality, URL normalisation, sensitive-route exclusion and withdrawal suppression. This external-evidence item does not block unrelated analytics/growth work |
+| Monitoring | Provider reporting validation | Reconcile GA4, Plausible and PostHog receipt/reporting separately from browser transmission and first-party analytics |
+| Next | Broader measurement maturity | Treat newsletter conversion, campaign-attribution quality and commercial conversion measurement as separate evidence-led workstreams |
 | Monitoring | Search Console/Google News/Discover | Canonical audit classified the 82-example alternate-page report as mostly historical with current implementation healthy; do not press Validate Fix now, allow natural recrawl, and recheck after a later report update or newly crawled current mismatch. Continue separate Google News/Discover sampling |
 | Next | Commercial SEO and affiliate guides | Quality-first authority pages, current inventory and crawler/index evidence |
 | Next | Sponsor readiness | Placement QA, advertiser workflow, checkout/webhook and reporting checks before campaigns |

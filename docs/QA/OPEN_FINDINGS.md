@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `dcd5cfa`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `be0182b`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 

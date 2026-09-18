@@ -36,7 +36,29 @@ Sponsored placement impression and click endpoints increment counters in `sponso
 
 ## Third-party analytics
 
-Frontend code includes GA4/gtag integration where configured. GA4 is a third-party platform and its live collection, consent and reporting state cannot be inferred from repository code. Facebook provider APIs and first-party Facebook attribution must not be conflated.
+Commit `be0182b` implements a bounded frontend consent layer for GA4, Plausible
+and PostHog. The versioned state is Unknown, Accepted or Rejected; Unknown and
+Rejected do not load providers. Accepted dynamically loads configured providers
+and enables application-owned SPA page-view and consent-aware custom-event
+dispatch. Provider automatic page views are disabled, including GA4
+`send_page_view: false`; PostHog autocapture and session recording are disabled.
+Sensitive routes are excluded and application-owned analytics URLs retain only
+bounded approved attribution data. Users can withdraw or re-accept through the
+persistent Cookie/privacy settings control. First-party measurement is outside
+this gate and intentionally unchanged.
+
+Four focused suites/17 tests and ten regression suites/118 tests passed before
+deployment, together with the production build. Deployment and observable browser
+behaviour are verified. Event-level production network acceptance remains
+inconclusive because available tooling could not combine genuinely isolated
+storage inspection with request interception/payload inspection. No production
+defect is confirmed. Provider event payload/count, exact SPA cardinality,
+transmitted URL normalisation, event-level sensitive-route and withdrawal
+suppression, and dashboard receipt require later external evidence; code or
+dashboard state alone must not be substituted for it.
+
+Facebook provider APIs and first-party Facebook attribution must not be
+conflated with this third-party consent layer.
 
 ## Privacy and data limitations
 
@@ -49,6 +71,8 @@ Preserve event deduplication, authenticated Admin access, privacy-safe presentat
 ## Known limitations
 
 No single system gives end-to-end identity across public, email and third-party channels. Aggregate accuracy depends on client requests completing and database availability. Index changes require measured latency evidence.
+This technical evidence does not establish legal compliance, historical-data
+treatment, provider-dashboard reporting or correctness of first-party policy.
 
 ## Related documents
 

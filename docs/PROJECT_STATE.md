@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `ea3f1dc8bde5a32c7614862bebd8a24667f31a42`
-> - **Last repository reconciliation:** 10 September 2026
-> - **Production-verification status:** Commit `ea3f1dc` is live. Weekly Roundup slot-aware idempotence completed natural four-slot verification on 6 September; Search Console recrawl monitoring remains open and `QA-OPS-001` remains High Open
+> - **Repository baseline:** `be0182b395edc1773ebd50c062ed24ff735c1d24`
+> - **Last repository reconciliation:** 17 September 2026
+> - **Production-verification status:** Commit `be0182b` is live. Third-party analytics consent implementation, deployment and observable browser behaviour are verified; event-level production network verification remains outstanding because suitable isolated request-inspection tooling was unavailable. `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `ea3f1dc8bde5a32c7614862bebd8a24667f31a42`
-- **Latest baseline commit:** `Document Search Console canonical audit`
+- **Current reconciled HEAD:** `be0182b395edc1773ebd50c062ed24ff735c1d24`
+- **Latest baseline commit:** `Add consent-gated analytics tracking`
 
-This is the repository and production baseline reconciled on 10 September 2026, not
+This is the repository and production baseline reconciled on 17 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -269,7 +269,60 @@ reactions, comments or shares.
 See [Brand Assets](brand-assets/), [Analytics Architecture](ARCHITECTURE/ANALYTICS.md)
 and [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md).
 
-## 9. Current monetisation model
+## 9. Current analytics-consent state
+
+Commit `be0182b` (`Add consent-gated analytics tracking`) implemented a bounded
+frontend consent layer for third-party analytics. It provides versioned Unknown,
+Accepted and Rejected states; defaults fresh visitors to no third-party analytics;
+dynamically loads GA4, Plausible and PostHog only after acceptance; owns SPA
+page-view dispatch while disabling provider automatic page views (`send_page_view:
+false` for GA4); disables PostHog autocapture and session recording; excludes
+sensitive routes; normalises analytics URLs; gates custom events; supports
+withdrawal and re-acceptance; and keeps a persistent Cookie/privacy settings
+control with equally prominent Accept and Reject actions. Existing first-party
+measurement systems were intentionally unchanged.
+
+Pre-deployment verification passed 4 focused suites/17 tests, 10 regression
+suites/118 tests, the production frontend build and `git diff --check`. No
+unconditional provider loader, direct provider bypass outside
+`analyticsProviders.js`, or enabled PostHog recording remained.
+
+Render Auto-Deploy `dep-dam3mb3ncjis73cit8mg` deployed the commit on 17 September
+2026 to service `cheshiretoday-migration-` (`srv-d5virmm3jp1c73c9d6tg`), Standard
+instance `w8frn` (1 CPU/2 GB). It started at 20:10:36 BST, built successfully at
+20:12:24, completed application startup at 20:13:09 and became live at 20:13:16.
+The deployment duration was 2m40s.
+Health returned HTTP 200 with `{"status":"healthy","service":"cheshire-news"}`;
+no deployment-attributable traceback, OOM, exit 137, restart loop, Bad Gateway or
+material 5xx was observed. The existing nonfatal Twitter-credentials warning was
+not caused by this change.
+
+Production browser acceptance observed the consent UI for a fresh visitor, no
+GA4/Plausible/PostHog scripts before consent, persisted rejection with providers
+unloaded across navigation/reload, settings reopening with the rejected state,
+provider loaders/assets appearing only after acceptance, accepted reload without
+duplicate script insertion, no provider scripts on a direct accepted-state
+`/admin` load, accepted-to-rejected withdrawal, no provider initialisation on the
+subsequent rejected reload, no PostHog recorder/session-replay asset at any stage,
+working public pages, and a 390×844 mobile panel without horizontal overflow.
+
+Classification: implementation **COMPLETE**; automated verification **PASS**;
+production deployment **VERIFIED**; observed production consent behaviour **PASS
+for the behaviours actually observed**; confirmed production defect **NONE**.
+Overall event-level acceptance remains **ANALYTICS CONSENT PRODUCTION EVIDENCE
+INCONCLUSIVE**. Available tooling could not provide both genuinely isolated
+storage inspection and request-level interception/payload inspection, and a
+second attempt correctly stopped as **EVENT-LEVEL PRODUCTION VERIFICATION TOOLING
+UNAVAILABLE**. Exact production consent JSON, provider page-view payloads/counts,
+one-event-per-route cardinality, event-level duplicate suppression, transmitted
+URL normalisation, event-level `/admin` exclusion, immediate post-withdrawal event
+suppression and provider-dashboard receipt therefore remain unproven. No
+implementation work should reopen without defect evidence; complete the bounded
+external verification when isolated DevTools/Playwright/CDP request inspection is
+available. This evidence makes no legal-compliance, historical-data,
+provider-dashboard or first-party measurement-policy conclusion.
+
+## 10. Current monetisation model
 
 The commercial strategy is affiliate-first and reader-focused.
 
@@ -309,7 +362,7 @@ deferred roadmap work, not completed operating capabilities.
 See [Monetisation Architecture](ARCHITECTURE/MONETISATION.md) and
 [Commercial Gap Map](commercial-gap-map/).
 
-## 10. Current QA posture
+## 11. Current QA posture
 
 The current evidence-backed QA posture is summarised in [QA Master](QA/QA_MASTER.md).
 Detailed closure criteria are in [Open Findings](QA/OPEN_FINDINGS.md).
@@ -441,7 +494,7 @@ close adjacent production or maintenance risks.
 See [Completed Phases](QA/COMPLETED_PHASES.md) and
 [Test History](QA/TEST_HISTORY.md).
 
-## 11. Current active milestone
+## 12. Current active milestone
 
 The active milestone is **production hardening, QA reconciliation and controlled
 production observation**.
@@ -484,7 +537,7 @@ Still pending:
 
 No manual import should be triggered solely to accelerate observation.
 
-## 12. Immediate approved priorities
+## 13. Immediate approved priorities
 
 1. Keep the isolated short-content `batch_size(250)` change provisionally and
    continue cumulative memory monitoring; its two-run phase improvement does not
@@ -500,13 +553,16 @@ No manual import should be triggered solely to accelerate observation.
 
 Security and reliability take precedence over speculative features.
 
-## 13. Near-term priorities
+## 14. Near-term priorities
 
 - investigate the remaining homepage post-handler/client TTFB residual without
   assuming a subsystem cause or proposing another Mongo/index/query change;
 - preserve and improve hermetic test isolation;
 - reduce compilation/build/test warning debt in bounded changes;
 - validate GA4 configuration and reporting separately from first-party analytics;
+- complete event-level third-party consent verification when suitable isolated
+  request-interception tooling is available; this does not block unrelated
+  analytics or growth work;
 - monitor the 82-example Search Console canonical baseline after natural recrawl;
   inspect any newly crawled current mismatch before changing code or requesting
   validation, and continue separate Google News and Discover review;
@@ -517,7 +573,7 @@ Security and reliability take precedence over speculative features.
 Each item requires its own reviewed scope, tests and deployment/production
 verification plan.
 
-## 14. Deferred work
+## 15. Deferred work
 
 The following remain deferred or unapproved:
 
@@ -534,7 +590,7 @@ The following remain deferred or unapproved:
 Version 1 duplicate prevention remains authoritative while similarity is
 observational.
 
-## 15. Current operating rules
+## 16. Current operating rules
 
 - Read [Project Master](PROJECT_MASTER.md) first.
 - Read this Current Operational State second.
@@ -554,7 +610,7 @@ observational.
 - Record implementation, deployment and production verification separately.
 - Update the documentation layer that owns the evidence.
 
-## 16. Session-start checklist
+## 17. Session-start checklist
 
 1. Read [Project Master](PROJECT_MASTER.md) and this file.
 2. Read relevant architecture, operations, QA and roadmap records.
@@ -564,7 +620,7 @@ observational.
 6. Confirm the exact task, mutation boundary and approval scope.
 7. Make one safe action and verify it before continuing.
 
-## 17. Session-end checklist
+## 18. Session-end checklist
 
 1. Run tests, compilation, build or checks appropriate to the task.
 2. Review the exact diff and repository status.
@@ -574,7 +630,7 @@ observational.
 6. Preserve historical evidence and source limitations.
 7. Confirm no production change remains undocumented.
 
-## 18. Documentation links
+## 19. Documentation links
 
 ### Governance and current state
 
@@ -621,7 +677,7 @@ observational.
 Pending ChatGPT, Codex and historical PDF evidence is registered in the Source
 Register. No nonexistent future history file is linked here.
 
-## 19. Reconstruction and verification status
+## 20. Reconstruction and verification status
 
 ### Completed locally
 
