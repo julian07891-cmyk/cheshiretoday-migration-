@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import NewsletterPreferences from "../NewsletterPreferences";
-import { trackEvent } from "../../utils/trackEvent";
 import { NEWSLETTER_SIGNUP_CONSENT } from "../../constants/newsletterSignup";
 import { newsletterService } from "../../services/api";
 
@@ -16,8 +15,6 @@ export default function NewsletterFull() {
 
     try {
       setStatus("loading");
-      trackEvent("newsletter_submit", { placement: "homepage_full" });
-
       const result = await newsletterService.subscribe(
         email,
         "newsletter_landing",

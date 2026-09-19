@@ -8,8 +8,12 @@ import {
 } from "../constants/newsletterSignup";
 
 const mockSubscribe = jest.fn();
+const mockTrackEvent = jest.fn();
 jest.mock("../services/api", () => ({
   newsletterService: { subscribe: (...args) => mockSubscribe(...args) },
+}));
+jest.mock("../utils/trackEvent", () => ({
+  trackEvent: (...args) => mockTrackEvent(...args),
 }));
 
 jest.mock("@/lib/utils", () => ({
@@ -28,6 +32,7 @@ beforeEach(() => {
   document.body.appendChild(container);
   root = createRoot(container);
   mockSubscribe.mockReset();
+  mockTrackEvent.mockReset();
 });
 
 afterEach(() => {
@@ -75,10 +80,49 @@ test("uses the exact consent text and server-owned placement-only payload", asyn
     "reader@example.com",
     "newsletter_landing",
   );
+  expect(mockTrackEvent).not.toHaveBeenCalled();
   expect(buildNewsletterSignupPayload("a@b.test", "footer")).toEqual({
     email: "a@b.test",
     signup_placement: "footer",
   });
+});
+
+test("does not emit a frontend funnel event before or after the API result", async () => {
+  await submit("created");
+  expect(mockSubscribe).toHaveBeenCalledTimes(1);
+  expect(mockTrackEvent).not.toHaveBeenCalled();
+});
+
+test("keeps loading and error UX without emitting a funnel event", async () => {
+  let rejectRequest;
+  mockSubscribe.mockReturnValue(
+    new Promise((_resolve, reject) => {
+      rejectRequest = reject;
+    }),
+  );
+  renderSignup();
+  const input = container.querySelector("input[type='email']");
+  act(() => {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    ).set;
+    setter.call(input, "reader@example.com");
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  act(() => {
+    container.querySelector("form").dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+  });
+  expect(container.querySelector("button").disabled).toBe(true);
+  expect(container.querySelector("button").textContent).toBe("…");
+  await act(async () => {
+    rejectRequest(new Error("offline"));
+    await Promise.resolve();
+  });
+  expect(container.textContent).toContain("Something went wrong");
+  expect(mockTrackEvent).not.toHaveBeenCalled();
 });
 
 test("created outcome confirms all three products without requiring management", async () => {

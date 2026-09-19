@@ -34,13 +34,16 @@ def _post_routes(path):
 
 
 class StubSubscribers:
-    def __init__(self, existing=None, insert_error=None):
+    def __init__(self, existing=None, insert_error=None, lookup_error=None):
         self.existing = deepcopy(existing)
         self.insert_error = insert_error
+        self.lookup_error = lookup_error
         self.inserted = []
         self.updates = []
 
     async def find_one(self, query, projection):
+        if self.lookup_error:
+            raise self.lookup_error
         assert query == {"email": TEST_EMAIL}
         assert projection == {"_id": 0}
         return deepcopy(self.existing)
@@ -67,6 +70,17 @@ class StubEmailService:
             raise self.error
 
 
+class StubFunnel:
+    def __init__(self, error=None):
+        self.error = error
+        self.updates = []
+
+    async def update_one(self, query, update, upsert=False):
+        if self.error:
+            raise self.error
+        self.updates.append((deepcopy(query), deepcopy(update), upsert))
+
+
 def _run_subscribe(
     monkeypatch,
     existing=None,
@@ -75,10 +89,19 @@ def _run_subscribe(
     email_error=None,
     raw_email="Reader@trusted-news.co.uk",
     request_fields=None,
+    lookup_error=None,
+    funnel_error=None,
 ):
-    subscribers = StubSubscribers(existing, insert_error=insert_error)
+    subscribers = StubSubscribers(
+        existing, insert_error=insert_error, lookup_error=lookup_error
+    )
     email_service = StubEmailService(error=email_error)
-    database = SimpleNamespace(subscribers=subscribers)
+    funnel = StubFunnel(error=funnel_error)
+    subscribers.funnel = funnel
+    database = SimpleNamespace(
+        subscribers=subscribers,
+        newsletter_signup_funnel_daily=funnel,
+    )
     monkeypatch.setattr(server, "db", database)
     monkeypatch.setattr(server, "email_service", email_service)
 
@@ -416,3 +439,119 @@ def test_welcome_email_failure_does_not_undo_new_subscription(monkeypatch):
     assert email_service.welcome_addresses == [TEST_EMAIL]
     assert response.success is True
     assert response.outcome == "created"
+    assert subscribers.funnel.updates[0][1]["$inc"] == {
+        "attempts": 1,
+        "created": 1,
+        "existing": 0,
+        "failed": 0,
+        "server_error": 0,
+    }
+
+
+@pytest.mark.parametrize(
+    ("existing", "expected"),
+    [
+        (None, "created"),
+        ({"email": TEST_EMAIL, "active": True}, "existing"),
+        ({"email": TEST_EMAIL, "active": False}, "existing"),
+    ],
+)
+def test_completed_subscribe_paths_record_one_matching_funnel_outcome(
+    monkeypatch, existing, expected
+):
+    if existing is None:
+        monkeypatch.setattr(
+            server.uuid,
+            "uuid4",
+            Mock(side_effect=[GENERIC_ID, MANAGEMENT_ID]),
+        )
+    response, subscribers, _email_service = _run_subscribe(
+        monkeypatch, existing, placement="homepage"
+    )
+    assert response.outcome == expected
+    assert len(subscribers.funnel.updates) == 1
+    query, update, upsert = subscribers.funnel.updates[0]
+    assert query["placement"] == "homepage"
+    assert update["$inc"] == {
+        "attempts": 1,
+        "created": 1 if expected == "created" else 0,
+        "existing": 1 if expected == "existing" else 0,
+        "failed": 0,
+        "server_error": 0,
+    }
+    assert upsert is True
+
+
+def test_duplicate_race_records_existing_once(monkeypatch):
+    monkeypatch.setattr(
+        server.uuid,
+        "uuid4",
+        Mock(side_effect=[GENERIC_ID, MANAGEMENT_ID]),
+    )
+    response, subscribers, email_service = _run_subscribe(
+        monkeypatch,
+        insert_error=server.DuplicateKeyError("duplicate email"),
+    )
+    assert response.outcome == "existing"
+    assert email_service.welcome_addresses == []
+    assert subscribers.funnel.updates[0][1]["$inc"] == {
+        "attempts": 1,
+        "created": 0,
+        "existing": 1,
+        "failed": 0,
+        "server_error": 0,
+    }
+
+
+def test_measurement_failure_does_not_change_created_response(monkeypatch):
+    monkeypatch.setattr(
+        server.uuid,
+        "uuid4",
+        Mock(side_effect=[GENERIC_ID, MANAGEMENT_ID]),
+    )
+    response, subscribers, _email_service = _run_subscribe(
+        monkeypatch, funnel_error=RuntimeError("measurement unavailable")
+    )
+    assert response.outcome == "created"
+    assert len(subscribers.inserted) == 1
+
+
+def test_generic_lookup_failure_records_failed_and_preserves_http_500(monkeypatch):
+    subscribers = StubSubscribers(lookup_error=RuntimeError("database unavailable"))
+    funnel = StubFunnel()
+    database = SimpleNamespace(
+        subscribers=subscribers,
+        newsletter_signup_funnel_daily=funnel,
+    )
+    monkeypatch.setattr(server, "db", database)
+    with pytest.raises(server.HTTPException) as raised:
+        asyncio.run(
+            server.subscribe_newsletter(
+                server.SubscribeRequest(
+                    email=TEST_EMAIL,
+                    signup_placement="footer",
+                )
+            )
+        )
+    assert raised.value.status_code == 500
+    assert len(funnel.updates) == 1
+    assert funnel.updates[0][1]["$inc"] == {
+        "attempts": 1,
+        "created": 0,
+        "existing": 0,
+        "failed": 1,
+        "server_error": 1,
+    }
+
+
+@pytest.mark.parametrize("path", ["/api/subscribe", "/api/newsletter/subscribe"])
+def test_invalid_email_is_422_and_does_not_touch_funnel(monkeypatch, path):
+    database = SimpleNamespace(
+        subscribers=StubSubscribers(),
+        newsletter_signup_funnel_daily=StubFunnel(),
+    )
+    monkeypatch.setattr(server, "db", database)
+    client = __import__("fastapi.testclient", fromlist=["TestClient"]).TestClient(server.app)
+    response = client.post(path, json={"email": "not-an-email"})
+    assert response.status_code == 422
+    assert database.newsletter_signup_funnel_daily.updates == []

@@ -1,7 +1,8 @@
 """Bounded, read-only first-party aggregates for the Admin Analytics dashboard."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 import logging
+from zoneinfo import ZoneInfo
 
 
 ALLOWED_ANALYTICS_PERIODS = ("today", "week", "month")
@@ -23,6 +24,7 @@ APPROVED_ADVERTISER_STATUSES = (
 )
 
 logger = logging.getLogger(__name__)
+LONDON = ZoneInfo("Europe/London")
 
 
 def analytics_period_start(period: str, now: datetime | None = None) -> datetime:
@@ -290,13 +292,86 @@ async def _newsletter_summary(database, cutoff: datetime) -> dict:
             {"$project": {"_id": 0, "opens": 1, "clicks": 1}},
         ],
     )
-    return {
+    summary = {
         "available": True,
         "accepted_opportunities": int(accepted.get("accepted_opportunities") or 0),
         "send_batches": int(accepted.get("send_batches") or 0),
         "opens": int(engagement.get("opens") or 0),
         "clicks": int(engagement.get("clicks") or 0),
     }
+    try:
+        funnel_cutoff = datetime.combine(
+            cutoff.astimezone(LONDON).date(), time.min, tzinfo=LONDON
+        ).astimezone(timezone.utc)
+        funnel = await _one_aggregate(
+            database.newsletter_signup_funnel_daily,
+            [
+                {"$match": {"day_start_utc": {"$gte": funnel_cutoff}}},
+                {
+                    "$group": {
+                        "_id": "$placement",
+                        "attempts": {"$sum": "$attempts"},
+                        "created": {"$sum": "$created"},
+                        "existing": {"$sum": "$existing"},
+                        "failed": {"$sum": "$failed"},
+                        "server_error": {"$sum": "$server_error"},
+                    }
+                },
+                {"$sort": {"_id": 1}},
+                {
+                    "$facet": {
+                        "totals": [
+                            {
+                                "$group": {
+                                    "_id": None,
+                                    "attempts": {"$sum": "$attempts"},
+                                    "created": {"$sum": "$created"},
+                                    "existing": {"$sum": "$existing"},
+                                    "failed": {"$sum": "$failed"},
+                                    "server_error": {"$sum": "$server_error"},
+                                }
+                            },
+                            {"$project": {"_id": 0}},
+                        ],
+                        "by_placement": [
+                            {
+                                "$project": {
+                                    "_id": 0,
+                                    "placement": "$_id",
+                                    "attempts": 1,
+                                    "created": 1,
+                                    "existing": 1,
+                                    "failed": 1,
+                                    "server_error": 1,
+                                }
+                            }
+                        ],
+                    }
+                },
+            ],
+        )
+        totals = (funnel.get("totals") or [{}])[0]
+        attempts = int(totals.get("attempts") or 0)
+        created = int(totals.get("created") or 0)
+        existing = int(totals.get("existing") or 0)
+        failed = int(totals.get("failed") or 0)
+        denominator = created + existing + failed
+        summary["signup_funnel"] = {
+            "available": True,
+            "attempts": attempts,
+            "created": created,
+            "existing": existing,
+            "failed": failed,
+            "server_error": int(totals.get("server_error") or 0),
+            "new_subscriber_conversion_percent": (
+                round(created / denominator * 100, 1) if denominator else 0.0
+            ),
+            "by_placement": funnel.get("by_placement") or [],
+        }
+    except Exception:
+        logger.warning("Admin analytics newsletter signup funnel unavailable")
+        summary["signup_funnel"] = {"available": False}
+    return summary
 
 
 async def _sponsored_summary(database) -> dict:

@@ -136,6 +136,10 @@ from app.commercial_event_measurement import (
     commercial_reporting_period,
     ensure_commercial_event_indexes,
 )
+from app.newsletter_signup_funnel import (
+    ensure_newsletter_signup_funnel_indexes,
+    record_newsletter_signup_outcome_safely,
+)
 from app.article_view_attribution import (
     InvalidArticleViewAttribution,
     normalise_article_view_attribution,
@@ -6227,11 +6231,15 @@ async def subscribe_newsletter(request: SubscribeRequest):
             # Existing addresses must use mailbox-verified management flows.
             # Keep the response identical for active and inactive records and do
             # not change subscriber state or preferences from public signup.
-            return SubscribeResponse(
+            response = SubscribeResponse(
                 success=True,
                 outcome="existing",
                 message="Thanks. If this address is eligible, no further action is needed."
             )
+            await record_newsletter_signup_outcome_safely(
+                db, request.signup_placement, "existing", logger=logger
+            )
+            return response
         
         # Default preferences
         default_preferences = {
@@ -6271,11 +6279,15 @@ async def subscribe_newsletter(request: SubscribeRequest):
         try:
             await db.subscribers.insert_one(subscriber)
         except DuplicateKeyError:
-            return SubscribeResponse(
+            response = SubscribeResponse(
                 success=True,
                 outcome="existing",
                 message="Thanks. If this address is eligible, no further action is needed.",
             )
+            await record_newsletter_signup_outcome_safely(
+                db, request.signup_placement, "existing", logger=logger
+            )
+            return response
         
         logger.info(f"New newsletter subscriber: {email}")
         
@@ -6287,14 +6299,21 @@ async def subscribe_newsletter(request: SubscribeRequest):
             logger.error(f"Failed to send welcome email to {email}: {str(email_error)}")
             # Don't fail subscription if email fails
         
-        return SubscribeResponse(
+        response = SubscribeResponse(
             success=True,
             outcome="created",
             message="You're subscribed to Cheshire Today newsletters."
         )
+        await record_newsletter_signup_outcome_safely(
+            db, request.signup_placement, "created", logger=logger
+        )
+        return response
         
     except Exception as e:
         logger.error(f"Error subscribing email: {str(e)}")
+        await record_newsletter_signup_outcome_safely(
+            db, request.signup_placement, "failed", logger=logger
+        )
         raise HTTPException(status_code=500, detail="Failed to subscribe. Please try again.")
 
 # =====================================================================================
@@ -20738,6 +20757,16 @@ async def startup_event():
             logger.info("✅ Created commercial event indexes")
         except Exception as idx_error:
             logger.warning(f"Could not create commercial event indexes: {idx_error}")
+
+        try:
+            await ensure_newsletter_signup_funnel_indexes(
+                db.newsletter_signup_funnel_daily
+            )
+            logger.info("✅ Created newsletter signup funnel indexes")
+        except Exception as idx_error:
+            logger.warning(
+                "Could not create newsletter signup funnel indexes: %s", idx_error
+            )
         
         # ============================================
         # CREATE UNIQUE INDEX ON ARTICLE TITLES

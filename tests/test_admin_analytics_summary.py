@@ -18,6 +18,7 @@ from backend.app.admin_analytics import (
     TOP_FACEBOOK_ARTICLE_LIMIT,
     analytics_period_start,
     build_admin_analytics_summary,
+    LONDON,
 )
 
 
@@ -97,6 +98,39 @@ class AnalyticsDatabase:
             [{"accepted_opportunities": 300, "send_batches": 2}]
         )
         self.email_analytics = AggregateCollection([{"opens": 40, "clicks": 7}])
+        self.newsletter_signup_funnel_daily = AggregateCollection(
+            [
+                {
+                    "totals": [
+                        {
+                            "attempts": 20,
+                            "created": 8,
+                            "existing": 10,
+                            "failed": 2,
+                            "server_error": 2,
+                        }
+                    ],
+                    "by_placement": [
+                        {
+                            "placement": "homepage",
+                            "attempts": 12,
+                            "created": 5,
+                            "existing": 6,
+                            "failed": 1,
+                            "server_error": 1,
+                        },
+                        {
+                            "placement": "unknown",
+                            "attempts": 8,
+                            "created": 3,
+                            "existing": 4,
+                            "failed": 1,
+                            "server_error": 1,
+                        },
+                    ],
+                }
+            ]
+        )
         self.sponsored_placements = AggregateCollection(
             [{"impressions": 100, "clicks": 5}]
         )
@@ -208,6 +242,33 @@ def test_summary_uses_bounded_private_aggregates_and_returns_no_pii():
         "send_batches": 2,
         "opens": 40,
         "clicks": 7,
+        "signup_funnel": {
+            "available": True,
+            "attempts": 20,
+            "created": 8,
+            "existing": 10,
+            "failed": 2,
+            "server_error": 2,
+            "new_subscriber_conversion_percent": 40.0,
+            "by_placement": [
+                {
+                    "placement": "homepage",
+                    "attempts": 12,
+                    "created": 5,
+                    "existing": 6,
+                    "failed": 1,
+                    "server_error": 1,
+                },
+                {
+                    "placement": "unknown",
+                    "attempts": 8,
+                    "created": 3,
+                    "existing": 4,
+                    "failed": 1,
+                    "server_error": 1,
+                },
+            ],
+        },
     }
     assert result["facebook"] == {
         "available": True,
@@ -250,6 +311,7 @@ def test_summary_uses_bounded_private_aggregates_and_returns_no_pii():
         database.article_views,
         database.email_send_opportunities,
         database.email_analytics,
+        database.newsletter_signup_funnel_daily,
         database.sponsored_placements,
         database.advertiser_leads,
     )
@@ -348,6 +410,69 @@ def test_one_failed_section_is_safely_unavailable_without_leaking_exception():
     assert result["article_views"]["available"] is True
     assert result["newsletter"] == {"available": False}
     assert "private database failure" not in repr(result)
+
+
+def test_funnel_failure_is_isolated_inside_existing_newsletter_summary():
+    database = AnalyticsDatabase()
+    database.newsletter_signup_funnel_daily = FailingCollection()
+
+    result = asyncio.run(build_admin_analytics_summary(database, "week", now=NOW))
+
+    assert result["newsletter"] == {
+        "available": True,
+        "accepted_opportunities": 300,
+        "send_batches": 2,
+        "opens": 40,
+        "clicks": 7,
+        "signup_funnel": {"available": False},
+    }
+
+
+def test_empty_funnel_uses_zero_denominator_without_false_conversion():
+    database = AnalyticsDatabase()
+    database.newsletter_signup_funnel_daily = AggregateCollection([{}])
+
+    result = asyncio.run(build_admin_analytics_summary(database, "today", now=NOW))
+
+    assert result["newsletter"]["signup_funnel"] == {
+        "available": True,
+        "attempts": 0,
+        "created": 0,
+        "existing": 0,
+        "failed": 0,
+        "server_error": 0,
+        "new_subscriber_conversion_percent": 0.0,
+        "by_placement": [],
+    }
+
+
+def test_funnel_pipeline_reads_only_anonymous_aggregate_collection():
+    database = AnalyticsDatabase()
+    asyncio.run(build_admin_analytics_summary(database, "month", now=NOW))
+
+    pipeline = database.newsletter_signup_funnel_daily.pipelines[0]
+    expected_cutoff = datetime.combine(
+        analytics_period_start("month", NOW).astimezone(LONDON).date(),
+        datetime.min.time(),
+        tzinfo=LONDON,
+    ).astimezone(timezone.utc)
+    assert pipeline[0] == {
+        "$match": {"day_start_utc": {"$gte": expected_cutoff}}
+    }
+    rendered = repr(pipeline).lower()
+    for forbidden in (
+        "$lookup",
+        "subscriber",
+        "email",
+        "hash",
+        "ip",
+        "user_agent",
+        "session",
+        "page_url",
+        "article_id",
+        "utm",
+    ):
+        assert forbidden not in rendered
 
 
 def test_zero_sponsored_impressions_has_no_false_ctr():
