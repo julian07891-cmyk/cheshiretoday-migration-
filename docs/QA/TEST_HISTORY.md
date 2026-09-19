@@ -42,6 +42,17 @@ The 29 July production React build passed. Later analytics, metadata and mobile 
 
 Coverage includes public landing/signup, consent parity, welcome email, secure preferences, request links, reactivation, unsubscribe, one-click contracts, challenge enforcement, unique-index provisioning, click redirects, HTML and runtime collaborators. Provider/live inbox delivery remains outside unit tests.
 
+Newsletter Funnel V1 commit `66fde10` contains exactly eight implementation and
+test files: `backend/app/admin_analytics.py`,
+`backend/app/newsletter_signup_funnel.py`, `backend/server.py`,
+`frontend/src/components/NewsletterSignupSimplification.test.jsx`,
+`frontend/src/components/homepage/NewsletterFull.jsx`,
+`tests/test_admin_analytics_summary.py`,
+`tests/test_newsletter_signup_funnel.py`, and
+`tests/test_newsletter_subscriber_creation_fields.py`. Its recorded counts are
+scoped to this capability and the stated related regressions, not unrelated
+systems.
+
 ## Scheduler and import tests
 
 `tests/test_scheduler_lock.py`, `tests/test_admin_generation_operations_auth.py`, `tests/test_article_generation_memory_observability.py`, `tests/test_sync_rss_editorial_guard.py` and Local RSS tests cover locks, authentication-first operations, memory phases, editorial guards and routing. Normal production runs remain the scheduler acceptance gate.
@@ -110,6 +121,13 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 | 18 Sep 2026 | `bbc526c` | Memory observability / Editorial Similarity isolation / cleanup regressions | 104 passed | None material recorded | Protected reliability and isolation boundaries | Bounded regression set | Commit-gate verification |
 | 18 Sep 2026 | `bbc526c` | `python3 -m compileall -q backend tests`; `git diff --check`; complete unstaged/staged reviews | Pass / approved | No Blocker, Material or Minor finding remained | Compilation, diff hygiene and review gate | Does not prove production behaviour | Commit-gate verification |
 | 18 Sep 2026 | `bbc526c` | Natural 18:00 article-generation acceptance | Partial: incomplete-preview routing and bounded HTML-boundary behaviour verified | Nonfatal Warrington/Knutsford Guardian HTTP 403 feed warnings | One scheduled run; Guardian candidate routing; bounded Admin/public inspection | Complete-replacement path not naturally exercised; historical records not repaired | Deployment `dep-damij1btqb8s73fvesp0`; instance `klzb8` |
+| 19 Sep 2026 | `66fde10` | Newsletter Funnel V1 focused backend | 69 passed | None material recorded | Signup attempt/outcome aggregation, placement normalisation, subscriber semantics and failure isolation | Focused capability scope only | Implementation verification |
+| 19 Sep 2026 | `66fde10` | Dedicated Admin analytics | 15 passed | None material recorded | Funnel totals, placement breakdown, conversion and subsection isolation | Does not cover unrelated Admin systems | Implementation verification |
+| 19 Sep 2026 | `66fde10` | Frontend signup/service contract | 9 passed | None material recorded | NewsletterFull placement and removal of misleading pre-result event | JSDOM/service contract evidence | Implementation verification |
+| 19 Sep 2026 | `66fde10` | Expanded frontend consent/provider/trackEvent | 17 passed | None material recorded | Adjacent analytics-consent compatibility | Does not repeat event-level production verification | Implementation verification |
+| 19 Sep 2026 | `66fde10` | Broader relevant regressions | 294 passed | None material recorded | Newsletter, Admin analytics and protected adjacent behaviour | Bounded relevant set, not repository-wide proof | Implementation verification |
+| 19 Sep 2026 | `66fde10` | Production frontend build; `python3 -m compileall -q backend tests`; `git diff --check` | Pass | No material failure | Build, compilation and diff hygiene | Static/build evidence only | Implementation verification |
+| 19 Sep 2026 | `66fde10` | Controlled Newsletter Funnel V1 production acceptance | Pass: one HTTP 200/`created` signup, exact aggregate delta and matching Admin report | Pre-existing full-email logging confirmed separately | Subscriber creation, anonymous aggregate, retention/index contract and Admin continuity | No inbox-delivery or distributed exact-once claim; acceptance subscriber retained | Deployment `dep-dan3beojo6nc7395spm0`; instance `fkdbq` |
 
 ## Reconstruction limitations
 

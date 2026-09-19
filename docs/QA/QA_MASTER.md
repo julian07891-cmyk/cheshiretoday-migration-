@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `66fde1004a322d540bf9ac3197dab6b80152428b`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -125,6 +125,21 @@ broader release/finally ownership questions were outside this closure.
 ## Newsletter
 
 Secure request-link, challenge, replay, unsubscribe/reactivation, active-recipient exclusion, rotating batches, Resend diagnostics and accepted-recipient ledgers have extensive focused coverage. Weekly Roundup slot-aware idempotence is **NATURAL VERIFICATION COMPLETE**: on 6 September 2026, all four natural Sunday slots selected 1,000 recipients and recorded 1,000/1,000 successful application/provider-path acceptance, with distinct slot identities, cursor progression 996→1996→2996→3996, no observed `E11000` conflict and the slot-aware unique index confirmed at subsequent startup. This closes the idempotence reliability-validation loop, not delivery, bounce, engagement, inactive-subscriber, growth or commercial conclusions; provider acceptance is not inbox delivery.
+
+Newsletter Funnel V1 is **PRODUCTION ACCEPTED**. Commit `66fde10` added
+backend-authoritative, fail-open, anonymous daily signup outcome aggregates and
+matching authenticated Admin reporting without changing subscriber semantics.
+Focused backend (69), dedicated Admin analytics (15), frontend signup/service
+contract (9), expanded frontend consent/provider/trackEvent (17), and broader
+relevant regression (294) tests passed; the frontend production build,
+`compileall` and `git diff --check` also passed. Deployment
+`dep-dan3beojo6nc7395spm0` became live on instance `fkdbq` at 08:14:30 BST on
+19 September. One controlled authorised signup produced HTTP 200/`created`, the
+exact uncontended `newsletter_landing` aggregate `1/1/0/0/0`, and matching Admin
+reporting with 100.0% created conversion. The aggregate stores no subscriber PII
+and expires after exactly 13 calendar months; no inbox-delivery or distributed
+exact-once claim is made. The separately confirmed pre-existing full-email
+logging is Medium Open `CT-QA-2026-006` and did not invalidate Funnel V1.
 
 ## Editorial workflow
 

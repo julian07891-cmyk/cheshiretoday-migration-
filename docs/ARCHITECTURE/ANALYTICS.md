@@ -30,6 +30,36 @@ Social Publishing constructs a deterministic public article URL with `utm_source
 
 Per-recipient tracking identifiers support open pixels and click redirects stored in `email_analytics`. `email_send_opportunities` records hashed accepted-recipient opportunities and batch counts. Provider acceptance, opens and clicks are different measures; scanner activity can create non-human events.
 
+## Newsletter signup funnel
+
+Commit `66fde10` added backend-authoritative Newsletter Funnel V1 measurement.
+Syntactically valid requests that enter either public subscribe route count as
+attempts; invalid-email 422 responses do not. Outcomes are `created`, `existing`
+and `failed`, with `server_error` as the current failure category. Created
+conversion uses `created / (created + existing + failed)`. The backend aggregate
+is authoritative; the misleading NewsletterFull pre-result
+`newsletter_submit` event was removed, and NewsletterFull continues to submit
+`newsletter_landing`.
+
+`newsletter_signup_funnel_daily` stores schema version 1 daily documents keyed by
+London `date_key` and canonical placement. Placements are
+`newsletter_landing`, `homepage`, `article`, `footer`, `popup` and `unknown`;
+legacy `website`, missing, malformed and unrecognised values normalise to
+`unknown` for measurement only. Documents contain counters and server-owned
+timestamps only—no subscriber email or hash, IP or hash, user agent, session,
+page URL, article ID, UTM value or request payload. Indexes enforce unique
+`(date_key, placement)`, TTL `expires_at` with `expireAfterSeconds=0`, and
+reporting `(day_start_utc, placement)`. Expiry is exactly 13 calendar months and
+there is no historical backfill.
+
+Recording is fail-open so analytics failure cannot change signup behaviour. A
+process crash after subscriber mutation but before the best-effort aggregate
+update can undercount; no distributed transaction or exact-once guarantee is
+claimed. Production acceptance on 19 September 2026 observed one uncontended
+`newsletter_landing` created signup, the exact `1/1/0/0/0` aggregate, and matching
+Admin reporting with 100.0% created conversion. Classification:
+**NEWSLETTER FUNNEL V1 PRODUCTION ACCEPTANCE PASSED.**
+
 ## Commercial analytics
 
 Sponsored placement impression and click endpoints increment counters in `sponsored_placements`. Affiliate/provider click tracking and advertiser/payment summaries are distinct from article views. Admin commercial summaries read MongoDB; they do not establish revenue attribution by themselves.

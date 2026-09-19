@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`, including the deployed RSS-preview protection and its partial natural-acceptance boundary.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `66fde1004a322d540bf9ac3197dab6b80152428b`, including production-accepted Newsletter Funnel V1 and the RSS-preview protection's partial natural-acceptance boundary.
 
 ## Document purpose
 
@@ -60,6 +60,8 @@ Security and production stability precede feature expansion.
 | Monitoring | RSS-preview complete-replacement evidence (`CT-QA-2026-005`) | Core incomplete-preview routing and bounded HTML-boundary behaviour are naturally verified after `bbc526c`; observe a natural continuation-ended candidate receiving a genuinely distinct complete public replacement. Do not manufacture a candidate or block unrelated work |
 | Next | Historical Guardian article repair | Separately review and repair the five bounded pre-deployment affected records; do not treat deployment of future-import protection as historical cleanup |
 | Next | `/api/import-real-news` completeness review | **SEPARATE FOLLOW-UP RISK — UNCHANGED.** Audit/design independently; do not trigger the endpoint merely to manufacture evidence |
+| Completed | Newsletter Funnel V1 | Commit `66fde10`, focused/related tests and build checks, deployment `dep-dan3beojo6nc7395spm0`, one controlled authorised created signup, exact anonymous aggregate and matching Admin reporting completed the defined acceptance gate on 19 September 2026 |
+| Next | Subscriber-log privacy remediation (`CT-QA-2026-006`) | Remove or redact full subscriber email values from existing subscribe/welcome logs while preserving useful non-PII outcomes, subscriber semantics, welcome delivery and Funnel V1 counters |
 
 ## Medium-term priorities
 
@@ -127,6 +129,9 @@ Monitoring does not authorise imports, sends, restarts, indexing requests or dat
 - Version 1 duplicate and archive safeguards.
 - Manual Review hidden editorial state and backend-authoritative restoration.
 - Secure newsletter management phases and accepted-recipient accounting.
+- Newsletter Funnel V1 backend-authoritative anonymous daily aggregates and
+  authenticated Admin reporting, production accepted through one controlled
+  authorised signup on 19 September 2026.
 - First-party article-view and Most Read correctness repairs.
 - Admin read-only analytics and Facebook attribution foundation.
 - Rendered metadata reconciliation with production verification.

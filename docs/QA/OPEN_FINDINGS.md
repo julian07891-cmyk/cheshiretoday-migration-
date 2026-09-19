@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `be0182b`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Live finding register at HEAD `66fde10`. It includes all original identifiers exactly once, even when closed at repository level.
 
 ## Document purpose
 
@@ -302,6 +302,22 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Closure criteria:** Observe a natural continuation-ended candidate receiving a genuinely distinct complete replacement that passes existing quality controls and becomes public; separately decide/complete repair of the five historical records. Do not manufacture a candidate or block unrelated work while awaiting it.
 - **Owner/documentation responsibility:** Editorial/import owner and backend QA owner; [Article Pipeline](../ARCHITECTURE/ARTICLE_PIPELINE.md).
 - **Sources:** Git `bbc526c`; deployment `dep-damij1btqb8s73fvesp0`; authenticated natural run and bounded Admin/public inspection on 18 September 2026.
+
+### CT-QA-2026-006
+
+- **Original severity:** Not applicable
+- **Current severity:** Medium
+- **Area:** Privacy / data minimisation / application logging
+- **Original finding:** Existing public subscribe and welcome-email logging paths write full subscriber email addresses to application logs.
+- **Current status:** **OPEN — PRE-EXISTING FULL-EMAIL LOGGING CONFIRMED.** Production confirmation occurred during the controlled Newsletter Funnel V1 acceptance on 19 September 2026. The behaviour predates Funnel V1, is not caused by its aggregate, and did not invalidate the accepted measurement path.
+- **Current-code evidence:** `subscribe_newsletter` logs the normalised email after subscriber creation and logs it again for welcome-email success/failure. The new `newsletter_signup_funnel_daily` writer receives only placement and outcome and stores no subscriber identity.
+- **Production evidence:** Bounded application logs around the single authorised acceptance signup contained the full controlled subscriber address in the pre-existing subscribe/welcome path. Repository documentation intentionally records no address. The signup returned HTTP 200/`created`, its anonymous aggregate and Admin reporting were correct, and no funnel exception occurred.
+- **Risk:** Full subscriber addresses are unnecessary in routine application logs and broaden the locations in which reader contact data is retained and accessible. No public exposure or legal non-compliance is claimed.
+- **Required remediation:** In a separately reviewed narrow change, remove or redact full subscriber email values from subscribe/welcome logging while retaining useful non-PII operational outcome logging. Do not alter subscriber semantics, welcome-email behaviour or Funnel V1 counters.
+- **Closure criteria:** Focused tests prove no full address is emitted on created, existing, welcome success/failure or generic failure paths; relevant newsletter regressions pass; deployment is healthy; one bounded production observation confirms non-PII logs without creating an unnecessary second subscriber.
+- **Owner/documentation responsibility:** Newsletter/backend privacy owner; record remediation in Analytics/Newsletter architecture, QA and Production Timeline.
+- **Roadmap mapping:** [Roadmap Master](../ROADMAP_MASTER.md), narrow subscriber-log privacy remediation.
+- **Sources:** `backend/server.py`; controlled production acceptance and bounded Render logs on 19 September 2026; Git `66fde10` for the separate accepted Funnel V1 capability.
 
 ## Related documents
 

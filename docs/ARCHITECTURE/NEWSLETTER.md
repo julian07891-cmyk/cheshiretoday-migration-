@@ -18,6 +18,17 @@ Use this for design and code ownership. Operators should use [Newsletter Operati
 
 `POST /api/newsletter/subscribe` creates or recognises subscribers without silently overwriting established preferences. Eligibility queries require active subscribers and the relevant preference. Inactive subscribers are excluded. Public signup, Admin management and secure self-service are distinct boundaries.
 
+Newsletter Funnel V1 measures public signup outcomes without changing that
+lifecycle. The backend records anonymous daily attempts and `created`, `existing`
+or `failed` outcomes by canonical placement; retries remain attempts and existing
+addresses retain their existing state. Measurement failure is fail-open. The
+aggregate has no subscriber identity or request-level reader data, uses exact
+13-calendar-month TTL retention, and has no historical backfill. Production
+acceptance passed on 19 September 2026 for one controlled authorised created
+subscriber and matching Admin aggregate reporting. Pre-existing full-email
+subscribe/welcome logging remains the separate Medium Open `CT-QA-2026-006`
+privacy-minimisation follow-up.
+
 ## Daily Brief
 
 `send_scheduled_news_digest` acquires a date-keyed lock, selects active Daily Brief recipients, applies configured caps and a fair Mongo-backed rotating cursor, selects eligible public articles, then calls `EmailService.send_daily_brief`. The current schedule is Monday–Saturday at 07:30 Europe/London.

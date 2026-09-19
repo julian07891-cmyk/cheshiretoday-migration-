@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`
-> - **Last repository reconciliation:** 18 September 2026
-> - **Production-verification status:** Commit `bbc526c` is live. The RSS-preview HTML-boundary fix and incomplete-preview routing are naturally verified on bounded post-deployment samples; the complete-replacement path is not naturally exercised, so overall acceptance remains partial. `QA-OPS-001` remains High Open
+> - **Repository baseline:** `66fde1004a322d540bf9ac3197dab6b80152428b`
+> - **Last repository reconciliation:** 19 September 2026
+> - **Production-verification status:** Commit `66fde10` is live and Newsletter Funnel V1 production acceptance passed. The RSS-preview fix remains implemented/deployed with partial natural acceptance and its complete-replacement path remains unexercised. `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `bbc526c7f3faa277e43dfcd0a96cd242940d3cea`
-- **Latest baseline commit:** `Fix incomplete RSS preview handling`
+- **Current reconciled HEAD:** `66fde1004a322d540bf9ac3197dab6b80152428b`
+- **Latest baseline commit:** `Add newsletter signup funnel analytics`
 
-This is the repository and production baseline reconciled on 18 September 2026, not
+This is the repository and production baseline reconciled on 19 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -192,7 +192,9 @@ HTML boundary. Classification: **HTML-BOUNDARY FIX NATURALLY VERIFIED** and
 **INCOMPLETE-PREVIEW ROUTING NATURALLY VERIFIED**, but **COMPLETE-REPLACEMENT
 PATH NOT NATURALLY EXERCISED**. Overall: **IMPORT ARTICLE QUALITY FIX NATURAL
 ACCEPTANCE PARTIAL**. `/api/import-real-news` remains a separate unchanged
-follow-up risk. Newsletter Funnel V1 remains paused and outside this work.
+follow-up risk. Newsletter Funnel V1 subsequently resumed and completed through
+the separately verified implementation, deployment and production-acceptance
+evidence recorded below.
 
 Perplexity may provide bounded research/rewrite assistance in eligible import
 paths. Provider output still passes deterministic and editorial controls.
@@ -244,6 +246,66 @@ The newsletter system currently supports:
 - purpose-specific signed tokens, stored challenges, rate limits, expiry and
   replay protection;
 - protected, invalid and test-address safeguards.
+
+Newsletter Funnel V1 is **PRODUCTION ACCEPTED**. Commit
+`66fde1004a322d540bf9ac3197dab6b80152428b` (`Add newsletter signup funnel
+analytics`) added backend-authoritative, fail-open measurement of syntactically
+valid public signup attempts and `created`, `existing` or `failed` outcomes in
+anonymous daily `newsletter_signup_funnel_daily` aggregates. Canonical placements
+are `newsletter_landing`, `homepage`, `article`, `footer`, `popup` and `unknown`;
+legacy, missing, malformed or unrecognised placement values map to `unknown` for
+measurement only. Invalid-email 422 requests do not enter the handler and do not
+count. Created conversion is `created / (created + existing + failed)`, with no
+historical backfill. The misleading pre-result NewsletterFull
+`newsletter_submit` event was removed while its API placement remains
+`newsletter_landing`; subscriber and welcome-email semantics are unchanged.
+
+Deployment `dep-dan3beojo6nc7395spm0` ran the exact commit on Standard instance
+`fkdbq` (1 CPU/2 GB, one instance, `WEB_CONCURRENCY=1`) and became live at
+08:14:30 BST on 19 September 2026 after successful build, Uvicorn/Mongo startup,
+normal scheduler registration and index provisioning. Before controlled
+acceptance, bounded inspection found zero matching subscriber records for the
+authorised test identity and no `newsletter_landing` aggregate for
+`date_key=2026-09-19`, so the effective pre-test counters were all zero. Exactly
+one production signup request was made. It returned HTTP 200/`created` and
+created exactly one record with `active=true`,
+`signup_placement=newsletter_landing`, creation/subscription timestamps and
+`daily_brief=true`, `weekly_roundup=true`, `breaking_news=true`.
+
+The post-request aggregate was attempts 1, created 1, existing 0, failed 0 and
+server_error 0. The complete observed delta was attempts +1, created +1,
+existing +0, failed +0 and server_error +0; no natural-traffic confounding was
+observed between the bounded pre/post reads. Its identity/timestamps were
+`date_key=2026-09-19`, `day_start_utc=2026-09-18T23:00:00Z` and
+`expires_at=2027-10-18T23:00:00Z`. Application logs recorded one successful
+welcome-email send attempt; no resend occurred. Inbox delivery, human receipt,
+deliverability and engagement were not assessed and are not claimed.
+
+The first Admin analytics acceptance request returned HTTP 401 because the
+existing Admin authentication session was expired or invalid. It caused no
+second newsletter signup. Normal authorised Admin re-authentication then
+completed without a credential or authentication-configuration change, and the
+authenticated analytics request succeeded. `signup_funnel` reported
+`available=true`, totals of attempts 1, created 1, existing 0, failed 0 and
+server_error 0, a `newsletter_landing` breakdown of `1/1/0/0/0`, and 100.0%
+created conversion, exactly matching the independently verified aggregate.
+Existing analytics also loaded, with point-in-time observations of 10,000
+provider-accepted opportunities, 10 accepted send batches, 1,450 opens and 264
+clicks, together with article, Facebook and commercial analytics. These values
+were observed only to verify continuity; they are not permanent/current KPIs and
+must not be interpreted beyond their established measurement semantics.
+Provider acceptance does not prove inbox delivery, and opens/clicks do not prove
+unique human engagement. **NEWSLETTER FUNNEL V1 PRODUCTION ACCEPTANCE PASSED.**
+
+The version-1 aggregate stores only schema/placement/day identity, counters and
+timestamps. It stores no subscriber email or hash, IP or hash, user agent,
+session, page URL, article ID, UTM values or request payload. Retention is exactly
+13 calendar months through an `expires_at` TTL. A process termination between
+subscriber creation and the best-effort aggregate write can undercount because
+no distributed transaction is used. Production acceptance separately confirmed
+that pre-existing subscribe/welcome logging writes full subscriber email values;
+this is the Medium Open `CT-QA-2026-006` privacy/data-minimisation follow-up and
+is not caused by, or stored in, the anonymous Funnel V1 aggregate.
 
 Inactive-subscriber deactivation requires reconciled provider, acceptance and
 engagement evidence. Missing opens alone are insufficient. Do not expose raw
