@@ -271,8 +271,6 @@ class EmailService:
                 payload.append(email_payload)
 
             chunk_number = i // 100 + 1
-            first_to = str(chunk[0].get("to") or "") if chunk else ""
-            first_domain = first_to.split("@", 1)[1] if "@" in first_to else "unknown"
             subject = str(chunk[0].get("subject") or "")[:120] if chunk else ""
             response = None
 
@@ -287,8 +285,7 @@ class EmailService:
                     logger.error(
                         "Resend batch rejected before raise: "
                         f"chunk={chunk_number} size={len(chunk)} status={response.status_code} "
-                        f"subject={subject!r} first_domain={first_domain} "
-                        f"body={response.text[:1000]}"
+                        f"subject={subject!r}"
                     )
                 response.raise_for_status()
                 success_count += len(chunk)
@@ -300,22 +297,16 @@ class EmailService:
                 self.resend_last_successful_chunks = getattr(self, "resend_last_successful_chunks", 0) + 1
             except Exception as e:
                 status_code = getattr(response, "status_code", "no_response")
-                detail = ""
-                try:
-                    detail = response.text[:1000] if response is not None else ""
-                except Exception:
-                    pass
                 self.resend_last_failed_chunks = getattr(self, "resend_last_failed_chunks", 0) + 1
                 self.resend_last_error = (
                     f"chunk={chunk_number} size={len(chunk)} status={status_code} "
-                    f"subject={subject!r} first_domain={first_domain} "
-                    f"error={type(e).__name__}: {str(e)} response={detail[:500]}"
+                    f"subject={subject!r} error_type={type(e).__name__}"
                 )
                 logger.error(
                     "Resend batch send failed: "
                     f"chunk={chunk_number} size={len(chunk)} status={status_code} "
-                    f"subject={subject!r} first_domain={first_domain} "
-                    f"error={type(e).__name__}: {str(e)} response={detail}"
+                    f"subject={subject!r} "
+                    f"error_type={type(e).__name__}"
                 )
 
         if success_count == 0 and batch_messages:
@@ -382,22 +373,34 @@ class EmailService:
             return True
 
         except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"SMTP AUTHENTICATION FAILED for {to_email}: {str(e)}")
-            logger.error(f"  -> Check SMTP_USER ({self.smtp_user}) and SMTP_PASSWORD are correct")
+            logger.error(
+                "smtp_authentication_failed error_type=%s",
+                type(e).__name__,
+            )
+            logger.error("Check SMTP_USER and SMTP_PASSWORD configuration")
             return False
         except smtplib.SMTPConnectError as e:
-            logger.error(f"SMTP CONNECTION FAILED for {to_email}: {str(e)}")
+            logger.error(
+                "smtp_connection_failed error_type=%s",
+                type(e).__name__,
+            )
             logger.error(f"  -> Check SMTP_HOST ({self.smtp_host}) and SMTP_PORT ({self.smtp_port})")
             logger.error("  -> GoDaddy SMTP: smtpout.secureserver.net (port 465 SSL or 587 TLS)")
             return False
         except smtplib.SMTPRecipientsRefused as e:
-            logger.error(f"RECIPIENT REFUSED for {to_email}: {str(e)}")
+            logger.error(
+                "recipient_refused error_type=%s",
+                type(e).__name__,
+            )
             return False
         except smtplib.SMTPException as e:
-            logger.error(f"SMTP ERROR for {to_email}: {type(e).__name__}: {str(e)}")
+            logger.error("smtp_error error_type=%s", type(e).__name__)
             return False
         except Exception as e:
-            logger.error(f"UNEXPECTED ERROR sending to {to_email}: {type(e).__name__}: {str(e)}")
+            logger.error(
+                "unexpected_send_error error_type=%s",
+                type(e).__name__,
+            )
             return False
 
     def send_welcome_email(self, to_email: str) -> bool:

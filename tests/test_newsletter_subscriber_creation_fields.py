@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -60,14 +61,16 @@ class StubSubscribers:
 
 
 class StubEmailService:
-    def __init__(self, error=None):
+    def __init__(self, error=None, accepted=True):
         self.welcome_addresses = []
         self.error = error
+        self.accepted = accepted
 
     def send_welcome_email(self, email):
         self.welcome_addresses.append(email)
         if self.error:
             raise self.error
+        return self.accepted
 
 
 class StubFunnel:
@@ -91,11 +94,15 @@ def _run_subscribe(
     request_fields=None,
     lookup_error=None,
     funnel_error=None,
+    welcome_accepted=True,
 ):
     subscribers = StubSubscribers(
         existing, insert_error=insert_error, lookup_error=lookup_error
     )
-    email_service = StubEmailService(error=email_error)
+    email_service = StubEmailService(
+        error=email_error,
+        accepted=welcome_accepted,
+    )
     funnel = StubFunnel(error=funnel_error)
     subscribers.funnel = funnel
     database = SimpleNamespace(
@@ -217,6 +224,26 @@ def test_brand_new_subscriber_initializes_distinct_management_fields(monkeypatch
     _assert_private_subscribe_response(response)
 
 
+def test_created_subscription_logs_bounded_outcomes_without_email(
+    monkeypatch, caplog
+):
+    caplog.set_level(logging.INFO)
+    monkeypatch.setattr(
+        server.uuid,
+        "uuid4",
+        Mock(side_effect=[GENERIC_ID, MANAGEMENT_ID]),
+    )
+
+    response, subscribers, email_service = _run_subscribe(monkeypatch)
+
+    assert response.outcome == "created"
+    assert len(subscribers.inserted) == 1
+    assert email_service.welcome_addresses == [TEST_EMAIL]
+    assert "Newsletter subscriber created" in caplog.text
+    assert "Newsletter welcome email accepted" in caplog.text
+    assert TEST_EMAIL not in caplog.text
+
+
 @pytest.mark.parametrize(
     ("placement", "stored"),
     [
@@ -292,19 +319,32 @@ def test_existing_subscriber_branches_never_assign_management_fields(
 
 
 def test_existing_active_signup_request_does_not_update_preferences(
-    monkeypatch,
+    monkeypatch, caplog
 ):
+    caplog.set_level(logging.INFO)
     existing = {
         "email": TEST_EMAIL,
         "active": True,
         "newsletter_management_id": str(MANAGEMENT_ID),
         "newsletter_token_version": 4,
     }
-    _response, subscribers, _email_service = _run_subscribe(
+    response, subscribers, email_service = _run_subscribe(
         monkeypatch, existing, placement="newsletter_landing"
     )
 
+    assert response.outcome == "existing"
     assert subscribers.updates == []
+    assert subscribers.inserted == []
+    assert email_service.welcome_addresses == []
+    assert len(subscribers.funnel.updates) == 1
+    assert subscribers.funnel.updates[0][1]["$inc"] == {
+        "attempts": 1,
+        "created": 0,
+        "existing": 1,
+        "failed": 0,
+        "server_error": 0,
+    }
+    assert TEST_EMAIL not in caplog.text
 
 
 def test_client_cannot_override_server_owned_subscription_fields(monkeypatch):
@@ -404,8 +444,9 @@ def test_subscribe_handler_does_not_activate_token_system():
 
 
 def test_duplicate_key_race_returns_existing_outcome_without_welcome_email(
-    monkeypatch,
+    monkeypatch, caplog
 ):
+    caplog.set_level(logging.INFO)
     monkeypatch.setattr(
         server.uuid,
         "uuid4",
@@ -421,6 +462,36 @@ def test_duplicate_key_race_returns_existing_outcome_without_welcome_email(
     assert email_service.welcome_addresses == []
     assert response.success is True
     assert response.outcome == "existing"
+    assert len(subscribers.funnel.updates) == 1
+    assert subscribers.funnel.updates[0][1]["$inc"] == {
+        "attempts": 1,
+        "created": 0,
+        "existing": 1,
+        "failed": 0,
+        "server_error": 0,
+    }
+    assert TEST_EMAIL not in caplog.text
+
+
+def test_welcome_email_not_accepted_preserves_created_subscription(
+    monkeypatch, caplog
+):
+    monkeypatch.setattr(
+        server.uuid,
+        "uuid4",
+        Mock(side_effect=[GENERIC_ID, MANAGEMENT_ID]),
+    )
+
+    response, subscribers, email_service = _run_subscribe(
+        monkeypatch,
+        welcome_accepted=False,
+    )
+
+    assert response.outcome == "created"
+    assert len(subscribers.inserted) == 1
+    assert email_service.welcome_addresses == [TEST_EMAIL]
+    assert "Newsletter welcome email not accepted" in caplog.text
+    assert TEST_EMAIL not in caplog.text
 
 
 def test_welcome_email_failure_does_not_undo_new_subscription(monkeypatch):
@@ -446,6 +517,29 @@ def test_welcome_email_failure_does_not_undo_new_subscription(monkeypatch):
         "failed": 0,
         "server_error": 0,
     }
+
+
+def test_welcome_exception_log_omits_email_and_exception_message(
+    monkeypatch, caplog
+):
+    monkeypatch.setattr(
+        server.uuid,
+        "uuid4",
+        Mock(side_effect=[GENERIC_ID, MANAGEMENT_ID]),
+    )
+    private_message = f"delivery failed for {TEST_EMAIL}"
+
+    response, subscribers, email_service = _run_subscribe(
+        monkeypatch,
+        email_error=RuntimeError(private_message),
+    )
+
+    assert response.outcome == "created"
+    assert len(subscribers.inserted) == 1
+    assert email_service.welcome_addresses == [TEST_EMAIL]
+    assert "Newsletter welcome email failed: RuntimeError" in caplog.text
+    assert TEST_EMAIL not in caplog.text
+    assert private_message not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -516,8 +610,11 @@ def test_measurement_failure_does_not_change_created_response(monkeypatch):
     assert len(subscribers.inserted) == 1
 
 
-def test_generic_lookup_failure_records_failed_and_preserves_http_500(monkeypatch):
-    subscribers = StubSubscribers(lookup_error=RuntimeError("database unavailable"))
+def test_generic_lookup_failure_records_failed_and_preserves_http_500(
+    monkeypatch, caplog
+):
+    private_message = f"database unavailable for {TEST_EMAIL}"
+    subscribers = StubSubscribers(lookup_error=RuntimeError(private_message))
     funnel = StubFunnel()
     database = SimpleNamespace(
         subscribers=subscribers,
@@ -542,6 +639,9 @@ def test_generic_lookup_failure_records_failed_and_preserves_http_500(monkeypatc
         "failed": 1,
         "server_error": 1,
     }
+    assert "Newsletter subscription failed: RuntimeError" in caplog.text
+    assert TEST_EMAIL not in caplog.text
+    assert private_message not in caplog.text
 
 
 @pytest.mark.parametrize("path", ["/api/subscribe", "/api/newsletter/subscribe"])

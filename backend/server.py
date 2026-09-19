@@ -6289,14 +6289,20 @@ async def subscribe_newsletter(request: SubscribeRequest):
             )
             return response
         
-        logger.info(f"New newsletter subscriber: {email}")
+        logger.info("Newsletter subscriber created")
         
         # Send welcome email (non-blocking)
         try:
-            email_service.send_welcome_email(email)
-            logger.info(f"Welcome email sent to: {email}")
+            welcome_accepted = email_service.send_welcome_email(email)
+            if welcome_accepted:
+                logger.info("Newsletter welcome email accepted")
+            else:
+                logger.warning("Newsletter welcome email not accepted")
         except Exception as email_error:
-            logger.error(f"Failed to send welcome email to {email}: {str(email_error)}")
+            logger.error(
+                "Newsletter welcome email failed: %s",
+                type(email_error).__name__,
+            )
             # Don't fail subscription if email fails
         
         response = SubscribeResponse(
@@ -6310,7 +6316,7 @@ async def subscribe_newsletter(request: SubscribeRequest):
         return response
         
     except Exception as e:
-        logger.error(f"Error subscribing email: {str(e)}")
+        logger.error("Newsletter subscription failed: %s", type(e).__name__)
         await record_newsletter_signup_outcome_safely(
             db, request.signup_placement, "failed", logger=logger
         )
@@ -13659,7 +13665,13 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
         
         # Log SMTP config at start for debugging
         import os
-        logger.info(f"SMTP Config Check - Host: {os.environ.get('SMTP_HOST')}, Port: {os.environ.get('SMTP_PORT')}, User: {os.environ.get('SMTP_USER')}")
+        logger.info(
+            "SMTP Config Check - Host configured: %s, Port configured: %s, "
+            "User configured: %s",
+            bool(os.environ.get("SMTP_HOST")),
+            bool(os.environ.get("SMTP_PORT")),
+            bool(os.environ.get("SMTP_USER")),
+        )
         
         # Resend Pro cleanup mode: send to active subscribers in larger controlled batches.
         subscribers = await db.subscribers.find(
@@ -13905,7 +13917,10 @@ async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_pre
     Usage: POST /api/send-digest-test?test_email=your@email.com&use_preview_links=true
     """
     try:
-        logger.info(f"TEST DIGEST: Sending test to {test_email}, preview_links={use_preview_links}")
+        logger.info(
+            "TEST DIGEST: Sending test, preview_links=%s",
+            use_preview_links,
+        )
         
         # Get latest public articles only — never include archived or Manual Review-hidden articles
         pipeline = [
@@ -13991,7 +14006,7 @@ async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_pre
         }
         
     except Exception as e:
-        logger.error(f"Error sending test digest: {str(e)}")
+        logger.error("Test digest send failed: %s", type(e).__name__)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -14002,7 +14017,7 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
     Does not update scheduler locks, digest_log, or email_batch_cursors.
     """
     try:
-        logger.info(f"TEST WEEKLY ROUNDUP: Sending test to {test_email}")
+        logger.info("TEST WEEKLY ROUNDUP: Sending test")
 
         now = datetime.now(timezone.utc)
         one_week_ago = now - timedelta(days=7)
@@ -14085,7 +14100,10 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
         }
 
     except Exception as e:
-        logger.error(f"Error sending Weekly Roundup test: {str(e)}")
+        logger.error(
+            "Weekly Roundup test send failed: %s",
+            type(e).__name__,
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -19608,7 +19626,10 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                     invalid_emails.append(email)
         
         if invalid_emails:
-            logger.warning(f"Skipping {len(invalid_emails)} invalid emails: {invalid_emails[:5]}...")
+            logger.warning(
+                "Skipping %s invalid newsletter subscriber addresses",
+                len(invalid_emails),
+            )
         
         daily_send_cap = int(os.environ.get("DAILY_BRIEF_SEND_CAP", "1000"))
         priority_emails = sorted(priority_emails, key=lambda value: str(value).lower())
