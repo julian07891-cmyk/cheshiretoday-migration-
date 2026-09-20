@@ -10,6 +10,7 @@ export const captureNewsletterLinkState = (
   browserWindow = window,
 ) => {
   const fragment = browserWindow.location.hash;
+  const queryToken = new URLSearchParams(browserWindow.location.search).has("token");
   const legacyEmailQuery = /(?:^|[?&])email(?:=|&|$)/.test(
     browserWindow.location.search,
   );
@@ -34,7 +35,7 @@ export const captureNewsletterLinkState = (
 
   }
 
-  if (fragment || legacyEmailQuery) {
+  if (fragment || legacyEmailQuery || queryToken) {
     browserWindow.history.replaceState(
       browserWindow.history.state,
       "",
@@ -53,6 +54,13 @@ export const captureNewsletterLinkState = (
   return Object.freeze({
     token: legacyEmailQuery ? null : token,
     retired: legacyEmailQuery,
+    entry: legacyEmailQuery
+      ? "retired"
+      : token
+        ? "token"
+        : fragment || queryToken
+          ? "invalid"
+          : "generic",
   });
 };
 

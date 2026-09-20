@@ -225,7 +225,7 @@ export const SecureNewsletterPreferencesPage = () => {
   const token = linkState.token;
   const verificationStarted = useRef(false);
   const [state, setState] = useState(
-    linkState.retired ? "retired" : token ? "loading" : "invalid",
+    linkState.entry === "token" ? "loading" : linkState.entry,
   );
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [submitting, setSubmitting] = useState(false);
@@ -290,7 +290,9 @@ export const SecureNewsletterPreferencesPage = () => {
   return (
     <SecurePageShell
       title="Newsletter preferences"
-      description="Review and update the Cheshire Today newsletters you receive."
+      description={state === "generic"
+        ? "Enter the email address associated with your subscription. If eligible, we'll send you a secure link to manage your newsletter preferences."
+        : "Review and update the Cheshire Today newsletters you receive."}
     >
       {state === "ready" && (
         <form onSubmit={submit} className="space-y-6">
@@ -314,7 +316,7 @@ export const SecureNewsletterPreferencesPage = () => {
           message="Your newsletter preferences have been saved."
         />
       )}
-      {!["ready", "success"].includes(state) && <FlowState state={state} />}
+      {!["generic", "ready", "success"].includes(state) && <FlowState state={state} />}
       {!["ready", "success", "loading"].includes(state) && (
         <RequestLinkForm
           requestLink={requestSecureNewsletterPreferencesLink}
@@ -329,7 +331,7 @@ export const SecureNewsletterUnsubscribePage = () => {
   const linkState = useCapturedToken();
   const token = linkState.token;
   const [state, setState] = useState(
-    linkState.retired ? "retired" : token ? "ready" : "invalid",
+    linkState.entry === "token" ? "ready" : linkState.entry,
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -351,7 +353,9 @@ export const SecureNewsletterUnsubscribePage = () => {
   return (
     <SecurePageShell
       title="Confirm unsubscribe"
-      description="Use the button below only if you want to stop all Cheshire Today newsletters."
+      description={state === "generic"
+        ? "Enter the email address associated with your subscription. If eligible, we'll send you a secure link to confirm unsubscribe. Requesting a link does not unsubscribe you."
+        : "Use the button below only if you want to stop all Cheshire Today newsletters."}
     >
       {state === "ready" && (
         <form onSubmit={submit}>
@@ -370,7 +374,7 @@ export const SecureNewsletterUnsubscribePage = () => {
           message="Your newsletter unsubscribe request has been completed."
         />
       )}
-      {!["ready", "success"].includes(state) && <FlowState state={state} />}
+      {!["generic", "ready", "success"].includes(state) && <FlowState state={state} />}
       {!["ready", "success"].includes(state) && (
         <RequestLinkForm
           requestLink={requestSecureNewsletterUnsubscribeLink}
@@ -385,7 +389,7 @@ export const SecureNewsletterReactivationPage = () => {
   const linkState = useCapturedToken();
   const token = linkState.token;
   const [state, setState] = useState(
-    linkState.retired ? "retired" : token ? "ready" : "invalid",
+    linkState.entry === "token" ? "ready" : linkState.entry,
   );
   const [preferences, setPreferences] = useState(EMPTY_PREFERENCES);
   const [selectionConfirmed, setSelectionConfirmed] = useState(false);
@@ -416,7 +420,9 @@ export const SecureNewsletterReactivationPage = () => {
   return (
     <SecurePageShell
       title="Reactivate newsletters"
-      description="Choose your newsletters, then confirm that you want to receive them again."
+      description={state === "generic"
+        ? "Enter the email address associated with your subscription. If eligible, we'll send you a secure link to reactivate your newsletters."
+        : "Choose your newsletters, then confirm that you want to receive them again."}
     >
       {state === "ready" && (
         <form onSubmit={submit} className="space-y-6">
@@ -450,7 +456,7 @@ export const SecureNewsletterReactivationPage = () => {
           message="Your newsletter reactivation has been completed."
         />
       )}
-      {!["ready", "success"].includes(state) && <FlowState state={state} />}
+      {!["generic", "ready", "success"].includes(state) && <FlowState state={state} />}
       {!["ready", "success"].includes(state) && (
         <RequestLinkForm
           requestLink={requestSecureNewsletterReactivationLink}

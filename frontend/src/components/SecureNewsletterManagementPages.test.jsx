@@ -9,6 +9,7 @@ import {
 } from "./SecureNewsletterManagementPages";
 import {
   captureNewsletterFragmentToken,
+  captureNewsletterLinkState,
   NEWSLETTER_TOKEN_MAX_LENGTH,
 } from "../services/secureNewsletterManagement";
 
@@ -191,6 +192,44 @@ describe("fragment-token capture", () => {
 });
 
 describe("clean request-link entry", () => {
+  test.each([
+    [SecureNewsletterPreferencesPage, "/newsletter/preferences", "manage your newsletter preferences"],
+    [SecureNewsletterUnsubscribePage, "/unsubscribe", "Requesting a link does not unsubscribe you."],
+    [SecureNewsletterReactivationPage, "/newsletter/reactivate", "reactivate your newsletters"],
+  ])("shows neutral generic entry for %s", async (Component, url, copy) => {
+    const page = await renderPage(Component, url);
+    expect(page.container.textContent).toContain(copy);
+    expect(page.container.textContent).not.toContain("This link is not valid");
+    expect(page.container.querySelector('input[type="email"]')).not.toBeNull();
+    expect(page.container.querySelector('[role="alert"]')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    await page.cleanup();
+  });
+
+  test.each([
+    "#token=", "#token=%20", "#token=%E0%A4%A", "#other=value",
+    `#token=${"a".repeat(NEWSLETTER_TOKEN_MAX_LENGTH + 1)}`,
+    "?token=unsupported", "?token=",
+  ])("keeps supplied invalid credentials invalid: %s", async (suffix) => {
+    for (const Component of [SecureNewsletterPreferencesPage, SecureNewsletterUnsubscribePage, SecureNewsletterReactivationPage]) {
+      const page = await renderPage(Component, `/unsubscribe${suffix}`);
+      expect(page.container.textContent).toContain("This link is not valid");
+      expect(fetch).not.toHaveBeenCalled();
+      expect(window.location.hash).toBe("");
+      expect(window.location.search).toBe("");
+      await page.cleanup();
+    }
+  });
+
+  test.each([
+    ["", "generic"], ["#token=valid", "token"],
+    ["#token=", "invalid"], ["?email=legacy", "retired"],
+    ["?token=unsupported#token=valid", "token"],
+  ])("captures entry classification %s", (suffix, entry) => {
+    window.history.replaceState({}, "", `/unsubscribe${suffix}`);
+    expect(captureNewsletterLinkState().entry).toBe(entry);
+  });
+
   test.each([
     [
       SecureNewsletterPreferencesPage,

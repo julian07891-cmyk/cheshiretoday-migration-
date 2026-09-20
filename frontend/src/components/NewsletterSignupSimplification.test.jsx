@@ -1,6 +1,8 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
+import { SecureNewsletterPreferencesPage } from "./SecureNewsletterManagementPages";
 import NewsletterFull from "./homepage/NewsletterFull";
 import {
   NEWSLETTER_SIGNUP_CONSENT,
@@ -46,7 +48,12 @@ const renderSignup = () => {
   act(() => {
     root.render(
       <MemoryRouter>
-        <NewsletterFull />
+        <HelmetProvider>
+          <Routes>
+            <Route path="/" element={<NewsletterFull />} />
+            <Route path="/newsletter/preferences" element={<SecureNewsletterPreferencesPage />} />
+          </Routes>
+        </HelmetProvider>
       </MemoryRouter>,
     );
   });
@@ -144,4 +151,21 @@ test("existing outcome remains generic and does not assert active subscription",
     "Thanks. If this address is eligible, no further action is needed.",
   );
   expect(document.body.textContent).not.toContain("You’re subscribed");
+});
+
+test("signup success opens neutral credential-less preferences", async () => {
+  window.history.replaceState({}, "", "/");
+  const originalFetch = global.fetch;
+  global.fetch = jest.fn();
+  try {
+    await submit("existing");
+    const link = Array.from(document.querySelectorAll("a")).find((item) => item.textContent === "Manage preferences");
+    expect(link.getAttribute("href")).toBe("/newsletter/preferences");
+    await act(async () => link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 })));
+    expect(container.textContent).toContain("secure link to manage your newsletter preferences");
+    expect(container.textContent).not.toContain("This link is not valid");
+    expect(global.fetch).not.toHaveBeenCalled();
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
