@@ -25,9 +25,10 @@ addresses retain their existing state. Measurement failure is fail-open. The
 aggregate has no subscriber identity or request-level reader data, uses exact
 13-calendar-month TTL retention, and has no historical backfill. Production
 acceptance passed on 19 September 2026 for one controlled authorised created
-subscriber and matching Admin aggregate reporting. Pre-existing full-email
-subscribe/welcome logging remains the separate Medium Open `CT-QA-2026-006`
-privacy-minimisation follow-up.
+subscriber and matching Admin aggregate reporting. The separate pre-existing
+newsletter logging defect is now `CT-QA-2026-006` **CLOSED — IMPLEMENTED,
+TESTED, DEPLOYED AND PRODUCTION-VERIFIED** through commit `03a6abb`. This logging
+hardening did not change Funnel V1 or subscriber behaviour.
 
 ## Daily Brief
 
@@ -51,6 +52,19 @@ deliverability.
 ## Delivery providers and diagnostics
 
 `EmailService` supports Resend batch delivery and an explicitly configured SMTP path. Resend/SMTP selection is environment-dependent. Provider diagnostics and `last_accepted_recipients` are reset per send attempt. Successful acceptance is not equivalent to inbox delivery.
+
+Commit `03a6abb` removed subscriber/recipient identity from operational
+newsletter logging. Subscriber creation no longer logs subscriber identity;
+welcome outcomes are bounded to accepted/not-accepted; welcome/subscribe and
+shared SMTP failures use bounded categories or exception classes rather than
+arbitrary exception text; SMTP diagnostics expose configuration presence only;
+scheduled Daily Brief invalid-address diagnostics retain counts without
+addresses; Admin Daily Brief and Weekly Roundup test-send logs omit destinations;
+and Resend/provider diagnostics omit raw response bodies and recipient-derived
+identity. `resend_last_error` remains a bounded operational diagnostic and may
+populate `digest_log.provider_error`. Legitimate delivery/database use of email
+addresses is unchanged. Historical logs were not erased, and this engineering
+closure is not a legal/privacy-compliance claim.
 
 ## Tracking and accepted-recipient ledger
 

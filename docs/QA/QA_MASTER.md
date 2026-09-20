@@ -1,6 +1,6 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `66fde1004a322d540bf9ac3197dab6b80152428b`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `03a6abbd5133de969275477488ea49bb34242ee0`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 
@@ -22,16 +22,17 @@ Evidence-backed status totals for the eleven original findings are:
 
 | Classification | Count |
 |---|---:|
-| Open or not fully production verified | 4 |
+| Open or not fully production verified | 3 |
 | Remediated and verified by tests at repository level | 2 |
-| Remediated, deployed and production verified | 5 |
+| Remediated, deployed and production verified | 6 |
 
-Four additional post-baseline findings are registered: documentation authority
+Six additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
 of the numerical observation-count gate, the now-closed scheduler lock-failure
-continuation risk, and the High RSS-preview/imported-body-quality defect with
-partial natural acceptance. These totals describe evidence status, not severity
-totals.
+continuation risk, the distinct cross-source duplicate-identity finding
+(`CT-QA-2026-004`), the High RSS-preview/imported-body-quality defect with partial
+natural acceptance, and the now-closed newsletter logging privacy defect. These
+totals describe evidence status, not severity totals.
 
 ## Original 29 July QA baseline
 
@@ -138,8 +139,23 @@ relevant regression (294) tests passed; the frontend production build,
 exact uncontended `newsletter_landing` aggregate `1/1/0/0/0`, and matching Admin
 reporting with 100.0% created conversion. The aggregate stores no subscriber PII
 and expires after exactly 13 calendar months; no inbox-delivery or distributed
-exact-once claim is made. The separately confirmed pre-existing full-email
-logging is Medium Open `CT-QA-2026-006` and did not invalidate Funnel V1.
+exact-once claim is made. The separately confirmed pre-existing newsletter
+logging defect did not invalidate Funnel V1 and is now `CT-QA-2026-006`
+**CLOSED — IMPLEMENTED, TESTED, DEPLOYED AND PRODUCTION-VERIFIED**.
+
+Commit `03a6abb` bounded subscriber creation, welcome/subscribe, shared SMTP,
+scheduled invalid-address, Admin test-send and provider diagnostics so the
+changed paths no longer log subscriber/recipient or SMTP-user identity,
+recipient-derived data, raw provider bodies or arbitrary exception text. It
+preserves subscriber, delivery, provider, digest, scheduler, Funnel, analytics
+and frontend contracts. Focused suites passed 47/47; the relevant bounded
+regression set passed 1,145 with 12 skipped and was not the complete repository
+suite. Three initial Material test-evidence weaknesses were corrected before
+complete unstaged and staged reviews were approved with no remaining finding.
+Auto-Deploy `dep-daneoh6q1p3s73cdmf9g` ran exact SHA `03a6abb` on Standard
+instance `zpcmz`; build/startup and bounded public/log checks passed. Every
+failure branch was not naturally exercised, historical logs were not altered,
+and no legal/privacy-compliance claim is made.
 
 ## Editorial workflow
 

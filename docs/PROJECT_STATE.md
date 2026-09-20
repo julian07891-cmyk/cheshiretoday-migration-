@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `66fde1004a322d540bf9ac3197dab6b80152428b`
-> - **Last repository reconciliation:** 19 September 2026
-> - **Production-verification status:** Commit `66fde10` is live and Newsletter Funnel V1 production acceptance passed. The RSS-preview fix remains implemented/deployed with partial natural acceptance and its complete-replacement path remains unexercised. `QA-OPS-001` remains High Open
+> - **Repository baseline:** `03a6abbd5133de969275477488ea49bb34242ee0`
+> - **Last repository reconciliation:** 20 September 2026
+> - **Production-verification status:** Commit `03a6abb` is live and `CT-QA-2026-006` is closed after implementation, tests, automatic deployment and bounded production verification. Newsletter Funnel V1 remains production accepted and unchanged. The RSS-preview fix remains implemented/deployed with partial natural acceptance and its complete-replacement path remains unexercised. `QA-OPS-001` remains High Open
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `66fde1004a322d540bf9ac3197dab6b80152428b`
-- **Latest baseline commit:** `Add newsletter signup funnel analytics`
+- **Current reconciled HEAD:** `03a6abbd5133de969275477488ea49bb34242ee0`
+- **Latest baseline commit:** `Remove subscriber identity from newsletter logs`
 
-This is the repository and production baseline reconciled on 19 September 2026, not
+This is the repository and production baseline reconciled on 20 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
 The intentional untracked/local-only set is limited to:
@@ -302,10 +302,28 @@ timestamps. It stores no subscriber email or hash, IP or hash, user agent,
 session, page URL, article ID, UTM values or request payload. Retention is exactly
 13 calendar months through an `expires_at` TTL. A process termination between
 subscriber creation and the best-effort aggregate write can undercount because
-no distributed transaction is used. Production acceptance separately confirmed
-that pre-existing subscribe/welcome logging writes full subscriber email values;
-this is the Medium Open `CT-QA-2026-006` privacy/data-minimisation follow-up and
-is not caused by, or stored in, the anonymous Funnel V1 aggregate.
+no distributed transaction is used. Production acceptance separately confirmed a
+pre-existing identity-bearing newsletter logging defect; it was not caused by or
+stored in the anonymous Funnel V1 aggregate. `CT-QA-2026-006` is now **CLOSED —
+IMPLEMENTED, TESTED, DEPLOYED AND PRODUCTION-VERIFIED**. Commit `03a6abb`
+removed subscriber/recipient identity and uncontrolled exception text from the
+bounded subscribe, welcome, shared SMTP, scheduled and Admin diagnostic paths
+while preserving delivery and subscriber behaviour. Historical logs were not
+altered, every failure branch was not naturally exercised in production, and no
+legal/privacy-compliance claim is made.
+
+Deployment `dep-daneoh6q1p3s73cdmf9g` automatically deployed exact SHA
+`03a6abbd5133de969275477488ea49bb34242ee0` to Standard instance `zpcmz`
+(1 CPU/2 GB, one instance). It started at 21:10:44 BST on 19 September 2026,
+built at 21:12:25, completed application startup at 21:13:12 and became Live at
+21:13:17. Uvicorn, Mongo/index and APScheduler startup succeeded, expected
+article-generation, Daily Brief and Weekly Roundup registrations were present,
+and no changed-variable or newsletter/email logging-format failure was observed.
+Health, homepage, `/newsletter` and a representative article returned HTTP 200;
+bounded post-Live observation found no attributable traceback, fatal error, OOM,
+exit 137, restart or material 5xx. Verification involved no manual deployment,
+restart, signup, test send, import, subscriber mutation or production-data
+mutation.
 
 Inactive-subscriber deactivation requires reconciled provider, acceptance and
 engagement evidence. Missing opens alone are insufficient. Do not expose raw
@@ -643,9 +661,14 @@ No manual import should be triggered solely to accelerate observation.
    do not combine another memory change with the batching decision.
 3. Continue Weekly Roundup delivery, bounce and engagement monitoring without
    treating provider acceptance as final inbox delivery.
-4. Continue inactive-subscriber evidence gathering without speculative
-   deactivation.
-5. Measure/design the remaining post-handler/client TTFB residual read-only before
+4. Perform the separately queued unsubscribe UX/functional audit before any
+   implementation: the reported flow requires entering an address and sending a
+   second email, whose button reportedly fails while its underlying link works.
+5. Keep inactive-subscriber hygiene as future work after that audit. Do not delete
+   subscribers merely because no open was recorded; first analyse engagement
+   history, account age, open/click evidence and tracking limitations, preview the
+   affected population and define a safe deactivate/delete policy.
+6. Measure/design the remaining post-handler/client TTFB residual read-only before
    any further performance optimisation.
 
 Security and reliability take precedence over speculative features.

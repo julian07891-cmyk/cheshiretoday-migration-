@@ -1,6 +1,6 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `66fde1004a322d540bf9ac3197dab6b80152428b`, including production-accepted Newsletter Funnel V1 and the RSS-preview protection's partial natural-acceptance boundary.
+> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `03a6abbd5133de969275477488ea49bb34242ee0`, including production-accepted Newsletter Funnel V1, production-verified newsletter logging hardening and the RSS-preview protection's partial natural-acceptance boundary.
 
 ## Document purpose
 
@@ -51,7 +51,8 @@ Security and production stability precede feature expansion.
 | Completed | Public search accessibility (`QA-A11Y-001`) | Commit `dcd5cfa`, 7 focused/42 related/367 total frontend tests, production build, deployment `dep-da82j9uk1f9s73dgc1mg`, and bounded desktop/mobile production verification completed 27 August 2026 |
 | Monitoring | Bounded labelled event-anchor calibration (`CT-QA-2026-004`) | Implementation, deployment and first natural run are verified. Continue natural high-specificity same-run cross-source calibration; keep Manual Review routing, historical routing and all enforcement behind a separate evidence review and approval gate |
 | Completed | Weekly Roundup slot-aware idempotence verification | Commit `5559499`; four natural slots on 6 September each recorded 1,000/1,000 application/provider acceptance, distinct slot identities and cursor progression 996→1996→2996→3996 without observed `E11000`. Continue deliverability and engagement monitoring separately; acceptance is not inbox delivery |
-| Monitoring | Inactive-subscriber evidence gathering | Provider rejection plus accepted-recipient history; no bulk deactivation from engagement absence |
+| Next | Unsubscribe UX/functional audit | **QUEUED FOR READ-ONLY UX/FUNCTIONAL AUDIT.** Reported flow: clicking unsubscribe leads to a page, requires entering the address and sends another unsubscribe email; the button in that second email reportedly fails while its underlying link works. Establish evidence before assigning a QA finding, root cause or severity; do not implement yet |
+| Deferred | Inactive-subscriber hygiene | Future work after the unsubscribe audit. Do not delete subscribers merely because no open was recorded. First analyse engagement history, account age, open/click evidence and tracking limitations, preview the affected population and define a safe deactivate/delete policy before any destructive action |
 | Next | Legacy/non-hermetic suite organisation | Preserve loopback refusal; document safe default; separate read-only smoke tests if justified |
 | Next | Compilation/warning maintenance | Lifecycle, multipart/gzip, Browserslist and backup artefacts as separate low-risk changes |
 | Completed | Homepage database/materialisation remediation (`QA-PERF-001`) | Commit `70057e1` skips the unused exact-homepage count and applies evidence-supported 100/100 Local/UK caps; five-request production comparison reduced median handler 34.5%, TTFB 17.4% and total 16.3% with observed response semantics preserved |
@@ -61,7 +62,7 @@ Security and production stability precede feature expansion.
 | Next | Historical Guardian article repair | Separately review and repair the five bounded pre-deployment affected records; do not treat deployment of future-import protection as historical cleanup |
 | Next | `/api/import-real-news` completeness review | **SEPARATE FOLLOW-UP RISK — UNCHANGED.** Audit/design independently; do not trigger the endpoint merely to manufacture evidence |
 | Completed | Newsletter Funnel V1 | Commit `66fde10`, focused/related tests and build checks, deployment `dep-dan3beojo6nc7395spm0`, one controlled authorised created signup, exact anonymous aggregate and matching Admin reporting completed the defined acceptance gate on 19 September 2026 |
-| Next | Subscriber-log privacy remediation (`CT-QA-2026-006`) | Remove or redact full subscriber email values from existing subscribe/welcome logs while preserving useful non-PII outcomes, subscriber semantics, welcome delivery and Funnel V1 counters |
+| Completed | Subscriber-log privacy remediation (`CT-QA-2026-006`) | Commit `03a6abb`; 47 focused passes; 1,145 relevant regression passes with 12 skipped; complete reviews approved; Auto-Deploy `dep-daneoh6q1p3s73cdmf9g` on `zpcmz`; healthy bounded production verification. Historical logs unchanged, every failure branch was not naturally exercised and no compliance claim is made |
 
 ## Medium-term priorities
 
@@ -132,6 +133,9 @@ Monitoring does not authorise imports, sends, restarts, indexing requests or dat
 - Newsletter Funnel V1 backend-authoritative anonymous daily aggregates and
   authenticated Admin reporting, production accepted through one controlled
   authorised signup on 19 September 2026.
+- `CT-QA-2026-006` newsletter logging privacy hardening: commit `03a6abb`,
+  corrected focused/regression evidence, approved complete reviews, automatic
+  deployment `dep-daneoh6q1p3s73cdmf9g` and bounded production verification.
 - First-party article-view and Most Read correctness repairs.
 - Admin read-only analytics and Facebook attribution foundation.
 - Rendered metadata reconciliation with production verification.
