@@ -19,6 +19,8 @@ NEWSLETTER_LINK_SECRET: Final = "NEWSLETTER_LINK_SECRET"
 JWT_ALGORITHM: Final = "HS256"
 JWT_ALLOWED_ALGORITHMS: Final = ["HS256"]
 TOKEN_CLOCK_SKEW_SECONDS: Final = 60
+DIRECT_UNSUBSCRIBE_CLASS: Final = "newsletter_direct_unsubscribe"
+DIRECT_UNSUBSCRIBE_TOKEN_SECONDS: Final = 90 * 24 * 60 * 60
 
 PREFERENCES_PURPOSE: Final = "preferences"
 UNSUBSCRIBE_PURPOSE: Final = "unsubscribe"
@@ -199,6 +201,93 @@ def token_fingerprint(token: str) -> str:
 class NewsletterTokenService:
     def __init__(self, secret: str | bytes):
         self._secret = _validate_secret(secret)
+
+    def issue_direct_unsubscribe_token(
+        self,
+        subscriber_management_id: str,
+        token_version: int,
+        now: datetime | None = None,
+    ) -> str:
+        payload = {
+            "sub": _canonical_uuid4(subscriber_management_id),
+            "purpose": UNSUBSCRIBE_PURPOSE,
+            "ver": _validate_positive_integer(token_version),
+            "iat": int(_require_utc(now).timestamp()),
+            "credential_class": DIRECT_UNSUBSCRIBE_CLASS,
+        }
+        payload["exp"] = payload["iat"] + DIRECT_UNSUBSCRIBE_TOKEN_SECONDS
+        return jwt.encode(
+            payload,
+            self._secret,
+            algorithm=JWT_ALGORITHM,
+            headers={"alg": JWT_ALGORITHM, "typ": "JWT"},
+        )
+
+    def unsubscribe_credential_class(self, token: str) -> str | None:
+        """Authenticate the discriminator before selecting a strict validator."""
+        payload = self._decode_signed_payload(token)
+        if "credential_class" not in payload:
+            return None
+        if payload["credential_class"] != DIRECT_UNSUBSCRIBE_CLASS:
+            raise _safe_invalid_token()
+        return DIRECT_UNSUBSCRIBE_CLASS
+
+    def _decode_signed_payload(self, token: str) -> dict:
+        if not isinstance(token, str) or not token:
+            raise _safe_invalid_token()
+        try:
+            if jwt.get_unverified_header(token) != {"alg": JWT_ALGORITHM, "typ": "JWT"}:
+                raise _safe_invalid_token()
+            return jwt.decode(
+                token,
+                self._secret,
+                algorithms=JWT_ALLOWED_ALGORITHMS,
+                options={"verify_exp": False, "verify_iat": False},
+            )
+        except jwt.PyJWTError as exc:
+            raise _safe_invalid_token() from exc
+
+    def verify_direct_unsubscribe_token(
+        self,
+        token: str,
+        expected_token_version: int | None = None,
+        now: datetime | None = None,
+    ) -> NewsletterTokenClaims:
+        payload = self._decode_signed_payload(token)
+        if frozenset(payload) != _EXACT_CLAIMS | {"credential_class"}:
+            raise _safe_invalid_token()
+        if payload["credential_class"] != DIRECT_UNSUBSCRIBE_CLASS:
+            raise _safe_invalid_token()
+        management_id = _canonical_uuid4(payload["sub"])
+        version = _validate_positive_integer(payload["ver"])
+        issued = _validate_timestamp(payload["iat"])
+        expires = _validate_timestamp(payload["exp"])
+        current = int(_require_utc(now).timestamp())
+        if expires - issued != DIRECT_UNSUBSCRIBE_TOKEN_SECONDS:
+            raise _safe_invalid_token()
+        if issued > current + TOKEN_CLOCK_SKEW_SECONDS:
+            raise _safe_invalid_token()
+        if expires < current - TOKEN_CLOCK_SKEW_SECONDS:
+            raise ExpiredNewsletterTokenError("Newsletter token has expired.")
+        if payload["purpose"] != UNSUBSCRIBE_PURPOSE:
+            raise WrongNewsletterTokenPurposeError(
+                "Newsletter token cannot authorize this operation."
+            )
+        if expected_token_version is not None:
+            if version != _validate_positive_integer(expected_token_version):
+                raise NewsletterTokenVersionMismatchError(
+                    "Newsletter token version is no longer valid."
+                )
+        try:
+            return NewsletterTokenClaims(
+                management_id,
+                UNSUBSCRIBE_PURPOSE,
+                version,
+                datetime.fromtimestamp(issued, timezone.utc),
+                datetime.fromtimestamp(expires, timezone.utc),
+            )
+        except (ValueError, OverflowError, OSError) as exc:
+            raise _safe_invalid_token() from exc
 
     def issue_newsletter_token(
         self,

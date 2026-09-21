@@ -244,9 +244,17 @@ version atomically; missing identities fail closed before content send. Welcome
 is transactional onboarding, without native headers. Live identity coverage,
 native query-log privacy and delivered DKIM/header/client checks are
 production-readiness gates. See [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md).
-The contract is locally implementation-ready, not implemented or production-ready;
-CT-QA-2026-007 stays closed and Apple Mail remains
-a separate unproven mechanism.
+Phase 1: **SECURITY FOUNDATION IMPLEMENTED LOCALLY — FULL CT-DEC-021 IMPLEMENTATION
+INCOMPLETE**. The unstaged local implementation adds strict six-claim issuance and
+validation, authenticated direct/recovery dispatch, and a shared atomic
+identity/version/type-guarded direct unsubscribe processor for confirmation and
+one-click POST. Focused fixture tests cover stale/reactivated versions, mutation-
+boundary races, inactive replay and preserved recovery challenge enforcement.
+No frontend, email-builder, outgoing-header or production change is included.
+Query logging remains **POTENTIAL QUERY LOG EXPOSURE**; builder/transport wiring,
+identity coverage and delivered-header/DKIM/client acceptance remain later gates.
+CT-DEC-021 is not fully implemented or production-ready. CT-QA-2026-007 stays
+closed and Apple Mail remains a separate unproven mechanism.
 
 ### Generic management entry closure — 20 September 2026
 

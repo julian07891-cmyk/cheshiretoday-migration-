@@ -52,6 +52,9 @@ def _subscriber(**overrides):
 
 
 class FakeTokenService:
+    def unsubscribe_credential_class(self, token):
+        return None
+
     def __init__(self, error=None):
         self.error = error
         self.calls = []
@@ -212,6 +215,51 @@ def _install(
 
 def _confirm(client):
     return client.post(CONFIRM_PATH, json={"token": TOKEN})
+
+
+@pytest.mark.parametrize("path", [CONFIRM_PATH, ONE_CLICK_PATH])
+def test_real_recovery_token_keeps_challenge_consumption(monkeypatch, path):
+    from app.newsletter_token_service import NewsletterTokenService
+
+    client, _, subscribers = _install(monkeypatch)
+    service = NewsletterTokenService("R" * 43)
+    monkeypatch.setattr(
+        server, "newsletter_token_service_from_environment", lambda: service
+    )
+    token = service.issue_newsletter_token(
+        MANAGEMENT_ID,
+        "unsubscribe",
+        TOKEN_VERSION,
+        "website_unsubscribe",
+    )
+
+    def send():
+        if path == CONFIRM_PATH:
+            return client.post(path, json={"token": token})
+        return client.post(
+            path, params={"token": token}, data={"List-Unsubscribe": "One-Click"}
+        )
+
+    assert send().status_code == 200
+    assert subscribers.challenge_repository.successful_consumptions == 1
+    # The fixture remains active: a consumed challenge cannot authorize again.
+    assert send().status_code == 401
+    assert subscribers.challenge_repository.successful_consumptions == 1
+    assert len(subscribers.update_calls) == 1
+
+
+def test_direct_cannot_enter_recovery_processor(monkeypatch):
+    import asyncio
+    from app.newsletter_token_service import NewsletterTokenService
+
+    _, _, subscribers = _install(monkeypatch)
+    service = NewsletterTokenService("R" * 43)
+    token = service.issue_direct_unsubscribe_token(MANAGEMENT_ID, TOKEN_VERSION)
+    with pytest.raises(server.HTTPException) as error:
+        asyncio.run(server._process_secure_newsletter_unsubscribe(token, service))
+    assert error.value.status_code == 401
+    assert subscribers.find_calls == []
+    assert subscribers.challenge_repository.consume_calls == []
 
 
 def _one_click(client, *, token=TOKEN, data=None, files=None, content=None, headers=None):

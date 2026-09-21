@@ -7047,6 +7047,81 @@ async def _get_secure_newsletter_preference_subscriber(token: str):
     return claims, subscriber
 
 
+async def _process_direct_newsletter_unsubscribe(token, token_service):
+    """Shared direct confirmation/one-click mutation, never a recovery bypass."""
+    try:
+        claims = token_service.verify_direct_unsubscribe_token(token)
+    except InvalidNewsletterTokenError as exc:
+        _raise_secure_newsletter_token_error(exc)
+    query = {
+        "newsletter_management_id": claims.subscriber_management_id,
+        "newsletter_token_version": claims.token_version,
+        "active": True,
+        # Mongo numeric equality alone also accepts doubles; array equality can
+        # match an element. Require the canonical scalar storage types as well.
+        "$expr": {
+            "$and": [
+                {"$eq": [{"$type": "$newsletter_management_id"}, "string"]},
+                {"$in": [{"$type": "$newsletter_token_version"}, ["int", "long"]]},
+                {"$eq": [{"$type": "$active"}, "bool"]},
+            ]
+        },
+    }
+    try:
+        result = await db.subscribers.update_one(
+            query,
+            {
+                "$set": {
+                    "active": False,
+                    "daily_brief": False,
+                    "weekly_roundup": False,
+                    "breaking_news": False,
+                    "unsubscribed_at": datetime.now(timezone.utc),
+                    "unsubscribe_method": "secure_token",
+                }
+            },
+        )
+        if type(result.matched_count) is not int or result.matched_count not in (0, 1):
+            raise RuntimeError("Invalid subscriber update result.")
+        if result.matched_count == 0:
+            # A current-version inactive read permits replay without rewriting history.
+            inactive = await db.subscribers.find_one(
+                {**query, "active": False},
+                {"_id": 0, "active": 1},
+            )
+            if not inactive:
+                raise HTTPException(
+                    status_code=401, detail=SECURE_NEWSLETTER_TOKEN_INVALID
+                )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE
+        ) from exc
+    return NewsletterGenericResponse(
+        success=True, message=SECURE_NEWSLETTER_UNSUBSCRIBE_SUCCESS
+    )
+
+
+async def _dispatch_newsletter_unsubscribe(
+    token, token_service=None, *, allow_inactive_replay=False
+):
+    if token_service is None:
+        token_service = _create_secure_newsletter_token_service()
+    try:
+        credential_class = token_service.unsubscribe_credential_class(token)
+    except InvalidNewsletterTokenError as exc:
+        _raise_secure_newsletter_token_error(exc)
+    if credential_class is not None:
+        return await _process_direct_newsletter_unsubscribe(token, token_service)
+    return await _process_secure_newsletter_unsubscribe(
+        token,
+        token_service=token_service,
+        allow_inactive_replay=allow_inactive_replay,
+    )
+
+
 async def _process_secure_newsletter_unsubscribe(
     token: str,
     token_service=None,
@@ -7679,7 +7754,7 @@ async def confirm_secure_newsletter_unsubscribe(
             status_code=503,
             detail=SECURE_NEWSLETTER_MANAGEMENT_UNAVAILABLE,
         )
-    return await _process_secure_newsletter_unsubscribe(request.token)
+    return await _dispatch_newsletter_unsubscribe(request.token)
 
 
 @api_router.post(
@@ -7732,7 +7807,7 @@ async def one_click_secure_newsletter_unsubscribe(
             detail=SECURE_NEWSLETTER_UNSUBSCRIBE_INVALID,
         )
 
-    return await _process_secure_newsletter_unsubscribe(
+    return await _dispatch_newsletter_unsubscribe(
         token.strip(),
         token_service=token_service,
         allow_inactive_replay=True,

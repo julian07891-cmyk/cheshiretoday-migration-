@@ -43,6 +43,132 @@ OTHER_STRONG_SECRET = "B" * 43
 EXACT_CLAIMS = {"sub", "purpose", "ver", "iat", "exp"}
 
 
+def test_direct_roundtrip_and_legacy_separation():
+    service = NewsletterTokenService(STRONG_SECRET)
+    token = service.issue_direct_unsubscribe_token(MANAGEMENT_ID, 7, NOW)
+    payload = jwt.decode(
+        token,
+        STRONG_SECRET,
+        algorithms=["HS256"],
+        options={"verify_exp": False, "verify_iat": False},
+    )
+    assert set(payload) == EXACT_CLAIMS | {"credential_class"}
+    assert payload["purpose"] == "unsubscribe"
+    assert payload["credential_class"] == "newsletter_direct_unsubscribe"
+    assert payload["exp"] - payload["iat"] == 7776000
+    assert service.verify_direct_unsubscribe_token(token, 7, NOW).token_version == 7
+    assert (
+        service.unsubscribe_credential_class(token) == "newsletter_direct_unsubscribe"
+    )
+    for purpose, profile in [
+        ("unsubscribe", "website_unsubscribe"),
+        ("preferences", "website_preferences"),
+        ("reactivate", "reactivation"),
+    ]:
+        with pytest.raises(InvalidNewsletterTokenError):
+            service.verify_newsletter_token(token, purpose, now=NOW)
+        legacy = service.issue_newsletter_token(MANAGEMENT_ID, purpose, 7, profile, NOW)
+        assert service.unsubscribe_credential_class(legacy) is None
+        with pytest.raises(InvalidNewsletterTokenError):
+            service.verify_direct_unsubscribe_token(legacy, now=NOW)
+
+
+@pytest.mark.parametrize(
+    "identity", [None, "", "malformed", UUID_V1, MANAGEMENT_ID.upper()]
+)
+def test_direct_issuer_rejects_invalid_identity(identity):
+    with pytest.raises(InvalidNewsletterTokenError):
+        NewsletterTokenService(STRONG_SECRET).issue_direct_unsubscribe_token(
+            identity, 1, NOW
+        )
+
+
+@pytest.mark.parametrize("version", [None, True, False, 0, -1, "1", 1.5])
+def test_direct_issuer_rejects_invalid_version(version):
+    with pytest.raises(InvalidNewsletterTokenError):
+        NewsletterTokenService(STRONG_SECRET).issue_direct_unsubscribe_token(
+            MANAGEMENT_ID, version, NOW
+        )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"credential_class": "wrong"},
+        {"purpose": "preferences"},
+        {"extra": 1},
+        {"ver": True},
+        {"ver": 0},
+        {"sub": "invalid"},
+        {"iat": True},
+        {"exp": 0},
+    ],
+)
+def test_direct_validator_rejects_invalid_claims(change):
+    service = NewsletterTokenService(STRONG_SECRET)
+    payload = _payload(
+        purpose="unsubscribe",
+        expires_at=int(NOW.timestamp()) + 7776000,
+        extra={"credential_class": "newsletter_direct_unsubscribe"},
+    )
+    payload.update(change)
+    with pytest.raises(InvalidNewsletterTokenError):
+        service.verify_direct_unsubscribe_token(_sign(payload), now=NOW)
+
+
+@pytest.mark.parametrize("missing", sorted(EXACT_CLAIMS | {"credential_class"}))
+def test_direct_validator_rejects_missing_claim(missing):
+    payload = _payload(
+        purpose="unsubscribe",
+        expires_at=int(NOW.timestamp()) + 7776000,
+        extra={"credential_class": "newsletter_direct_unsubscribe"},
+    )
+    del payload[missing]
+    with pytest.raises(InvalidNewsletterTokenError):
+        NewsletterTokenService(STRONG_SECRET).verify_direct_unsubscribe_token(
+            _sign(payload), now=NOW
+        )
+
+
+def test_direct_expiry_signature_and_version():
+    service = NewsletterTokenService(STRONG_SECRET)
+    token = service.issue_direct_unsubscribe_token(MANAGEMENT_ID, 1, NOW)
+    with pytest.raises(ExpiredNewsletterTokenError):
+        service.verify_direct_unsubscribe_token(
+            token, now=NOW + timedelta(days=90, seconds=61)
+        )
+    with pytest.raises(NewsletterTokenVersionMismatchError):
+        service.verify_direct_unsubscribe_token(token, 2, NOW)
+    with pytest.raises(InvalidNewsletterTokenError):
+        NewsletterTokenService(OTHER_STRONG_SECRET).verify_direct_unsubscribe_token(
+            token, now=NOW
+        )
+
+
+@pytest.mark.parametrize("duration", [7775999, 7776001, 1800, 15552000])
+def test_direct_validator_requires_exact_lifetime(duration):
+    payload = _payload(
+        purpose="unsubscribe",
+        expires_at=int(NOW.timestamp()) + duration,
+        extra={"credential_class": "newsletter_direct_unsubscribe"},
+    )
+    with pytest.raises(InvalidNewsletterTokenError):
+        NewsletterTokenService(STRONG_SECRET).verify_direct_unsubscribe_token(
+            _sign(payload), now=NOW
+        )
+
+
+def test_direct_skew_boundaries():
+    service = NewsletterTokenService(STRONG_SECRET)
+    token = service.issue_direct_unsubscribe_token(MANAGEMENT_ID, 1, NOW)
+    service.verify_direct_unsubscribe_token(token, now=NOW - timedelta(seconds=60))
+    service.verify_direct_unsubscribe_token(
+        token, now=NOW + timedelta(days=90, seconds=60)
+    )
+    with pytest.raises(InvalidNewsletterTokenError):
+        service.verify_direct_unsubscribe_token(token, now=NOW - timedelta(seconds=61))
+
+
 @pytest.fixture
 def service():
     return NewsletterTokenService(STRONG_SECRET)

@@ -38,6 +38,9 @@ class IntSubclass(int):
 
 
 class OrderedTokenService:
+    def unsubscribe_credential_class(self, token):
+        return None
+
     def __init__(self, order):
         self.order = order
 
