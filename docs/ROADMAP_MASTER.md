@@ -4,6 +4,14 @@
 
 ## Document purpose
 
+Direct newsletter unsubscribe is **DESIGN APPROVED — IMPLEMENTATION PENDING**
+under [CT-DEC-021](DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
+Local prerequisites now specify a strict signed direct class, 90-day lifetime,
+version-guarded mutation and fail-closed missing identities; preserve signup,
+preferences and recovery. Live identity coverage, native logging and delivered-header
+acceptance remain gates. The separate Apple Mail observation is not closed by
+this design; current QA totals are unchanged.
+
 Translate verified gaps and protected operating gates into prioritised work without promoting speculative features above security or production stability.
 
 ## Authority and evidence

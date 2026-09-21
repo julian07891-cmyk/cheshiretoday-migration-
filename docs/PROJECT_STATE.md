@@ -231,6 +231,23 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
+### Approved design — direct newsletter unsubscribe
+
+**DESIGN APPROVED — IMPLEMENTATION PENDING** under
+[CT-DEC-021](DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
+Normal newsletter links will use distinct version-bound signed credentials and
+explicit confirmation; GET remains non-mutating. Signup/preferences stay unchanged
+and generic recovery remains challenge-backed. The direct signed class uses the
+existing five claims plus `credential_class="newsletter_direct_unsubscribe"`,
+90-day expiry and strict class-specific validation. Tracked reactivation increments
+version atomically; missing identities fail closed before content send. Welcome
+is transactional onboarding, without native headers. Live identity coverage,
+native query-log privacy and delivered DKIM/header/client checks are
+production-readiness gates. See [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md).
+The contract is locally implementation-ready, not implemented or production-ready;
+CT-QA-2026-007 stays closed and Apple Mail remains
+a separate unproven mechanism.
+
 ### Generic management entry closure — 20 September 2026
 
 `CT-QA-2026-007` (Medium at discovery) is **IMPLEMENTED, DEPLOYED AND

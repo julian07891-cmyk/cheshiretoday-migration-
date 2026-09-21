@@ -452,6 +452,42 @@ describes the decision at current repository HEAD, not an unverified live claim.
 - **Sources:** [Source Register](HISTORY/SOURCE_REGISTER.md); preserved state;
   [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md).
 
+### CT-DEC-021 — Direct newsletter unsubscribe with secure recovery retained
+
+- **Date:** 21 September 2026.
+- **Status:** **DESIGN APPROVED — IMPLEMENTATION PENDING**.
+- **Problem:** Generic newsletter footers unnecessarily require email re-entry
+  and a second email for normal unsubscribe.
+- **Decision:** Use a distinct signed subscriber-specific direct credential to
+  reach website confirmation, followed by explicit mutation. GET never mutates.
+  Keep generic challenge-backed recovery, signup and preferences unchanged.
+- **Security:** Bind purpose, management UUID, token version and bounded expiry;
+  exclude subscriber email. Require an explicit signed class discriminator, not
+  inferred lifetime or absent challenge. Only direct credentials are challenge-free;
+  recovery credentials retain their challenge requirements. Enforce current version
+  atomically at mutation, including concurrent reactivation and inactive replay.
+- **Transport:** Website fragment capture/scrubbing; native one-click HTTPS POST
+  with query credential and the exact protocol body. Per-recipient native headers
+  require query-log privacy and delivered DKIM/header acceptance gates.
+- **Alternatives:** Retain second-email normal flow, website query credentials or
+  new opaque bearer storage. Fragment reuse reduces HTTP-log exposure but does not
+  prove Apple Mail compatibility.
+- **Prerequisite resolution:** Exact direct claims are the existing `sub`, `purpose`,
+  `ver`, `iat`, `exp` plus signed
+  `credential_class="newsletter_direct_unsubscribe"`, with unsubscribe purpose
+  and a 90-day lifetime. Strict legacy five-claim validation stays unchanged.
+  The tracked inactive-to-active writer increments version atomically. Missing or
+  malformed recipient identity fails closed before content send, with aggregate
+  skip diagnostics; backfill remains separate. Welcome is transactional onboarding,
+  excluded from native headers. Live identity coverage, query-log privacy and
+  delivered authentication/client evidence remain production gates, not local
+  implementation blockers. See the architecture record for audit bounds.
+- **Boundaries:** No implementation or production acceptance yet. CT-QA-2026-007
+  stays closed; Apple Mail mechanism remains unproven and CT-QA-2026-008 proposed
+  only. No QA totals change or legal/compliance claim.
+- **Sources:** Owner approval at baseline `52c9b64e3940655177002cda6f0fe3613bc0b8ad`;
+  [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md) owns the detailed contract.
+
 ## Unreconciled decision evidence
 
 - ChatGPT export and systematic Codex records may reveal additional alternatives or

@@ -88,6 +88,136 @@ mobile/production checks and unavailable live-network-capture limitation.
 The separate iPhone Apple Mail management-email CTA issue remains unresolved;
 email URL generation was unchanged and the precise link transformation is unproven.
 
+## Approved direct unsubscribe contract — 21 September 2026
+
+**DESIGN APPROVED — IMPLEMENTATION PENDING** under
+[CT-DEC-021](../DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
+Normal subscriber-newsletter flow: signed footer link → confirmation page →
+explicit Confirm unsubscribe → inactive subscription. No email re-entry or second
+email. Signup remains email → Subscribe → success. Preferences remain separate
+and challenge-backed. Generic `/unsubscribe` retains neutral email-entry recovery,
+the request endpoint, management email and challenge creation/delivery/consumption.
+
+### Credentials and mutation
+
+Direct credentials must have a distinct authenticated class, purpose, management
+UUID, current `newsletter_token_version` and bounded expiry, with no subscriber
+email. The direct schema is exactly `sub`, `purpose`, `ver`, `iat`, `exp` and
+`credential_class`; `purpose="unsubscribe"` and
+`credential_class="newsletter_direct_unsubscribe"`. `sub` is a canonical UUID4,
+`ver` a positive integer excluding booleans, and timestamps integer UTC seconds.
+Use the existing HS256 signing architecture and strict header validation.
+Issue for exactly **90 days** (`exp - iat = 7,776,000` seconds), validating that
+duration as well as expiry/future issuance with the existing 60-second skew.
+Thirty days gives a short recovery horizon for older weekly messages; 180 days
+unnecessarily doubles bearer exposure versus 90. Ninety days covers roughly
+thirteen weekly editions while version revocation handles reactivation. This is
+a bounded product choice, not an observed readership-age statistic.
+Never infer exemption from missing challenges or token lifetime.
+Endpoints expecting other credential classes must reject this class. Recovery
+tokens still require delivered challenges; only direct newsletter credentials
+are intentionally challenge-free.
+
+Existing recovery/preferences/reactivation tokens keep the exact original five
+claims and validators unchanged. Add a separate strict six-claim direct validator;
+legacy validators reject the extra claim and the direct validator rejects missing,
+unknown or wrong-class claims. Only unsubscribe confirmation/one-click dispatch
+may accept either class, after cryptographic validation; no caller-controlled
+skip-challenge flag or permissive fallback on validation failure. Both entrypoints
+share one direct atomic mutation helper; recovery retains its existing processor.
+
+Website URL: `https://cheshiretoday.co.uk/unsubscribe#token=<REDACTED_TOKEN>`.
+Reuse capture/scrubbing. GET never mutates. Display “Confirm unsubscribe” and
+“Are you sure you want to unsubscribe from Cheshire Today newsletters?” with an
+explicit confirmation button, then a clear unsubscribed state and home link.
+No email field or second email on the valid direct path.
+Mutation validates signature, class, purpose, expiry, identity and current version,
+using an atomic version guard. Concurrent reactivation must defeat a stale update.
+Already-inactive success is permitted only after current-version validation.
+
+### Native protocol and production gates
+
+Eligible messages receive per-recipient headers on both Resend and SMTP:
+
+```text
+List-Unsubscribe: <https://cheshiretoday.co.uk/api/newsletter/unsubscribe/one-click?token=<REDACTED_TOKEN>>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+```
+
+The endpoint mutates only on protocol POST with the expected form body;
+ordinary GET/prefetch never unsubscribes. Direct-class credentials require no
+recovery challenge; existing recovery credentials remain challenge-dependent.
+This does not protect against software deliberately issuing a valid protocol POST.
+Preserve batches, schedules, eligibility, accepted-recipient accounting and privacy-
+safe logging; never share one recipient's credential across a batch.
+
+Native production readiness requires inspecting application, Uvicorn/access,
+Render, available proxy/CDN, exception, analytics and provider telemetry for query
+bearer exposure, with minimal redaction if necessary. `render.yaml` starts Uvicorn
+without explicit access-log redaction; actual infrastructure logging is unverified.
+Real controlled delivered-message evidence must prove both header values and
+appropriate valid DKIM coverage without exposing credentials. Header source code
+alone is insufficient. Real delivered Apple Mail direct-footer acceptance is also
+required; fragment approval does not resolve the separate observed CTA mechanism.
+
+### Read-only prerequisites and bounded scope
+
+- Tracked subscriber-write inventory at `52c9b64`: public signup creates new
+  UUID/version-1 records only; existing signup does not reactivate. Secure
+  reactivation is the only identified inactive-to-active writer and atomically
+  increments version. Secure/Admin unsubscribe deactivate; secure preferences
+  requires active state and updates preferences only; announcement updates a
+  preference only; site-update jobs write sent timestamps only. Management-ID
+  migration is an explicit CLI updating identity/version fields only, and email
+  unique-index provisioning does not activate records. Scheduler/diagnostic
+  readers and HTTP support tests add no alternate activation writer. No unsafe
+  activation path was found in tracked runtime/operational code; untracked or
+  external operational writes are not certified. Retain atomic version-race tests.
+- Live identity coverage was not inspected. Legacy records are conceptually
+  possible; recipient queries accept missing active fields and builders currently
+  receive email lists. Require bounded aggregate-only UUID/version coverage before
+  rollout. **LIVE IDENTITY COVERAGE UNVERIFIED**; no counts are inferred.
+  Implementation may fail closed for legacy records: skip the affected content
+  recipient before send if UUID/version is absent, malformed or ambiguous; issue
+  no credential, do not silently substitute generic links, and record bounded
+  aggregate skip counts without identity. Preserve acceptance accounting (skips
+  are not sends). No send-time provisioning. Classification: **IMPLEMENTATION CAN
+  FAIL CLOSED FOR LEGACY RECORDS, BACKFILL SEPARATE**. Quantify impact before rollout.
+  The migration defines a non-sparse unique management-ID index; its live presence
+  is not proven here. No database schema validator guarantees all historical fields.
+- Daily Brief/Weekly Roundup use Resend batch or SMTP. Breaking News,
+  announcements/site updates use SMTP builders. The manual campaign route is an
+  additional subscriber-content path requiring explicit inclusion when sent to the
+  subscriber audience. All need per-recipient context and HTML/text/footer/header
+  review; existing adapters do not forward native unsubscribe headers.
+- Welcome is classified **transactional onboarding**, excluded from native headers:
+  it follows signup and explains the subscription, rather than serving as a content
+  digest. Existing visible management links/copy stay unchanged. Security/management,
+  job verification and unrelated transactional mail must not inherit headers.
+- Likely runtime scope: token service, server recipient-context/mutation wiring,
+  email builders/transports, and necessary confirmation copy only. Keep signup,
+  preferences, reactivation semantics, recovery infrastructure and scheduling intact.
+  Tests must cover class separation, atomic races, stale versions, inactive replay,
+  all transports/builders, GET safety, generated-link round trips and recovery.
+
+Local implementation requirements are specified; production gates remain. Query
+logging classification is **POTENTIAL QUERY LOG EXPOSURE**, not proven safe.
+Add a narrowly scoped Uvicorn access-log query redaction control for the one-click
+path, test exception/request diagnostics and inspect upstream logs independently.
+Moving the secret into a path still exposes it to access logs; a fragment cannot
+reach the native server and the protocol body is fixed, so retain the approved
+query transport rather than inventing a nonstandard header/body credential.
+Provider receipt of the bearer is inherent; never claim zero provider visibility.
+Resend needs per-message `headers` forwarding in `_send_resend_batch`; SMTP needs
+explicit approved message headers in `_send_email`. Allocate recipient-specific
+objects; security mail must not inherit defaults. Delivered DKIM, client behaviour,
+upstream log privacy and active-identity coverage remain acceptance gates, not
+blockers to isolated local implementation. No live database/log inspection occurred.
+
+No implementation or production acceptance is claimed. CT-QA-2026-007 stays
+closed; CT-QA-2026-008 remains proposed only, and the Apple Mail transformation
+remains unproven. No legal/compliance claim or QA accounting change is made.
+
 ## Failure boundaries
 
 Digest locks prevent duplicate scheduled ownership. Provider diagnostics distinguish disabled, unconfigured, rejected and indeterminate outcomes. Failed management-email delivery does not reveal subscriber existence. Digest logging and ledger failures are reported separately from provider acceptance.
