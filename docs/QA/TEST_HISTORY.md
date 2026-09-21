@@ -137,6 +137,20 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 
 CI history is not comprehensively preserved in repository documents. Some later milestones record “passed” without totals or warnings. No number has been inferred. Pending chat/Codex records may add evidence but cannot silently change this register.
 
+## 20 September 2026 — CT-QA-2026-007
+
+At `e6408133c48a98b2e22e8cf22a958bce7a922716`,
+`CI=true npm --prefix frontend test -- --watchAll=false --runInBand --testPathPattern='Newsletter|newsletter|PublicMetadataUniqueness'`
+passed six suites / 96 tests. `REACT_APP_BACKEND_URL=https://cheshiretoday.co.uk npm --prefix frontend run build`
+passed; the existing outdated Browserslist warning was nonblocking and unrelated.
+These are the relevant frontend regressions, not a full repository suite.
+Exact-SHA Auto-Deploy `dep-dao287ajnfac739ab80g` passed build/startup and bounded
+production checks: three generic routes HTTP 200 with neutral UI; 390×844 layouts
+passed; health/homepage 200. No forms were submitted or production mutations made.
+Invalid/retired/secure-token and no-auto-request assertions remain automated
+evidence: live network capture was unavailable. Apple Mail CTA compatibility was
+not fixed or closed. Full evidence is in [Open Findings](OPEN_FINDINGS.md).
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).

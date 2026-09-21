@@ -26,13 +26,27 @@ Evidence-backed status totals for the eleven original findings are:
 | Remediated and verified by tests at repository level | 2 |
 | Remediated, deployed and production verified | 6 |
 
-Six additional post-baseline findings are registered: documentation authority
+Seven additional post-baseline findings are registered: documentation authority
 sprawl, Editorial Similarity calibration/product-decision evidence after completion
 of the numerical observation-count gate, the now-closed scheduler lock-failure
 continuation risk, the distinct cross-source duplicate-identity finding
 (`CT-QA-2026-004`), the High RSS-preview/imported-body-quality defect with partial
-natural acceptance, and the now-closed newsletter logging privacy defect. These
+natural acceptance, the now-closed newsletter logging privacy defect, and the
+production-verified generic newsletter-management entry defect (`CT-QA-2026-007`). These
 totals describe evidence status, not severity totals.
+
+The post-baseline register has four unresolved/partially accepted findings and
+three production-verified closures. Across all 18 registered findings this gives
+seven unresolved/not fully verified, two repository-level remediations and nine
+production-verified findings. The original-eleven table above is unchanged.
+
+`CT-QA-2026-007` (Medium at discovery) is **IMPLEMENTED, DEPLOYED AND
+PRODUCTION-VERIFIED** at `e6408133c48a98b2e22e8cf22a958bce7a922716`.
+Generic preferences/unsubscribe/reactivation entry UI passed production and
+390×844 checks. Invalid/retired/token security boundaries remain intact.
+Live network capture was unavailable; no-auto-request evidence is code/tests,
+not independent network proof. The Apple Mail CTA compatibility issue remains
+unresolved and separate. See [the finding](OPEN_FINDINGS.md#ct-qa-2026-007--legitimate-generic-newsletter-management-entry-displays-invalid-link-warning).
 
 ## Original 29 July QA baseline
 

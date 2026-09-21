@@ -20,6 +20,20 @@ verification gates from general engineering history.
 
 ## Deployments and activations
 
+### 20 September 2026 — CT-QA-2026-007 generic-entry UX
+
+Service `cheshiretoday-migration-` (`srv-d5virmm3jp1c73c9d6tg`) automatically
+deployed exact SHA `e6408133c48a98b2e22e8cf22a958bce7a922716` through
+`dep-dao287ajnfac739ab80g`, instance `cqsqq` (Live / Deploy succeeded).
+BST timestamps: start 19:21:17; build success 19:22:55; startup complete 19:23:45;
+Live 19:23:47. Build, backend, Mongo/index and scheduler startup were normal;
+bounded logs showed no attributable traceback, OOM/exit 137, crash or restart loop.
+Health/homepage and all three generic management routes returned HTTP 200.
+Neutral request-link UI and 390×844 layouts passed. **IMPLEMENTED, DEPLOYED AND
+PRODUCTION-VERIFIED** applies to the generic-entry defect only. No form was
+submitted; network capture was unavailable. The Apple Mail CTA issue remains
+separate and unresolved. See [QA evidence](QA/OPEN_FINDINGS.md).
+
 | Date/time | Environment | Event type | System | Change or incident | Commit/deployment | Verification | Impact | Resolution/follow-up | Sources |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 February 2026 | Render production | Initial deployment | Full stack | Initial repository deployment to Render | `789e9c8` | Later operational records describe live Render service; original event detail is limited | Established production baseline | Subsequent health, API and frontend stabilisation | [Preserved state](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md), early history; Git `789e9c8` |

@@ -74,6 +74,20 @@ Email content uses per-recipient derived tracking IDs. Open pixels and click red
 
 Preference, unsubscribe and reactivation request-link flows use generic public responses, purpose-specific collaborators, IP/email rate-limit reservations, stored challenges and short-lived signed tokens. Secure verification/update endpoints enforce purpose and challenge eligibility. One-click unsubscribe has its own contract. Replay and stale-token protections are covered by focused tests.
 
+### Generic management entry presentation — CT-QA-2026-007
+
+Commit `e6408133` separates generic, token, invalid and retired frontend entry
+states. Clean no-token preferences/unsubscribe/reactivation routes show neutral
+request-link UI; supplied malformed/empty/overlong credentials remain invalid.
+Unsupported query credentials, retired links, valid token flows and fragment
+capture/scrubbing are preserved. Requesting an unsubscribe link does not itself
+unsubscribe the reader. No automatic request or backend/security-contract change
+was introduced. The generic-entry fix is **IMPLEMENTED, DEPLOYED AND
+PRODUCTION-VERIFIED**; [QA evidence](../QA/OPEN_FINDINGS.md) records the bounded
+mobile/production checks and unavailable live-network-capture limitation.
+The separate iPhone Apple Mail management-email CTA issue remains unresolved;
+email URL generation was unchanged and the precise link transformation is unproven.
+
 ## Failure boundaries
 
 Digest locks prevent duplicate scheduled ownership. Provider diagnostics distinguish disabled, unconfigured, rejected and indeterminate outcomes. Failed management-email delivery does not reveal subscriber existence. Digest logging and ledger failures are reported separately from provider acceptance.

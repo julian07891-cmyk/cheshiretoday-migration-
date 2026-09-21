@@ -231,6 +231,21 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
+### Generic management entry closure — 20 September 2026
+
+`CT-QA-2026-007` (Medium at discovery) is **IMPLEMENTED, DEPLOYED AND
+PRODUCTION-VERIFIED**. Commit `e6408133c48a98b2e22e8cf22a958bce7a922716`
+(`Fix generic newsletter management entry states`) separates legitimate generic
+entries from invalid credentials. Auto-Deploy `dep-dao287ajnfac739ab80g`, instance
+`cqsqq`, became Live at 19:23:47 BST. All three generic management pages and
+390×844 layouts passed; health/homepage returned 200. Six frontend suites / 96
+tests and the production build passed. Security/token/backend contracts were
+unchanged. No form submission or subscriber mutation occurred; live network
+capture was unavailable, so zero-auto-request evidence remains code/test based.
+See [the durable finding](QA/OPEN_FINDINGS.md) for full evidence and limitations.
+The separate Apple Mail/iPhone email-CTA issue remains unresolved; this commit
+did not change management-email URL generation or prove the transformation cause.
+
 The newsletter system currently supports:
 
 - Daily Brief Monday–Saturday;
@@ -661,9 +676,10 @@ No manual import should be triggered solely to accelerate observation.
    do not combine another memory change with the batching decision.
 3. Continue Weekly Roundup delivery, bounce and engagement monitoring without
    treating provider acceptance as final inbox delivery.
-4. Perform the separately queued unsubscribe UX/functional audit before any
-   implementation: the reported flow requires entering an address and sending a
-   second email, whose button reportedly fails while its underlying link works.
+4. Investigate the separate Apple Mail/iPhone management-email CTA compatibility
+   issue read-only: the blue CTA failed while the complete fallback link worked.
+   The generic-entry UX defect is closed as `CT-QA-2026-007`; the precise email-link
+   transformation remains unproven and no email URL change is approved here.
 5. Keep inactive-subscriber hygiene as future work after that audit. Do not delete
    subscribers merely because no open was recorded; first analyse engagement
    history, account age, open/click evidence and tracking limitations, preview the
