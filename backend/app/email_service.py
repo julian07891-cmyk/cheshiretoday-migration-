@@ -1775,11 +1775,25 @@ Cheshire Today Jobs Team
         logger.info(f"Weekly Roundup accepted {success_count}/{len(recipients)} prepared messages (tracking: {tracking_id})")
         return success_count, tracking_id
 
-    def send_announcement_email(self, to_emails: List[str]) -> int:
+    def send_announcement_email(self, to_emails: List[str] = None, *,
+                                prepared_deliveries=None, token_service=None) -> int:
         """
         Send one-time announcement email about the new email strategy.
         Announces migration to Daily Brief and provides preference link.
         """
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+        if to_emails is not None or prepared_deliveries is None:
+            raise NewsletterDeliveryError("announcement_prepared_delivery_required")
+        deliveries = tuple(prepared_deliveries)
+        if deliveries and token_service is None:
+            raise NewsletterDeliveryError("invalid_announcement_delivery_contract")
+        deliveries = tuple(validate_prepared_delivery(item, token_service) for item in deliveries)
+        if not deliveries:
+            return 0
         subject = "We've made some changes to Cheshire Today 📩"
         
         html_content = f'''
@@ -1846,6 +1860,7 @@ Cheshire Today Jobs Team
                     
                     <!-- Footer -->
                     <div style="margin-top: 35px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+                        <p><a href="__UNSUB_URL__" style="color: #1E3A8A;">Unsubscribe</a></p>
                         <p style="color: #9ca3af; font-size: 11px; margin: 0;">
                             © {datetime.now().year} Cheshire Today. All rights reserved.
                         </p>
@@ -1856,15 +1871,38 @@ Cheshire Today Jobs Team
         </html>
         '''
         
-        success_count = 0
-        for email in to_emails:
+        text_content = (
+            "CHESHIRE TODAY\nA better way to stay informed\n\nHello,\n\n"
+            "We're moving to a curated model that prioritises quality over quantity.\n"
+            "The Daily Brief — top Cheshire stories every morning at 7:30 AM.\n"
+            "The Weekly Roundup — a Sunday digest of the week's best content.\n"
+            "Breaking News Alerts — rare, high-priority notifications when it matters.\n\n"
+            "You have been automatically moved to The Daily Brief (7:30 AM). "
+            "This replaces our previous multiple-daily emails.\n"
+            "If you prefer weekly news or only Breaking News alerts, update your preferences.\n\n"
+            "Manage preferences: __PREFS_URL__\nUnsubscribe: __UNSUB_URL__\n\n"
+            "Thank you for being part of the Cheshire Today community.\nThe Editor\nCheshire Today"
+        )
+        batch_messages = []
+        for delivery in deliveries:
             prefs_url = f"{self.base_url}/newsletter/preferences"
-            unsub_url = f"{self.base_url}/unsubscribe"
+            unsub_url = delivery.human_unsubscribe_url
             html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
+            text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+            batch_messages.append({"to": delivery.context.email, "subject": subject,
+                                   "html": html_personal, "text": text_personal,
+                                   "headers": delivery.native_headers})
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"],
+                                    newsletter_headers=item["headers"]):
+                    success_count += 1
+                    self.last_accepted_recipients.append(item["to"])
         
-        logger.info(f"Announcement email sent to {success_count}/{len(to_emails)} subscribers")
+        logger.info("Announcement accepted %s/%s prepared messages", success_count, len(deliveries))
         return success_count
 
 

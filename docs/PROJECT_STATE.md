@@ -332,7 +332,7 @@ existing warnings. Full newsletter plus Weekly idempotence regression: 1,499 pas
 zero failures, with 418 existing framework/datetime/gzip warnings. Slice 2 independent review completed locally; no production or deployment verification is
 claimed. Full CT-DEC-021 remains incomplete and POTENTIAL QUERY LOG EXPOSURE remains.
 
-Phase 2B **SLICE 3 BREAKING NEWS EMAIL INTEGRATION IS LOCAL, UNCOMMITTED**.
+Phase 2B **SLICE 3 BREAKING NEWS EMAIL INTEGRATION IS COMMITTED LOCALLY AT `14e2f01`**.
 The authenticated manual email endpoint retains its breaking_news/active query
 and 1,000-record limit. Full fetched candidate validation precedes preparation;
 invalid selected positions are skipped without substitution. Explicit active=False
@@ -357,9 +357,33 @@ idempotence regression passed 1,537 tests with zero failures and 419 existing
 framework/datetime/gzip warnings. Python compilation and diff whitespace
 checks passed. This is local test evidence only.
 
-Remaining slices include announcement,
-site updates, onboarding and manual campaigns. Preserve announcement preference
-mutation behavior; later onboarding must mark only accepted recipients without
+Phase 2B **SLICE 4 MIGRATION ANNOUNCEMENT INTEGRATION IS LOCAL, UNCOMMITTED**.
+The authenticated endpoint preserves the active=True OR active-missing query and
+10,000 fetched delivery positions. Missing/non-string/empty emails and invalid
+identity/state positions are bounded skips without backfill; explicit active=True
+is required for candidate preparation. Existing prepared-artifact validation checks
+the entire batch before rendering or provider contact. HTML and plain text include
+the recipient's direct unsubscribe URL, sharing its credential with native headers
+on Resend and SMTP. Existing subject/main copy and preferences architecture remain
+unchanged. Transport acceptance/contact state resets per attempt; digest records
+contain aggregate delivery evidence and endpoint errors are private.
+The post-send daily_brief=True update_many deliberately remains scoped to the full
+active/missing-active population, including records beyond the fetched 10,000 and
+skipped/unaccepted recipients. It is NOT acceptance-scoped. Normal partial, zero
+or unavailable-transport returns still precede that mutation; a sender exception
+prevents it, preserving the original ordering. Historical subscribers_migrated
+response semantics remain the fetched-position count, not the update_many total.
+Slice 4 independent review completed locally with no material implementation or test defect found. No production/deployment verification is
+claimed; full CT-DEC-021 remains incomplete and POTENTIAL QUERY LOG EXPOSURE remains.
+Offline verification: 45 focused Announcement tests passed (5 warnings); full
+newsletter plus Weekly idempotence regression passed 1,582 tests (418 warnings),
+zero failures. Existing framework/datetime/gzip warning debt remains. Compilation
+and tracked/new-test whitespace checks passed. Scope tests confirm other production
+functions are unchanged; migration fixtures exercise the full population beyond
+the 10,000 delivery limit, zero/partial acceptance and sender exceptions.
+
+Remaining slices include site updates, onboarding and manual campaigns.
+Later onboarding must mark only accepted recipients without
 rewriting created_at. No production data, email, push or deployment was involved.
 
 The last recorded production commit is `c2a6fb0`; this offline correction did not

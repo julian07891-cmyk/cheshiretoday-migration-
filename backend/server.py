@@ -14827,7 +14827,8 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
         # Get active subscribers only
         subscribers = await db.subscribers.find(
             {"$or": [{"active": True}, {"active": {"$exists": False}}]},
-            {"_id": 0, "email": 1}
+            {"_id": 0, "email": 1, "active": 1,
+             "newsletter_management_id": 1, "newsletter_token_version": 1}
         ).to_list(10000)
         
         if not subscribers:
@@ -14836,10 +14837,16 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
                 "message": "No subscribers found"
             }
         
-        subscriber_emails = [s.get('email') for s in subscribers if s.get('email')]
+        candidates = _newsletter_candidate_contexts(subscribers)
+        # Every fetched position is consumed, including missing/invalid emails.
+        subscriber_emails = [s.get('email') if isinstance(s.get('email'), str) else ""
+                             for s in subscribers]
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
         
         # Send the announcement email
-        success_count = email_service.send_announcement_email(to_emails=subscriber_emails)
+        success_count = email_service.send_announcement_email(
+            prepared_deliveries=deliveries, token_service=token_service)
+        provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
         
         # Update all subscribers to have daily_brief enabled by default
         await db.subscribers.update_many(
@@ -14854,7 +14861,10 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
             "type": "MigrationAnnouncement",
             "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subscribers_count": len(subscriber_emails),
-            "success_count": success_count
+            "success_count": success_count,
+            "accepted_count": success_count,
+            "provider_contacted": provider_contacted,
+            **delivery_counts,
         })
         
         return {
@@ -14864,8 +14874,8 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
         }
         
     except Exception as e:
-        logger.error(f"Error sending announcement email: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Announcement email delivery failed")
+        raise HTTPException(status_code=500, detail="Announcement email unavailable") from None
 
 
 @api_router.post("/send-site-update-part1")
