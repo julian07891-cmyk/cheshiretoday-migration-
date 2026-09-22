@@ -257,13 +257,12 @@ CT-DEC-021 is not fully implemented or production-ready. CT-QA-2026-007 stays
 closed and Apple Mail remains a separate unproven mechanism.
 
 Phase 1 is **NOT PUSHED — NOT DEPLOYED**. Phase 2A delivery infrastructure is
-**PRIVACY CORRECTED LOCALLY, UNSTAGED — RE-REVIEWED**: immutable validated
+**COMMITTED LOCALLY AT `4e6a8cf` — RE-REVIEWED, NOT PUSHED/DEPLOYED**: immutable validated
 recipient contexts, candidate-only ambiguity rejection, single-issuance direct
 artifacts, strict opt-in per-message Resend/SMTP headers and narrowly scoped
-Uvicorn one-click query redaction. Phase 2B delivery integration is **NOT
-IMPLEMENTED**; all existing selectors, builders, generic links, Welcome and
-management flows remain unchanged. No scheduler bookkeeping or Phase 1 token
-service change was made. Final local re-review verification passed 1,407 newsletter tests with
+Uvicorn one-click query redaction. At the Phase 2A checkpoint, delivery-path
+integration remained unimplemented; no scheduler bookkeeping or Phase 1 token
+service change was made. Final Phase 2A local re-review verification passed 1,407 newsletter tests with
 no failures; Python compilation and tracked `git diff --check` also passed. Existing
 framework/datetime/gzip warning debt remains.
 The access-log check uses pinned Uvicorn 0.25.0 with an in-memory HTTP transport;
@@ -275,12 +274,53 @@ with explicit fresh transport exports. Covered h11 shapes preserve the original
 ASGI credential; httptools is supported by static inspection only. These defects
 were never deployed; this is local test evidence, not production privacy acceptance.
 
+Phase 2B **SLICE 1 DAILY BRIEF INTEGRATION IS LOCAL, UNCOMMITTED — FULL PHASE 2B
+INCOMPLETE — SECOND INDEPENDENT REVIEW COMPLETED AND LOCAL FINDINGS CORRECTED**.
+The first independent review found a material local artifact-binding defect:
+prepared human/native credentials were not cryptographically rebound to their
+recipient context at the final consumer boundary. The defect was never committed,
+pushed, deployed or used to send email. It is corrected locally with one reusable
+strict verifier that requires the exact canonical human and one-click structures,
+one shared direct credential, a valid existing direct-token
+signature/class/claims contract, and claims whose management ID and version equal
+the artifact context. The complete batch is verified before rendering or provider
+contact; failures are bounded and credential-free. The second independent
+read-only review confirmed that material defect corrected and found no remaining
+blocker or material issue. It identified one minor local accounting defect:
+scheduled Daily Brief inferred `provider_contacted=true` from prepared-message
+count even when SMTP was disabled or Resend configuration prevented any transport
+attempt. That defect was also never committed, pushed, deployed or used to send
+email. It is corrected locally with transport-boundary evidence: each Daily Brief
+attempt resets the contact signal, Resend sets it immediately before the HTTP
+provider request, and SMTP sets it only after configuration checks and immediately
+before the connection attempt. All-invalid preparation remains a pre-provider
+failure; valid preparation with unavailable transport is separately recorded with
+`provider_contacted=false`; actual attempted zero-acceptance delivery remains a
+provider failure.
+Scheduled and manual real-audience Daily Brief validate full
+candidate identity sets before deduplication, require explicit active=True, retain
+selected slots without backfill, and prepare per-recipient direct HTML/text links
+and native headers. Preferences, priority/cap/rotation, planned cursors and
+positive-acceptance-only cursor advancement remain unchanged. Bounded selected,
+prepared, skipped/reason and accepted counts distinguish preparation from provider
+acceptance; accepted recipients are snapshotted before persistence awaits.
+Single-address Daily tests use an explicit exactly-one non-direct preview boundary.
+Welcome, Weekly and all other content paths are unchanged. Focused Daily Slice 1
+regression passes 41 tests. Offline newsletter plus Weekly idempotence regression
+after the second-review correction: 1,461 passed, zero failures; existing
+framework/datetime/gzip warning debt remains. Slice 1 remains unstaged and
+uncommitted pending final local diff/state review.
+Remaining slices include Weekly/batch diagnostic, Breaking News, announcement,
+site updates, onboarding and manual campaigns. Preserve announcement preference
+mutation behavior; later onboarding must mark only accepted recipients without
+rewriting created_at. No production data, email, push or deployment was involved.
+
 The last recorded production commit is `c2a6fb0`; this offline correction did not
 re-inspect production. Render service
 `cheshiretoday-migration-` (`srv-d5virmm3jp1c73c9d6tg`) is connected to
 `julian07891-cmyk/cheshiretoday-migration-`, branch `full-scrape-prod`, with
 **AUTO-DEPLOY ENABLED — ON COMMIT: NO PUSH WITHOUT EXPLICIT DEPLOYMENT
-AUTHORIZATION**. Phase 2A is not committed, pushed or deployed. Full CT-DEC-021
+AUTHORIZATION**. Phase 2A is locally committed, not pushed or deployed. Full CT-DEC-021
 remains incomplete and not production-ready. Live identity/index coverage, real
 Mongo/BSON/concurrency evidence, upstream Render/proxy/CDN/APM log privacy,
 delivered headers/DKIM, Apple Mail acceptance and controlled production persistence

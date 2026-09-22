@@ -93,6 +93,7 @@ from app.newsletter_token_service import (
     WrongNewsletterTokenPurposeError,
     newsletter_token_service_from_environment,
 )
+from app.newsletter_delivery import prepare_recipient_contexts, prepare_direct_delivery
 from app.newsletter_click_tracking import (
     UnsafeNewsletterClickDestination,
     validate_newsletter_click_destination,
@@ -13714,10 +13715,68 @@ async def cleanup_invalid_emails(authorized: bool = Depends(get_admin_auth)):
         return {"success": False, "error": str(e)}
 
 
+def _newsletter_candidate_contexts(subscribers):
+    """Validate the entire supplied set before selection can hide ambiguity.
+
+    The mapping is internal/sensitive. Audience algorithms still select their
+    original email slots; this is not a replacement audience or identity model.
+    """
+    results = prepare_recipient_contexts(subscribers)
+    candidates = {}
+    for subscriber, result in zip(subscribers, results):
+        raw_email = subscriber.get("email")
+        if not isinstance(raw_email, str):
+            continue
+        key = raw_email.strip().lower()
+        reason = result.reason.value if result.context is None else None
+        if reason is None and subscriber.get("active") is not True:
+            reason = "invalid_active_state"
+        candidates[key] = (result.context if reason is None else None, reason)
+    return candidates
+
+
+def _prepare_selected_newsletter_deliveries(selected_emails, candidates):
+    """Consume selected slots; never backfill, provision or fall back to generic.
+
+    Prepare all small artifacts before any provider call. Only aggregate counts
+    leave this boundary as diagnostics; issuer exception contents never escape.
+    """
+    deliveries, reasons = [], {}
+    token_service = None
+    configuration_failed = False
+    for email in selected_emails:
+        context, reason = candidates.get(email.strip().lower(), (None, "invalid_record"))
+        if reason is None:
+            try:
+                if configuration_failed:
+                    raise NewsletterTokenConfigurationError()
+                if token_service is None:
+                    try:
+                        token_service = _create_secure_newsletter_token_service()
+                    except Exception:
+                        configuration_failed = True
+                        raise
+                deliveries.append(prepare_direct_delivery(context, token_service))
+            except Exception:
+                reason = "direct_delivery_preparation_failed"
+        if reason is not None:
+            reasons[reason] = reasons.get(reason, 0) + 1
+    counts = {
+        "selected_count": len(selected_emails),
+        "prepared_count": len(deliveries),
+        "skipped_count": sum(reasons.values()),
+        "skip_reasons": reasons,
+    }
+    logger.info("Newsletter delivery preparation: selected=%s prepared=%s skipped=%s reasons=%s",
+                counts["selected_count"], counts["prepared_count"], counts["skipped_count"], reasons)
+    return deliveries, counts, token_service
+
+
 @api_router.post("/send-digest")
 async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
     """Manually trigger sending news digest to all subscribers (for testing)"""
     try:
+        email_service.last_accepted_recipients = []
         # ============================================
         # DUPLICATE PREVENTION - Check if already sent recently
         # ============================================
@@ -13760,16 +13819,19 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
                     {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]}
                 ]
             },
-            {"_id": 0, "email": 1}
+            {"_id": 0, "email": 1, "newsletter_management_id": 1,
+             "newsletter_token_version": 1, "active": 1}
         ).to_list(15000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
         
-        # Deduplicate emails (case-insensitive)
+        candidates = _newsletter_candidate_contexts(subscribers)
+        # Deduplicate emails (case-insensitive), after full candidate validation.
         seen_emails = set()
         unique_emails = []
         for s in subscribers:
-            email = s.get('email', '').lower().strip()
+            raw_email = s.get('email')
+            email = raw_email.lower().strip() if isinstance(raw_email, str) else ""
             if email and email not in seen_emails:
                 seen_emails.add(email)
                 unique_emails.append(s.get('email'))  # Keep original case
@@ -13935,8 +13997,10 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
         logger.info(f"Manual digest: {len(sorted_articles)} articles (local={len(local_bucket)}, business={len(business_bucket)}, tech={len(tech_bucket)}, national={len(national_bucket)})")
         
         # Send Daily Brief (new format) instead of old digest
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
         result = email_service.send_daily_brief(
-            to_emails=subscriber_emails,
+            prepared_deliveries=deliveries,
+            token_service=token_service,
             articles=sorted_articles,
             weather=None,
             travel=None,
@@ -13959,11 +14023,13 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
                 "articles_count": len(sorted_articles),
                 "subscribers_count": len(subscriber_emails),
                 "success_count": success_count,
+                "accepted_count": success_count,
+                **delivery_counts,
                 "tracking_id": tracking_id,
                 "manual": True  # Mark as manually triggered
             })
         except Exception as log_error:
-            logger.warning(f"Failed to log digest send: {log_error}")
+            logger.warning("Manual Daily Brief accounting persistence failed")
         
         return {
             "success": True,
@@ -13972,12 +14038,13 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
             "local_news_count": len([a for a in sorted_articles if is_local(a)]),
             "sports_count": len([a for a in sorted_articles if is_sports(a)]),
             "emails_sent": success_count,
+            "delivery_counts": {**delivery_counts, "accepted_count": success_count},
             "email_type": "DailyBrief"
         }
         
     except Exception as e:
-        logger.error(f"Error sending manual digest: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Manual Daily Brief failed")
+        raise HTTPException(status_code=500, detail="Daily Brief unavailable") from None
 
 @api_router.post("/send-digest-test")
 async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_preview_links: bool = False, auth: bool = Depends(get_admin_auth)):
@@ -14052,6 +14119,7 @@ async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_pre
             # Send Daily Brief (new format) to single test email
             result = email_service.send_daily_brief(
                 to_emails=[test_email],
+                preview=True,
                 articles=recent_articles[:5],
                 weather=None,
                 travel=None,
@@ -19551,6 +19619,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
     Only ONE server instance will successfully send the digest.
     """
     from datetime import timedelta
+    email_service.last_accepted_recipients = []
     
     try:
         now = datetime.now(timezone.utc)
@@ -19670,14 +19739,18 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 "email": 1,
                 "priority_daily_brief": 1,
                 "signup_source": 1,
-                "subscriber_origin": 1
+                "subscriber_origin": 1,
+                "newsletter_management_id": 1,
+                "newsletter_token_version": 1,
+                "active": 1,
             }
         ).to_list(15000)
         if not subscribers:
             logger.info("No subscribers found with daily_brief preference - skipping")
             return
         
-        # Deduplicate emails (case-insensitive), validate, and prioritise genuine website subscribers.
+        candidates = _newsletter_candidate_contexts(subscribers)
+        # Preserve original audience slots after validating the full candidate set.
         import re
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         seen_emails = set()
@@ -19686,7 +19759,8 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         invalid_emails = []
         
         for s in subscribers:
-            email = s.get('email', '').lower().strip()
+            raw_email = s.get('email')
+            email = raw_email.lower().strip() if isinstance(raw_email, str) else ""
             if email and email not in seen_emails:
                 # Validate email format
                 if is_deliverable_newsletter_email(email):
@@ -20023,8 +20097,14 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         )
         
         # Send the Daily Brief using new template
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
+        await db.digest_log.update_one(
+            {"digest_time": digest_time, "date_key": date_key, "instance_id": instance_id},
+            {"$set": delivery_counts},
+        )
         success_count = email_service.send_daily_brief(
-            to_emails=subscriber_emails,
+            prepared_deliveries=deliveries,
+            token_service=token_service,
             articles=unique_articles,
             weather=None,  # TODO: Integrate weather API
             travel=None,   # TODO: Integrate travel RSS
@@ -20039,29 +20119,49 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         
         logger.info(f"✅ Daily Brief sent to {success_count}/{len(subscriber_emails)} subscribers")
 
+        # Snapshot before awaiting persistence: another send must not overwrite
+        # this attempt's accepted-recipient evidence on the shared service.
+        accepted_recipients = list(getattr(email_service, "last_accepted_recipients", []) or [])
+
         provider_name = "resend" if getattr(email_service, "resend_enabled", False) else "smtp"
+        provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
         provider_error = None
         final_status = "sent"
 
         if int(success_count or 0) <= 0:
             final_status = "failed"
-            provider_error = (
-                getattr(email_service, "resend_last_error", None)
-                or "Daily Brief email service returned zero successful sends"
-            )
-            logger.error(
-                f"❌ Daily Brief provider failure: selected={len(subscriber_emails)} "
-                f"success_count=0 provider={provider_name} error={provider_error}"
-            )
+            if delivery_counts["prepared_count"] <= 0:
+                provider_error = "Daily Brief preparation produced no provider messages"
+                logger.error(
+                    "Daily Brief preparation failure: selected=%s prepared=0 skipped=%s",
+                    len(subscriber_emails), delivery_counts["skipped_count"],
+                )
+            elif not provider_contacted:
+                provider_error = "Daily Brief transport unavailable before provider contact"
+                logger.error(
+                    "Daily Brief transport unavailable: selected=%s prepared=%s provider=%s",
+                    len(subscriber_emails), delivery_counts["prepared_count"], provider_name,
+                )
+            else:
+                provider_error = (
+                    getattr(email_service, "resend_last_error", None)
+                    or "Daily Brief email service returned zero successful sends"
+                )
+                logger.error(
+                    f"❌ Daily Brief provider failure: selected={len(subscriber_emails)} "
+                    f"success_count=0 provider={provider_name} error={provider_error}"
+                )
         
         # Update our digest log record with final provider result
         await db.digest_log.update_one(
             {"digest_time": digest_time, "date_key": date_key, "instance_id": instance_id},
             {"$set": {
                 "success_count": success_count,
+                "accepted_count": success_count,
                 "tracking_id": tracking_id,
                 "status": final_status,
                 "provider": provider_name,
+                "provider_contacted": provider_contacted,
                 "provider_error": provider_error,
                 "resend_successful_chunks": getattr(email_service, "resend_last_successful_chunks", None),
                 "resend_failed_chunks": getattr(email_service, "resend_last_failed_chunks", None),
@@ -20070,9 +20170,6 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         )
         
         if success_count > 0:
-            accepted_recipients = list(
-                getattr(email_service, "last_accepted_recipients", []) or []
-            )
             ledger_count = await _save_email_send_opportunities(
                 "DailyBrief",
                 tracking_id,
@@ -20099,12 +20196,12 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         logger.info(f"✅ Digest log updated for {digest_time} ({date_key})")
         
     except Exception as e:
-        logger.error(f"Error sending Daily Brief: {str(e)}")
+        logger.error("Daily Brief failed")
         # Try to mark as failed so another instance doesn't retry
         try:
             await db.digest_log.update_one(
                 {"digest_time": digest_time, "date_key": date_key},
-                {"$set": {"status": "failed", "error": str(e)}}
+                {"$set": {"status": "failed", "error": "Daily Brief unavailable"}}
             )
         except:
             pass

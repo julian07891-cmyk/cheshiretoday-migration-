@@ -61,7 +61,7 @@ def _assert_balanced_html(rendered_html):
 def _capture_single_email(monkeypatch, service, method_name, *args, **kwargs):
     captured = []
 
-    def capture_email(to_email, subject, html_content, text_content=None):
+    def capture_email(to_email, subject, html_content, text_content=None, **headers):
         captured.append(
             {
                 "to": to_email,
@@ -79,6 +79,16 @@ def _capture_single_email(monkeypatch, service, method_name, *args, **kwargs):
     monkeypatch.setattr(service, "_send_email", capture_email)
     monkeypatch.setattr(service, "_send_resend_batch", capture_batch)
 
+    if method_name == "send_daily_brief":
+        from app.newsletter_delivery import RecipientDeliveryContext, prepare_direct_delivery
+        from app.newsletter_token_service import NewsletterTokenService
+        token_service = NewsletterTokenService("D" * 43)
+        delivery = prepare_direct_delivery(RecipientDeliveryContext(
+            "reader@synthetic.invalid", "123e4567-e89b-42d3-a456-426614174000", 1),
+            token_service)
+        kwargs["prepared_deliveries"] = [delivery]
+        kwargs["token_service"] = token_service
+        args = (None, *args[1:])
     count, _ = getattr(service, method_name)(*args, **kwargs)
     assert count == 1
     assert len(captured) == 1

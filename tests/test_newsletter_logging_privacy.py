@@ -95,8 +95,10 @@ class RecordingEmailService:
         self.daily_calls.append(deepcopy(kwargs))
         if self.error:
             raise self.error
-        self.last_accepted_recipients = list(kwargs["to_emails"])
-        return len(kwargs["to_emails"]), "daily-tracking"
+        recipients = ([item.context.email for item in kwargs["prepared_deliveries"]]
+                      if "prepared_deliveries" in kwargs else kwargs["to_emails"])
+        self.last_accepted_recipients = list(recipients)
+        return len(recipients), "daily-tracking"
 
     def send_weekly_roundup(self, **kwargs):
         self.roundup_calls.append(deepcopy(kwargs))
@@ -126,12 +128,19 @@ def test_scheduled_invalid_addresses_are_counted_without_identity_logging(
         SimpleNamespace(
             digest_log=DigestLog(),
             subscribers=Subscribers(
-                [{"email": address} for address in invalid_addresses + [valid_address]]
+                [{"email": address} for address in invalid_addresses] + [{
+                    "email": valid_address, "active": True,
+                    "newsletter_management_id": "123e4567-e89b-42d3-a456-426614174000",
+                    "newsletter_token_version": 1,
+                }]
             ),
             articles=Articles([ARTICLE]),
         ),
     )
     monkeypatch.setattr(server, "email_service", email_service)
+    from app.newsletter_token_service import NewsletterTokenService
+    monkeypatch.setattr(server, "newsletter_token_service_from_environment",
+                        lambda: NewsletterTokenService("D" * 43))
     monkeypatch.setenv("HOSTNAME", "privacy-test")
 
     async def select_batch(*_args, **_kwargs):
@@ -151,11 +160,12 @@ def test_scheduled_invalid_addresses_are_counted_without_identity_logging(
     asyncio.run(server.send_scheduled_news_digest())
 
     assert len(email_service.daily_calls) == 1
-    assert email_service.daily_calls[0]["to_emails"] == [valid_address]
+    recipients = [d.context.email for d in email_service.daily_calls[0]["prepared_deliveries"]]
+    assert recipients == [valid_address]
     assert "Skipping 2 invalid newsletter subscriber addresses" in caplog.text
     assert all(address not in caplog.text for address in invalid_addresses)
     assert all(
-        address not in email_service.daily_calls[0]["to_emails"]
+        address not in recipients
         for address in invalid_addresses
     )
 

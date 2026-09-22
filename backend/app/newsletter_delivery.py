@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import json
 import re
+from urllib.parse import urlsplit
 from uuid import UUID
 
 from .newsletter_token_service import NewsletterTokenService
@@ -269,3 +270,53 @@ def prepare_direct_delivery(
     except Exception:
         # Neither provider/issuer exception text nor credential payloads escape.
         raise NewsletterDeliveryError("direct_delivery_preparation_failed") from None
+
+
+def validate_prepared_delivery(
+    delivery: PreparedNewsletterDelivery,
+    token_service: NewsletterTokenService,
+) -> PreparedNewsletterDelivery:
+    """Authenticate one prepared artifact and bind both links to its context."""
+    try:
+        if not isinstance(delivery, PreparedNewsletterDelivery):
+            raise ValueError
+        context = delivery.context
+        if not isinstance(context, RecipientDeliveryContext):
+            raise ValueError
+
+        human = urlsplit(delivery.human_unsubscribe_url)
+        if (
+            human.scheme != "https"
+            or human.netloc != "cheshiretoday.co.uk"
+            or human.path != "/unsubscribe"
+            or human.query
+            or not human.fragment.startswith("token=")
+        ):
+            raise ValueError
+        human_token = human.fragment[len("token="):]
+        if not _compact_token_syntax(human_token):
+            raise ValueError
+        if delivery.human_unsubscribe_url != (
+            f"{CANONICAL_ORIGIN}/unsubscribe#token={human_token}"
+        ):
+            raise ValueError
+
+        headers = validate_newsletter_headers(delivery.native_headers)
+        native_value = headers["List-Unsubscribe"]
+        native_prefix = f"<{CANONICAL_ORIGIN}{ONE_CLICK_PATH}?token="
+        native_token = native_value[len(native_prefix):-1]
+        if native_value != f"{native_prefix}{native_token}>" or native_token != human_token:
+            raise ValueError
+
+        claims = token_service.verify_direct_unsubscribe_token(
+            human_token,
+            expected_token_version=context.newsletter_token_version,
+        )
+        if (
+            claims.subscriber_management_id != context.newsletter_management_id
+            or claims.token_version != context.newsletter_token_version
+        ):
+            raise ValueError
+        return delivery
+    except Exception:
+        raise NewsletterDeliveryError("invalid_prepared_delivery") from None

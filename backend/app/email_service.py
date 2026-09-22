@@ -18,7 +18,12 @@ import logging
 import httpx
 
 from app.newsletter_management_email import NewsletterManagementEmailMessage
-from app.newsletter_delivery import _NewsletterHeaders
+from app.newsletter_delivery import (
+    _NewsletterHeaders,
+    NewsletterDeliveryError,
+    PreparedNewsletterDelivery,
+    validate_prepared_delivery,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +289,7 @@ class EmailService:
             response = None
 
             try:
+                self.last_provider_contacted = True
                 response = httpx.post(
                     "https://api.resend.com/emails/batch",
                     headers=headers,
@@ -372,6 +378,9 @@ class EmailService:
         context = ssl.create_default_context()
 
         try:
+            # Reaching this point means configuration checks passed and an
+            # actual SMTP connection attempt is about to be made.
+            self.last_provider_contacted = True
             # Use SMTP_SSL for port 465 (GoDaddy, etc.)
             if int(self.smtp_port) == 465:
                 with smtplib.SMTP_SSL(self.smtp_host, int(self.smtp_port), context=context, timeout=30) as server:
@@ -768,14 +777,17 @@ Cheshire Today Jobs Team
     # NEW EMAIL TEMPLATES (January 2026)
     # ============================================
     
-    def send_daily_brief(self, to_emails: List[str], articles: List[dict], 
+    def send_daily_brief(self, to_emails: List[str] = None, articles: List[dict] = None,
                          weather: dict = None, travel: dict = None, 
-                         photo_of_day: dict = None) -> Tuple[int, str]:
+                         photo_of_day: dict = None, *,
+                         prepared_deliveries=None, preview: bool = False,
+                         token_service=None) -> Tuple[int, str]:
         """
         Send The Daily Brief - Morning news digest at 07:30 AM
         
         Args:
-            to_emails: List of subscriber email addresses
+            to_emails: Explicit preview destinations only (requires preview=True)
+            prepared_deliveries: Phase 2A artifacts for normal subscriber content
             articles: List of article dictionaries (hero + 3-5 secondary)
             weather: Weather data dict with keys: temp, condition, location
             travel: Travel updates dict with keys: m6_status, rail_status
@@ -784,15 +796,36 @@ Cheshire Today Jobs Team
         Returns:
             Tuple of (success_count, tracking_id)
         """
-        if not articles:
-            logger.warning("No articles for Daily Brief")
-            return 0, None
-
         # Reset provider diagnostics and accepted-recipient state for this send attempt.
         self.resend_last_error = None
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+
+        # Real subscriber content has no email-only/generic-link fallback.
+        # Preview is an explicit caller boundary, never inferred from identity.
+        if preview is True:
+            if (
+                prepared_deliveries is not None
+                or token_service is not None
+                or not isinstance(to_emails, (list, tuple))
+                or len(to_emails) != 1
+            ):
+                raise NewsletterDeliveryError("invalid_daily_delivery_contract")
+            recipients = [(to_emails[0], None)]
+        else:
+            if to_emails is not None or prepared_deliveries is None:
+                raise NewsletterDeliveryError("daily_prepared_delivery_required")
+            deliveries = tuple(prepared_deliveries)
+            if deliveries and token_service is None:
+                raise NewsletterDeliveryError("invalid_daily_delivery_contract")
+            deliveries = tuple(
+                validate_prepared_delivery(item, token_service) for item in deliveries
+            )
+            recipients = [(item.context.email, item) for item in deliveries]
+        if not articles or not recipients:
+            return 0, None
         
         # Generate tracking ID for this send
         tracking_id = self._generate_tracking_id("daily_brief")
@@ -1299,10 +1332,10 @@ Cheshire Today Jobs Team
         # Send to all subscribers with daily_brief preference.
         # Build personalised messages in small chunks instead of holding all 2,000
         # rendered HTML bodies in memory at once.
-        def build_recipient_message(email: str) -> dict:
+        def build_recipient_message(email: str, delivery) -> dict:
             recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
             prefs_url = f"{self.base_url}/newsletter/preferences"
-            unsub_url = f"{self.base_url}/unsubscribe"
+            unsub_url = delivery.human_unsubscribe_url if delivery is not None else f"{self.base_url}/unsubscribe"
             html_personal = (
                 html_content
                 .replace(tracking_id, recipient_tracking_id)
@@ -1314,31 +1347,35 @@ Cheshire Today Jobs Team
                 .replace("__PREFS_URL__", prefs_url)
                 .replace("__UNSUB_URL__", unsub_url)
             )
-            return {
+            item = {
                 "to": email,
                 "subject": subject,
                 "html": html_personal,
                 "text": text_personal,
             }
+            if delivery is not None:
+                item["headers"] = delivery.native_headers
+            return item
 
         success_count = 0
 
         if getattr(self, "resend_enabled", False):
-            for i in range(0, len(to_emails), 100):
-                chunk_emails = to_emails[i:i + 100]
-                batch_messages = [build_recipient_message(email) for email in chunk_emails]
+            for i in range(0, len(recipients), 100):
+                batch_messages = [build_recipient_message(email, delivery)
+                                  for email, delivery in recipients[i:i + 100]]
                 success_count += self._send_resend_batch(batch_messages)
                 del batch_messages
         else:
-            for email in to_emails:
-                item = build_recipient_message(email)
-                if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
+            for email, delivery in recipients:
+                item = build_recipient_message(email, delivery)
+                headers = {"newsletter_headers": item["headers"]} if "headers" in item else {}
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"], **headers):
                     success_count += 1
                     self.last_accepted_recipients.append(
                         str(item.get("to") or "").strip()
                     )
         
-        logger.info(f"Daily Brief sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        logger.info(f"Daily Brief accepted {success_count}/{len(recipients)} prepared messages (tracking: {tracking_id})")
         return success_count, tracking_id
 
     def send_breaking_news(self, to_emails: List[str], headline: str, 
