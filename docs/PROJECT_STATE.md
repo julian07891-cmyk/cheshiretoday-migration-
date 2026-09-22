@@ -311,7 +311,7 @@ after the second-review correction: 1,461 passed, zero failures; existing
 framework/datetime/gzip warning debt remains. Slice 1 is committed locally, not
 pushed or deployed.
 
-Phase 2B **SLICE 2 WEEKLY ROUNDUP INTEGRATION IS LOCAL, UNCOMMITTED**.
+Phase 2B **SLICE 2 WEEKLY ROUNDUP INTEGRATION IS COMMITTED LOCALLY AT `fc8b34c`**.
 Scheduled subscriber batches and the real-subscriber batch diagnostic reuse the
 existing recipient context, single-issuance preparation and authenticated binding
 validator. Full candidate ambiguity validation precedes deduplication; selected
@@ -329,10 +329,35 @@ retryable; historical failed records without a contact marker retain the existin
 legacy reclaim rule. Sent/partial/sending/ambiguous states remain non-retryable.
 Offline Slice 2/Weekly idempotence verification: 51 passed, zero failures, with 5
 existing warnings. Full newsletter plus Weekly idempotence regression: 1,499 passed,
-zero failures, with 418 existing framework/datetime/gzip warnings. Slice 2 requires independent review; no production or deployment verification is
+zero failures, with 418 existing framework/datetime/gzip warnings. Slice 2 independent review completed locally; no production or deployment verification is
 claimed. Full CT-DEC-021 remains incomplete and POTENTIAL QUERY LOG EXPOSURE remains.
 
-Remaining slices include Breaking News, announcement,
+Phase 2B **SLICE 3 BREAKING NEWS EMAIL INTEGRATION IS LOCAL, UNCOMMITTED**.
+The authenticated manual email endpoint retains its breaking_news/active query
+and 1,000-record limit. Full fetched candidate validation precedes preparation;
+invalid selected positions are skipped without substitution. Explicit active=False
+is excluded by the query; missing active reaches preparation and fails closed.
+The builder requires existing recipient-bound direct artifacts and validates the
+entire batch before rendering/contact. HTML now has a visible human unsubscribe
+link, and plain text contains preferences and direct unsubscribe links. Native
+headers share that same credential. Preferences and existing campaign-level
+live-update CTA tracking are unchanged; direct unsubscribe is never click-tracked.
+Resend and SMTP use existing per-message header infrastructure and reset acceptance
+and actual contact evidence for each send. Digest records add bounded aggregate
+delivery counts/reasons and contact evidence; endpoint failures use fixed private
+errors. There is no email preview or provisioning. Daily, Weekly and separate
+Breaking News push functions are unchanged. Slice 3 independent review completed locally; the
+fetched-position accounting finding was corrected so missing, empty and non-string email positions
+remain consumed and are reported as bounded skips without backfill. No deployment or production
+verification is claimed. Full CT-DEC-021 remains
+incomplete and POTENTIAL QUERY LOG EXPOSURE remains.
+
+Slice 3 post-review focused verification: 38 tests passed, zero failures; full newsletter plus Weekly
+idempotence regression passed 1,537 tests with zero failures and 419 existing
+framework/datetime/gzip warnings. Python compilation and diff whitespace
+checks passed. This is local test evidence only.
+
+Remaining slices include announcement,
 site updates, onboarding and manual campaigns. Preserve announcement preference
 mutation behavior; later onboarding must mark only accepted recipients without
 rewriting created_at. No production data, email, push or deployment was involved.

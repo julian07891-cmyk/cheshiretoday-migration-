@@ -1378,13 +1378,14 @@ Cheshire Today Jobs Team
         logger.info(f"Daily Brief accepted {success_count}/{len(recipients)} prepared messages (tracking: {tracking_id})")
         return success_count, tracking_id
 
-    def send_breaking_news(self, to_emails: List[str], headline: str, 
-                           bullet_points: List[str], article_url: str = None) -> Tuple[int, str]:
+    def send_breaking_news(self, to_emails: List[str] = None, headline: str = None,
+                           bullet_points: List[str] = None, article_url: str = None, *,
+                           prepared_deliveries=None, token_service=None) -> Tuple[int, str]:
         """
         Send Breaking News Alert - High urgency, manual trigger only
         
         Args:
-            to_emails: List of subscriber email addresses
+            prepared_deliveries: Recipient-bound direct delivery artifacts
             headline: Main breaking news headline
             bullet_points: List of "What we know" bullet points (max 5)
             article_url: URL to live updates page
@@ -1392,8 +1393,20 @@ Cheshire Today Jobs Team
         Returns:
             Tuple of (success_count, tracking_id)
         """
-        if not headline:
-            logger.warning("No headline for Breaking News alert")
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+        if to_emails is not None or prepared_deliveries is None:
+            raise NewsletterDeliveryError("breaking_prepared_delivery_required")
+        deliveries = tuple(prepared_deliveries)
+        if deliveries and token_service is None:
+            raise NewsletterDeliveryError("invalid_breaking_delivery_contract")
+        deliveries = tuple(validate_prepared_delivery(item, token_service) for item in deliveries)
+        if not headline or not deliveries:
+            logger.info("Breaking News skipped before transport: headline_present=%s prepared=%s",
+                        bool(headline), len(deliveries))
             return 0, None
         
         # Generate tracking ID for this send
@@ -1465,6 +1478,7 @@ Cheshire Today Jobs Team
                         <p style="color: #6b7280; font-size: 11px; margin: 0;">
                             You received this alert because you're subscribed to Breaking News.
                             <a href="__PREFS_URL__" style="color: #dc2626;">Manage preferences</a>
+                            · <a href="__UNSUB_URL__" style="color: #dc2626;">Unsubscribe</a>
                         </p>
                     </div>
                     <!-- Tracking Pixel -->
@@ -1475,16 +1489,32 @@ Cheshire Today Jobs Team
         </html>
         '''
         
-        # Send to all subscribers with breaking_news preference
-        success_count = 0
-        for email in to_emails:
+        plain_lines = ["CHESHIRE TODAY", "BREAKING NEWS", headline, "", "What We Know:"]
+        plain_lines.extend(f"• {point}" for point in bullet_points[:5])
+        if article_url:
+            plain_lines.extend(["", f"Follow Live Updates: {tracked_url}"])
+        plain_lines.extend(["", "Manage preferences: __PREFS_URL__", "Unsubscribe: __UNSUB_URL__"])
+        text_content = "\n".join(plain_lines)
+        batch_messages = []
+        for delivery in deliveries:
+            email = delivery.context.email
             prefs_url = f"{self.base_url}/newsletter/preferences"
-            unsub_url = f"{self.base_url}/unsubscribe"
+            unsub_url = delivery.human_unsubscribe_url
             html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
+            text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+            batch_messages.append({"to": email, "subject": subject, "html": html_personal,
+                                   "text": text_personal, "headers": delivery.native_headers})
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"],
+                                    newsletter_headers=item["headers"]):
+                    success_count += 1
+                    self.last_accepted_recipients.append(item["to"])
         
-        logger.info(f"Breaking News alert sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        logger.info(f"Breaking News accepted {success_count}/{len(deliveries)} prepared messages (tracking: {tracking_id})")
         return success_count, tracking_id
 
     def send_weekly_roundup(self, to_emails: List[str] = None, big_read: dict = None,

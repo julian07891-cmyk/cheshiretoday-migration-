@@ -14411,7 +14411,8 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
                     {"$or": [{"active": True}, {"active": {"$exists": False}}]}
                 ]
             },
-            {"_id": 0, "email": 1}
+            {"_id": 0, "email": 1, "active": 1,
+             "newsletter_management_id": 1, "newsletter_token_version": 1}
         ).to_list(1000)
         
         if not subscribers:
@@ -14420,11 +14421,16 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
                 "message": "No subscribers found with Breaking News preference enabled"
             }
         
-        subscriber_emails = [s.get('email') for s in subscribers if s.get('email')]
+        candidates = _newsletter_candidate_contexts(subscribers)
+        # Retain the original queried positions; preparation never backfills.
+        subscriber_emails = [s.get('email') if isinstance(s.get('email'), str) else ""
+                             for s in subscribers]
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
         
         # Send the breaking news alert
         result = email_service.send_breaking_news(
-            to_emails=subscriber_emails,
+            prepared_deliveries=deliveries,
+            token_service=token_service,
             headline=request.headline,
             bullet_points=request.bullet_points,
             article_url=request.article_url
@@ -14444,6 +14450,9 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
             "headline": request.headline,
             "subscribers_count": len(subscriber_emails),
             "success_count": success_count,
+            "accepted_count": success_count,
+            "provider_contacted": bool(getattr(email_service, "last_provider_contacted", False)),
+            **delivery_counts,
             "tracking_id": tracking_id  # For email analytics
         })
         
@@ -14454,8 +14463,8 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
         }
         
     except Exception as e:
-        logger.error(f"Error sending breaking news: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Breaking News email delivery failed")
+        raise HTTPException(status_code=500, detail="Breaking News email unavailable") from None
 
 
 @api_router.get("/digest-log")
