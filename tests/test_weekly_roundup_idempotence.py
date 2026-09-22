@@ -14,6 +14,13 @@ os.environ.setdefault("LOCAL_DEV_NO_DB", "1")
 os.environ.setdefault("STRIPE_API_KEY", "sk_test_dummy")
 
 from backend import server
+from app.newsletter_token_service import NewsletterTokenService
+
+
+@pytest.fixture(autouse=True)
+def synthetic_signer(monkeypatch):
+    monkeypatch.setattr(server, "newsletter_token_service_from_environment",
+                        lambda: NewsletterTokenService("D" * 43))
 
 
 def _matches(document, query):
@@ -217,9 +224,11 @@ class Provider:
         self.last_accepted_recipients = []
         self.resend_enabled = True
 
-    def send_weekly_roundup(self, *, to_emails, **_kwargs):
+    def send_weekly_roundup(self, *, prepared_deliveries, **_kwargs):
+        to_emails = [item.context.email for item in prepared_deliveries]
         self.calls += 1
         outcome = self.outcomes.pop(0)
+        self.last_provider_contacted = outcome != 0
         status = next(
             row.get("status")
             for row in server.db.digest_log.documents
@@ -240,6 +249,9 @@ def build_runtime(outcomes, *, digest_documents=None):
         scheduler_locks=SchedulerLocks(),
         subscribers=StaticCollection([{
             "email": "reader@cheshiretoday.co.uk",
+            "active": True,
+            "newsletter_management_id": "123e4567-e89b-42d3-a456-426614174001",
+            "newsletter_token_version": 1,
             "priority_daily_brief": True,
             "signup_source": "website",
         }]),
@@ -359,6 +371,9 @@ def test_partial_and_provider_exception_are_not_retried(monkeypatch):
     database, provider = build_runtime([1], digest_documents=None)
     database.subscribers.rows.append({
         "email": "second@cheshiretoday.co.uk",
+        "active": True,
+        "newsletter_management_id": "123e4567-e89b-42d3-a456-426614174002",
+        "newsletter_token_version": 1,
         "priority_daily_brief": True,
         "signup_source": "website",
     })

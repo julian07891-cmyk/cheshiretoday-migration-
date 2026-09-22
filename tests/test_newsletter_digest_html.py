@@ -79,7 +79,7 @@ def _capture_single_email(monkeypatch, service, method_name, *args, **kwargs):
     monkeypatch.setattr(service, "_send_email", capture_email)
     monkeypatch.setattr(service, "_send_resend_batch", capture_batch)
 
-    if method_name == "send_daily_brief":
+    if method_name in {"send_daily_brief", "send_weekly_roundup"}:
         from app.newsletter_delivery import RecipientDeliveryContext, prepare_direct_delivery
         from app.newsletter_token_service import NewsletterTokenService
         token_service = NewsletterTokenService("D" * 43)
@@ -376,6 +376,7 @@ def test_digest_rendering_is_offline_and_preserves_send_contract(monkeypatch):
         ["reader@example.com"],
         {"id": "big-1", "title": "A verified weekly story", "content": "Summary"},
         [],
+        preview=True,
     )
 
     assert count == 1

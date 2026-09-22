@@ -14221,6 +14221,7 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
 
         result = email_service.send_weekly_roundup(
             to_emails=[test_email],
+            preview=True,
             big_read=big_read,
             icymi_articles=icymi_articles,
             property_of_week=None,
@@ -14278,16 +14279,19 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
                     ]}
                 ]
             },
-            {"_id": 0, "email": 1}
+            {"_id": 0, "email": 1, "active": 1,
+             "newsletter_management_id": 1, "newsletter_token_version": 1}
         ).to_list(15000)
 
+        candidates = _newsletter_candidate_contexts(subscribers)
         import re
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         seen_emails = set()
         unique_emails = []
 
         for s in subscribers:
-            email = (s.get("email") or "").lower().strip()
+            raw_email = s.get("email")
+            email = raw_email.lower().strip() if isinstance(raw_email, str) else ""
             if email and email not in seen_emails and is_deliverable_newsletter_email(email):
                 seen_emails.add(email)
                 unique_emails.append(s.get("email"))
@@ -14340,8 +14344,10 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
                 if len(icymi_articles) >= 5:
                     break
 
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
         result = email_service.send_weekly_roundup(
-            to_emails=subscriber_emails,
+            prepared_deliveries=deliveries,
+            token_service=token_service,
             big_read=big_read,
             icymi_articles=icymi_articles,
             property_of_week=None,
@@ -14360,6 +14366,8 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
             "requested_cap": cap,
             "safe_cap": safe_cap,
             "emails_selected": len(subscriber_emails),
+            "delivery_counts": {**delivery_counts, "accepted_count": success_count},
+            "provider_contacted": bool(getattr(email_service, "last_provider_contacted", False)),
             "emails_sent": success_count,
             "batch_start": batch_start,
             "batch_next_if_saved": batch_next,
@@ -14374,8 +14382,8 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
         }
 
     except Exception as e:
-        logger.error(f"Error sending Weekly Roundup batch diagnostic: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Weekly Roundup batch diagnostic failed")
+        raise HTTPException(status_code=500, detail="Weekly Roundup diagnostic unavailable") from None
 
 
 # ============================================
@@ -19574,6 +19582,7 @@ async def _claim_weekly_roundup_batch(
             existing_status == "failed"
             and int(existing.get("success_count") or 0) == 0
             and int(existing.get("accepted_count") or 0) == 0
+            and existing.get("provider_contacted") is not True
         )
         if not failed_without_acceptance:
             return None, existing_status or "historical_completed"
@@ -19584,6 +19593,7 @@ async def _claim_weekly_roundup_batch(
                 "status": "failed",
                 "success_count": {"$in": [0, None]},
                 "accepted_count": {"$in": [0, None]},
+                "provider_contacted": {"$in": [False, None]},
             },
             {
                 "$set": {
@@ -20287,7 +20297,10 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 "email": 1,
                 "priority_daily_brief": 1,
                 "signup_source": 1,
-                "subscriber_origin": 1
+                "subscriber_origin": 1,
+                "active": 1,
+                "newsletter_management_id": 1,
+                "newsletter_token_version": 1,
             }
         ).to_list(15000)
         
@@ -20304,6 +20317,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             await db.scheduler_locks.delete_one({"job": lock_key})
             return
         
+        candidates = _newsletter_candidate_contexts(subscribers)
         import re
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
         seen_emails = set()
@@ -20311,7 +20325,8 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         rotating_emails = []
 
         for s in subscribers:
-            email = (s.get('email') or '').lower().strip()
+            raw_email = s.get('email')
+            email = raw_email.lower().strip() if isinstance(raw_email, str) else ""
             if email and email not in seen_emails and is_deliverable_newsletter_email(email):
                 seen_emails.add(email)
                 original_email = s.get('email')
@@ -20464,6 +20479,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 if len(icymi_articles) >= 5:
                     break
         
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
         sending_at = datetime.now(timezone.utc)
         sending_result = await db.digest_log.update_one(
             {"_id": claim["_id"], "instance_id": lock_id, "status": "claimed"},
@@ -20472,6 +20488,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 "sending_at": sending_at,
                 "subscribers_count": len(subscriber_emails),
                 "articles_count": 1 + len(icymi_articles),
+                **delivery_counts,
             }},
         )
         if getattr(sending_result, "matched_count", 1) != 1:
@@ -20484,24 +20501,28 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         # Send the Weekly Roundup only after the durable slot claim is in sending state.
         try:
             success_count = email_service.send_weekly_roundup(
-                to_emails=subscriber_emails,
+                prepared_deliveries=deliveries,
+                token_service=token_service,
                 big_read=big_read,
                 icymi_articles=icymi_articles,
                 property_of_week=None,  # TODO: Add property integration
                 food_review=None  # TODO: Add food review integration
             )
         except Exception as provider_error:
+            provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
             provider_error_type = type(provider_error).__name__
             logger.error(
-                f"Weekly Roundup provider outcome is ambiguous ({provider_error_type})"
+                "Weekly Roundup delivery raised: provider_contacted=%s error_type=%s",
+                provider_contacted, provider_error_type,
             )
             try:
                 await db.digest_log.update_one(
                     {"_id": claim["_id"], "instance_id": lock_id, "status": "sending"},
                     {"$set": {
-                        "status": "ambiguous",
+                        "status": "ambiguous" if provider_contacted else "failed",
+                        "provider_contacted": provider_contacted,
                         "completed_at": datetime.now(timezone.utc),
-                        "error": "Provider call raised before outcome could be classified",
+                        "error": "Weekly delivery outcome unknown" if provider_contacted else "Weekly delivery failed before provider contact",
                         "error_type": provider_error_type,
                     }},
                 )
@@ -20519,6 +20540,8 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         logger.info(f"✅ Weekly Roundup sent to {success_count}/{len(subscriber_emails)} subscribers")
 
         success_count = int(success_count or 0)
+        accepted_recipients = list(getattr(email_service, "last_accepted_recipients", []) or [])
+        provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
         if success_count >= len(subscriber_emails):
             completion_status = "sent"
         elif success_count > 0:
@@ -20535,11 +20558,16 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             "subscribers_count": len(subscriber_emails),
             "success_count": success_count,
             "accepted_count": success_count,
+            "provider_contacted": provider_contacted,
             "tracking_id": tracking_id,
         }
         if completion_status == "failed":
             completion_fields["failed_at"] = completion_time
-            completion_fields["error"] = "Provider reported zero accepted recipients"
+            completion_fields["error"] = (
+                "Weekly preparation produced no provider messages" if not deliveries else
+                "Provider reported zero accepted recipients" if provider_contacted else
+                "Weekly transport unavailable before provider contact"
+            )
 
         try:
             completion_result = await db.digest_log.update_one(
@@ -20569,9 +20597,6 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             return
         
         if success_count > 0:
-            accepted_recipients = list(
-                getattr(email_service, "last_accepted_recipients", []) or []
-            )
             weekly_provider = (
                 "resend"
                 if getattr(email_service, "resend_enabled", False)
@@ -20607,7 +20632,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         await db.scheduler_locks.delete_one({"job": lock_key, "lock_id": lock_id})
         
     except Exception as e:
-        logger.error(f"Error sending Weekly Roundup: {str(e)}")
+        logger.error("Weekly Roundup failed")
 
 
 async def auto_fix_duplicate_images():

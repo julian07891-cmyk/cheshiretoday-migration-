@@ -1487,14 +1487,16 @@ Cheshire Today Jobs Team
         logger.info(f"Breaking News alert sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
         return success_count, tracking_id
 
-    def send_weekly_roundup(self, to_emails: List[str], big_read: dict,
-                            icymi_articles: List[dict], property_of_week: dict = None,
-                            food_review: dict = None) -> Tuple[int, str]:
+    def send_weekly_roundup(self, to_emails: List[str] = None, big_read: dict = None,
+                            icymi_articles: List[dict] = None, property_of_week: dict = None,
+                            food_review: dict = None, *, prepared_deliveries=None,
+                            token_service=None, preview: bool = False) -> Tuple[int, str]:
         """
         Send The Weekly Roundup - Sunday morning at 09:00 AM
         
         Args:
-            to_emails: List of subscriber email addresses
+            to_emails: Exactly one explicit preview destination
+            prepared_deliveries: Direct artifacts for real subscriber content
             big_read: Featured article dict (week's best performer)
             icymi_articles: Top 5 trending articles for "In Case You Missed It"
             property_of_week: Property listing dict with keys: title, price, location, image_url, url
@@ -1503,15 +1505,29 @@ Cheshire Today Jobs Team
         Returns:
             Tuple of (success_count, tracking_id)
         """
-        if not big_read:
-            logger.warning("No big read article for Weekly Roundup")
-            return 0, None
-
         # Reset provider diagnostics and accepted-recipient state for this send attempt.
         self.resend_last_error = None
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+        if preview is True:
+            if (prepared_deliveries is not None or token_service is not None
+                    or not isinstance(to_emails, (list, tuple)) or len(to_emails) != 1):
+                raise NewsletterDeliveryError("invalid_weekly_delivery_contract")
+            recipients = [(to_emails[0], None)]
+        else:
+            if to_emails is not None or prepared_deliveries is None:
+                raise NewsletterDeliveryError("weekly_prepared_delivery_required")
+            deliveries = tuple(prepared_deliveries)
+            if deliveries and token_service is None:
+                raise NewsletterDeliveryError("invalid_weekly_delivery_contract")
+            # Validate the whole batch before rendering or either transport.
+            deliveries = tuple(validate_prepared_delivery(item, token_service)
+                               for item in deliveries)
+            recipients = [(item.context.email, item) for item in deliveries]
+        if not big_read or not recipients:
+            return 0, None
         
         # Generate tracking ID for this send
         tracking_id = self._generate_tracking_id("weekly_roundup")
@@ -1690,10 +1706,10 @@ Cheshire Today Jobs Team
         text_content = "\n".join(plain_lines).strip()
         
         batch_messages = []
-        for email in to_emails:
+        for email, delivery in recipients:
             recipient_tracking_id = self._recipient_tracking_id(tracking_id, email)
             prefs_url = f"{self.base_url}/newsletter/preferences"
-            unsub_url = f"{self.base_url}/unsubscribe"
+            unsub_url = delivery.human_unsubscribe_url if delivery is not None else f"{self.base_url}/unsubscribe"
             html_personal = (
                 html_content
                 .replace(tracking_id, recipient_tracking_id)
@@ -1711,19 +1727,22 @@ Cheshire Today Jobs Team
                 "html": html_personal,
                 "text": text_personal,
             })
+            if delivery is not None:
+                batch_messages[-1]["headers"] = delivery.native_headers
 
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
             success_count = 0
             for item in batch_messages:
-                if self._send_email(item["to"], item["subject"], item["html"], item["text"]):
+                headers = {"newsletter_headers": item["headers"]} if "headers" in item else {}
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"], **headers):
                     success_count += 1
                     self.last_accepted_recipients.append(
                         str(item.get("to") or "").strip()
                     )
         
-        logger.info(f"Weekly Roundup sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        logger.info(f"Weekly Roundup accepted {success_count}/{len(recipients)} prepared messages (tracking: {tracking_id})")
         return success_count, tracking_id
 
     def send_announcement_email(self, to_emails: List[str]) -> int:

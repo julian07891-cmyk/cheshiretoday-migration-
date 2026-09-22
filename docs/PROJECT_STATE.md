@@ -274,7 +274,7 @@ with explicit fresh transport exports. Covered h11 shapes preserve the original
 ASGI credential; httptools is supported by static inspection only. These defects
 were never deployed; this is local test evidence, not production privacy acceptance.
 
-Phase 2B **SLICE 1 DAILY BRIEF INTEGRATION IS LOCAL, UNCOMMITTED — FULL PHASE 2B
+Phase 2B **SLICE 1 DAILY BRIEF INTEGRATION IS COMMITTED LOCALLY AT `e91de2d` — FULL PHASE 2B
 INCOMPLETE — SECOND INDEPENDENT REVIEW COMPLETED AND LOCAL FINDINGS CORRECTED**.
 The first independent review found a material local artifact-binding defect:
 prepared human/native credentials were not cryptographically rebound to their
@@ -305,12 +305,34 @@ positive-acceptance-only cursor advancement remain unchanged. Bounded selected,
 prepared, skipped/reason and accepted counts distinguish preparation from provider
 acceptance; accepted recipients are snapshotted before persistence awaits.
 Single-address Daily tests use an explicit exactly-one non-direct preview boundary.
-Welcome, Weekly and all other content paths are unchanged. Focused Daily Slice 1
+At the Slice 1 checkpoint, Welcome, Weekly and other content paths were unchanged. Focused Daily Slice 1
 regression passes 41 tests. Offline newsletter plus Weekly idempotence regression
 after the second-review correction: 1,461 passed, zero failures; existing
-framework/datetime/gzip warning debt remains. Slice 1 remains unstaged and
-uncommitted pending final local diff/state review.
-Remaining slices include Weekly/batch diagnostic, Breaking News, announcement,
+framework/datetime/gzip warning debt remains. Slice 1 is committed locally, not
+pushed or deployed.
+
+Phase 2B **SLICE 2 WEEKLY ROUNDUP INTEGRATION IS LOCAL, UNCOMMITTED**.
+Scheduled subscriber batches and the real-subscriber batch diagnostic reuse the
+existing recipient context, single-issuance preparation and authenticated binding
+validator. Full candidate ambiguity validation precedes deduplication; selected
+identity/state/preparation-invalid slots are skipped without backfill. Direct
+HTML/text and native unsubscribe headers share the recipient-bound credential;
+the full prepared batch is validated before rendering or provider contact.
+The single-address Weekly test is explicit preview only, without identity lookup,
+direct credentials, native headers or subscriber accounting. Diagnostic sends
+continue without durable digest/ledger/cursor writes. Four Sunday slots, claim
+ownership, priority/engaged selection, caps, no-wraparound, article composition
+and positive-acceptance cursor advancement remain intact. Actual transport
+contact evidence is persisted; failed zero-acceptance outcomes with recorded
+provider contact cannot be reclaimed. Genuine pre-contact failures remain
+retryable; historical failed records without a contact marker retain the existing
+legacy reclaim rule. Sent/partial/sending/ambiguous states remain non-retryable.
+Offline Slice 2/Weekly idempotence verification: 51 passed, zero failures, with 5
+existing warnings. Full newsletter plus Weekly idempotence regression: 1,499 passed,
+zero failures, with 418 existing framework/datetime/gzip warnings. Slice 2 requires independent review; no production or deployment verification is
+claimed. Full CT-DEC-021 remains incomplete and POTENTIAL QUERY LOG EXPOSURE remains.
+
+Remaining slices include Breaking News, announcement,
 site updates, onboarding and manual campaigns. Preserve announcement preference
 mutation behavior; later onboarding must mark only accepted recipients without
 rewriting created_at. No production data, email, push or deployment was involved.
