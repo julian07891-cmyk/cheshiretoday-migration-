@@ -18,6 +18,7 @@ import logging
 import httpx
 
 from app.newsletter_management_email import NewsletterManagementEmailMessage
+from app.newsletter_delivery import _NewsletterHeaders
 
 logger = logging.getLogger(__name__)
 
@@ -253,11 +254,17 @@ class EmailService:
             "Authorization": f"Bearer {self.resend_api_key}",
             "Content-Type": "application/json",
         }
+        # Validate/copy opt-in headers before any provider contact. A malformed
+        # later message must not raise after earlier chunks were already sent.
+        newsletter_headers = [
+            _NewsletterHeaders(item["headers"]) if "headers" in item else None
+            for item in batch_messages
+        ]
 
         for i in range(0, len(batch_messages), 100):
             chunk = batch_messages[i:i+100]
             payload = []
-            for item in chunk:
+            for offset, item in enumerate(chunk):
                 email_payload = {
                     "from": self._resend_from_header(),
                     "to": [item["to"]],
@@ -268,6 +275,8 @@ class EmailService:
                     email_payload["text"] = item["text"]
                 if self.reply_to:
                     email_payload["reply_to"] = self.reply_to
+                if newsletter_headers[i + offset] is not None:
+                    email_payload["headers"] = newsletter_headers[i + offset].as_transport_dict()
                 payload.append(email_payload)
 
             chunk_number = i // 100 + 1
@@ -318,12 +327,17 @@ class EmailService:
         return success_count
 
 
-    def _send_email(self, to_email, subject, html_content, text_content=None):
+    def _send_email(self, to_email, subject, html_content, text_content=None, *, newsletter_headers=None):
         """Send an email via SMTP (supports Gmail, GoDaddy, etc.)"""
         import smtplib
         import ssl
         from email.mime.multipart import MIMEMultipart
         from email.mime.text import MIMEText
+
+        message_headers = (
+            _NewsletterHeaders(newsletter_headers)
+            if newsletter_headers is not None else None
+        )
 
         if not getattr(self, 'smtp_enabled', False):
             logger.info('SMTP disabled (SMTP_ENABLED not true) — skipping send')
@@ -347,6 +361,8 @@ class EmailService:
         msg["Subject"] = subject
         msg["From"] = f"{self.from_name} <{self.from_email}>"
         msg["To"] = to_email
+        for name, value in (message_headers.as_transport_dict() if message_headers is not None else {}).items():
+            msg[name] = value
 
         # Prefer plain text fallback if provided
         if text_content:

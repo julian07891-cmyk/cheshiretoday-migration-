@@ -455,7 +455,7 @@ describes the decision at current repository HEAD, not an unverified live claim.
 ### CT-DEC-021 — Direct newsletter unsubscribe with secure recovery retained
 
 - **Date:** 21 September 2026.
-- **Status:** **DESIGN APPROVED — IMPLEMENTATION PENDING**.
+- **Status:** **DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE**.
 - **Problem:** Generic newsletter footers unnecessarily require email re-entry
   and a second email for normal unsubscribe.
 - **Decision:** Use a distinct signed subscriber-specific direct credential to
@@ -482,7 +482,17 @@ describes the decision at current repository HEAD, not an unverified live claim.
   excluded from native headers. Live identity coverage, query-log privacy and
   delivered authentication/client evidence remain production gates, not local
   implementation blockers. See the architecture record for audit bounds.
-- **Boundaries:** No implementation or production acceptance yet. CT-QA-2026-007
+- **Local progress:** Phase 1 committed as `516fa29`, not pushed or deployed.
+  Phase 2A shared delivery infrastructure and narrow Uvicorn access-log protection
+  are privacy-corrected locally, unstaged and re-reviewed; 1,407 newsletter offline tests
+  passed with no failures, with Python compilation and tracked `git diff --check` also passing. Covered access-log shapes fail
+  closed and header containers have redacted diagnostics with explicit exports.
+  Neither local defect was deployed; upstream privacy is unverified and overall
+  **POTENTIAL QUERY LOG EXPOSURE** remains. Phase 2B is not implemented. Existing
+  builders/selectors and generic links remain unchanged. No decision completion
+  or production readiness is claimed. Render auto-deploy is enabled on commit
+  for `full-scrape-prod`: no push without explicit deployment authorization.
+- **Boundaries:** Full implementation and production acceptance remain pending. CT-QA-2026-007
   stays closed; Apple Mail mechanism remains unproven and CT-QA-2026-008 proposed
   only. No QA totals change or legal/compliance claim.
 - **Sources:** Owner approval at baseline `52c9b64e3940655177002cda6f0fe3613bc0b8ad`;

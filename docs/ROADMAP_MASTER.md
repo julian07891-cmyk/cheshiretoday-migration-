@@ -4,13 +4,27 @@
 
 ## Document purpose
 
-Direct newsletter unsubscribe is **DESIGN APPROVED — IMPLEMENTATION PENDING**
+Direct newsletter unsubscribe is **DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE**
 under [CT-DEC-021](DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
 Local prerequisites now specify a strict signed direct class, 90-day lifetime,
 version-guarded mutation and fail-closed missing identities; preserve signup,
 preferences and recovery. Live identity coverage, native logging and delivered-header
 acceptance remain gates. The separate Apple Mail observation is not closed by
 this design; current QA totals are unchanged.
+
+Phase 1 is committed locally as `516fa29`, **NOT PUSHED — NOT DEPLOYED**.
+Phase 2A shared delivery infrastructure is privacy-corrected locally, unstaged and
+re-reviewed, with 1,407 newsletter offline tests passing with no failures; Python compilation
+and tracked `git diff --check` also passed. Covered Uvicorn shapes fail closed and native-header containers
+have safe diagnostics; both corrected defects were local and never deployed.
+Infrastructure privacy is unverified: **POTENTIAL QUERY LOG EXPOSURE** remains.
+**Next:** separately review and authorize Phase 2B delivery-path integration before
+implementation. Phase 2B is not implemented; existing builders and selectors remain
+unchanged. Full CT-DEC-021 is incomplete and not production-ready. Application
+access-log filtering does not close upstream query privacy, real Mongo, identity
+coverage or delivered-header/DKIM/Apple Mail gates. Render auto-deploy is enabled
+on commit for `full-scrape-prod`: **NO PUSH WITHOUT EXPLICIT DEPLOYMENT
+AUTHORIZATION**. No QA accounting change is made.
 
 Translate verified gaps and protected operating gates into prioritised work without promoting speculative features above security or production stability.
 

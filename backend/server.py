@@ -33,6 +33,10 @@ _PARENT_DIR = _THIS_DIR.parent
 # Ensure imports work both locally and on Render
 if str(_THIS_DIR) not in sys.path: sys.path.insert(0, str(_THIS_DIR))
 if str(_PARENT_DIR) not in sys.path: sys.path.insert(0, str(_PARENT_DIR))
+from app.newsletter_access_logging import install_newsletter_access_log_filter
+
+install_newsletter_access_log_filter()
+
 try:
     from app import rss_routes
 except ModuleNotFoundError:

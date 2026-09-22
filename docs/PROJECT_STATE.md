@@ -233,7 +233,7 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ### Approved design — direct newsletter unsubscribe
 
-**DESIGN APPROVED — IMPLEMENTATION PENDING** under
+**DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE** under
 [CT-DEC-021](DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
 Normal newsletter links will use distinct version-bound signed credentials and
 explicit confirmation; GET remains non-mutating. Signup/preferences stay unchanged
@@ -245,7 +245,7 @@ is transactional onboarding, without native headers. Live identity coverage,
 native query-log privacy and delivered DKIM/header/client checks are
 production-readiness gates. See [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md).
 Phase 1: **SECURITY FOUNDATION IMPLEMENTED LOCALLY — FULL CT-DEC-021 IMPLEMENTATION
-INCOMPLETE**. The unstaged local implementation adds strict six-claim issuance and
+INCOMPLETE**. The Phase 1 implementation committed locally as `516fa29` adds strict six-claim issuance and
 validation, authenticated direct/recovery dispatch, and a shared atomic
 identity/version/type-guarded direct unsubscribe processor for confirmation and
 one-click POST. Focused fixture tests cover stale/reactivated versions, mutation-
@@ -255,6 +255,40 @@ Query logging remains **POTENTIAL QUERY LOG EXPOSURE**; builder/transport wiring
 identity coverage and delivered-header/DKIM/client acceptance remain later gates.
 CT-DEC-021 is not fully implemented or production-ready. CT-QA-2026-007 stays
 closed and Apple Mail remains a separate unproven mechanism.
+
+Phase 1 is **NOT PUSHED — NOT DEPLOYED**. Phase 2A delivery infrastructure is
+**PRIVACY CORRECTED LOCALLY, UNSTAGED — RE-REVIEWED**: immutable validated
+recipient contexts, candidate-only ambiguity rejection, single-issuance direct
+artifacts, strict opt-in per-message Resend/SMTP headers and narrowly scoped
+Uvicorn one-click query redaction. Phase 2B delivery integration is **NOT
+IMPLEMENTED**; all existing selectors, builders, generic links, Welcome and
+management flows remain unchanged. No scheduler bookkeeping or Phase 1 token
+service change was made. Final local re-review verification passed 1,407 newsletter tests with
+no failures; Python compilation and tracked `git diff --check` also passed. Existing
+framework/datetime/gzip warning debt remains.
+The access-log check uses pinned Uvicorn 0.25.0 with an in-memory HTTP transport;
+no production server or email transport was contacted.
+The two local review findings are corrected: origin/absolute-form one-click
+queries are removed, identifiable sensitive unsupported records and sanitizer
+failures are suppressed, and native-header containers have redacted diagnostics
+with explicit fresh transport exports. Covered h11 shapes preserve the original
+ASGI credential; httptools is supported by static inspection only. These defects
+were never deployed; this is local test evidence, not production privacy acceptance.
+
+The last recorded production commit is `c2a6fb0`; this offline correction did not
+re-inspect production. Render service
+`cheshiretoday-migration-` (`srv-d5virmm3jp1c73c9d6tg`) is connected to
+`julian07891-cmyk/cheshiretoday-migration-`, branch `full-scrape-prod`, with
+**AUTO-DEPLOY ENABLED — ON COMMIT: NO PUSH WITHOUT EXPLICIT DEPLOYMENT
+AUTHORIZATION**. Phase 2A is not committed, pushed or deployed. Full CT-DEC-021
+remains incomplete and not production-ready. Live identity/index coverage, real
+Mongo/BSON/concurrency evidence, upstream Render/proxy/CDN/APM log privacy,
+delivered headers/DKIM, Apple Mail acceptance and controlled production persistence
+remain gates. Overall **POTENTIAL QUERY LOG EXPOSURE** remains; the local filter
+only addresses the Uvicorn access-record boundary. CT-QA-2026-007 remains closed;
+the historical Apple Mail observation is **OBSERVED COMPATIBILITY FAILURE — ROOT
+CAUSE UNPROVEN**, and proposed CT-QA-2026-008 is **NOT REGISTERED**. QA accounting
+is unchanged.
 
 ### Generic management entry closure — 20 September 2026
 

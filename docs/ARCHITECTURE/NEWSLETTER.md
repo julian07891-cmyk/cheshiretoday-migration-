@@ -90,7 +90,7 @@ email URL generation was unchanged and the precise link transformation is unprov
 
 ## Approved direct unsubscribe contract — 21 September 2026
 
-**DESIGN APPROVED — IMPLEMENTATION PENDING** under
+**DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE** under
 [CT-DEC-021](../DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
 Normal subscriber-newsletter flow: signed footer link → confirmation page →
 explicit Confirm unsubscribe → inactive subscription. No email re-entry or second
@@ -189,7 +189,8 @@ required; fragment approval does not resolve the separate observed CTA mechanism
   announcements/site updates use SMTP builders. The manual campaign route is an
   additional subscriber-content path requiring explicit inclusion when sent to the
   subscriber audience. All need per-recipient context and HTML/text/footer/header
-  review; existing adapters do not forward native unsubscribe headers.
+  review. Phase 2A now provides opt-in adapter support locally; existing builders
+  do not yet supply native unsubscribe headers.
 - Welcome is classified **transactional onboarding**, excluded from native headers:
   it follows signup and explains the subscription, rather than serving as a content
   digest. Existing visible management links/copy stay unchanged. Security/management,
@@ -208,15 +209,67 @@ Moving the secret into a path still exposes it to access logs; a fragment cannot
 reach the native server and the protocol body is fixed, so retain the approved
 query transport rather than inventing a nonstandard header/body credential.
 Provider receipt of the bearer is inherent; never claim zero provider visibility.
-Resend needs per-message `headers` forwarding in `_send_resend_batch`; SMTP needs
-explicit approved message headers in `_send_email`. Allocate recipient-specific
+Resend now supports opt-in per-message `headers` forwarding in `_send_resend_batch`
+locally; SMTP supports explicit `newsletter_headers` in `_send_email`. Allocate recipient-specific
 objects; security mail must not inherit defaults. Delivered DKIM, client behaviour,
 upstream log privacy and active-identity coverage remain acceptance gates, not
 blockers to isolated local implementation. No live database/log inspection occurred.
 
-No implementation or production acceptance is claimed. CT-QA-2026-007 stays
+Full implementation and production acceptance are not claimed. CT-QA-2026-007 stays
 closed; CT-QA-2026-008 remains proposed only, and the Apple Mail transformation
 remains unproven. No legal/compliance claim or QA accounting change is made.
+
+### Phase 2A local delivery infrastructure
+
+Phase 1 is committed locally as `516fa29`, not pushed or deployed. Phase 2A is
+privacy-corrected locally, unstaged and re-reviewed; Phase 2B is not implemented.
+`newsletter_delivery.py` owns frozen, repr-safe three-field recipient contexts,
+bounded validation outcomes, supplied-candidate ambiguity detection and immutable
+direct artifacts. The email policy mirrors the existing server validator under a
+parity test, without changing selectors. Positive Python/BSON integers are accepted;
+bool/string/float coercion is forbidden. Candidate preparation preserves order and
+rejects all detected conflicting-address or repeated canonical-management-ID peers,
+including identical repeated IDs; it is not a database-wide uniqueness audit.
+
+Artifact preparation calls the Phase 1 issuer once and reuses the credential for
+the canonical human fragment and native query URL. Sensitive fields are excluded
+from repr, and the immutable internal header Mapping redacts repr/str, including
+nested and exception/log interpolation. Its explicit `as_transport_dict()` export
+returns a fresh sensitive dictionary only for transport use. Explicit value lookup
+and exported dictionaries are not safe to log or serialize generically. Validation
+uses temporary copies; no mutable dictionary is retained in the header container.
+Errors contain fixed categories. These are internal objects, not log/API payloads.
+Header validation permits exactly the two native names, canonical HTTPS endpoint,
+one token parameter and the fixed POST value; it rejects injection, alternate
+destinations and malformed compact-JWT syntax. It does not replace endpoint
+signature/claim validation. Resend prevalidates all supplied headers before contact,
+then preserves 100-message chunks and existing acceptance/failure behavior. SMTP
+uses keyword-only opt-in headers; existing callers receive none. No new send-result
+type or scheduler-accounting migration is necessary for this phase.
+
+`newsletter_access_logging.py` installs an idempotent filter during server import.
+It removes the entire query from the pinned Uvicorn five-argument access record
+for the one-click path, including origin/absolute-form and trailing-slash targets,
+without modifying ASGI scope or unrelated records. Identifiable sensitive
+preformatted/unsupported records and sanitizer failures are suppressed, not emitted
+raw. Real h11 protocol/formatter tests use an in-memory transport and confirm
+original queries still reach the synthetic ASGI endpoint, including signed-token
+verification; protocol-rejected requests never reach ASGI. Route lookalikes remain
+unchanged. Uvicorn 0.25.0 httptools is supported by static inspection only.
+Both material local-review findings are corrected and were never deployed.
+This establishes local protection for covered shapes only, not infrastructure
+privacy: overall **POTENTIAL QUERY LOG EXPOSURE** remains.
+
+All current content builders, generic unsubscribe destinations, subscriber
+selection, transactional copy and accounting remain unchanged. Phase 2B must also
+address missing visible Breaking News/announcement footers, accepted-only onboarding
+markers, mandatory subscriber-campaign footers and bounded outer exception
+diagnostics. Broader historical `str(e)` cleanup is not part of Phase 2A.
+Final local re-review verification: 1,407 newsletter tests passed with no failures; Python
+compilation and tracked `git diff --check` also passed. Existing framework/datetime/gzip
+warnings remain. Real Mongo and all production gates above
+remain outstanding. Render auto-deploy is enabled on commit for `full-scrape-prod`;
+no push is permitted without explicit production-deployment authorization.
 
 ## Failure boundaries
 
