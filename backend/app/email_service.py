@@ -485,7 +485,7 @@ class EmailService:
                     <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; padding: 20px; margin: 25px 0;">
                         <h3 style="color: #166534; margin: 0 0 10px 0; font-size: 16px;">🏠 We Cover:</h3>
                         <p style="color: #166534; margin: 0; font-size: 14px;">
-                            <strong>Cheshire</strong> • Crewe • Macclesfield • Wilmslow • Chester • Warrington • Nantwich • Congleton • Northwich • Knutsford & more
+                            <strong>Cheshire</strong> • Macclesfield • Wilmslow • Knutsford • Alderley Edge • Prestbury • Congleton • Nantwich & more
                         </p>
                     </div>
                     
@@ -544,7 +544,7 @@ class EmailService:
         🚨 Breaking News Alerts - Rare alerts for major incidents
         
         WE COVER:
-        Cheshire, Crewe, Macclesfield, Wilmslow, Chester, Warrington, Nantwich, Congleton, Northwich, Knutsford & more
+        Cheshire, Macclesfield, Wilmslow, Knutsford, Alderley Edge, Prestbury, Congleton, Nantwich & more
         
         Your subscription is active now. No confirmation click is required.
         
