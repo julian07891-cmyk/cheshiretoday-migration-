@@ -1908,8 +1908,22 @@ Cheshire Today Jobs Team
 
 # Global email service instance
 
-    def send_site_update_part1(self, to_emails: List[str]) -> int:
+    def send_site_update_part1(self, to_emails: List[str] = None, *,
+                               prepared_deliveries=None, token_service=None) -> int:
         """Send Site Update (Part 1) — calm authority announcement."""
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+        if to_emails is not None or prepared_deliveries is None:
+            raise NewsletterDeliveryError("site_update_prepared_delivery_required")
+        deliveries = tuple(prepared_deliveries)
+        if deliveries and token_service is None:
+            raise NewsletterDeliveryError("invalid_site_update_delivery_contract")
+        deliveries = tuple(validate_prepared_delivery(item, token_service) for item in deliveries)
+        if not deliveries:
+            return 0
         subject = "Cheshire Today is evolving — here’s what it means for you"
         tracking_id = self._generate_tracking_id("SiteUpdatePart1")
 
@@ -1924,23 +1938,58 @@ Cheshire Today Jobs Team
           <li>Improved performance and reliability across all devices</li>
         </ul>
         <p>Update your preferences: __PREFS_URL__</p>
-        <p>Unsubscribe: __UNSUB_URL__</p>
+        <p><a href="__UNSUB_URL__">Unsubscribe</a></p>
         {self._get_tracking_pixel(tracking_id)}
         </body></html>"""
 
-        success_count = 0
-        for email in to_emails:
+        text_content = (
+            "Cheshire Today has evolved.\n\n"
+            "We’ve rebuilt the platform to focus more clearly on what truly affects life across Cheshire.\n"
+            "What this means for you:\n"
+            "- Stronger focus on Cheshire business and economic impact\n"
+            "- Clearer reporting on finance, tax and policy changes\n"
+            "- More insight into AI and technology shaping the region\n"
+            "- Improved performance and reliability across all devices\n\n"
+            "Update your preferences: __PREFS_URL__\nUnsubscribe: __UNSUB_URL__"
+        )
+        batch_messages = []
+        for delivery in deliveries:
             prefs_url = f"{self.base_url}/newsletter/preferences"
-            unsub_url = f"{self.base_url}/unsubscribe"
+            unsub_url = delivery.human_unsubscribe_url
             html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
+            text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+            batch_messages.append({"to": delivery.context.email, "subject": subject,
+                                   "html": html_personal, "text": text_personal,
+                                   "headers": delivery.native_headers})
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"],
+                                    newsletter_headers=item["headers"]):
+                    success_count += 1
+                    self.last_accepted_recipients.append(item["to"])
 
-        logger.info(f"Site Update Part 1 sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        logger.info("Site Update Part 1 accepted %s/%s prepared messages", success_count, len(deliveries))
         return success_count
 
-    def send_site_update_part2(self, to_emails: List[str]) -> int:
+    def send_site_update_part2(self, to_emails: List[str] = None, *,
+                               prepared_deliveries=None, token_service=None) -> int:
         """Send Site Update (Part 2) — reinforcement email."""
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+        if to_emails is not None or prepared_deliveries is None:
+            raise NewsletterDeliveryError("site_update_prepared_delivery_required")
+        deliveries = tuple(prepared_deliveries)
+        if deliveries and token_service is None:
+            raise NewsletterDeliveryError("invalid_site_update_delivery_contract")
+        deliveries = tuple(validate_prepared_delivery(item, token_service) for item in deliveries)
+        if not deliveries:
+            return 0
         subject = "What’s new on Cheshire Today"
         tracking_id = self._generate_tracking_id("SiteUpdatePart2")
 
@@ -1954,19 +2003,39 @@ Cheshire Today Jobs Team
         </ul>
         <p>If there’s a topic you’d like us to explore, reply to this email.</p>
         <p>Update your preferences: __PREFS_URL__</p>
-        <p>Unsubscribe: __UNSUB_URL__</p>
+        <p><a href="__UNSUB_URL__">Unsubscribe</a></p>
         {self._get_tracking_pixel(tracking_id)}
         </body></html>"""
 
-        success_count = 0
-        for email in to_emails:
+        text_content = (
+            "What’s new on Cheshire Today\n\n"
+            "- Deeper local business coverage\n"
+            "- Practical finance and tax explainers\n"
+            "- AI & technology guides relevant to Cheshire\n"
+            "- Clearer categorisation and improved reading experience\n\n"
+            "If there’s a topic you’d like us to explore, reply to this email.\n\n"
+            "Update your preferences: __PREFS_URL__\nUnsubscribe: __UNSUB_URL__"
+        )
+        batch_messages = []
+        for delivery in deliveries:
             prefs_url = f"{self.base_url}/newsletter/preferences"
-            unsub_url = f"{self.base_url}/unsubscribe"
+            unsub_url = delivery.human_unsubscribe_url
             html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
-            if self._send_email(email, subject, html_personal):
-                success_count += 1
+            text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+            batch_messages.append({"to": delivery.context.email, "subject": subject,
+                                   "html": html_personal, "text": text_personal,
+                                   "headers": delivery.native_headers})
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"],
+                                    newsletter_headers=item["headers"]):
+                    success_count += 1
+                    self.last_accepted_recipients.append(item["to"])
 
-        logger.info(f"Site Update Part 2 sent to {success_count}/{len(to_emails)} subscribers (tracking: {tracking_id})")
+        logger.info("Site Update Part 2 accepted %s/%s prepared messages", success_count, len(deliveries))
         return success_count
 
 email_service = EmailService()

@@ -1,7 +1,6 @@
 """Offline announcement delivery and deliberately broad migration semantics."""
 import asyncio
 import ast
-from pathlib import Path
 import subprocess
 from types import SimpleNamespace
 
@@ -220,11 +219,12 @@ def test_private_failure_mutation_order(monkeypatch, caplog, failure):
     assert "PRIVATE_TOKEN" not in caplog.text and "secret@" not in caplog.text
 
 
-def test_only_announcement_functions_changed():
+def test_announcement_commit_only_changed_announcement_functions():
     for path, allowed in [("backend/server.py", "send_migration_announcement"),
                           ("backend/app/email_service.py", "send_announcement_email")]:
         old = subprocess.check_output(["git", "show", "14e2f01:" + path], text=True)
-        new = Path(path).read_text()
+        # This historical slice is committed; later slices have their own live scope guard.
+        new = subprocess.check_output(["git", "show", "14d05a9:" + path], text=True)
         def without_target(source):
             tree = ast.parse(source)
             for node in ast.walk(tree):

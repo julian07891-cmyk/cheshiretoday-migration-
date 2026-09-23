@@ -357,7 +357,8 @@ idempotence regression passed 1,537 tests with zero failures and 419 existing
 framework/datetime/gzip warnings. Python compilation and diff whitespace
 checks passed. This is local test evidence only.
 
-Phase 2B **SLICE 4 MIGRATION ANNOUNCEMENT INTEGRATION IS LOCAL, UNCOMMITTED**.
+Phase 2B **SLICE 4 MIGRATION ANNOUNCEMENT INTEGRATION IS COMMITTED LOCALLY AT
+`14d05a9` — NOT PUSHED/DEPLOYED**.
 The authenticated endpoint preserves the active=True OR active-missing query and
 10,000 fetched delivery positions. Missing/non-string/empty emails and invalid
 identity/state positions are bounded skips without backfill; explicit active=True
@@ -382,9 +383,49 @@ and tracked/new-test whitespace checks passed. Scope tests confirm other product
 functions are unchanged; migration fixtures exercise the full population beyond
 the 10,000 delivery limit, zero/partial acceptance and sender exceptions.
 
-Remaining slices include site updates, onboarding and manual campaigns.
-Later onboarding must mark only accepted recipients without
-rewriting created_at. No production data, email, push or deployment was involved.
+Phase 2B **SLICE 5 SITE UPDATE PARTS 1/2 AND ONBOARDING INTEGRATION IS LOCAL,
+UNCOMMITTED**. Baseline verified at `14d05a9b98e991e864ef16ac0e7e63cbfb71723f`
+on `full-scrape-prod`, 0 behind/6 ahead of the locally recorded origin ref, with
+only the two protected local files initially untracked. Both Site Update senders
+now require prepared direct deliveries and validate the complete set before
+rendering or transport. Subjects, message meaning, tracking pixels and generic
+preferences URLs remain unchanged; HTML/text/native headers share each recipient's
+direct credential without click wrapping. SMTP and Resend preserve per-recipient
+isolation and reset/contact/acceptance evidence. No identity provisioning or
+generic-unsubscribe fallback was introduced.
+
+Manual endpoints retain the active=True OR active-missing Mongo predicate,
+10,000 fetched-position limit, digest identities/date semantics, targeted counts,
+and send → digest → global-flag ordering, including normal zero/partial acceptance
+and unavailable-transport returns. Invalid fetched positions are counted without
+replacement; only explicit active=True can prepare. Diagnostics are aggregate and
+public failures are fixed/private. The onboarding default-off gate is retained
+and returns its intended fixed 404 outside the delivery error handler. Dry runs
+remain send/preparation-free. Day 3/7 rules, independent parts, 20,000 fetch cap,
+case-insensitive deterministic deduplication and the skip-only-explicit-False
+eligibility rule are retained. Live preparation inspects the full fetched identity
+set before deduplication. Selected invalid state/identity records fail closed.
+Each part immediately snapshots accepted recipients/contact evidence before any
+await; only accepted recipients receive that part's marker, using their stored
+email spelling. Zero acceptance writes no markers. `created_at` is never written;
+its fallback to `subscribed_at` remains age-calculation-only. Concurrency and
+unrelated legacy dead code were not redesigned or cleaned up.
+
+Offline Slice 5 verification: **175 focused tests passed (5 warnings)**;
+the newsletter plus Weekly idempotence suite passed **1,712 tests (421 warnings)**,
+with zero failures. Existing framework/datetime/gzip warning debt remains outside
+scope. Python compilation and tracked/new-test whitespace checks passed. Tests
+cover both transports, the 100-message Resend boundary, complete-batch security,
+Mongo scalar/array active-query semantics, fetched slots/caps, private failures,
+global flag ordering, onboarding eligibility, accepted-only marking and snapshots
+across awaits. The historical Announcement scope assertion is pinned to its
+committed slice; a new live Slice 5 AST guard verifies all other production
+functions, including Announcement, Daily, Weekly and Breaking News, are unchanged.
+No production/deployment verification is claimed, no subscriber data was inspected
+and no real email was sent. Full CT-DEC-021 remains incomplete and
+**POTENTIAL QUERY LOG EXPOSURE** remains. Manual campaigns and production-readiness
+gates remain outstanding. Nothing was staged, committed, pushed or deployed for
+Slice 5; the protected local files were untouched.
 
 The last recorded production commit is `c2a6fb0`; this offline correction did not
 re-inspect production. Render service

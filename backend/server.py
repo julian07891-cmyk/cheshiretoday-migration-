@@ -14884,13 +14884,19 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
     try:
         subscribers = await db.subscribers.find(
             {"$or": [{"active": True}, {"active": {"$exists": False}}]},
-            {"_id": 0, "email": 1}
+            {"_id": 0, "email": 1, "active": 1,
+             "newsletter_management_id": 1, "newsletter_token_version": 1}
         ).to_list(10000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
 
-        subscriber_emails = [s.get("email") for s in subscribers if s.get("email")]
-        success_count = email_service.send_site_update_part1(to_emails=subscriber_emails)
+        candidates = _newsletter_candidate_contexts(subscribers)
+        subscriber_emails = [s.get("email") if isinstance(s.get("email"), str) else ""
+                             for s in subscribers]
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
+        success_count = email_service.send_site_update_part1(
+            prepared_deliveries=deliveries, token_service=token_service)
+        provider_contacted = bool(email_service.last_provider_contacted)
 
         await db.digest_log.insert_one({
             "sent_at": datetime.now(timezone.utc),
@@ -14898,7 +14904,10 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
             "type": "SiteUpdatePart1",
             "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subscribers_count": len(subscriber_emails),
-            "success_count": success_count
+            "success_count": success_count,
+            "accepted_count": success_count,
+            "provider_contacted": provider_contacted,
+            **delivery_counts,
         })
 
 
@@ -14914,8 +14923,8 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
             "subscribers_targeted": len(subscriber_emails)
         }
     except Exception as e:
-        logger.error(f"Error sending site update part 1: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Site Update Part 1 delivery failed")
+        raise HTTPException(status_code=500, detail="Site Update Part 1 unavailable") from None
 
 
 
@@ -14925,13 +14934,19 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
     try:
         subscribers = await db.subscribers.find(
             {"$or": [{"active": True}, {"active": {"$exists": False}}]},
-            {"_id": 0, "email": 1}
+            {"_id": 0, "email": 1, "active": 1,
+             "newsletter_management_id": 1, "newsletter_token_version": 1}
         ).to_list(10000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
 
-        subscriber_emails = [s.get("email") for s in subscribers if s.get("email")]
-        success_count = email_service.send_site_update_part2(to_emails=subscriber_emails)
+        candidates = _newsletter_candidate_contexts(subscribers)
+        subscriber_emails = [s.get("email") if isinstance(s.get("email"), str) else ""
+                             for s in subscribers]
+        deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
+        success_count = email_service.send_site_update_part2(
+            prepared_deliveries=deliveries, token_service=token_service)
+        provider_contacted = bool(email_service.last_provider_contacted)
 
         await db.digest_log.insert_one({
             "sent_at": datetime.now(timezone.utc),
@@ -14939,7 +14954,10 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
             "type": "SiteUpdatePart2",
             "date_key": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "subscribers_count": len(subscriber_emails),
-            "success_count": success_count
+            "success_count": success_count,
+            "accepted_count": success_count,
+            "provider_contacted": provider_contacted,
+            **delivery_counts,
         })
 
 
@@ -14955,8 +14973,8 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
             "subscribers_targeted": len(subscriber_emails)
         }
     except Exception as e:
-        logger.error(f"Error sending site update part 2: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Site Update Part 2 delivery failed")
+        raise HTTPException(status_code=500, detail="Site Update Part 2 unavailable") from None
 
 
 @api_router.post("/admin/run-onboarding-emails")
@@ -14970,19 +14988,22 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
     dry_run=1: returns counts + sample recipients, sends nothing
     dry_run=0: sends + writes sent_at markers + logs to digest_log
     """
+    # Disabled by default (manual one-time buttons remain available).
+    if os.getenv("ENABLE_ONBOARDING_AUTOMATION", "0") != "1":
+        raise HTTPException(status_code=404, detail="Not Found")
     try:
-
-        # Disabled by default (we are using manual one-time buttons post-domain-swap)
-        if os.getenv("ENABLE_ONBOARDING_AUTOMATION", "0") != "1":
-            raise HTTPException(status_code=404, detail="Not Found")
         now = datetime.now(timezone.utc)
 
         # Pull subscribers (keep it light: only fields we need)
         subs = await db.subscribers.find(
             {},
             {"_id": 0, "email": 1, "created_at": 1, "subscribed_at": 1,
-             "active": 1, "site_update_part1_sent_at": 1, "site_update_part2_sent_at": 1}
+             "active": 1, "site_update_part1_sent_at": 1, "site_update_part2_sent_at": 1,
+             "newsletter_management_id": 1, "newsletter_token_version": 1}
         ).to_list(20000)
+
+        # Live preparation sees every fetched identity before due-list deduplication.
+        candidates = _newsletter_candidate_contexts(subs) if int(dry_run) != 1 else {}
 
         def parse_iso(dt_str: str):
             if not dt_str:
@@ -14998,7 +15019,8 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
         due_part2 = []
 
         for sub in subs:
-            email = (sub.get("email") or "").strip().lower()
+            raw_email = sub.get("email")
+            email = raw_email.strip().lower() if isinstance(raw_email, str) else ""
             if not email:
                 continue
 
@@ -15038,36 +15060,59 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
         if int(dry_run) == 1:
             return preview
 
+        def accepted_stored_emails(accepted):
+            # Preserve original database spelling while matching accepted contexts.
+            accepted = set(accepted)
+            return [sub["email"] for sub in subs
+                    if isinstance(sub.get("email"), str)
+                    and sub["email"].strip().lower() in accepted]
+
         # Actually send
         sent1 = 0
         sent2 = 0
 
         if due_part1:
-            sent1 = email_service.send_site_update_part1(to_emails=due_part1)
-            await db.subscribers.update_many(
-                {"email": {"$in": due_part1}},
-                {"$set": {"site_update_part1_sent_at": now.isoformat(), "created_at": {"$ifNull": ["$created_at", "$subscribed_at"]}}}
-            )
+            deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(due_part1, candidates)
+            sent1 = email_service.send_site_update_part1(
+                prepared_deliveries=deliveries, token_service=token_service)
+            accepted = tuple(email_service.last_accepted_recipients)
+            provider_contacted = bool(email_service.last_provider_contacted)
+            if accepted:
+                await db.subscribers.update_many(
+                    {"email": {"$in": accepted_stored_emails(accepted)}},
+                    {"$set": {"site_update_part1_sent_at": now.isoformat()}}
+                )
             await db.digest_log.insert_one({
                 "sent_at": now,
                 "digest_time": "AutoOnboarding",
                 "type": "SiteUpdatePart1Auto",
                 "subscribers_count": len(due_part1),
-                "success_count": sent1
+                "success_count": sent1,
+                "accepted_count": len(accepted),
+                "provider_contacted": provider_contacted,
+                **delivery_counts,
             })
 
         if due_part2:
-            sent2 = email_service.send_site_update_part2(to_emails=due_part2)
-            await db.subscribers.update_many(
-                {"email": {"$in": due_part2}},
-                {"$set": {"site_update_part2_sent_at": now.isoformat(), "created_at": {"$ifNull": ["$created_at", "$subscribed_at"]}}}
-            )
+            deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(due_part2, candidates)
+            sent2 = email_service.send_site_update_part2(
+                prepared_deliveries=deliveries, token_service=token_service)
+            accepted = tuple(email_service.last_accepted_recipients)
+            provider_contacted = bool(email_service.last_provider_contacted)
+            if accepted:
+                await db.subscribers.update_many(
+                    {"email": {"$in": accepted_stored_emails(accepted)}},
+                    {"$set": {"site_update_part2_sent_at": now.isoformat()}}
+                )
             await db.digest_log.insert_one({
                 "sent_at": now,
                 "digest_time": "AutoOnboarding",
                 "type": "SiteUpdatePart2Auto",
                 "subscribers_count": len(due_part2),
-                "success_count": sent2
+                "success_count": sent2,
+                "accepted_count": len(accepted),
+                "provider_contacted": provider_contacted,
+                **delivery_counts,
             })
 
         return {
@@ -15078,8 +15123,8 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
         }
 
     except Exception as e:
-        logger.error(f"Error running onboarding emails: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Onboarding email delivery failed")
+        raise HTTPException(status_code=500, detail="Onboarding emails unavailable") from None
 
         subscriber_emails = [s.get("email") for s in subscribers if s.get("email")]
         success_count = email_service.send_site_update_part2(to_emails=subscriber_emails)
