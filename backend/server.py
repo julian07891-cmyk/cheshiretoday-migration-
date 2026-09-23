@@ -15159,26 +15159,27 @@ class CampaignEmailRequest(BaseModel):
 @api_router.post("/admin/send-campaign-email")
 async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = Depends(get_admin_auth)):
     """Send a manual campaign email. mode=test sends only to test_email; mode=all sends to all subscribers."""
+    subject = (request.subject or "").strip()
+    if not subject:
+        raise HTTPException(status_code=400, detail="Subject is required")
+
+    html = (request.html or "").strip()
+    text = (request.text or "").strip()
+    if not html and not text:
+        raise HTTPException(status_code=400, detail="Provide at least html or text content")
+
+    mode = (request.mode or "test").strip().lower()
+    if mode not in ("test", "all"):
+        raise HTTPException(status_code=400, detail="mode must be 'test' or 'all'")
+    if mode == "test":
+        test_email = (request.test_email or ADMIN_USERNAME or "").strip().lower()
+        if not test_email:
+            raise HTTPException(status_code=400, detail="test_email is required for test mode")
+
     try:
-        subject = (request.subject or "").strip()
-        if not subject:
-            raise HTTPException(status_code=400, detail="Subject is required")
-
-        html = (request.html or "").strip()
-        text = (request.text or "").strip()
-
-        if not html and not text:
-            raise HTTPException(status_code=400, detail="Provide at least html or text content")
-
-        mode = (request.mode or "test").strip().lower()
-        if mode not in ("test", "all"):
-            raise HTTPException(status_code=400, detail="mode must be 'test' or 'all'")
-
+        delivery_accounting = {}
         # Determine recipients
         if mode == "test":
-            test_email = (request.test_email or ADMIN_USERNAME or "").strip().lower()
-            if not test_email:
-                raise HTTPException(status_code=400, detail="test_email is required for test mode")
             to_emails = [test_email]
         else:
             subs = await db.subscribers.find(
@@ -15188,38 +15189,44 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
                         {"active": {"$exists": False}},
                     ]
                 },
-                {"_id": 0, "email": 1},
+                {"_id": 0, "email": 1, "active": 1,
+                 "newsletter_management_id": 1, "newsletter_token_version": 1},
             ).to_list(10000)
-            to_emails = [x.get("email") for x in subs if x.get("email")]
-            if not to_emails:
+            if not subs:
                 return {"success": False, "message": "No subscribers found"}
+            candidates = _newsletter_candidate_contexts(subs)
+            # Every fetched position is consumed, including invalid email values.
+            to_emails = [x.get("email") if isinstance(x.get("email"), str) else "" for x in subs]
+            deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(to_emails, candidates)
 
         tracking_id = email_service._generate_tracking_id("ManualCampaign")
 
-        # If HTML, inject tracking pixel and tracked links placeholders
-        if html:
-            # ensure pixel
-            if "</body>" in html:
-                html_base = html.replace("</body>", f"{email_service._get_tracking_pixel(tracking_id)}</body>")
-            else:
-                html_base = html + email_service._get_tracking_pixel(tracking_id)
-
-        success_count = 0
-        for email in to_emails:
+        if mode == "all":
+            success_count = email_service.send_manual_campaign(
+                subject=subject, html=html, text=text, tracking_id=tracking_id,
+                prepared_deliveries=deliveries, token_service=token_service)
+            delivery_accounting = {
+                **delivery_counts,
+                "accepted_count": success_count,
+                "provider_contacted": bool(email_service.last_provider_contacted),
+            }
+        else:
+            # Explicit single-address preview: no subscriber preparation or native headers.
+            if html:
+                if "</body>" in html:
+                    html_base = html.replace("</body>", f"{email_service._get_tracking_pixel(tracking_id)}</body>")
+                else:
+                    html_base = html + email_service._get_tracking_pixel(tracking_id)
             prefs_url = f"{email_service.base_url}/newsletter/preferences"
             unsub_url = f"{email_service.base_url}/unsubscribe"
-
             html_personal = None
             if html:
                 html_personal = html_base.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
-
-            # text: if placeholders exist, replace them with raw URLs
             text_personal = None
             if text:
                 text_personal = text.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
-
-            if email_service._send_email(email, subject, html_personal or ("<p>" + (text_personal or "") + "</p>"), text_personal):
-                success_count += 1
+            success_count = int(bool(email_service._send_email(
+                test_email, subject, html_personal or ("<p>" + (text_personal or "") + "</p>"), text_personal)))
 
         await db.digest_log.insert_one({
             "sent_at": datetime.now(timezone.utc),
@@ -15229,7 +15236,8 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
             "success_count": success_count,
             "mode": mode,
             "subject": subject,
-            "tracking_id": tracking_id
+            "tracking_id": tracking_id,
+            **delivery_accounting,
         })
 
         return {
@@ -15239,11 +15247,9 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
             "tracking_id": tracking_id
         }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error sending manual campaign: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.error("Manual campaign email delivery failed")
+        raise HTTPException(status_code=500, detail="Manual campaign email unavailable") from None
 
 
 @api_router.get("/")

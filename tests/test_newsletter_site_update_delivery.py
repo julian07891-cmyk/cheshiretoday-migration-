@@ -4,7 +4,6 @@ import ast
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 from email import message_from_string
-from pathlib import Path
 import smtplib
 import subprocess
 from types import SimpleNamespace
@@ -453,7 +452,7 @@ def test_private_failures_and_mutation_order(monkeypatch, caplog, path, failure)
     assert "PRIVATE_TOKEN" not in caplog.text and "secret@" not in caplog.text
 
 
-def test_only_slice5_production_functions_changed():
+def test_slice5_commit_only_changed_slice5_production_functions():
     for path, allowed in [
         ("backend/server.py", {"send_site_update_part1", "send_site_update_part2", "admin_run_onboarding_emails"}),
         ("backend/app/email_service.py", {"send_site_update_part1", "send_site_update_part2"}),
@@ -465,4 +464,6 @@ def test_only_slice5_production_functions_changed():
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in allowed:
                     node.body, node.args = [], None
             return ast.dump(tree, include_attributes=False)
-        assert without_targets(old) == without_targets(Path(path).read_text())
+        # Slice 5 is committed; Slice 6 has the live working-tree scope guard.
+        committed = subprocess.check_output(["git", "show", "4503c28:" + path], text=True)
+        assert without_targets(old) == without_targets(committed)

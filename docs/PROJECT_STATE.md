@@ -423,8 +423,53 @@ committed slice; a new live Slice 5 AST guard verifies all other production
 functions, including Announcement, Daily, Weekly and Breaking News, are unchanged.
 No production/deployment verification is claimed, no subscriber data was inspected
 and no real email was sent. Full CT-DEC-021 remains incomplete and
-**POTENTIAL QUERY LOG EXPOSURE** remains. Manual campaigns and production-readiness
-gates remain outstanding. Slice 5 is committed locally at `4503c28ef8b81d579626e29e33148796e6df2316` but has not been pushed or deployed; the protected local files were untouched.
+**POTENTIAL QUERY LOG EXPOSURE** remains. At the Slice 5 checkpoint, manual campaigns
+and production-readiness gates remained outstanding. Slice 5 is committed locally at `4503c28ef8b81d579626e29e33148796e6df2316` but has not been pushed or deployed; the protected local files were untouched.
+
+Phase 2B **SLICE 6 MANUAL CAMPAIGN DIRECT DELIVERY IS LOCAL, UNCOMMITTED — NOT
+PUSHED/DEPLOYED**. The verified baseline is
+`3fe466efebd6f950a83528cfa692d99cb86c7adc` on `full-scrape-prod`, 0 behind/8 ahead
+of the locally recorded origin ref, with only the two protected files initially
+untracked. Production changes are confined to `admin_send_campaign_email` and the
+new `EmailService.send_manual_campaign` method. Real `mode=all` delivery retains
+the exact active=True OR active-missing query and 10,000 fetched-position cap.
+The full fetched identity set is validated before preparation; invalid email,
+identity, version or non-explicit-True active positions are counted as bounded
+skips, without backfill, provisioning or generic fallback. The dedicated sender
+rejects raw/missing prepared contracts, resets diagnostics and verifies the entire
+prepared batch before rendering or provider contact. Empty prepared sets return
+integer zero without transport.
+
+Arbitrary subject/HTML/text, existing placeholder semantics, generic preferences,
+campaign-wide ManualCampaign tracking identity and HTML-only tracking pixels are
+preserved. `__UNSUB_URL__` resolves to the same recipient-bound credential used by
+native headers; it is not click-wrapped. Templates without placeholders are not
+rewritten to add content. SMTP and Resend retain per-recipient isolation and
+truthful acceptance/contact evidence, including partial/zero/unavailable outcomes.
+Real-mode digest records retain historical fields and add aggregate selected,
+prepared, skipped/reason, accepted and provider-contact evidence. Validation
+errors remain 400; unexpected delivery/storage failures now have fixed private
+500 details and bounded logging.
+
+`mode=test` remains the existing single-address SMTP preview (including Admin
+address fallback), with generic unsubscribe and no subscriber query, preparation,
+direct credential issuance, native headers or new subscriber-delivery accounting.
+Its historical explicitly test-mode digest record remains unchanged. No other
+newsletter production functions were modified. The committed Slice 5 scope test
+is pinned to `4503c28`; the new Slice 6 live AST guard compares against `3fe466e`.
+
+Independent offline verification: **231 focused Slice 6/Slice 5 scope tests passed (5 warnings)**; full
+newsletter plus Weekly idempotence regression: **1,813 passed (420 warnings)**,
+zero failures. Python compilation, `git diff --check` and new-test whitespace
+checks passed. Existing framework/datetime/gzip warning debt remains outside scope.
+Tests cover preview isolation, content forms, query/projection/cap semantics,
+invalid fetched positions, ambiguity, complete-batch security, SMTP MIME headers,
+Resend 100/101 boundaries, acceptance/contact accounting and private failures.
+No production data was inspected, no real email was sent and no deployment or
+production verification is claimed. Full **CT-DEC-021 remains incomplete**;
+**POTENTIAL QUERY LOG EXPOSURE** and all outstanding production-readiness gates
+remain. Slice 6 has not been staged or committed; protected local files remain
+untouched.
 
 The last recorded production commit is `c2a6fb0`; this offline correction did not
 re-inspect production. Render service

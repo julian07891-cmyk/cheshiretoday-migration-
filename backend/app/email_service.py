@@ -2038,4 +2038,55 @@ Cheshire Today Jobs Team
         logger.info("Site Update Part 2 accepted %s/%s prepared messages", success_count, len(deliveries))
         return success_count
 
+    def send_manual_campaign(self, to_emails: List[str] = None, *, subject: str,
+                             html: Optional[str] = None, text: Optional[str] = None,
+                             tracking_id: str, prepared_deliveries=None,
+                             token_service=None) -> int:
+        """Send arbitrary campaign content to validated real-subscriber contexts."""
+        self.resend_last_error = None
+        self.resend_last_successful_chunks = 0
+        self.resend_last_failed_chunks = 0
+        self.last_accepted_recipients = []
+        self.last_provider_contacted = False
+        if to_emails is not None or prepared_deliveries is None:
+            raise NewsletterDeliveryError("manual_campaign_prepared_delivery_required")
+        deliveries = tuple(prepared_deliveries)
+        if deliveries and token_service is None:
+            raise NewsletterDeliveryError("invalid_manual_campaign_delivery_contract")
+        deliveries = tuple(validate_prepared_delivery(item, token_service) for item in deliveries)
+        if not deliveries:
+            return 0
+
+        # Retain the endpoint's campaign-wide tracking ID and HTML-only pixel.
+        html_base = html
+        if html:
+            pixel = self._get_tracking_pixel(tracking_id)
+            html_base = html.replace("</body>", f"{pixel}</body>") if "</body>" in html else html + pixel
+
+        batch_messages = []
+        for delivery in deliveries:
+            prefs_url = f"{self.base_url}/newsletter/preferences"
+            unsub_url = delivery.human_unsubscribe_url
+            html_personal = (html_base.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+                             if html_base else None)
+            text_personal = (text.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
+                             if text else None)
+            batch_messages.append({
+                "to": delivery.context.email, "subject": subject,
+                "html": html_personal or ("<p>" + (text_personal or "") + "</p>"),
+                "text": text_personal, "headers": delivery.native_headers,
+            })
+
+        if getattr(self, "resend_enabled", False):
+            success_count = self._send_resend_batch(batch_messages)
+        else:
+            success_count = 0
+            for item in batch_messages:
+                if self._send_email(item["to"], item["subject"], item["html"], item["text"],
+                                    newsletter_headers=item["headers"]):
+                    success_count += 1
+                    self.last_accepted_recipients.append(item["to"])
+        logger.info("Manual campaign accepted %s/%s prepared messages", success_count, len(deliveries))
+        return success_count
+
 email_service = EmailService()
