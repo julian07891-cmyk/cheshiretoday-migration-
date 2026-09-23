@@ -455,7 +455,7 @@ describes the decision at current repository HEAD, not an unverified live claim.
 ### CT-DEC-021 — Direct newsletter unsubscribe with secure recovery retained
 
 - **Date:** 21 September 2026.
-- **Status:** **LOCAL IMPLEMENTATION COMPLETE — PRODUCTION ACCEPTANCE PENDING**.
+- **Status (23 September 2026):** **FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN**.
 - **Problem:** Generic newsletter footers unnecessarily require email re-entry
   and a second email for normal unsubscribe.
 - **Decision:** Use a distinct signed subscriber-specific direct credential to
@@ -488,16 +488,27 @@ describes the decision at current repository HEAD, not an unverified live claim.
   `4503c28` and `68cefd3`, with state reconciled through `283a5f7`. Daily Brief,
   Weekly Roundup, Breaking News, migration announcement, Site Updates/onboarding
   and subscriber-targeted manual campaigns now use the approved prepared direct-delivery
-  path locally. Independent final Slice 6 regression evidence is 1,813 newsletter
-  plus Weekly idempotence tests passed with zero failures (420 warnings). No commit
-  in this implementation chain has been pushed or deployed. Upstream privacy is
-  unverified and overall **POTENTIAL QUERY LOG EXPOSURE** remains. Render auto-deploy
+  path. Independent final Slice 6 regression evidence is 1,813 newsletter
+  plus Weekly idempotence tests passed with zero failures (420 warnings). The chain
+  was pushed and deployed at `2f40374`; functional production acceptance passed
+  for identity/index readiness, controlled Resend receipt, native headers/DKIM,
+  native mutation/inactive replay, human confirmation, challenge-backed reactivation
+  with exact version increment, stale-token rejection, active preferences and
+  consumed-challenge rejection, and transactional header-free welcome delivery.
+  Later `40304fc` only changes welcome coverage copy and was pushed after this run.
+  Upstream privacy is unverified and **POTENTIAL QUERY LOG EXPOSURE** remains. Render auto-deploy
   is enabled on commit for `full-scrape-prod`: no push without explicit deployment
   authorization.
-- **Boundaries:** Local implementation is complete; production acceptance remains pending. CT-QA-2026-007
-  stays closed; Apple Mail mechanism remains unproven and CT-QA-2026-008 proposed
-  only. No QA totals change or legal/compliance claim.
+- **Boundaries:** Functional acceptance is complete, not unconditional privacy closure.
+  Render Request Logs remain unavailable at the current plan/access level. Client
+  httpx INFO logging exposed the already-stale credential URL during acceptance;
+  no sensitive value is retained here. No independent manual human/native token
+  equality comparison or post-signup database verification is claimed. CT-QA-2026-006
+  and CT-QA-2026-007 stay closed; no new QA finding is registered, no totals change
+  and no legal/compliance claim is made.
 - **Sources:** Owner approval at baseline `52c9b64e3940655177002cda6f0fe3613bc0b8ad`;
+  owner-supplied 23 September production evidence reconciled in the
+  [Production Timeline](PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance);
   [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md) owns the detailed contract.
 
 ## Unreconciled decision evidence

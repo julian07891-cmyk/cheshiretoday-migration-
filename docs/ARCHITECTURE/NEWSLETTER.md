@@ -90,8 +90,16 @@ email URL generation was unchanged and the precise link transformation is unprov
 
 ## Approved direct unsubscribe contract — 21 September 2026
 
-**LOCAL IMPLEMENTATION COMPLETE — PRODUCTION ACCEPTANCE PENDING** under
+**FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN** under
 [CT-DEC-021](../DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
+The chain was deployed and functionally accepted at `2f40374` on 23 September 2026:
+live identity/index, controlled Resend delivery, Apple Mail/native headers and DKIM,
+native unsubscribe/replay, human confirmation, reactivation/version rotation,
+stale-token rejection, active preferences/consumed challenge and new-signup
+transactional welcome all passed. See the bounded
+[production evidence](../PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance).
+This is not upstream logging/privacy acceptance. Later pushed `40304fc` only
+changes welcome coverage copy; the earlier received email does not verify it.
 Normal subscriber-newsletter flow: signed footer link → confirmation page →
 explicit Confirm unsubscribe → inactive subscription. No email re-entry or second
 email. Signup remains email → Subscribe → success. Preferences remain separate
@@ -151,16 +159,22 @@ This does not protect against software deliberately issuing a valid protocol POS
 Preserve batches, schedules, eligibility, accepted-recipient accounting and privacy-
 safe logging; never share one recipient's credential across a batch.
 
-Native production readiness requires inspecting application, Uvicorn/access,
-Render, available proxy/CDN, exception, analytics and provider telemetry for query
-bearer exposure, with minimal redaction if necessary. `render.yaml` starts Uvicorn
-without explicit access-log redaction; actual infrastructure logging is unverified.
-Real controlled delivered-message evidence must prove both header values and
-appropriate valid DKIM coverage without exposing credentials. Header source code
-alone is insufficient. Real delivered Apple Mail direct-footer acceptance is also
-required; fragment approval does not resolve the separate observed CTA mechanism.
+Delivered header values, passing DKIM covering both unsubscribe headers and Apple
+Mail native/human acceptance are now verified. Independent manual comparison of
+the human/native token strings was not recorded; shared-token binding is an
+implementation guarantee, not an additional raw-source observation.
+The startup-installed Uvicorn filter protects its supported access records and
+the committed start command is not TRACE. Upstream Render/proxy retention remains
+unverified because Request Logs are unavailable at the current plan/access level.
+Client-side httpx INFO output exposed an already-stale credential URL during the
+stale-token acceptance request. The application filter does not cover that logger.
+**POTENTIAL QUERY LOG EXPOSURE** remains; no token or URL from that event is retained.
 
-### Read-only prerequisites and bounded scope
+### Historical design prerequisites and bounded scope — 21 September 2026
+
+The inventory and unverified-gate wording below record the pre-rollout design
+checkpoint, not current production state. Identity/index and functional gates are
+now satisfied as recorded above; upstream query privacy remains unresolved.
 
 - Tracked subscriber-write inventory at `52c9b64`: public signup creates new
   UUID/version-1 records only; existing signup does not reactivate. Secure
@@ -215,12 +229,12 @@ objects; security mail must not inherit defaults. Delivered DKIM, client behavio
 upstream log privacy and active-identity coverage remain acceptance gates, not
 blockers to isolated local implementation. No live database/log inspection occurred.
 
-Local implementation is complete through Phase 2B Slice 6; production acceptance
-is not claimed. CT-QA-2026-007 stays closed; CT-QA-2026-008 remains proposed only,
-and the Apple Mail transformation remains unproven. No legal/compliance claim or
-QA accounting change is made.
+At this historical checkpoint, local implementation was complete through Slice 6
+but production acceptance was not yet claimed. Current acceptance is recorded
+above. CT-QA-2026-006 and CT-QA-2026-007 remain closed; no new QA ID, accounting
+change or legal/compliance claim follows from this reconciliation.
 
-### Phase 2A local delivery infrastructure
+### Historical Phase 2A local delivery infrastructure checkpoint
 
 Phase 1 is committed locally as `516fa29`, not pushed or deployed. Phase 2A is
 privacy-corrected locally, unstaged and re-reviewed; Phase 2B is not implemented.

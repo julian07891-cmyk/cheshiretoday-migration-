@@ -148,6 +148,62 @@ imports 3/1; both cleanup scans 4,253; and zero cleanup removals. Current RSS ro
 scan after the +32.7 MB visible-pool interval. This was a worse observation, not a
 proven trend or approval for another optimisation.
 
+## 23 September 2026 — CT-DEC-021 functional production acceptance
+
+**FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
+Source: owner-supplied controlled production observations and bounded diagnostic
+results reconciled on 23 September; no production action was repeated for this
+documentation change. Acceptance ran at
+`2f40374a136b4a03b5e2fbf97a5ea19fd1aaf92f`, after the implementation chain was
+pushed/deployed. Render reported Live, the runtime SHA matched, and health was
+HTTP 200/healthy. Production Resend was enabled with key/from and newsletter
+secret present; read-only Resend authentication returned HTTP 200. Local Mac
+transport credentials were not used for production acceptance.
+
+| Gate | Recorded evidence |
+|---|---|
+| Identity/index | Read-only dry-run: 14,266 scanned, all valid; zero assignments, malformed IDs, duplicate groups or invalid versions. Exact `newsletter_management_id_unique` existed, unique and non-sparse. No migration apply/index change. |
+| Controlled delivery | One prepared recipient, zero skips, one provider contact, one accepted recipient; Resend successful chunks 1, failed 0. Message received in Apple Mail. |
+| Native headers/DKIM | Apple Mail recognised mailing-list metadata. Raw headers contained both native headers and exact `List-Unsubscribe=One-Click`; recipient DKIM passed and its signature covered both header names. |
+| Native mutation | Apple Mail native unsubscribe made the controlled record inactive; identity remained present and version structurally valid. |
+| Inactive replay | Original delivered credential returned HTTP 200; active remained false, UUID/version/preferences/unsubscribe and other management metadata unchanged; complete compared state unchanged. Independent provider non-contact is not inferred from this replay evidence. |
+| Human confirmation | Delivered footer opened explicit confirmation; no email re-entry or second email. One confirmation displayed the completed unsubscribe result. |
+| Reactivation | Normal management request delivered a challenge-backed reactivation email. All three choices and explicit confirmation were submitted once. Read-only verification showed active/all three true, UUID unchanged, version exactly +1, reactivation timestamp, `verified_email` method and preferences timestamp present. |
+| Stale credential | Original pre-reactivation direct credential POST returned HTTP 401; active stayed true and identity/version/preferences/compared state were unchanged. No email provider contact was reported. |
+| Active preferences | Challenge-backed email/form/save succeeded: Daily Brief and Weekly Roundup true, Breaking News false, active true, UUID/version unchanged, preferences timestamp present. Reopening the consumed link showed invalid-link/new-link-request UI. |
+| New-signup welcome | Separate owner-controlled address had zero existing matches; one normal production signup produced a received welcome. Immediate activation copy, three newsletters, coverage, latest-news CTA and management links were observed. Both native unsubscribe headers were absent, as required for transactional welcome. |
+
+### Evidence boundaries and outstanding privacy
+
+- No independent manual human/native token-string equality comparison was recorded.
+  Shared-token binding is implemented and both paths worked; do not promote that
+  to an unperformed raw-source comparison.
+- No separate post-signup database verification of active/all-three/version 1 was
+  performed. The exact delivered welcome subject was not manually verified;
+  configured subject/code semantics are not additional observed acceptance.
+- **POTENTIAL QUERY LOG EXPOSURE remains open.** App/Uvicorn filtering and a
+  non-TRACE committed start do not establish upstream retention. No active
+  Sentry/OTel/Datadog/New Relic/request-dump integration was found, but Render
+  Request Logs were unavailable at the current plan/access level.
+- During stale-token acceptance, client httpx INFO output printed the full
+  credential-bearing request URL in Render Shell. The credential was already
+  stale after rotation; this still demonstrates client-side query logging exposure.
+  No credential, address or secure URL is retained in this record.
+- Functional acceptance is complete, not unconditional CT-DEC-021/privacy closure.
+  Original QA counts remain 3 unresolved / 2 repo-remediated / 6 production-verified;
+  post-baseline counts remain 4 unresolved/partial / 3 production-verified;
+  combined 18 remain 7 / 2 / 9. CT-QA-2026-006 and CT-QA-2026-007 stay closed.
+  No new QA ID is created.
+
+### Later welcome-copy-only commit
+
+`40304fc24879e37f5ef004f501c82b9b85842d2e` changed only HTML/plain-text welcome
+coverage to Cheshire, Macclesfield, Wilmslow, Knutsford, Alderley Edge, Prestbury,
+Congleton, Nantwich & more (bullets in HTML, commas in plain text).
+Reported focused verification: 11 passed, 2,848 deselected; `git diff --check` passed.
+It was pushed after the acceptance run. The earlier welcome receipt does not prove
+this later wording; this record does not independently establish its deployment.
+
 ## Unreconciled later production evidence
 
 - The 7–21 August duplicate-cleanup, scheduler-lock, event-anchor and isolated

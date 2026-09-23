@@ -679,6 +679,26 @@ material 5xx regression. `QA-SEC-002` therefore closed.
   [Production Timeline](../PRODUCTION_TIMELINE.md); authenticated Render logs and
   bounded production comparison reconciled 4 September 2026.
 
+## 23 September 2026 — Direct newsletter unsubscribe production acceptance
+
+The CT-DEC-021 implementation chain was pushed/deployed at `2f40374` and completed
+functional production acceptance: identity/index, one-recipient delivery/native
+headers/DKIM, Apple Mail native and human unsubscribe, idempotent inactive replay,
+challenge-backed reactivation/version rotation, stale-token rejection, active
+preferences/consumed-challenge rejection and transactional header-free welcome.
+The [Production Timeline](../PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance)
+owns the detailed owner-supplied evidence and its limits. No production operations
+were repeated during documentation reconciliation.
+
+**FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
+**POTENTIAL QUERY LOG EXPOSURE** remains: unavailable upstream Request Logs and
+observed client logging of an already-stale credential URL are not resolved by
+functional success. No sensitive values are retained and QA accounting is unchanged.
+
+Later pushed `40304fc` changed welcome coverage copy only; reported verification
+was 11 passed, 2,848 deselected and diff whitespace passed. Earlier receipt does
+not verify the later wording or establish this commit's deployment.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.

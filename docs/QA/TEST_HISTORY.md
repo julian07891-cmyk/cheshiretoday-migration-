@@ -151,6 +151,30 @@ Invalid/retired/secure-token and no-auto-request assertions remain automated
 evidence: live network capture was unavailable. Apple Mail CTA compatibility was
 not fixed or closed. Full evidence is in [Open Findings](OPEN_FINDINGS.md).
 
+## 23 September 2026 — CT-DEC-021 production acceptance and later welcome copy
+
+Owner-supplied production evidence at `2f40374` establishes functional acceptance:
+identity/index gate; one-recipient Resend acceptance and inbox delivery; Apple Mail
+native headers with passing DKIM covering both; native mutation and unchanged-state
+replay; human confirmation; challenge-backed reactivation with exact version +1;
+stale-token HTTP 401/no mutation; active preferences save and consumed-link rejection;
+new-signup welcome receipt/content with both native unsubscribe headers absent.
+See [Production Timeline](../PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance)
+for exact evidence and exclusions. These are controlled observations, not a new
+automated-test count. Earlier final newsletter/Weekly regression: 1,813 passed,
+zero failures, 420 warnings; no rerun is claimed by this reconciliation.
+
+Later copy-only `40304fc`: reported focused tests **11 passed, 2,848 deselected**;
+diff whitespace passed. The commit was pushed after acceptance; no new delivered
+copy or deployment verification is inferred. No exact manual welcome-subject,
+post-signup DB-state or human/native token-string comparison is claimed.
+
+**FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
+**POTENTIAL QUERY LOG EXPOSURE** persists: upstream Request Logs unavailable and
+client httpx INFO exposed an already-stale query credential during acceptance.
+No secret is recorded. QA classifications/counts remain unchanged (combined 18:
+7 unresolved, 2 repo-remediated, 9 production-verified); no new QA ID.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).

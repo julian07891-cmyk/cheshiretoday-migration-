@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `03a6abbd5133de969275477488ea49bb34242ee0`
-> - **Last repository reconciliation:** 20 September 2026
-> - **Production-verification status:** Commit `03a6abb` is live and `CT-QA-2026-006` is closed after implementation, tests, automatic deployment and bounded production verification. Newsletter Funnel V1 remains production accepted and unchanged. The RSS-preview fix remains implemented/deployed with partial natural acceptance and its complete-replacement path remains unexercised. `QA-OPS-001` remains High Open
+> - **Repository baseline:** `40304fc24879e37f5ef004f501c82b9b85842d2e`
+> - **Last repository reconciliation:** 23 September 2026
+> - **Production-verification status:** CT-DEC-021 at `2f40374` has functional production acceptance complete; its upstream query-log privacy gate remains open. Later welcome-copy-only `40304fc` was pushed; its deployment is not independently established by this reconciliation. `CT-QA-2026-006` remains closed, Newsletter Funnel V1 remains production accepted, RSS-preview acceptance remains partial, and `QA-OPS-001` remains High Open.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,22 +36,53 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `03a6abbd5133de969275477488ea49bb34242ee0`
-- **Latest baseline commit:** `Remove subscriber identity from newsletter logs`
+- **Current reconciled HEAD:** `40304fc24879e37f5ef004f501c82b9b85842d2e`
+- **Latest baseline commit:** `Update welcome email coverage areas`
 
-This is the repository and production baseline reconciled on 20 September 2026, not
-an assertion that a later session remains at the same HEAD or deployment.
+Repository HEAD and production acceptance revision are distinct: the controlled
+acceptance below ran at `2f40374`, before the later copy-only commit.
 
-### CT-DEC-021 production-readiness evidence — 23 September 2026
+### CT-DEC-021 production acceptance — 23 September 2026
+
+**FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
+The implementation chain was pushed and deployed at
+`2f40374a136b4a03b5e2fbf97a5ea19fd1aaf92f`; Render Live, exact runtime SHA,
+healthy HTTP 200, production Resend configuration and read-only authentication
+HTTP 200 were confirmed. Local Mac transport credentials were not used for this
+acceptance. Evidence is owner-supplied production observation, reconciled here
+without repeating production operations.
+
+- One prepared recipient, zero skips, one provider contact and one acceptance;
+  Resend chunks: one successful, zero failed. Apple Mail receipt, native control,
+  both unsubscribe headers, exact one-click value and passing DKIM covering both
+  headers were verified.
+- Native unsubscribe made the subscriber inactive. Original-credential inactive
+  replay returned HTTP 200 with identity, version, preferences and management
+  metadata unchanged. Human footer confirmation completed without email re-entry
+  or a second email.
+- Challenge-backed reactivation enabled all three newsletters, preserved identity
+  and incremented version exactly once. The old direct credential then returned
+  HTTP 401 with state unchanged. Active preferences save retained Daily Brief and
+  Weekly Roundup, disabled Breaking News, preserved identity/version and rejected
+  reuse of the consumed preferences link.
+- A separate owner-controlled address, absent before signup, received the real
+  welcome after one normal signup. Content/management links and absence of both
+  native unsubscribe headers passed. No separate post-signup database assertion
+  or manually verified exact welcome subject is claimed.
+- Later `40304fc` changed only HTML/plain-text welcome coverage copy; 11 focused
+  tests passed, 2,848 deselected, and diff whitespace passed. It was pushed after
+  acceptance; the earlier delivered wording is not evidence for this later copy.
+
+Detailed evidence and limitations: [Production Timeline](PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance).
 
 - **Live subscriber identity/index gate: SATISFIED by read-only inspection.**
 - Full production-configured migration dry-run scanned **14,266** subscriber records: **14,266 already valid**, zero IDs requiring assignment, zero malformed IDs, zero duplicate management-ID groups, zero token versions requiring initialisation, and zero final identity/version defects.
 - Separate read-only live index inspection confirmed `newsletter_management_id_unique` exists on `newsletter_management_id` ascending with `unique=true`, `sparse=false`, and matches the repository's exact expected definition.
-- No subscriber record was modified, no migration apply mode was invoked, and no index was created or altered.
+- The identity/index inspection itself modified no subscriber, ran no migration apply mode and created/altered no index; subsequent controlled acceptance mutations are recorded above.
 - Read-only repository and Render configuration review found no material defect in the configured application-side one-click logging path: the newsletter access-log filter protects the `uvicorn.access` boundary, and no visible production environment override enabled TRACE logging or identified Sentry, OpenTelemetry, Datadog, New Relic or another request-wide APM integration.
 - The production Render workspace is on the **Hobby** plan. Render exposes a separate **Request logs** source, but inspection requires Pro or higher; consequently the workspace cannot currently establish whether Render's upstream request logging retains query strings. No external log-stream/observability configuration was visible in the inspected service environment or Hobby workspace settings.
-- **POTENTIAL QUERY LOG EXPOSURE remains open** specifically because Render/proxy upstream query retention cannot be verified from the repository or current workspace tooling. No credential-bearing production probe was made, and no additional local code change is currently indicated before deployment.
-- This closes only the live identity/index readiness gate. **POTENTIAL QUERY LOG EXPOSURE**, upstream logging/privacy inspection, delivered native-header/DKIM/provider preservation, Apple Mail direct-footer acceptance, and controlled production mutation/persistence acceptance remain open. Nothing in the local CT-DEC-021 implementation chain has been pushed or deployed.
+- **POTENTIAL QUERY LOG EXPOSURE remains open**: Render/proxy upstream query retention cannot be verified at the current plan/access level. During the stale-token acceptance request, client-side httpx INFO logging printed the token-bearing request URL in Render Shell. The credential was already stale, but this demonstrates a client logging exposure surface; no credential or URL is preserved here. Uvicorn filtering does not protect that client logger or upstream infrastructure.
+- Functional gates above passed, not all production/privacy gates. No independent manual human/native token-string comparison is claimed. Replay evidence does not independently establish provider non-contact. QA accounting remains 18 findings: 7 unresolved, 2 repository-remediated, 9 production-verified; no new QA ID is created.
 
 The intentional untracked/local-only set is limited to:
 
@@ -242,7 +273,17 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
-### Approved design — direct newsletter unsubscribe
+### Current direct newsletter unsubscribe status
+
+**FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
+See the current evidence in section 2 and the Production Timeline. The implementation
+is deployed; **POTENTIAL QUERY LOG EXPOSURE** is not resolved.
+
+### Historical pre-deployment implementation checkpoints — 21–23 September 2026
+
+The following Phase 1–Slice 6 records preserve what was known before deployment.
+Their local-only, incomplete and pending-acceptance wording is historical and is
+superseded as current status by section 2, through the generic-entry closure below.
 
 **DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE** under
 [CT-DEC-021](DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).

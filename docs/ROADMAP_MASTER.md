@@ -4,25 +4,22 @@
 
 ## Document purpose
 
-Direct newsletter unsubscribe is **DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE**
+Direct newsletter unsubscribe is **FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN**
 under [CT-DEC-021](DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
-Local prerequisites now specify a strict signed direct class, 90-day lifetime,
-version-guarded mutation and fail-closed missing identities; preserve signup,
-preferences and recovery. Live identity coverage, native logging and delivered-header
-acceptance remain gates. The separate Apple Mail observation is not closed by
-this design; current QA totals are unchanged.
+The complete implementation was pushed/deployed and functionally accepted at
+`2f40374` on 23 September 2026. Identity/index readiness, delivery/native headers/DKIM,
+Apple Mail native and human unsubscribe, replay, reactivation/version rotation,
+stale-token rejection, preferences/challenge consumption and header-free welcome
+delivery passed. See the [Production Timeline](PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance).
+Later pushed `40304fc` changes only welcome coverage copy; earlier acceptance is
+not evidence for that later wording or deployment.
 
-Phase 1 is committed locally as `516fa29`, **NOT PUSHED — NOT DEPLOYED**.
-Phase 2A shared delivery infrastructure is privacy-corrected locally, unstaged and
-re-reviewed, with 1,407 newsletter offline tests passing with no failures; Python compilation
-and tracked `git diff --check` also passed. Covered Uvicorn shapes fail closed and native-header containers
-have safe diagnostics; both corrected defects were local and never deployed.
-Infrastructure privacy is unverified: **POTENTIAL QUERY LOG EXPOSURE** remains.
-**Next:** separately review and authorize Phase 2B delivery-path integration before
-implementation. Phase 2B is not implemented; existing builders and selectors remain
-unchanged. Full CT-DEC-021 is incomplete and not production-ready. Application
-access-log filtering does not close upstream query privacy, real Mongo, identity
-coverage or delivered-header/DKIM/Apple Mail gates. Render auto-deploy is enabled
+**Next:** resolve or explicitly decide the remaining upstream logging evidence
+boundary; do not repeat completed functional tests without new defect evidence.
+**POTENTIAL QUERY LOG EXPOSURE** remains: Render Request Logs are unavailable at
+the current plan/access level, and an already-stale query credential appeared in
+client httpx INFO output during acceptance. Uvicorn filtering is not upstream or
+client-log protection. Render auto-deploy is enabled
 on commit for `full-scrape-prod`: **NO PUSH WITHOUT EXPLICIT DEPLOYMENT
 AUTHORIZATION**. No QA accounting change is made.
 
