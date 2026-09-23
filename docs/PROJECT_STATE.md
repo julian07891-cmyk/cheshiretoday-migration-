@@ -383,8 +383,8 @@ and tracked/new-test whitespace checks passed. Scope tests confirm other product
 functions are unchanged; migration fixtures exercise the full population beyond
 the 10,000 delivery limit, zero/partial acceptance and sender exceptions.
 
-Phase 2B **SLICE 5 SITE UPDATE PARTS 1/2 AND ONBOARDING INTEGRATION IS LOCAL,
-UNCOMMITTED**. Baseline verified at `14d05a9b98e991e864ef16ac0e7e63cbfb71723f`
+Phase 2B **SLICE 5 SITE UPDATE PARTS 1/2 AND ONBOARDING INTEGRATION IS COMMITTED LOCALLY AT
+`4503c28ef8b81d579626e29e33148796e6df2316` — NOT PUSHED/DEPLOYED**. Baseline verified at `14d05a9b98e991e864ef16ac0e7e63cbfb71723f`
 on `full-scrape-prod`, 0 behind/6 ahead of the locally recorded origin ref, with
 only the two protected local files initially untracked. Both Site Update senders
 now require prepared direct deliveries and validate the complete set before
@@ -424,8 +424,7 @@ functions, including Announcement, Daily, Weekly and Breaking News, are unchange
 No production/deployment verification is claimed, no subscriber data was inspected
 and no real email was sent. Full CT-DEC-021 remains incomplete and
 **POTENTIAL QUERY LOG EXPOSURE** remains. Manual campaigns and production-readiness
-gates remain outstanding. Nothing was staged, committed, pushed or deployed for
-Slice 5; the protected local files were untouched.
+gates remain outstanding. Slice 5 is committed locally at `4503c28ef8b81d579626e29e33148796e6df2316` but has not been pushed or deployed; the protected local files were untouched.
 
 The last recorded production commit is `c2a6fb0`; this offline correction did not
 re-inspect production. Render service
