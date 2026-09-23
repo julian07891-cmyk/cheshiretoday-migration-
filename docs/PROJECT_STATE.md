@@ -426,8 +426,8 @@ and no real email was sent. Full CT-DEC-021 remains incomplete and
 **POTENTIAL QUERY LOG EXPOSURE** remains. At the Slice 5 checkpoint, manual campaigns
 and production-readiness gates remained outstanding. Slice 5 is committed locally at `4503c28ef8b81d579626e29e33148796e6df2316` but has not been pushed or deployed; the protected local files were untouched.
 
-Phase 2B **SLICE 6 MANUAL CAMPAIGN DIRECT DELIVERY IS LOCAL, UNCOMMITTED — NOT
-PUSHED/DEPLOYED**. The verified baseline is
+Phase 2B **SLICE 6 MANUAL CAMPAIGN DIRECT DELIVERY IS COMMITTED LOCALLY — NOT
+PUSHED/DEPLOYED**. Capability commit: `68cefd3` (`Integrate direct unsubscribe into manual campaigns`). The verified baseline is
 `3fe466efebd6f950a83528cfa692d99cb86c7adc` on `full-scrape-prod`, 0 behind/8 ahead
 of the locally recorded origin ref, with only the two protected files initially
 untracked. Production changes are confined to `admin_send_campaign_email` and the
@@ -468,8 +468,8 @@ Resend 100/101 boundaries, acceptance/contact accounting and private failures.
 No production data was inspected, no real email was sent and no deployment or
 production verification is claimed. Full **CT-DEC-021 remains incomplete**;
 **POTENTIAL QUERY LOG EXPOSURE** and all outstanding production-readiness gates
-remain. Slice 6 has not been staged or committed; protected local files remain
-untouched.
+remain. Slice 6 is committed locally at `68cefd3` but has not been pushed or deployed;
+protected local files remain untouched.
 
 The last recorded production commit is `c2a6fb0`; this offline correction did not
 re-inspect production. Render service
