@@ -90,7 +90,7 @@ email URL generation was unchanged and the precise link transformation is unprov
 
 ## Approved direct unsubscribe contract — 21 September 2026
 
-**DESIGN APPROVED — FULL IMPLEMENTATION INCOMPLETE** under
+**LOCAL IMPLEMENTATION COMPLETE — PRODUCTION ACCEPTANCE PENDING** under
 [CT-DEC-021](../DECISION_REGISTER.md#ct-dec-021--direct-newsletter-unsubscribe-with-secure-recovery-retained).
 Normal subscriber-newsletter flow: signed footer link → confirmation page →
 explicit Confirm unsubscribe → inactive subscription. No email re-entry or second
@@ -189,8 +189,8 @@ required; fragment approval does not resolve the separate observed CTA mechanism
   announcements/site updates use SMTP builders. The manual campaign route is an
   additional subscriber-content path requiring explicit inclusion when sent to the
   subscriber audience. All need per-recipient context and HTML/text/footer/header
-  review. Phase 2A now provides opt-in adapter support locally; existing builders
-  do not yet supply native unsubscribe headers.
+  review. Local Phase 2B integration now supplies the approved per-recipient direct
+  footer and native unsubscribe headers for these subscriber-content paths.
 - Welcome is classified **transactional onboarding**, excluded from native headers:
   it follows signup and explains the subscription, rather than serving as a content
   digest. Existing visible management links/copy stay unchanged. Security/management,
@@ -215,9 +215,10 @@ objects; security mail must not inherit defaults. Delivered DKIM, client behavio
 upstream log privacy and active-identity coverage remain acceptance gates, not
 blockers to isolated local implementation. No live database/log inspection occurred.
 
-Full implementation and production acceptance are not claimed. CT-QA-2026-007 stays
-closed; CT-QA-2026-008 remains proposed only, and the Apple Mail transformation
-remains unproven. No legal/compliance claim or QA accounting change is made.
+Local implementation is complete through Phase 2B Slice 6; production acceptance
+is not claimed. CT-QA-2026-007 stays closed; CT-QA-2026-008 remains proposed only,
+and the Apple Mail transformation remains unproven. No legal/compliance claim or
+QA accounting change is made.
 
 ### Phase 2A local delivery infrastructure
 
