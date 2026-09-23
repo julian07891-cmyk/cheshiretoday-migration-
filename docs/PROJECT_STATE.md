@@ -42,6 +42,14 @@ instructions to this file.
 This is the repository and production baseline reconciled on 20 September 2026, not
 an assertion that a later session remains at the same HEAD or deployment.
 
+### CT-DEC-021 production-readiness evidence — 23 September 2026
+
+- **Live subscriber identity/index gate: SATISFIED by read-only inspection.**
+- Full production-configured migration dry-run scanned **14,266** subscriber records: **14,266 already valid**, zero IDs requiring assignment, zero malformed IDs, zero duplicate management-ID groups, zero token versions requiring initialisation, and zero final identity/version defects.
+- Separate read-only live index inspection confirmed `newsletter_management_id_unique` exists on `newsletter_management_id` ascending with `unique=true`, `sparse=false`, and matches the repository's exact expected definition.
+- No subscriber record was modified, no migration apply mode was invoked, and no index was created or altered.
+- This closes only the live identity/index readiness gate. **POTENTIAL QUERY LOG EXPOSURE**, upstream logging/privacy inspection, delivered native-header/DKIM/provider preservation, Apple Mail direct-footer acceptance, and controlled production mutation/persistence acceptance remain open. Nothing in the local CT-DEC-021 implementation chain has been pushed or deployed.
+
 The intentional untracked/local-only set is limited to:
 
 - `AGENTS.md`;
