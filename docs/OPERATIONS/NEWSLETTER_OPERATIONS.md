@@ -43,7 +43,7 @@ Reserved/test/invalid addresses are filtered by current delivery safeguards. Bef
 
 ## Deactivation safeguards
 
-### Cold-report correction — 23 September 2026 (local, not deployed)
+### Cold-report correction — 23 September 2026
 
 The admin-authenticated GET cold-report remains read-only/dry-run. Its local
 replacement uses `email_send_opportunities`, not missing analytics rows, as the
@@ -80,6 +80,17 @@ failures return a fixed private 503, not exception text.
 Acceptance is not delivery and short hash collisions/tracking limitations remain.
 Candidates require review and separately authorised lifecycle action; no automatic
 deactivation endpoint, hard deletion or reactivation is added.
+
+### Deployment verification — 24 September 2026
+
+Commit `3763aa6` was confirmed live in production and `/api/health` returned healthy.
+A read-only 90-day report with `min_accepted_sends=5` returned 11,673 active
+Daily-eligible subscribers, 11,669 recipients with accepted-send evidence, 5,202
+with insufficient accepted-send evidence and zero current cold candidates. The
+accepted-send ledger contained 102 valid opportunities, zero invalid rows, and
+coverage from 14 July through 23 September 2026. The response exposed aggregate
+data only: no subscriber addresses, recipient hashes, tracking identities or tokens.
+The report remained `dry_run=true`; it performed no lifecycle mutation or deletion.
 
 ### Production evidence and separately controlled deactivation
 

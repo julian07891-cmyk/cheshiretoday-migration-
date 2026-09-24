@@ -275,13 +275,19 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ### Cold-report accepted-send correction — 23 September 2026
 
-Local/uncommitted, not deployed: the admin cold-report now requires at least five
-valid provider-accepted send opportunities within its configured window and no
-recorded engagement. Analytics absence alone is not cold evidence. All eligibility
-and protection boundaries remain; unknown subscription age fails closed, and
-raw recipient samples are removed. Reporting is read-only/dry-run; lifecycle action
-requires separate approval. Details/schema are in
-[Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md#cold-report-correction--23-september-2026-local-not-deployed).
+Deployed and production-verified on 24 September 2026 at commit `3763aa6`: the
+admin cold-report requires at least five valid provider-accepted send opportunities
+within its configured window and no recorded engagement. Analytics absence alone is
+not cold evidence. All eligibility and protection boundaries remain; unknown
+subscription age fails closed, and raw recipient samples are removed. Reporting
+remains read-only/dry-run; lifecycle action requires separate approval. A controlled
+90-day production verification returned 11,673 active Daily-eligible subscribers,
+11,669 with accepted-send evidence, 5,202 below the five-send threshold and zero
+current cold candidates. All 102 retained ledger opportunities were valid, with zero
+invalid rows excluded and coverage from 14 July through 23 September 2026. No raw
+recipient identities, hashes, tracking identities or tokens were returned. Details
+and schema are in
+[Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md#cold-report-correction--23-september-2026).
 
 Separately, operator-supplied production evidence records backup and controlled
 deactivation of 2,422 five-send/no-engagement subscribers (65–67-day send span,
