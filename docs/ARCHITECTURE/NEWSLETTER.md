@@ -30,6 +30,17 @@ newsletter logging defect is now `CT-QA-2026-006` **CLOSED — IMPLEMENTED,
 TESTED, DEPLOYED AND PRODUCTION-VERIFIED** through commit `03a6abb`. This logging
 hardening did not change Funnel V1 or subscriber behaviour.
 
+
+## Provider suppression and delivery eligibility — CT-DEC-022
+
+Cheshire Today subscription lifecycle and provider delivery eligibility are separate states. `active` remains the subscription/consent lifecycle field; a provider block must not be represented as an unsubscribe. A subscriber with explicit `provider_suppressed=true` is ineligible for subscriber-content delivery even when locally active and opted into the relevant newsletter. Absence of that explicit value remains backward-compatible and means no known local provider block.
+
+The provider-suppression metadata contract is `provider_suppressed=true`, `provider_suppression_reason` (`complaint` or `bounce`), `provider_suppressed_at` as a UTC datetime and `provider_suppression_source="resend"`. D-1 establishes delivery eligibility only; it does not populate these fields in production. Query-capable subscriber-content paths exclude explicit suppression before selection/caps and project the field for defence-in-depth preparation. The shared candidate-context guard also rejects an explicitly suppressed record if one reaches preparation. Onboarding intentionally retains its broad identity fetch and excludes suppression from its due population locally.
+
+Provider suppression does not change preferences or `active`, and normal reactivation must not silently clear provider suppression. Migration-announcement preference migration remains independent from its delivery audience. Complaint suppressions are not application reactivation candidates. Provider-side unsuppression, local reconciliation and subscriber-data mutation are separate controlled operations requiring evidence and approval. Transient bounce events alone must not be converted into permanent local provider suppression.
+
+Local D-1 coverage includes scheduled/manual Daily Brief, scheduled/diagnostic Weekly Roundup, Breaking News, migration announcement, Site Update parts 1/2, onboarding and subscriber-targeted manual campaigns. Combined affected regression passed 403 tests with zero failures; deployment and live suppression-field population are not yet claimed.
+
 ## Daily Brief
 
 `send_scheduled_news_digest` acquires a date-keyed lock, selects active Daily Brief recipients, applies configured caps and a fair Mongo-backed rotating cursor, selects eligible public articles, then calls `EmailService.send_daily_brief`. The current schedule is Monday–Saturday at 07:30 Europe/London.

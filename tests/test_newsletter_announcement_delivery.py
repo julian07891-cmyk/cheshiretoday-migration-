@@ -118,9 +118,9 @@ class Subscribers:
     def matches(row):
         return "active" not in row or row["active"] is True
     def find(self, query, projection):
-        assert query == ACTIVE
-        assert set(projection) == {"_id", "email", "active", "newsletter_management_id", "newsletter_token_version"}
-        return AsyncCursor([r for r in self.rows if self.matches(r)])
+        assert query == {"$and": [ACTIVE, {"provider_suppressed": {"$ne": True}}]}
+        assert set(projection) == {"_id", "email", "active", "newsletter_management_id", "newsletter_token_version", "provider_suppressed"}
+        return AsyncCursor([r for r in self.rows if self.matches(r) and r.get("provider_suppressed") is not True])
     async def update_many(self, query, update):
         assert query == ACTIVE and update == {"$set": {"daily_brief": True}}
         assert self.events[-1] == "send_returned"
@@ -171,6 +171,20 @@ def test_full_population_migration_after_normal_send(monkeypatch, accepted):
     assert record["provider_contacted"] is True
     assert result["subscribers_migrated"] == 10000  # Preserve historical response field semantics.
     assert "#token=" not in str(record) and "synthetic.invalid" not in str(record)
+
+
+def test_provider_suppressed_not_sent_but_still_migrated(monkeypatch):
+    suppressed = subscriber(1, provider_suppressed=True, daily_brief=False)
+    eligible = subscriber(2, daily_brief=False)
+    db, _, events, calls = setup(monkeypatch, [suppressed, eligible], 1)
+    result = asyncio.run(server.send_migration_announcement())
+    assert calls == [eligible["email"]]
+    assert events == ["send_called", "send_returned", "update_many"]
+    assert suppressed["daily_brief"] is True
+    assert eligible["daily_brief"] is True
+    record = db.digest_log.inserts[0]
+    assert (record["selected_count"], record["prepared_count"], record["skipped_count"], record["accepted_count"]) == (1, 1, 0, 1)
+    assert result["subscribers_migrated"] == 1
 
 
 @pytest.mark.parametrize("invalid", ["missing", None, "", 123, "missing_active", "bad_id", "bad_version"])

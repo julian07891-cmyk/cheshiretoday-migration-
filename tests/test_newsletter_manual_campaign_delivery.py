@@ -22,6 +22,7 @@ from tests.test_newsletter_daily_delivery import subscriber, deliveries, TOKEN_S
 
 
 ACTIVE = {"$or": [{"active": True}, {"active": {"$exists": False}}]}
+PROVIDER_ELIGIBLE = {"$and": [ACTIVE, {"provider_suppressed": {"$ne": True}}]}
 SUBJECT = "Arbitrary campaign — September & beyond"
 HTML = '<body><h2>Custom campaign</h2><a href="__PREFS_URL__">Preferences</a><a href="__UNSUB_URL__">Unsubscribe</a></body>'
 TEXT = "Custom campaign\nPreferences: __PREFS_URL__\nUnsubscribe: __UNSUB_URL__"
@@ -231,10 +232,11 @@ class Subscribers:
         self.rows, self.queries, self.limits = deepcopy(rows), [], []
     def find(self, query, projection):
         self.queries.append((query, projection))
-        assert query == ACTIVE
-        assert projection == {"_id": 0, "email": 1, "active": 1, "newsletter_management_id": 1, "newsletter_token_version": 1}
-        rows = [r for r in self.rows if "active" not in r or r["active"] is True
-                or isinstance(r["active"], list) and any(v is True for v in r["active"])]
+        assert query == PROVIDER_ELIGIBLE
+        assert projection == {"_id": 0, "email": 1, "active": 1, "newsletter_management_id": 1, "newsletter_token_version": 1, "provider_suppressed": 1}
+        rows = [r for r in self.rows if ("active" not in r or r["active"] is True
+                or isinstance(r["active"], list) and any(v is True for v in r["active"]))
+                and r.get("provider_suppressed") is not True]
         collection = self
         class Cursor:
             async def to_list(self, limit):
@@ -306,6 +308,7 @@ def test_real_query_cap_invalid_positions_no_backfill(monkeypatch):
     rows = [subscriber(i) for i in range(1, 10002)]
     for row in rows[1:10000]: row.pop("newsletter_management_id")
     excluded = [subscriber(20000 + i, active=state) for i, state in enumerate([False, None, 1, "true", [False]])]
+    excluded.append(subscriber(20010, provider_suppressed=True))
     state = setup(monkeypatch, excluded + rows)
     result = endpoint()
     assert_record(state.logs[0], 10000, 1, 1, True)
@@ -420,18 +423,15 @@ def test_preview_unexpected_failure_is_private(monkeypatch, caplog):
     assert "PRIVATE_TOKEN" not in caplog.text and "secret@" not in caplog.text
 
 
-def test_only_slice6_production_functions_changed():
-    for path in ["backend/server.py", "backend/app/email_service.py"]:
-        old = ast.parse(subprocess.check_output(["git", "show", "3fe466e:" + path], text=True))
-        new = ast.parse(Path(path).read_text())
-        if path.endswith("server.py"):
-            for tree in (old, new):
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_send_campaign_email":
-                        node.body = []  # Signature and authentication dependency must remain identical.
-        else:
-            cls = next(node for node in new.body if isinstance(node, ast.ClassDef) and node.name == "EmailService")
-            added = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "send_manual_campaign"]
-            assert len(added) == 1
-            cls.body.remove(added[0])
-        assert ast.dump(old, include_attributes=False) == ast.dump(new, include_attributes=False)
+def test_slice6_campaign_interface_guards_remain():
+    old = ast.parse(subprocess.check_output(["git", "show", "3fe466e:backend/server.py"], text=True))
+    current = ast.parse(Path("backend/server.py").read_text())
+    old_endpoint = next(node for node in ast.walk(old) if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_send_campaign_email")
+    current_endpoint = next(node for node in ast.walk(current) if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_send_campaign_email")
+    assert ast.dump(old_endpoint.args, include_attributes=False) == ast.dump(current_endpoint.args, include_attributes=False)
+    assert [ast.dump(node, include_attributes=False) for node in old_endpoint.decorator_list] == [ast.dump(node, include_attributes=False) for node in current_endpoint.decorator_list]
+
+    service = ast.parse(Path("backend/app/email_service.py").read_text())
+    cls = next(node for node in service.body if isinstance(node, ast.ClassDef) and node.name == "EmailService")
+    methods = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == "send_manual_campaign"]
+    assert len(methods) == 1

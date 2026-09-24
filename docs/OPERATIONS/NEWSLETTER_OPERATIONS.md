@@ -37,6 +37,19 @@ Distinguish disabled, unconfigured, attempted, accepted, rejected and indetermin
 
 Daily/weekly queries must require `active=True` and the appropriate preference/default compatibility rule. Verify `active=False` exclusion through code/tests or a bounded aggregate, not by revealing subscriber rows. Inactive-subscriber diagnosis requires dated provider and ledger evidence, not a single open/click absence.
 
+
+## Provider suppression reconciliation — CT-DEC-022
+
+Treat provider suppression as delivery eligibility, not subscription withdrawal. `active` and newsletter preferences remain Cheshire Today lifecycle state. An explicit local `provider_suppressed=true` blocks subscriber-content delivery; absence of that value does not assert that the provider will accept or deliver a message.
+
+D-1 establishes the application eligibility guard but does not populate production suppression metadata. Before any reconciliation, obtain current provider suppression evidence and compare it with subscriber state using privacy-safe aggregate output only. Classify provider suppression reasons separately as `complaint` or `bounce`; retain the provider suppression timestamp and source where available. Do not expose recipient addresses in diagnostic output.
+
+Reconciliation must begin as a dry run. Report aggregate provider records, unique matched subscribers, locally active/inactive matches, reason counts, unmatched records and proposed changes. Counts must reconcile before any write. Do not derive permanent local suppression from ordinary/transient bounce-event history: provider suppression-list state is distinct from message-level bounce events.
+
+Never remove complaint suppressions as part of reactivation or routine reconciliation. Normal newsletter reactivation must not clear provider suppression. Do not unsuppress recipients at Resend, mutate production subscriber records or alter lifecycle/preferences without separate explicit approval. Preserve evidence and take a bounded backup before an approved bulk local mutation.
+
+After an approved local reconciliation, verify aggregate before/after counts, exact changed-record count and that suppressed records are excluded from delivery eligibility before caps/selection. Deployment of D-1, population of suppression metadata and provider-side changes are separate actions and must be recorded separately.
+
 ## Protected addresses and dry-run review
 
 Reserved/test/invalid addresses are filtered by current delivery safeguards. Before any approved send, review content, recipient count, preference filter, cap, batch slot and provider configuration without dispatching. Test endpoints are still production mutations and require explicit authority.

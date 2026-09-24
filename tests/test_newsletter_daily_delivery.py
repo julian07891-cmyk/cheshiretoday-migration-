@@ -63,6 +63,20 @@ def test_invalid_selected_context_skipped(field, value):
     assert token_service is None
 
 
+def test_provider_suppressed_selected_context_skipped():
+    record = subscriber(provider_suppressed=True)
+    prepared, counts, token_service = server._prepare_selected_newsletter_deliveries(
+        [record["email"]], server._newsletter_candidate_contexts([record]))
+    assert prepared == []
+    assert counts == {
+        "selected_count": 1,
+        "prepared_count": 0,
+        "skipped_count": 1,
+        "skip_reasons": {"provider_suppressed": 1},
+    }
+    assert token_service is None
+
+
 @pytest.mark.parametrize("reverse", [False, True])
 def test_ambiguity_before_deduplication(reverse):
     records = [subscriber(), subscriber(2, email=subscriber()["email"])]
@@ -313,6 +327,35 @@ def test_real_daily_selection_slots_accounting_and_cursor(monkeypatch, manual, a
     assert counts["accepted_count"] == accepted
     assert service.last_accepted_recipients == captured[:accepted]
     assert {"email", "active", "newsletter_management_id", "newsletter_token_version"} <= set(db.subscribers.projections[0])
+
+
+@pytest.mark.parametrize("manual", [False, True])
+def test_daily_query_excludes_provider_suppressed_before_selection(monkeypatch, manual):
+    class FilteringCollection(Collection):
+        def find(self, query, projection):
+            self.projections.append(projection)
+            assert {"provider_suppressed": {"$ne": True}} in query["$and"]
+            assert projection["provider_suppressed"] == 1
+            return Cursor([row for row in self.rows if row.get("provider_suppressed") is not True])
+
+    rows = [subscriber(1, provider_suppressed=True, priority_daily_brief=True),
+            subscriber(2), subscriber(3)]
+    db = SimpleNamespace(subscribers=FilteringCollection(rows), articles=Collection([ARTICLE]),
+                         digest_log=Collection(), email_batch_cursors=Collection(),
+                         email_send_opportunities=Collection())
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setenv("DAILY_BRIEF_SEND_CAP", "2")
+    monkeypatch.setenv("HOSTNAME", "offline")
+    service = EmailService()
+    service.resend_enabled = False
+    captured = []
+    monkeypatch.setattr(service, "_send_email", lambda to, *a, **k: captured.append(to) or True)
+    monkeypatch.setattr(server, "email_service", service)
+    if manual:
+        asyncio.run(server.send_digest_now())
+    else:
+        asyncio.run(server.send_scheduled_news_digest())
+    assert captured == [rows[1]["email"], rows[2]["email"]]
 
 
 def test_scheduled_all_invalid_is_preparation_failure_without_provider(monkeypatch, caplog):

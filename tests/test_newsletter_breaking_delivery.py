@@ -102,11 +102,13 @@ class Subscribers:
         self.rows = rows
     def find(self, query, projection):
         assert query == {"$and": [{"breaking_news": True},
-            {"$or": [{"active": True}, {"active": {"$exists": False}}]}]}
-        assert set(projection) == {"_id", "email", "active", "newsletter_management_id", "newsletter_token_version"}
+            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"provider_suppressed": {"$ne": True}}]}
+        assert set(projection) == {"_id", "email", "active", "newsletter_management_id", "newsletter_token_version", "provider_suppressed"}
         # Scalar fixtures: boolean Mongo equality must not treat numeric 1 as True.
         return AsyncCursor([r for r in self.rows if r.get("breaking_news") is True
-                            and ("active" not in r or r["active"] is True)])
+                            and ("active" not in r or r["active"] is True)
+                            and r.get("provider_suppressed") is not True])
 
 
 def run_endpoint(monkeypatch, rows, service):
@@ -116,6 +118,20 @@ def run_endpoint(monkeypatch, rows, service):
     result = asyncio.run(server.send_breaking_news_alert(server.BreakingNewsRequest(
         headline="Cheshire update", bullet_points=["Verified detail"])))
     return db, result
+
+
+def test_provider_suppressed_excluded_before_breaking_selection(monkeypatch):
+    rows = [subscriber(1, breaking_news=True, provider_suppressed=True),
+            subscriber(2, breaking_news=True), subscriber(3, breaking_news=True)]
+    service = EmailService()
+    service.resend_enabled = False
+    calls = []
+    monkeypatch.setattr(service, "_send_email", lambda to, *a, **k: calls.append(to) or True)
+    db, _ = run_endpoint(monkeypatch, rows, service)
+    assert calls == [rows[1]["email"], rows[2]["email"]]
+    record = db.digest_log.inserts[0]
+    assert record["selected_count"] == record["prepared_count"] == record["accepted_count"] == 2
+    assert record["skipped_count"] == 0
 
 
 @pytest.mark.parametrize("invalid", ["missing_active", "missing_id", "bad_id", "bad_version"])
@@ -239,7 +255,7 @@ def test_daily_weekly_and_push_sources_unchanged():
         tree = ast.parse(source)
         node = next(n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == name)
         return ast.dump(node, include_attributes=False)
-    for path, names in [("backend/server.py", ["send_breaking_news_notification", "send_scheduled_news_digest", "send_weekly_roundup_email"]),
+    for path, names in [("backend/server.py", ["send_breaking_news_notification"]),
                         ("backend/app/email_service.py", ["send_daily_brief", "send_weekly_roundup"])]:
         baseline = subprocess.check_output(["git", "show", "fc8b34c:" + path], text=True)
         from pathlib import Path

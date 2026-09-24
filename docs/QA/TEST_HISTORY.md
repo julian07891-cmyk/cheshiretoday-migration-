@@ -133,6 +133,10 @@ Known warnings include deprecated FastAPI `on_event`, multipart pending deprecat
 | 19 Sep 2026 | `03a6abb` | `python3 -m compileall -q backend tests`; `git diff --check`; complete unstaged re-review and staged review | Pass / approved | Final Blocker: none; Material: none; Minor: none | Compilation, diff hygiene and complete review gates | Static/review evidence only | Commit-gate verification |
 | 19–20 Sep 2026 | `03a6abb` | Automatic deployment and bounded production observation | Pass: exact SHA Live; build/Uvicorn/Mongo/index/APScheduler healthy; health and three public surfaces HTTP 200 | No attributable logging-format/changed-variable failure, traceback, fatal error, OOM, exit 137, restart or material 5xx observed | Deployment and immediate runtime compatibility | Every failure branch was not naturally exercised; historical logs unchanged; no compliance claim | Deployment `dep-daneoh6q1p3s73cdmf9g`; instance `zpcmz` |
 
+
+| 24 Sep 2026 | `full-scrape-prod` / local D-1 pre-commit | Provider-suppression affected newsletter regression | 403 passed, 0 failed | 18 pre-existing deprecation warnings | Daily Brief, Weekly Roundup, Breaking News, migration announcement, Site Update/onboarding and subscriber-targeted manual campaign delivery eligibility | Local implementation evidence only; no deployment, live suppression-field population, provider reconciliation or inbox-delivery claim | CT-DEC-022 implementation verification |
+| 24 Sep 2026 | `full-scrape-prod` / local D-1 pre-commit | `python3 -m py_compile backend/server.py`; `git diff --check`; complete production/test diff review | Pass / approved | No material failure | Compilation, diff hygiene and D-1 scope review | Static/review evidence only; production state unchanged | CT-DEC-022 commit-gate verification |
+
 ## Reconstruction limitations
 
 CI history is not comprehensively preserved in repository documents. Some later milestones record “passed” without totals or warnings. No number has been inferred. Pending chat/Codex records may add evidence but cannot silently change this register.

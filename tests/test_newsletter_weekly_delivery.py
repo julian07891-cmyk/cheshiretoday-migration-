@@ -23,9 +23,11 @@ class WeeklySubscribers(StaticCollection):
         assert query["$and"][0] == {
             "$or": [{"active": True}, {"active": {"$exists": False}}]
         }
+        assert {"provider_suppressed": {"$ne": True}} in query["$and"]
         assert all(not isinstance(row.get("active"), (list, dict)) for row in self.rows)
         return AsyncCursor([row for row in self.rows
-                            if "active" not in row or row["active"] is True])
+                            if ("active" not in row or row["active"] is True)
+                            and row.get("provider_suppressed") is not True])
 
 
 @pytest.fixture(autouse=True)
@@ -201,6 +203,16 @@ def test_batch_diagnostic_real_delivery_without_accounting(monkeypatch):
     assert not db.email_send_opportunities.updates
 
 
+def test_weekly_diagnostic_excludes_provider_suppressed_before_selection(monkeypatch):
+    rows = [subscriber(1, provider_suppressed=True), subscriber(2), subscriber(3)]
+    db, service = runtime(monkeypatch, rows)
+    calls = []
+    monkeypatch.setattr(service, "_send_email", lambda to, *a, **k: calls.append(to) or True)
+    result = asyncio.run(server.send_weekly_roundup_batch_test(2))
+    assert calls == [rows[1]["email"], rows[2]["email"]]
+    assert result["delivery_counts"]["selected_count"] == 2
+
+
 @pytest.mark.parametrize("diagnostic", [False, True])
 @pytest.mark.parametrize("state", [False, None, 1, "true"])
 def test_weekly_query_excludes_nonmatching_active_before_selection(monkeypatch, diagnostic, state):
@@ -228,6 +240,27 @@ def test_weekly_query_excludes_nonmatching_active_before_selection(monkeypatch, 
     assert candidates_seen == calls == [row["email"] for row in rows[1:]]
     assert (counts["selected_count"], counts["prepared_count"], counts["skipped_count"]) == (2, 2, 0)
     assert counts["skip_reasons"] == {}
+
+
+def test_weekly_query_excludes_provider_suppressed_before_selection(monkeypatch):
+    rows = [subscriber(1, provider_suppressed=True, priority_daily_brief=True),
+            subscriber(2), subscriber(3)]
+    db, service = runtime(monkeypatch, rows)
+    monkeypatch.setenv("WEEKLY_ROUNDUP_SEND_CAP", "2")
+    candidates_seen = []
+    original = server._newsletter_candidate_contexts
+    def capture_candidates(records):
+        candidates_seen.extend(row["email"] for row in records)
+        return original(records)
+    monkeypatch.setattr(server, "_newsletter_candidate_contexts", capture_candidates)
+    calls = []
+    def smtp(to, *a, **k):
+        service.last_provider_contacted = True
+        calls.append(to)
+        return True
+    monkeypatch.setattr(service, "_send_email", smtp)
+    asyncio.run(server.send_weekly_roundup_email(1))
+    assert candidates_seen == calls == [rows[1]["email"], rows[2]["email"]]
 
 
 def test_four_slots_no_wraparound(monkeypatch):

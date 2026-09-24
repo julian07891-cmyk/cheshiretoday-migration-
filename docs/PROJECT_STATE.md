@@ -273,6 +273,13 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
+
+### Provider suppression eligibility — CT-DEC-022 — 24 September 2026
+
+Local D-1 implementation now separates provider delivery suppression from Cheshire Today subscription lifecycle. `active` remains the consent/subscription state; explicit `provider_suppressed=true` makes a subscriber ineligible for subscriber-content delivery without treating that reader as unsubscribed. Scheduled/manual Daily Brief, scheduled/diagnostic Weekly Roundup, Breaking News, migration announcement, Site Update parts 1/2, onboarding and subscriber-targeted manual campaigns are covered, with query-time exclusion before selection/caps where appropriate and a shared preparation guard as defence in depth.
+
+Combined affected regression passed **403 tests, 18 pre-existing deprecation warnings, zero failures**. `backend/server.py` compilation and `git diff --check` passed, and the complete production/test diff was reviewed against the D-1 boundary. This capability is **local only at this checkpoint**: no deployment, production suppression-field population, Resend change, provider unsuppression, DNS change or subscriber lifecycle mutation is claimed. The known provider suppression population still requires a privacy-safe dry-run reconciliation and separate approval before any production write. See [CT-DEC-022](DECISION_REGISTER.md#ct-dec-022--separate-provider-suppression-from-subscription-lifecycle), [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md#provider-suppression-and-delivery-eligibility--ct-dec-022) and [Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md#provider-suppression-reconciliation--ct-dec-022).
+
 ### Cold-report accepted-send correction — 23 September 2026
 
 Deployed and production-verified on 24 September 2026 at commit `3763aa6`: the

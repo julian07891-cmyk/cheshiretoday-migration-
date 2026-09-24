@@ -23,6 +23,7 @@ from tests.test_newsletter_daily_delivery import subscriber, deliveries, TOKEN_S
 
 ACTIVE = {"$or": [{"active": True}, {"active": {"$exists": False}}]}
 IDENTITY_FIELDS = {"_id", "email", "active", "newsletter_management_id", "newsletter_token_version"}
+PROVIDER_ELIGIBLE = {"$and": [ACTIVE, {"provider_suppressed": {"$ne": True}}]}
 SUBJECTS = {1: "Cheshire Today is evolving — here’s what it means for you", 2: "What’s new on Cheshire Today"}
 
 
@@ -185,12 +186,13 @@ class Subscribers:
         self.queries, self.updates, self.limits = [], [], []
     def find(self, query, projection):
         self.queries.append((query, projection))
-        assert query in (ACTIVE, {})
-        expected = IDENTITY_FIELDS | ({"created_at", "subscribed_at", "site_update_part1_sent_at", "site_update_part2_sent_at"} if not query else set())
+        assert query in (PROVIDER_ELIGIBLE, {})
+        expected = IDENTITY_FIELDS | {"provider_suppressed"} | ({"created_at", "subscribed_at", "site_update_part1_sent_at", "site_update_part2_sent_at"} if not query else set())
         assert set(projection) == expected
         # Mongo scalar booleans do not equal numeric 1; missing alone passes $exists:false.
-        rows = [r for r in self.rows if not query or "active" not in r or r["active"] is True
-                or isinstance(r["active"], list) and any(value is True for value in r["active"])]
+        rows = [r for r in self.rows if not query or (("active" not in r or r["active"] is True
+                or isinstance(r["active"], list) and any(value is True for value in r["active"]))
+                and r.get("provider_suppressed") is not True)]
         collection = self
         class Cursor:
             async def to_list(self, limit):
@@ -267,7 +269,7 @@ def test_manual_query_cap_slots_and_global_flags(monkeypatch, part, outcome):
     state = setup(monkeypatch, excluded + rows, [(part, r["email"]) for r in rows[:count]], outcome == "unavailable")
     result = manual(part)
     assert state.db.subscribers.limits == [10000]
-    assert state.db.subscribers.queries[0][0] == ACTIVE
+    assert state.db.subscribers.queries[0][0] == PROVIDER_ELIGIBLE
     assert state.calls == ([(part, r["email"]) for r in rows[:2]] if outcome != "unavailable" else [])
     assert result["subscribers_targeted"] == 10000
     assert state.events == ["send", "digest", "flag"] and not state.db.subscribers.updates
@@ -297,6 +299,17 @@ def test_manual_invalid_fetched_position(monkeypatch, part, invalid):
     if invalid in ("missing_active", "array_active"):
         assert state.logs[0]["skip_reasons"] == {"invalid_active_state": 1}
     assert not state.calls
+
+
+@pytest.mark.parametrize("part", [1, 2])
+def test_manual_provider_suppressed_excluded_before_selection(monkeypatch, part):
+    suppressed = subscriber(1, provider_suppressed=True)
+    eligible = subscriber(2)
+    state = setup(monkeypatch, [suppressed, eligible], [(part, eligible["email"])])
+    result = manual(part)
+    assert state.calls == [(part, eligible["email"])]
+    assert result["subscribers_targeted"] == 1
+    assert_aggregate(state.logs[0], 1, 1, 1, True)
 
 
 @pytest.mark.parametrize("part", [1, 2])
@@ -331,6 +344,18 @@ def test_onboarding_gate_and_dry_run_eligibility(monkeypatch):
     assert result["due_part1_count"] == 4 and result["due_part2_count"] == 3
     assert state.db.subscribers.limits == [20000]
     assert not state.events and not state.calls and not state.db.subscribers.updates
+
+
+def test_onboarding_provider_suppressed_excluded_from_due_population(monkeypatch):
+    suppressed = aged(1, provider_suppressed=True)
+    eligible = aged(2)
+    state = setup(monkeypatch, [suppressed, eligible], [(1, eligible["email"]), (2, eligible["email"])])
+    result = onboard()
+    assert result["due_part1_count"] == 1
+    assert result["due_part2_count"] == 1
+    assert state.calls == [(1, eligible["email"]), (2, eligible["email"])]
+    for record in state.logs:
+        assert_aggregate(record, 1, 1, 1, True)
 
 
 @pytest.mark.parametrize("outcome", ["all", "partial", "zero", "unavailable"])

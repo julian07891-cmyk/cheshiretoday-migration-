@@ -13588,6 +13588,8 @@ def _newsletter_candidate_contexts(subscribers):
         reason = result.reason.value if result.context is None else None
         if reason is None and subscriber.get("active") is not True:
             reason = "invalid_active_state"
+        if reason is None and subscriber.get("provider_suppressed") is True:
+            reason = "provider_suppressed"
         candidates[key] = (result.context if reason is None else None, reason)
     return candidates
 
@@ -13673,11 +13675,12 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
             {
                 "$and": [
                     {"$or": [{"active": True}, {"active": {"$exists": False}}]},
-                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]}
+                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]},
+                    {"provider_suppressed": {"$ne": True}}
                 ]
             },
             {"_id": 0, "email": 1, "newsletter_management_id": 1,
-             "newsletter_token_version": 1, "active": 1}
+             "newsletter_token_version": 1, "active": 1, "provider_suppressed": 1}
         ).to_list(15000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
@@ -14133,11 +14136,13 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
                             {"daily_brief": True},
                             {"preferences_updated_at": {"$exists": False}}
                         ]}
-                    ]}
+                    ]},
+                    {"provider_suppressed": {"$ne": True}}
                 ]
             },
             {"_id": 0, "email": 1, "active": 1,
-             "newsletter_management_id": 1, "newsletter_token_version": 1}
+             "newsletter_management_id": 1, "newsletter_token_version": 1,
+             "provider_suppressed": 1}
         ).to_list(15000)
 
         candidates = _newsletter_candidate_contexts(subscribers)
@@ -14265,11 +14270,13 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
             {
                 "$and": [
                     {"breaking_news": True},
-                    {"$or": [{"active": True}, {"active": {"$exists": False}}]}
+                    {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                    {"provider_suppressed": {"$ne": True}}
                 ]
             },
             {"_id": 0, "email": 1, "active": 1,
-             "newsletter_management_id": 1, "newsletter_token_version": 1}
+             "newsletter_management_id": 1, "newsletter_token_version": 1,
+             "provider_suppressed": 1}
         ).to_list(1000)
         
         if not subscribers:
@@ -14683,9 +14690,13 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
     try:
         # Get active subscribers only
         subscribers = await db.subscribers.find(
-            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"$and": [
+                {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                {"provider_suppressed": {"$ne": True}}
+            ]},
             {"_id": 0, "email": 1, "active": 1,
-             "newsletter_management_id": 1, "newsletter_token_version": 1}
+             "newsletter_management_id": 1, "newsletter_token_version": 1,
+             "provider_suppressed": 1}
         ).to_list(10000)
         
         if not subscribers:
@@ -14740,9 +14751,13 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
     """Send Site Update (Part 1) to ALL subscribers. Requires admin authentication."""
     try:
         subscribers = await db.subscribers.find(
-            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"$and": [
+                {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                {"provider_suppressed": {"$ne": True}}
+            ]},
             {"_id": 0, "email": 1, "active": 1,
-             "newsletter_management_id": 1, "newsletter_token_version": 1}
+             "newsletter_management_id": 1, "newsletter_token_version": 1,
+             "provider_suppressed": 1}
         ).to_list(10000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
@@ -14790,9 +14805,13 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
     """Send Site Update (Part 2) to ALL subscribers. Requires admin authentication."""
     try:
         subscribers = await db.subscribers.find(
-            {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+            {"$and": [
+                {"$or": [{"active": True}, {"active": {"$exists": False}}]},
+                {"provider_suppressed": {"$ne": True}}
+            ]},
             {"_id": 0, "email": 1, "active": 1,
-             "newsletter_management_id": 1, "newsletter_token_version": 1}
+             "newsletter_management_id": 1, "newsletter_token_version": 1,
+             "provider_suppressed": 1}
         ).to_list(10000)
         if not subscribers:
             return {"success": False, "message": "No subscribers found"}
@@ -14856,7 +14875,8 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
             {},
             {"_id": 0, "email": 1, "created_at": 1, "subscribed_at": 1,
              "active": 1, "site_update_part1_sent_at": 1, "site_update_part2_sent_at": 1,
-             "newsletter_management_id": 1, "newsletter_token_version": 1}
+             "newsletter_management_id": 1, "newsletter_token_version": 1,
+             "provider_suppressed": 1}
         ).to_list(20000)
 
         # Live preparation sees every fetched identity before due-list deduplication.
@@ -14883,6 +14903,8 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
 
             # Treat missing active as active=True (back-compat)
             if sub.get("active") is False:
+                continue
+            if sub.get("provider_suppressed") is True:
                 continue
 
             created = parse_iso(sub.get("created_at")) or parse_iso(sub.get("subscribed_at"))
@@ -15040,14 +15062,16 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
             to_emails = [test_email]
         else:
             subs = await db.subscribers.find(
-                {
-                    "$or": [
+                {"$and": [
+                    {"$or": [
                         {"active": True},
                         {"active": {"$exists": False}},
-                    ]
-                },
+                    ]},
+                    {"provider_suppressed": {"$ne": True}},
+                ]},
                 {"_id": 0, "email": 1, "active": 1,
-                 "newsletter_management_id": 1, "newsletter_token_version": 1},
+                 "newsletter_management_id": 1, "newsletter_token_version": 1,
+                 "provider_suppressed": 1},
             ).to_list(10000)
             if not subs:
                 return {"success": False, "message": "No subscribers found"}
@@ -19668,7 +19692,8 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             {
                 "$and": [
                     {"$or": [{"active": True}, {"active": {"$exists": False}}]},
-                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]}
+                    {"$or": [{"daily_brief": {"$ne": False}}, {"daily_brief": {"$exists": False}}]},
+                    {"provider_suppressed": {"$ne": True}}
                 ]
             },
             {
@@ -19680,6 +19705,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 "newsletter_management_id": 1,
                 "newsletter_token_version": 1,
                 "active": 1,
+                "provider_suppressed": 1,
             }
         ).to_list(15000)
         if not subscribers:
@@ -20216,7 +20242,8 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                             {"daily_brief": True},
                             {"preferences_updated_at": {"$exists": False}}
                         ]}
-                    ]}
+                    ]},
+                    {"provider_suppressed": {"$ne": True}}
                 ]
             },
             {
@@ -20228,6 +20255,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 "active": 1,
                 "newsletter_management_id": 1,
                 "newsletter_token_version": 1,
+                "provider_suppressed": 1,
             }
         ).to_list(15000)
         

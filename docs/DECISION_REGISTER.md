@@ -511,6 +511,21 @@ describes the decision at current repository HEAD, not an unverified live claim.
   [Production Timeline](PRODUCTION_TIMELINE.md#23-september-2026--ct-dec-021-functional-production-acceptance);
   [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md) owns the detailed contract.
 
+
+### CT-DEC-022 — Separate provider suppression from subscription lifecycle
+
+- **ID:** CT-DEC-022
+- **Date:** 24 September 2026.
+- **Status:** Implemented locally; production reconciliation and deployment not yet performed.
+- **Area:** Newsletter delivery eligibility and provider hygiene.
+- **Problem:** Resend suppression state and Cheshire Today subscriber lifecycle state are distinct. Provider evidence identified suppressed recipients whose local records could remain active, while transient bounce events must not be treated as permanent subscription withdrawal. Reusing unsubscribe/reactivation fields would misstate the cause and could allow later reactivation to obscure an unchanged provider block.
+- **Decision:** Keep `active` as the Cheshire Today subscription/consent lifecycle. Represent a known provider block separately with `provider_suppressed=true`, `provider_suppression_reason` (`complaint` or `bounce`), `provider_suppressed_at` and `provider_suppression_source="resend"`. Absence of `provider_suppressed=true` remains backward-compatible and means no known local provider block. Subscriber-content delivery must exclude explicit provider suppression before caps/selection where the path supports query-time filtering, with a shared preparation guard as defence in depth.
+- **Lifecycle boundary:** Provider suppression does not unsubscribe a reader and normal reactivation must not silently clear it. Complaint suppressions must not be removed as part of application reactivation. Provider reconciliation, provider-side unsuppression and any production subscriber mutation require separate evidence and explicit approval.
+- **Implementation:** Local D-1 changes cover scheduled/manual Daily Brief, scheduled/diagnostic Weekly Roundup, Breaking News, migration announcement, Site Update parts 1/2, onboarding eligibility and subscriber-targeted manual campaigns. Onboarding retains its intentionally broad identity fetch and excludes suppressed records from its due population locally. Migration-announcement preference migration remains separate from delivery eligibility. No Resend configuration, DNS, transport, unsubscribe/reactivation semantics or production subscriber data is changed.
+- **Verification:** Combined affected newsletter regression: 403 passed, 18 pre-existing deprecation warnings, zero failures. `backend/server.py` compilation and `git diff --check` passed. Complete production and test diffs were reviewed against the D-1 boundary. This is implementation evidence only; deployment, live suppression-field population and provider/local reconciliation are not claimed.
+- **Follow-up:** Build a privacy-safe dry-run reconciliation for the known provider suppression export, compare aggregate counts/reasons against subscriber state, and require explicit approval before applying local suppression metadata. Do not infer permanent suppression from transient bounce events. Trace the owner-reported missing-newsletter case and Apple/iCloud Junk placement separately after provider hygiene work.
+- **Sources:** Local D-1 implementation and regression evidence on `full-scrape-prod`; [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md); [Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md); [Test History](QA/TEST_HISTORY.md).
+
 ## Unreconciled decision evidence
 
 - ChatGPT export and systematic Codex records may reveal additional alternatives or
