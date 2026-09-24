@@ -43,7 +43,71 @@ Reserved/test/invalid addresses are filtered by current delivery safeguards. Bef
 
 ## Deactivation safeguards
 
-Do not bulk deactivate from bounce-like symptoms, scanner noise or missing engagement. Require reconciled provider rejection evidence, accepted-recipient history and the current protected-address rules. Prefer soft lifecycle state over deletion, and obtain production approval.
+### Cold-report correction — 23 September 2026 (local, not deployed)
+
+The admin-authenticated GET cold-report remains read-only/dry-run. Its local
+replacement uses `email_send_opportunities`, not missing analytics rows, as the
+accepted-send denominator. The producer writes only accepted recipient hashes,
+deduplicates them and upserts by tracking identity. The report requires a positive
+integer accepted count matching unique valid hashes, a recognised Daily/Weekly
+digest and provider, and a valid nonfuture acceptance time. Each recipient counts
+once per opportunity; repeated tracking identities cannot inflate the count.
+
+Default minimum is five, clamped to 5–100 via `min_accepted_sends`. Existing
+`days` defaults to 30 (7–180); use 90 explicitly for the investigation window.
+Only opportunities in that window count. Any recorded open/click in retained
+analytics history vetoes candidacy, even outside the window. No analytics row
+alone and no ledger evidence can never establish candidacy.
+
+Preserved active/legacy-active and Daily eligibility, valid-address, priority,
+website/organic and own-domain protections apply first. Recent subscription
+protection remains 21 days by default (1–90); Mongo datetimes and ISO strings are
+normalised to UTC. Unknown age is now conservatively excluded. Duplicate eligible
+email records cannot hide a protected or recent peer. The report streams reads
+without silently truncating engagement evidence.
+
+Response compatibility: `sample`, `tracked_hashes`, `engaged_hashes` and the two
+old tracking/no-tracking cold breakdowns are removed. `sample_limit` remains an
+ignored input for legacy callers. No repository UI caller depended on these fields.
+New outputs are aggregate counts, accepted-send count distribution and valid ledger
+coverage dates. Recipient metrics/distribution describe the population after
+eligibility/protection/age exclusions; engaged and insufficient-evidence counts
+can overlap. Ledger coverage spans all valid retained rows, while opportunity
+counts use the configured window. Invalid ledger rows are counted and excluded.
+No raw addresses, hashes, tracking identities or tokens are returned. Unexpected
+failures return a fixed private 503, not exception text.
+
+Acceptance is not delivery and short hash collisions/tracking limitations remain.
+Candidates require review and separately authorised lifecycle action; no automatic
+deactivation endpoint, hard deletion or reactivation is added.
+
+### Production evidence and separately controlled deactivation
+
+Owner-supplied 23 September evidence: the old 90-day report had 14,095 active Daily
+unique addresses, 0 invalid, 4 protected/organic, 0 recent, 6,131 engaged/tracked
+hashes and 8,040 alleged cold candidates, all solely missing recent tracking.
+Analytics had 35,881 rows (35,240 opened, 4,568 clicked), zero rows with both
+counters zero. It is engagement/event evidence, not a sent-recipient roster.
+
+Ledger coverage was 14 July 2026 06:30:12.077 to 23 September 2026
+06:30:12.925: 102 rows, accepted-count sum 101,599, 14,129 unique accepted hashes.
+Accepted-send/no-engagement distribution: 9 recipients with 3, 4,910 with 4 and
+2,422 with 5; none above 5. The five-send cohort was active, had zero recorded
+engagement, 65–67 days between first/last acceptance, 170-day subscription age,
+no protected/organic members, no missing/unparseable ages and none within 30/60/90
+days of signup. This historical selection also considered span and age; the new
+generic report does not claim to reproduce that exact cohort with every parameter.
+
+After an outside-repository backup of exactly 2,422 records, a separately approved
+production operation deactivated them; the application report did not perform it.
+Total remained 14,267; active 14,095 → 11,673; inactive 172 → 2,594; active Daily
+eligible 14,095 → 11,673. Records received `active=False`,
+`cold_deactivated_at` and
+`cold_deactivation_reason="5_provider_accepted_sends_zero_recorded_engagement_65_67_day_span"`.
+This implementation neither modifies those markers nor reactivates the cohort.
+Evidence was supplied by the operator, not repeated during this local correction.
+
+Do not bulk deactivate from bounce-like symptoms, scanner noise or missing engagement alone. Require reviewed accepted-recipient history, age/span and current protected-address rules; reconcile provider rejection evidence when relevant. Prefer soft lifecycle state over deletion, and obtain production approval.
 
 ## Secure-management incidents
 

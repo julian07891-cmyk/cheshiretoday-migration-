@@ -273,6 +273,23 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
+### Cold-report accepted-send correction — 23 September 2026
+
+Local/uncommitted, not deployed: the admin cold-report now requires at least five
+valid provider-accepted send opportunities within its configured window and no
+recorded engagement. Analytics absence alone is not cold evidence. All eligibility
+and protection boundaries remain; unknown subscription age fails closed, and
+raw recipient samples are removed. Reporting is read-only/dry-run; lifecycle action
+requires separate approval. Details/schema are in
+[Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md#cold-report-correction--23-september-2026-local-not-deployed).
+
+Separately, operator-supplied production evidence records backup and controlled
+deactivation of 2,422 five-send/no-engagement subscribers (65–67-day send span,
+170-day subscription age, no protected/organic members). Total remained 14,267;
+active/Daily eligible fell 14,095 → 11,673; inactive rose 172 → 2,594. The report
+did not perform that action and this correction preserves its inactive records
+and cold-deactivation metadata. No production action was repeated in this task.
+
 ### Current direct newsletter unsubscribe status
 
 **FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
