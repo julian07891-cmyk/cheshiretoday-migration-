@@ -57,7 +57,8 @@ def test_transport_isolation(monkeypatch, part, resend, outcome):
         messages.extend([{**m, "to": m["to"][0]} for m in json])
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
         return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
-    def smtp(to, subject, html, text, *, newsletter_headers):
+    def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
+        assert feedback_id == "siteupdate:::cheshtoday"
         service.last_provider_contacted = True
         messages.append({"to": to, "subject": subject, "html": html, "text": text, "headers": newsletter_headers})
         return outcome == "all" or outcome == "partial" and len(messages) == 101

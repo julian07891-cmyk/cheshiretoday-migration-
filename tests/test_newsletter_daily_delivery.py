@@ -146,7 +146,8 @@ def test_direct_body_headers_tracking_and_acceptance(monkeypatch, transport):
         chunks.append(len(json))
         messages.extend([{**item, "to": item["to"][0]} for item in json])
         return httpx.Response(200, request=httpx.Request("POST", "https://synthetic.invalid"))
-    def smtp(to, subject, html, text, *, newsletter_headers):
+    def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
+        assert feedback_id == "daily:::cheshtoday"
         messages.append({"to": to, "html": html, "text": text, "headers": newsletter_headers})
         return True
     monkeypatch.setattr("app.email_service.httpx.post", post)

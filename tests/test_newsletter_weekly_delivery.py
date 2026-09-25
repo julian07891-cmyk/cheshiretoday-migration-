@@ -58,7 +58,8 @@ def test_weekly_isolation_at_chunk_boundary(monkeypatch, transport):
         chunks.append(len(json))
         messages.extend([{**m, "to": m["to"][0]} for m in json])
         return httpx.Response(200, request=httpx.Request("POST", "https://synthetic.invalid"))
-    def smtp(to, subject, html, text, *, newsletter_headers):
+    def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
+        assert feedback_id == "weekly:::cheshtoday"
         service.last_provider_contacted = True
         messages.append({"to": to, "html": html, "text": text, "headers": newsletter_headers})
         return True

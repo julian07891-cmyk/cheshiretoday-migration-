@@ -46,7 +46,8 @@ def test_transport_isolation_and_accounting(monkeypatch, resend, outcome):
         messages.extend([{**m, "to": m["to"][0]} for m in json])
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
         return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
-    def smtp(to, subject, html, text, *, newsletter_headers):
+    def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
+        assert feedback_id == "breaking:::cheshtoday"
         service.last_provider_contacted = True
         messages.append({"to": to, "html": html, "text": text, "headers": newsletter_headers})
         return outcome == "all" or outcome == "partial" and len(messages) == 101
@@ -260,6 +261,10 @@ def test_daily_weekly_and_push_sources_unchanged():
         baseline = subprocess.check_output(["git", "show", "fc8b34c:" + path], text=True)
         from pathlib import Path
         current = Path(path).read_text()
+        # Historical Slice 3 scope check: later Feedback-ID work intentionally
+        # changes digest builders. Live scope is checked by test_newsletter_feedback_id.
+        if path == "backend/app/email_service.py":
+            current = subprocess.check_output(["git", "show", "5afd7b1:" + path], text=True)
         for name in names:
             assert function(current, name) == function(baseline, name)
     assert "Depends(get_admin_auth)" in inspect.getsource(server.send_breaking_news_alert)

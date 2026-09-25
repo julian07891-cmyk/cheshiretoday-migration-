@@ -273,6 +273,28 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
+### Gmail Feedback-ID — 25 September 2026 — local/uncommitted
+
+Newsletter campaign builders now opt in to fixed, recipient-neutral `Feedback-ID`
+values: `daily:::cheshtoday`, `weekly:::cheshtoday`, `breaking:::cheshtoday`,
+`siteupdate:::cheshtoday` (both Site Update parts, including onboarding), and
+`manual:::cheshtoday` (real-subscriber campaigns only). Resend batch payloads and
+SMTP MIME messages add one header at the transport-message boundary, separately
+from immutable direct-unsubscribe artifacts. Strict two-header unsubscribe
+validation is unchanged. Welcome, management/recovery/reactivation, unrelated
+SMTP messages, and digest/manual previews do not opt in. The separate migration
+announcement builder is unchanged; no new classification was requested for it.
+
+No audience, eligibility, scheduler, cursor, tracking, provider configuration,
+DNS or production-data change is included. Initial baseline: `5afd7b1` on
+`full-scrape-prod`. Red tests demonstrated missing campaign headers; focused
+Feedback-ID/transport/context tests pass **120**, and newsletter plus Weekly
+idempotence regression passes **1,903** with **422 warnings** (existing framework,
+datetime and gzip warning categories). This is local-only evidence, not delivery
+acceptance: downstream header preservation and DKIM coverage require a separately
+approved delivered-message check. No commit, push, deployment or live send occurred.
+CT-DEC-021's upstream **POTENTIAL QUERY LOG EXPOSURE** gate remains open.
+
 
 ### Provider suppression eligibility — CT-DEC-022 — 24 September 2026
 

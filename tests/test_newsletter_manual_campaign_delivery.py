@@ -64,7 +64,8 @@ def test_transports_isolation_and_acceptance(monkeypatch, caplog, resend, outcom
         if outcome == "exception": raise httpx.ConnectError("PRIVATE_TOKEN secret@synthetic.invalid")
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
         return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
-    def smtp(to, subject, html, text, *, newsletter_headers):
+    def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
+        assert feedback_id == "manual:::cheshtoday"
         service.last_provider_contacted = True
         messages.append({"to": to, "subject": subject, "html": html, "text": text, "headers": newsletter_headers})
         return outcome == "all" or outcome == "partial" and len(messages) == 101
@@ -124,8 +125,9 @@ def test_arbitrary_content_and_placeholder_semantics(monkeypatch, resend, html, 
     def batch(items):
         messages.extend(items)
         return len(items)
-    def smtp(to, subject, html, text, *, newsletter_headers):
-        messages.append({"to": to, "subject": subject, "html": html, "text": text, "headers": newsletter_headers})
+    def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
+        messages.append({"to": to, "subject": subject, "html": html, "text": text,
+                         "headers": newsletter_headers, "feedback_id": feedback_id})
         return True
     monkeypatch.setattr(service, "_send_resend_batch", batch)
     monkeypatch.setattr(service, "_send_email", smtp)
@@ -139,7 +141,8 @@ def test_arbitrary_content_and_placeholder_semantics(monkeypatch, resend, html, 
     else:
         expected_html = "<p>" + (expected_text or "") + "</p>"
     assert messages == [{"to": a.context.email, "subject": SUBJECT, "html": expected_html,
-                         "text": expected_text, "headers": a.native_headers}]
+                         "text": expected_text, "headers": a.native_headers,
+                         "feedback_id": "manual:::cheshtoday"}]
 
 
 @pytest.mark.parametrize("port", [465, 587])

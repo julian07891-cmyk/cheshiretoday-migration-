@@ -33,6 +33,18 @@ _EMAIL_LOGO_HEIGHT = 51
 _EMAIL_CONTENT_WIDTH = 620
 
 
+def _feedback_headers(feedback_id=None) -> dict:
+    """Export only approved, recipient-neutral campaign metadata."""
+    if feedback_id is None:
+        return {}
+    if not isinstance(feedback_id, str) or feedback_id not in {
+        "daily:::cheshtoday", "weekly:::cheshtoday", "breaking:::cheshtoday",
+        "siteupdate:::cheshtoday", "manual:::cheshtoday",
+    }:
+        raise NewsletterDeliveryError("invalid_feedback_id")
+    return {"Feedback-ID": feedback_id}
+
+
 def _email_html_text(value) -> str:
     """Escape dynamic email content for a text node."""
     return html.escape("" if value is None else str(value), quote=False)
@@ -265,6 +277,7 @@ class EmailService:
             _NewsletterHeaders(item["headers"]) if "headers" in item else None
             for item in batch_messages
         ]
+        feedback_headers = [_feedback_headers(item.get("feedback_id")) for item in batch_messages]
 
         for i in range(0, len(batch_messages), 100):
             chunk = batch_messages[i:i+100]
@@ -282,6 +295,8 @@ class EmailService:
                     email_payload["reply_to"] = self.reply_to
                 if newsletter_headers[i + offset] is not None:
                     email_payload["headers"] = newsletter_headers[i + offset].as_transport_dict()
+                if feedback_headers[i + offset]:
+                    email_payload.setdefault("headers", {}).update(feedback_headers[i + offset])
                 payload.append(email_payload)
 
             chunk_number = i // 100 + 1
@@ -333,7 +348,8 @@ class EmailService:
         return success_count
 
 
-    def _send_email(self, to_email, subject, html_content, text_content=None, *, newsletter_headers=None):
+    def _send_email(self, to_email, subject, html_content, text_content=None, *, newsletter_headers=None,
+                    feedback_id=None):
         """Send an email via SMTP (supports Gmail, GoDaddy, etc.)"""
         import smtplib
         import ssl
@@ -344,6 +360,7 @@ class EmailService:
             _NewsletterHeaders(newsletter_headers)
             if newsletter_headers is not None else None
         )
+        feedback_headers = _feedback_headers(feedback_id)
 
         if not getattr(self, 'smtp_enabled', False):
             logger.info('SMTP disabled (SMTP_ENABLED not true) — skipping send')
@@ -368,6 +385,8 @@ class EmailService:
         msg["From"] = f"{self.from_name} <{self.from_email}>"
         msg["To"] = to_email
         for name, value in (message_headers.as_transport_dict() if message_headers is not None else {}).items():
+            msg[name] = value
+        for name, value in feedback_headers.items():
             msg[name] = value
 
         # Prefer plain text fallback if provided
@@ -1355,6 +1374,7 @@ Cheshire Today Jobs Team
             }
             if delivery is not None:
                 item["headers"] = delivery.native_headers
+                item["feedback_id"] = "daily:::cheshtoday"
             return item
 
         success_count = 0
@@ -1368,7 +1388,7 @@ Cheshire Today Jobs Team
         else:
             for email, delivery in recipients:
                 item = build_recipient_message(email, delivery)
-                headers = {"newsletter_headers": item["headers"]} if "headers" in item else {}
+                headers = {"newsletter_headers": item["headers"], "feedback_id": item["feedback_id"]} if "headers" in item else {}
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"], **headers):
                     success_count += 1
                     self.last_accepted_recipients.append(
@@ -1503,14 +1523,15 @@ Cheshire Today Jobs Team
             html_personal = html_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             batch_messages.append({"to": email, "subject": subject, "html": html_personal,
-                                   "text": text_personal, "headers": delivery.native_headers})
+                                   "text": text_personal, "headers": delivery.native_headers,
+                                   "feedback_id": "breaking:::cheshtoday"})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
             success_count = 0
             for item in batch_messages:
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"],
-                                    newsletter_headers=item["headers"]):
+                                    newsletter_headers=item["headers"], feedback_id=item["feedback_id"]):
                     success_count += 1
                     self.last_accepted_recipients.append(item["to"])
         
@@ -1759,13 +1780,14 @@ Cheshire Today Jobs Team
             })
             if delivery is not None:
                 batch_messages[-1]["headers"] = delivery.native_headers
+                batch_messages[-1]["feedback_id"] = "weekly:::cheshtoday"
 
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
             success_count = 0
             for item in batch_messages:
-                headers = {"newsletter_headers": item["headers"]} if "headers" in item else {}
+                headers = {"newsletter_headers": item["headers"], "feedback_id": item["feedback_id"]} if "headers" in item else {}
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"], **headers):
                     success_count += 1
                     self.last_accepted_recipients.append(
@@ -1960,14 +1982,15 @@ Cheshire Today Jobs Team
             text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             batch_messages.append({"to": delivery.context.email, "subject": subject,
                                    "html": html_personal, "text": text_personal,
-                                   "headers": delivery.native_headers})
+                                   "headers": delivery.native_headers,
+                                   "feedback_id": "siteupdate:::cheshtoday"})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
             success_count = 0
             for item in batch_messages:
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"],
-                                    newsletter_headers=item["headers"]):
+                                    newsletter_headers=item["headers"], feedback_id=item["feedback_id"]):
                     success_count += 1
                     self.last_accepted_recipients.append(item["to"])
 
@@ -2024,14 +2047,15 @@ Cheshire Today Jobs Team
             text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             batch_messages.append({"to": delivery.context.email, "subject": subject,
                                    "html": html_personal, "text": text_personal,
-                                   "headers": delivery.native_headers})
+                                   "headers": delivery.native_headers,
+                                   "feedback_id": "siteupdate:::cheshtoday"})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
             success_count = 0
             for item in batch_messages:
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"],
-                                    newsletter_headers=item["headers"]):
+                                    newsletter_headers=item["headers"], feedback_id=item["feedback_id"]):
                     success_count += 1
                     self.last_accepted_recipients.append(item["to"])
 
@@ -2075,6 +2099,7 @@ Cheshire Today Jobs Team
                 "to": delivery.context.email, "subject": subject,
                 "html": html_personal or ("<p>" + (text_personal or "") + "</p>"),
                 "text": text_personal, "headers": delivery.native_headers,
+                "feedback_id": "manual:::cheshtoday",
             })
 
         if getattr(self, "resend_enabled", False):
@@ -2083,7 +2108,7 @@ Cheshire Today Jobs Team
             success_count = 0
             for item in batch_messages:
                 if self._send_email(item["to"], item["subject"], item["html"], item["text"],
-                                    newsletter_headers=item["headers"]):
+                                    newsletter_headers=item["headers"], feedback_id=item["feedback_id"]):
                     success_count += 1
                     self.last_accepted_recipients.append(item["to"])
         logger.info("Manual campaign accepted %s/%s prepared messages", success_count, len(deliveries))
