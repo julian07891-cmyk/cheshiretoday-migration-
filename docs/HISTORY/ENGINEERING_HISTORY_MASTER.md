@@ -1,7 +1,33 @@
 # Cheshire Today — Engineering History Master
 
-> **Reconstruction status:** repository-evidence history through commit
-> `24f381e50fce90a2c21c4f4ec9b1698e34ecc2cb` on 26 August 2026. ChatGPT export,
+## 24–26 September 2026 — newsletter evidence and documentation reconciliation
+
+Implementation sequence verified in Git:
+`3763aa6` accepted-send cold-report correction; `0acbe8a` production evidence;
+`34ecf74` suppression eligibility; `5afd7b1` reconciliation tooling/evidence;
+`8ed1984` campaign Feedback-ID support. Earlier local/uncommitted slice labels
+describe historical checkpoints, not the state of these capabilities today.
+
+Application Feedback-ID changes preserve recipient selection, scheduling,
+tracking and unsubscribe validation. Historical verification: 120 focused tests;
+1,903 newsletter/Weekly regression tests, 422 existing warnings. These are
+recorded results, not tests rerun during this documentation task.
+
+Suppression reconciliation succeeded for 815 records after a rolled-back BSON
+precision mismatch. Owner-supplied evidence confirms current SHA Live/health 200,
+but custom Feedback-ID was replaced in delivered Gmail source on both tested
+Resend endpoints. Support response pending; end-to-end FBL not achieved.
+
+The September 26 audits establish historical Gmail click sparsity, uncertain
+human-open attribution and the exact 262-recipient accepted-opportunity threshold
+crossing behind 739→1,001 cold counts. No new deactivation or recovery rule follows.
+See [dated aggregate evidence](NEWSLETTER_DELIVERABILITY_2026-09-26.md) for full
+provenance, historical May reconstruction and remaining gaps. Commercial work is
+a separate future stream; this reconciliation changes documentation only.
+
+
+> **Reconstruction status:** repository-evidence history reconciled through
+> `8ed19846ccf9242b646ea38440d71e1f85f59141` on 26 September 2026. ChatGPT export,
 > systematic Codex history and post-HEAD production evidence remain unreconciled.
 
 ## Document purpose

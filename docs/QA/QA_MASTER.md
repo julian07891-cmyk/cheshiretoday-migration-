@@ -1,6 +1,24 @@
 # Cheshire Today — QA Master
 
-> **Reconstruction status:** Evidence-backed reconciliation at repository HEAD `03a6abbd5133de969275477488ea49bb34242ee0`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
+## 26 September 2026 newsletter evidence update
+
+Baseline `8ed1984`. Suppression reconciliation and application-side Feedback-ID
+deployment are complete. Owner-supplied delivered-source evidence shows the custom
+header replaced on both tested Resend endpoints; intended Gmail FBL functionality
+is **not achieved**, despite passing application tests and authentication.
+Gmail seed Spam results and Postmaster negative recipient sentiment remain an
+active deliverability investigation, not a proven code defect or universal
+placement finding. Open/click signals do not certify human interest.
+
+See [aggregate evidence and limitations](../HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
+No existing finding is closed or severity changed by these observations, no new QA
+ID is assigned, and the existing 18-finding accounting remains unchanged.
+CT-DEC-021 **POTENTIAL QUERY LOG EXPOSURE** remains open. Historical test results
+are not new runs; no application tests or production sends are needed for this
+documentation-only reconciliation.
+
+
+> **Reconstruction status:** Reconciled 26 September 2026 at `8ed19846ccf9242b646ea38440d71e1f85f59141`. The immutable 29 July baseline is retained; later code, test, deployment and production evidence are classified separately.
 
 ## Document purpose
 

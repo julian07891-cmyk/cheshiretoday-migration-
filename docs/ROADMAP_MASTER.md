@@ -1,6 +1,28 @@
 # Cheshire Today — Roadmap Master
 
-> **Reconstruction status:** Evidence-backed roadmap at repository HEAD `03a6abbd5133de969275477488ea49bb34242ee0`, including production-accepted Newsletter Funnel V1, production-verified newsletter logging hardening and the RSS-preview protection's partial natural-acceptance boundary.
+## 26 September 2026 priority reconciliation
+
+Baseline `8ed1984`; [detailed evidence](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
+Provider suppression hygiene is implemented, deployed and reconciled, not an
+outstanding import or provider-unsuppression task. Gmail placement remains
+**active investigation/monitoring**: Postmaster reports negative recipient
+sentiment/reputation despite technical compliance. Custom Feedback-ID support is
+deployed application-side but not preserved in tested Resend/SES deliveries;
+await Resend support. Do not describe Gmail FBL as operational.
+
+No speculative remediation, Gmail-specific deactivation or send-volume/audience
+change is authorised without new evidence or an explicitly approved recovery plan.
+The 739→1,001 cold count is explained by accepted-send threshold crossings, not
+a new Gmail rule. Existing query-log privacy, memory, editorial and QA priorities
+remain unchanged.
+
+After documentation reconciliation, the intended next separate product stream is
+homepage review, article-page/sidebar review, commercial SEO/affiliate guides and
+Amazon Associates optimisation. This is direction for a separate task, not
+implementation approval in this pass.
+
+
+> **Reconstruction status:** Reconciled 26 September 2026 at `8ed19846ccf9242b646ea38440d71e1f85f59141`; newsletter hygiene complete, Gmail investigation/FBL support pending; unrelated roadmap gates preserved.
 
 ## Document purpose
 

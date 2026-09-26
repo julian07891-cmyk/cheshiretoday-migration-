@@ -1,5 +1,27 @@
 # Cheshire Today — Project Master
 
+## 26 September 2026 reconciliation — current authority
+
+Current baseline is `full-scrape-prod` at
+`8ed19846ccf9242b646ea38440d71e1f85f59141`. Owner-supplied production
+evidence confirms that SHA Live and public health HTTP 200; no fresh production
+probe is made by this documentation pass. [Project State](PROJECT_STATE.md)
+and the [deliverability evidence](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md)
+supersede older current-state labels below. August baseline and reconstruction
+milestones remain historical, not pending uncommitted implementation today.
+
+Suppression hygiene is implemented/reconciled. Gmail placement remains under
+investigation despite Postmaster technical compliance; negative recipient
+sentiment/reputation is reported. Feedback-ID is committed/deployed, but Resend/SES
+replaces it in tested deliveries; Gmail FBL is not operational as intended and
+support response is pending. CT-DEC-021 functional acceptance is complete;
+**POTENTIAL QUERY LOG EXPOSURE** remains open.
+
+The next intended separate product workstream is homepage/article-sidebar review,
+commercial SEO/affiliate guides and Amazon Associates optimisation. It is not
+implemented here and does not displace unrelated security/QA gates.
+
+
 > - **Status:** Permanent first-read project index; Version 1 complete, with production hardening, QA and reliability monitoring active
 > - **Primary branch:** `full-scrape-prod`
 > - **Operational authority:** [Project State](PROJECT_STATE.md), the concise repository operational source
@@ -7,8 +29,8 @@
 > - **QA authority:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
 > - **Roadmap authority:** [Roadmap Master](ROADMAP_MASTER.md)
 > - **Historical reconstruction status:** Substantial repository reconstruction completed; ChatGPT, Codex, PDF and post-HEAD reconciliation remain incomplete
-> - **Last repository reconciliation date:** 11 August 2026
-> **Current repository baseline:** `full-scrape-prod` at `1811430070cfa73084c8b5ded830fa88076d3cc7`
+> - **Last repository reconciliation date:** 26 September 2026
+> **Current repository baseline:** `full-scrape-prod` at `8ed19846ccf9242b646ea38440d71e1f85f59141`
 
 This metadata describes the repository baseline used for reconstruction. It does
 not assert that the same commit is currently deployed or that every production
@@ -180,7 +202,7 @@ Avoid:
 
 - Repository: `CT29january26-new-website-migration`
 - Primary production branch: `full-scrape-prod`
-- Reconciliation HEAD: `1811430070cfa73084c8b5ded830fa88076d3cc7`
+- Reconciliation HEAD: `8ed19846ccf9242b646ea38440d71e1f85f59141`
 
 Always verify the actual branch, HEAD and working tree. Preserve intentional
 untracked documentation and unrelated user changes.
@@ -334,8 +356,9 @@ an advert.
 
 Admin APIs require `get_admin_auth`. Newsletter ownership uses purpose-bound
 tokens, stored challenges, rate limits and replay controls. External mutation
-tests refuse non-loopback targets. Wildcard credentialed CORS remains a high
-priority open finding.
+tests refuse non-loopback targets. Wildcard credentialed CORS was closed through
+the production-verified August 12 correction; current residual risks are governed
+by Project State and Open Findings, not the earlier August checkpoint below.
 
 Detailed architecture begins at [Architecture Master](ARCHITECTURE_MASTER.md).
 
@@ -731,7 +754,7 @@ and [Completed Phases](QA/COMPLETED_PHASES.md) for QA boundaries.
 [Project State](PROJECT_STATE.md) is the concise repository operational authority.
 Do not copy an older July “current checkpoint” into this master.
 
-The current repository reconstruction baseline is:
+The historical 11 August reconstruction baseline was (superseded above):
 
 ```text
 Branch: full-scrape-prod

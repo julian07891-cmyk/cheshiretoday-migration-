@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `40304fc24879e37f5ef004f501c82b9b85842d2e`
-> - **Last repository reconciliation:** 23 September 2026
-> - **Production-verification status:** CT-DEC-021 at `2f40374` has functional production acceptance complete; its upstream query-log privacy gate remains open. Later welcome-copy-only `40304fc` was pushed; its deployment is not independently established by this reconciliation. `CT-QA-2026-006` remains closed, Newsletter Funnel V1 remains production accepted, RSS-preview acceptance remains partial, and `QA-OPS-001` remains High Open.
+> - **Repository baseline:** `8ed19846ccf9242b646ea38440d71e1f85f59141`
+> - **Last repository reconciliation:** 26 September 2026 (documentation changes local/uncommitted)
+> - **Production-verification status:** Owner-supplied evidence confirms Render service `cheshiretoday-migration-` Live at `8ed19846ccf9242b646ea38440d71e1f85f59141`, public health HTTP 200. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,8 +36,8 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `40304fc24879e37f5ef004f501c82b9b85842d2e`
-- **Latest baseline commit:** `Update welcome email coverage areas`
+- **Current reconciled HEAD:** `8ed19846ccf9242b646ea38440d71e1f85f59141`
+- **Latest baseline commit:** `Add Gmail feedback loop identifiers`
 
 Repository HEAD and production acceptance revision are distinct: the controlled
 acceptance below ran at `2f40374`, before the later copy-only commit.
@@ -273,7 +273,7 @@ See [Editorial Evolution](EDITORIAL_EVOLUTION.md) and
 
 ## 7. Current newsletter operating model
 
-### Gmail Feedback-ID — 25 September 2026 — local/uncommitted
+### Gmail Feedback-ID — committed/deployed; end-to-end FBL not achieved
 
 Newsletter campaign builders now opt in to fixed, recipient-neutral `Feedback-ID`
 values: `daily:::cheshtoday`, `weekly:::cheshtoday`, `breaking:::cheshtoday`,
@@ -290,11 +290,41 @@ DNS or production-data change is included. Initial baseline: `5afd7b1` on
 `full-scrape-prod`. Red tests demonstrated missing campaign headers; focused
 Feedback-ID/transport/context tests pass **120**, and newsletter plus Weekly
 idempotence regression passes **1,903** with **422 warnings** (existing framework,
-datetime and gzip warning categories). This is local-only evidence, not delivery
-acceptance: downstream header preservation and DKIM coverage require a separately
-approved delivered-message check. No commit, push, deployment or live send occurred.
+datetime and gzip warning categories). Those counts are historical local test
+evidence, not a new test run. The initial implementation checkpoint was local-only;
+it was subsequently committed as `8ed1984` and owner-supplied evidence confirms
+deployment Live and health HTTP 200. Delivered Gmail source from both Resend batch
+and single endpoints contains an SES-generated Feedback-ID ending in
+`:AmazonSES`, not the submitted custom value. Cheshire Today DKIM does not sign
+that header; SES DKIM does. App-side instrumentation is deployed, but its intended
+Gmail FBL function is not achieved. Resend support has been contacted; response
+pending. No provider limitation beyond these tested paths is asserted.
 CT-DEC-021's upstream **POTENTIAL QUERY LOG EXPOSURE** gate remains open.
 
+
+### Deliverability investigation — reconciled 26 September 2026
+
+Provider suppression hygiene is implemented/reconciled; Gmail placement remains
+active investigation/monitoring. Controlled Gmail tests reached Spam despite
+passing authentication and all eight reported Postmaster compliance checks.
+Postmaster reports negative recipient sentiment/reputation. This is not proof of
+universal Spam placement, or proof of the cause of deterioration.
+
+The September 26 snapshot found 7,797 eligible Gmail/Googlemail recipients:
+7,794 April-6 import-dated and three newer explicit website signups. Engagement
+over 30/60/90 days was 954/2,317/4,586, with clicks 0/1/1. Opens are not verified
+human interest. The cold-count increase 739→1,001 is reproduced by 262 recipients
+crossing four→five accepted opportunities on September 26, not a methodology
+change; historical eligibility snapshots remain unavailable. May's concentrated
+suppression burst is temporally associated with import/rotation/capacity changes,
+not established as the cause of later Gmail reputation.
+
+Detailed aggregate evidence and limitations:
+[26 September deliverability audit](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
+No Gmail-specific deactivation rule, recovery audience or volume change is approved.
+Commercial work is the intended next separate product workstream: homepage,
+article-page/sidebar, commercial SEO/affiliate guides and Amazon Associates
+optimisation. None is implemented here; unrelated security/QA priorities remain.
 
 ### Provider suppression eligibility — CT-DEC-022 — 24 September 2026
 

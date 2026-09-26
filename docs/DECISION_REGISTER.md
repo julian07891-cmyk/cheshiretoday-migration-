@@ -1,7 +1,7 @@
 # Cheshire Today — Decision Register
 
-> **Reconstruction status:** evidence-backed decisions through repository HEAD
-> `1601ae48be281153e5dd4af0eee0889a26835162`. Pending ChatGPT, Codex, PDF and
+> **Reconstruction status:** evidence-backed decisions reconciled through
+> `8ed19846ccf9242b646ea38440d71e1f85f59141`, 26 September 2026. Pending ChatGPT, Codex, PDF and
 > post-HEAD evidence may add context but must not silently rewrite these entries.
 
 ## Document purpose
@@ -525,6 +525,25 @@ describes the decision at current repository HEAD, not an unverified live claim.
 - **Verification:** Combined affected newsletter regression: 403 passed, 18 pre-existing deprecation warnings, zero failures. `backend/server.py` compilation and `git diff --check` passed. Production deployment was verified at exact commit `34ecf74` with HTTP 200 health. The authoritative Resend export contained 815 unique suppressions (785 bounce, 30 complaint), all 815 matched exactly one subscriber record, with 583 active and 232 inactive/legacy. A validated `0600` private backup covered the same 815 IDs. The first approved transaction aborted before commit when post-write verification exposed BSON millisecond precision handling for 60 sub-millisecond source timestamps; immediate read-only verification confirmed 0 reconciled / 815 pending / 0 non-exact. After BSON-compatible timestamp normalization and an independent aborted round-trip test, the corrected transaction committed with 815 matched, 815 modified and 815 exact post-write. Independent verification then returned 815 exactly reconciled / 0 pending / 0 non-exact; global aggregates showed 815 provider-suppressed, 785 bounce, 30 complaint, zero unexpected source/reason.
 - **Follow-up:** Keep provider suppression separate from transient message-level bounce events and do not clear it through ordinary reactivation. Provider-side unsuppression remains a separate explicitly approved action. With the known suppression population reconciled locally, trace the owner-reported missing-newsletter case and Apple/iCloud Junk placement separately; CT-DEC-022 does not claim inbox-delivery remediation.
 - **Sources:** D-1 implementation, deployment and production reconciliation evidence on `full-scrape-prod`; [Newsletter Architecture](ARCHITECTURE/NEWSLETTER.md); [Newsletter Operations](OPERATIONS/NEWSLETTER_OPERATIONS.md); [Test History](QA/TEST_HISTORY.md).
+
+## 26 September 2026 — CT-DEC-010/011/022 operational boundary
+
+CT-DEC-022 suppression eligibility and the 815-record reconciliation are complete
+(`34ecf74`, `5afd7b1`); consent state remains separate. Resend remains the
+configured newsletter transport contract; no provider migration is approved.
+Application Feedback-ID support (`8ed1984`) is deployed, but tested Resend batch
+and single deliveries contain SES-generated identifiers, not the custom values.
+Support response on preservation/equivalent Gmail FBL is pending. Do not claim
+end-to-end FBL operational or implement an unsupported workaround.
+
+The existing CT-DEC-011 accepted-opportunity cold methodology is unchanged.
+The 739→1,001 change is reproduced by 262 four→five threshold crossings on
+September 26. Gmail placement and Postmaster negative sentiment remain an
+evidence-led investigation. No Gmail-specific deactivation, recovery audience,
+send-volume change or speculative remediation is authorised by these findings.
+See [dated evidence](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
+CT-DEC-021 functional acceptance and its open query-log privacy gate are unchanged.
+This clarifies existing boundaries, not a new implementation decision.
 
 ## Unreconciled decision evidence
 

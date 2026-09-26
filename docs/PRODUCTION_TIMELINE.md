@@ -1,7 +1,33 @@
 # Cheshire Today — Production Timeline
 
-> **Reconstruction status:** repository-evidenced production chronology through
-> commit `03a6abbd5133de969275477488ea49bb34242ee0`. A historical “deployed” statement
+## 24–26 September 2026 — suppression, deployment and deliverability evidence
+
+`34ecf74` provider-suppression eligibility was deployed/verified; `5afd7b1`
+records the corrected 815-record reconciliation. First attempt aborted/rolled
+back for BSON precision mismatch; corrected attempt matched/modified/exact 815,
+committed once, zero provider API calls or unsuppressions. At that observation:
+14,267 subscribers, 11,673 active, 815 suppressed (583 active/232 inactive).
+
+Owner-supplied evidence confirms service `cheshiretoday-migration-` Live at
+`8ed19846ccf9242b646ea38440d71e1f85f59141`, public health HTTP 200.
+This is preserved deployment evidence, not a fresh check by this reconciliation.
+It supersedes the earlier lack of deployment evidence for ancestor `40304fc`;
+it does not re-verify that welcome copy through a new receipt.
+
+Controlled Gmail sources show SES-generated Feedback-ID on both Resend batch and
+single delivery; the latter returned HTTP 200. Cheshire Today DKIM does not sign
+Feedback-ID, SES DKIM does. Gmail controlled placement remains Spam despite
+authentication/compliance; Resend support response is pending.
+
+Read-only September 26 cohort and historical audits are preserved with their
+snapshot boundaries in [the detailed evidence record](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
+The May suppression burst is associated in time with import/rotation/capacity
+changes, not proven to cause later reputation deterioration. No production
+operations were repeated to reconcile these records.
+
+
+> **Reconstruction status:** production chronology reconciled through September 26
+> at `8ed19846ccf9242b646ea38440d71e1f85f59141`, with owner-supplied evidence labelled. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose
@@ -84,7 +110,7 @@ separate and unresolved. See [QA evidence](QA/OPEN_FINDINGS.md).
 | March–April 2026 | Production database | Live cleanup | Articles | Duplicate, stale and weak-fit records were manually archived during homepage/import stabilisation | Operational actions; supporting code around `b4612e1`, `707da88` | Before/after live pool audits recorded | Improved public quality; carries mutation history | Preserve archive reasons and avoid recreating via caps | Preserved state, March/April cleanup sections |
 | 6–7 April | Production database | Subscriber import/test send | Newsletter | Bulk subscriber imports and first-live-send safety batches | Operational work; `25cb127` cap | Test send and recipient totals recorded historically | Established initial newsletter audience | Later Resend cutover and engagement rotation | Preserved state, April subscriber/newsletter sections |
 | 7 April | Production database | Content seeding | Authority guides | Six commercial guides seeded as drafts, visually checked and promoted | Runtime data operation; frontend follow-up `aae3a97` | Public route and visual checks recorded | Created initial commercial guide set | Continue disclosure and provider review | Preserved state, 7 April guide section; Git `aae3a97` |
-| 11 April | Production database | Index/tracking change | Newsletter | Per-recipient delivery IDs and Admin aggregation introduced | `11d56f2`, `77af404` | Live tracking verification recorded | Created accepted-recipient ledger | Preserve distinction from inbox delivery | Preserved state, Resend tracking section; cited Git |
+| 11 April | Production database | Index/tracking change | Newsletter | Per-recipient delivery IDs and Admin aggregation introduced | `11d56f2`, `77af404` | Live tracking verification recorded | Recipient-attributable engagement; not the later accepted-send ledger | September 26 correction: accepted ledger introduced July 14 (`bbea335`); acceptance is not delivery | Preserved state, Resend tracking section; cited Git |
 | 21 July | Production database | Image backfill | Articles | Newsquest image pipeline and guarded historical backfill | `c1356ea`, `93a38e4` | Backfill completion recorded | Improved article/social imagery | Keep source attribution and image validation | July log, image milestone; cited Git |
 | 24 July | Production database | Controlled repair | Live pool | Repair utility restored eligible auto-capped records after cleanup/cap starvation | `be5c4ed`, `dc18e65` | Counted repair and production checks recorded | Refilled eligible visible pool | Retain guarded/dry-run repair semantics | Preserved state, 24 July live-pool sections; cited Git |
 | 27 July | Production database | Unique-index provisioning | Subscribers | Normalised-email audit found zero duplicate groups; guarded unique index provisioned | `0bb3ce8` | Counts/index status recorded | Enforced one subscriber per normalised email | Retain safe duplicate-key handling | July log, production data work; Git `0bb3ce8` |

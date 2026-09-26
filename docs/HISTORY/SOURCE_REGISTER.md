@@ -1,5 +1,35 @@
 # Cheshire Today Reconstruction Source Register
 
+## 26 September 2026 reconciliation sources
+
+- **Local Git/code:** branch `full-scrape-prod`, HEAD
+  `8ed19846ccf9242b646ea38440d71e1f85f59141`; implementation verified locally.
+  Remote HEAD is independently owner-verified, not fetched in this pass.
+- **Owner-supplied production evidence through September 26:** current SHA Live
+  on Render service `cheshiretoday-migration-`, health HTTP 200; suppression
+  transaction outcomes; controlled mailbox placement and authentication;
+  Postmaster compliance/sentiment; delivered batch/single Feedback-ID replacement;
+  Resend support contacted/awaiting response. These are attributed observations,
+  not production actions rerun by this documentation task.
+- **Prior read-only audits in this task history:** local Git/archive review,
+  suppression CSV analysis and projected Mongo analytics/subscriber/ledger reads,
+  September 26 approximately 18:17–18:25 UTC. Aggregate results are now preserved
+  in [Newsletter Deliverability](NEWSLETTER_DELIVERABILITY_2026-09-26.md).
+- **External local export:** `suppressions-1790268487765.csv`, authoritative
+  815-address suppression snapshot. It is not copied into Git. Private backups,
+  raw message sources and recipient/network identities are not repository assets.
+- **Limitations:** no immutable subscriber snapshots, no pre-July accepted ledger,
+  no reliable human/bot classifier, and no provider causal proof. Raw source
+  captures are not embedded; provenance must not be overstated as fresh live QA.
+
+This specifically reconciles the supplied newsletter evidence; it does not claim
+complete ChatGPT/Codex/PDF recovery. Older inventories, hashes, commit counts and
+pending-phase language below are dated August preservation checkpoints, not
+current repository membership or pending implementation claims. The empty
+`CHAT_HISTORY_AUGUST_2026.md` placeholder is currently tracked; it still contains
+no recovered history. The two protected untracked files remain local and untouched.
+
+
 ## Purpose and authority model
 
 This register identifies the evidence available for rebuilding the Cheshire Today
