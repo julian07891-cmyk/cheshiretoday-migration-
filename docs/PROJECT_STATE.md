@@ -3,7 +3,7 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `8ed19846ccf9242b646ea38440d71e1f85f59141`
+> - **Repository baseline:** `40b3da277b3b9b12f6a99673d185618c30cdd539` (Commercial Trust Phase 1 remains local/uncommitted)
 > - **Last repository reconciliation:** 26 September 2026 (documentation changes local/uncommitted)
 > - **Production-verification status:** Owner-supplied evidence confirms Render service `cheshiretoday-migration-` Live at `8ed19846ccf9242b646ea38440d71e1f85f59141`, public health HTTP 200. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
@@ -36,8 +36,8 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current reconciled HEAD:** `8ed19846ccf9242b646ea38440d71e1f85f59141`
-- **Latest baseline commit:** `Add Gmail feedback loop identifiers`
+- **Current committed HEAD:** `40b3da277b3b9b12f6a99673d185618c30cdd539`
+- **Latest baseline commit:** `Reconcile newsletter deliverability evidence through September 26`
 
 Repository HEAD and production acceptance revision are distinct: the controlled
 acceptance below ran at `2f40374`, before the later copy-only commit.
@@ -839,6 +839,34 @@ available. This evidence makes no legal-compliance, historical-data,
 provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
+
+### Commercial Trust Phase 1 — local, uncommitted; not deployed
+
+Implemented against `full-scrape-prod` at `40b3da2` on 26 September 2026.
+Guide tool visibility no longer depends on affiliate links; unlinked options
+remain visible without outbound CTAs. The schema has no explicit editorial-pick
+field, so the automatic top-pick panel is removed. Amazon search/fallback cards
+hide prices/ratings and use neutral shopping copy; Amazon UK tags are replaced
+deterministically after exact hostname validation. Existing first-party commercial
+events now cover guide provider/quick-comparison and Amazon widget outbound links,
+with bounded identifiers rather than URLs. Known affiliate-link patterns receive
+sponsored relationship attributes; plain merchant links do not.
+
+Title-only tool compatibility is retained: a trimmed name takes precedence over
+a trimmed title, resolved on a copy without mutating guide data. Unlabelled tools
+are omitted; valid configured order and link-independent visibility are preserved.
+Local verification after this correction: 34 focused tests, 64 related commercial tests, all 446 frontend
+tests across 43 suites, production frontend build and diff whitespace check passed.
+See [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md#26-september-2026--commercial-trust-phase-1-local-implementation)
+for red/green evidence and limits. Review/commit approval is next; no staging,
+commit, push or deployment is part of this work.
+
+Affiliate programme/account status remains unresolved. No advertiser relationship,
+merchant URL/ID, guide database record or sponsor inventory was changed. The owner
+reports some Awin closures/non-paying programmes but individual statuses are not
+verified. Existing broader disclosure-page wording, guide quality, plain-link
+attribution and product-specific data verification remain separate work. Click
+events are not Amazon purchase/conversion evidence.
 
 The commercial strategy is affiliate-first and reader-focused.
 

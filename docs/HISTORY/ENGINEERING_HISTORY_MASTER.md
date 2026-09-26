@@ -725,6 +725,67 @@ Later pushed `40304fc` changed welcome coverage copy only; reported verification
 was 11 passed, 2,848 deselected and diff whitespace passed. Earlier receipt does
 not verify the later wording or establish this commit's deployment.
 
+## 26 September 2026 — Commercial Trust Phase 1 local implementation
+
+Baseline: `full-scrape-prod`, `40b3da277b3b9b12f6a99673d185618c30cdd539`.
+Initial tracked tree clean; protected untracked `AGENTS.md` and the full August
+Project State archive preserved. This implementation is local/uncommitted and
+undeployed; no advertiser or production data changes were performed.
+
+Confirmed defects: AuthorityPage filtered editorial options by affiliate-link
+availability and automatically featured the first linked provider; Amazon search
+fallback cards displayed hard-coded prices/ratings and selection/deal claims;
+Amazon tag handling used substring recognition and appended duplicate tags;
+quick-comparison/Amazon links lacked the first-party measurement now used here.
+The current AuthoritySection schema has no explicit editorial-pick field.
+
+Changes: all named tool entries remain in configured order, unlinked options have
+no CTA, the automatic featured recommendation is removed, and the provider-list
+heading is neutral. Amazon search/fallback claims are hidden without changing
+product data, rotation or inventory. URL parsing recognises only amazon.co.uk and
+www.amazon.co.uk over HTTP(S), replaces the tag, preserves other parameters, and
+leaves malformed/non-Amazon inputs untouched. No Awin/CJ URL or ID changes.
+
+CommercialOutboundLink reuses useCommercialCardMeasurement and the existing
+/api/commercial-events schema. It emits rendered/viewable/clicked with existing
+per-navigation deduplication and keepalive click submission. Guide placements are
+guide_quick_comparison and guide_provider_list; the live Amazon placement is
+homepage_sidebar. Existing dormant widget variants use amazon_inline, amazon_end
+and amazon_mobile without being added to any page. Payload fields are card_id,
+provider_id, placement_id, use_case, destination_type, destination_id,
+rule_reason_code, variant_version, disclosure_version, existing random session/
+page-view IDs and device_class; article fields are null for these placements.
+No affiliate URL, query, subscriber identity or conversion is recorded. Existing
+guide-provider third-party calls are replaced by this bounded first-party path;
+homepage guide_click and contextual-card tracking are unchanged. Click failures
+do not cancel navigation.
+
+Affiliate rel/disclosure is based on recognisable current network/link patterns,
+not merely the page monetisation flag; plain merchant destinations retain normal
+external-link attributes. This does not establish programme validity. The broader
+disclosure page's future-partner wording is intentionally left for content review.
+
+Verification: initial test harness needed a local Badge mock for the existing
+Jest alias limitation; behavioural red run then showed 9 failures / 3 passes.
+Final expanded focused suite: 28 passed. Five related commercial suites: 58
+passed. Complete frontend: 43 suites / 440 tests passed. Production frontend
+build compiled successfully. Warnings: ReactDOMTestUtils.act deprecation and
+eight-month-old Browserslist data; synthetic fallback logging appeared as expected.
+No real affiliate navigation or event transmission was used in tests. Diff
+whitespace check passed. No production acceptance or revenue improvement claimed.
+
+Independent review then identified a name-only filter incompatible with valid
+title-only AuthoritySection entries. The minimal local correction resolves trimmed
+name, otherwise trimmed title, once on copied tool entries; blank labels are
+omitted and configured order is unchanged. Six added regression cases cover
+linked title-only entries (absent/empty/blank name), unlinked title-only entries,
+name precedence, source preservation, measurement labels and actual mixed DOM
+order including invalid entries. Red: 5 failed / 29 passed. Green: 34 focused,
+64 related and 446 full frontend tests across 43 suites; production build passed.
+Project State committed-HEAD metadata now distinguishes `40b3da2` from the
+unchanged documented production revision. Phase 1 remains unstaged/uncommitted,
+unpushed and undeployed. No affiliate relationship or destination changed.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.

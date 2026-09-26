@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet-async";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getApiUrl } from "../utils/api";
-import { trackEvent } from "../utils/trackEvent";
+import CommercialOutboundLink, { isAffiliateDestination } from "../components/monetisation/CommercialOutboundLink";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import NewsHeader from "../components/NewsHeader";
 import NewsFooter from "../components/NewsFooter";
@@ -69,132 +69,6 @@ function getToolInitials(name = "") {
 
   return words.map((word) => word[0]).join("").toUpperCase() || "CT";
 }
-
-function BestPickCta({ tools = [], monetisation = "affiliate" }) {
-  const list = Array.isArray(tools) ? tools : [];
-  const bestWithLink = list.find((t) => String(t?.affiliate_link || "").trim().length > 0);
-  const best = bestWithLink || (list.length ? list[0] : null);
-  if (!best) return null;
-
-  const name = best?.name || "Recommended option";
-  const rating = Number(best?.rating || 0);
-  const link = String(best?.affiliate_link || "").trim();
-  const why = String(best?.content || best?.title || "").trim();
-  const initials = getToolInitials(name);
-  const logoSrc = getToolLogoSrc(name);
-
-  return (
-    <div className="mt-7 rounded-3xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/20 p-4 md:p-5 shadow-md">
-      <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-gray-950 overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-0">
-          <div className="p-5 md:p-6">
-            <div className="flex items-start gap-4">
-              <div className="h-20 w-20 rounded-2xl border border-emerald-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-                {logoSrc ? (
-                  <>
-                    <img
-                      src={logoSrc}
-                      alt=""
-                      className="h-full w-full object-contain p-3"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                        e.currentTarget.nextElementSibling?.classList.remove("hidden");
-                      }}
-                    />
-                    <span className="hidden text-xl font-black tracking-tight text-sky-950 dark:text-sky-100">
-                      {initials}
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-xl font-black tracking-tight text-sky-950 dark:text-sky-100">
-                    {initials}
-                  </span>
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="text-[11px] uppercase tracking-wide px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100 font-black">
-                    Our top pick
-                  </span>
-                  {rating > 0 && (
-                    <span className="text-[12px] font-black text-slate-800 dark:text-gray-200">
-                      {rating}/5 rating
-                    </span>
-                  )}
-                </div>
-
-                <div className="text-2xl md:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
-                  {name}
-                </div>
-
-                {why && (
-                  <div className="mt-2 text-base text-slate-700 dark:text-gray-300 leading-relaxed max-w-2xl">
-                    {why.length > 170 ? why.slice(0, 170) + "…" : why}
-                  </div>
-                )}
-
-                <div className="mt-4 flex flex-wrap gap-2 text-[12px] font-bold text-slate-700 dark:text-gray-300">
-                  <span className="rounded-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 px-3 py-1.5">✓ Easy to compare</span>
-                  <span className="rounded-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 px-3 py-1.5">✓ UK-focused</span>
-                  <span className="rounded-full bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 px-3 py-1.5">✓ Practical checks</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t md:border-t-0 md:border-l border-emerald-100 dark:border-gray-800 bg-emerald-50/80 dark:bg-gray-900/60 p-5 md:p-6 flex flex-col justify-center">
-            {link ? (
-              <a
-                href={link}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => trackEvent("guide_provider_click", {
-                  guide: window.location.pathname.replace("/guides/", ""),
-                  provider: name,
-                  position: 1,
-                  destination: link,
-                  placement: "top_pick",
-                })}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white px-5 py-4 text-base font-black transition shadow-md"
-              >
-                Visit provider →
-              </a>
-            ) : (
-              <span className="inline-flex w-full items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-800 px-4 py-3.5 text-base font-black">
-                Link pending
-              </span>
-            )}
-
-            {monetisation === "affiliate" && (
-              <div className="mt-3 text-[11px] text-slate-600 dark:text-gray-400 leading-relaxed text-center">
-                Affiliate link. We may earn a commission.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-white dark:bg-gray-950/70 p-4 shadow-sm">
-        <div className="flex items-start gap-3">
-          <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-            <span className="text-emerald-800 dark:text-emerald-100 font-black">✓</span>
-          </div>
-          <div>
-            <div className="text-sm font-black text-slate-950 dark:text-white">
-              Why we picked {name}
-            </div>
-            <div className="mt-1 text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
-              Strong fit for readers comparing practical UK options before choosing a provider.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 const RELATED_GUIDE_LIBRARY = [
   {
@@ -430,7 +304,7 @@ function RelatedGuidesBlock({ currentSlug, category }) {
 }
 
 
-function QuickComparison({ tools = [] }) {
+function QuickComparison({ tools = [], slug }) {
   const list = Array.isArray(tools) ? tools : [];
   const top = list.slice(0, 3);
   if (top.length < 2) return null;
@@ -443,7 +317,7 @@ function QuickComparison({ tools = [] }) {
             Quick comparison
           </div>
           <div className="text-xs text-slate-500 dark:text-gray-400">
-            Other options mentioned in this guide
+            Options mentioned in this guide
           </div>
         </div>
       </div>
@@ -476,18 +350,20 @@ function QuickComparison({ tools = [] }) {
 
               <div className="mt-4">
                 {link ? (
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noreferrer"
+                  <CommercialOutboundLink
+                    href={link} provider={name} destination={slug}
+                    placement="guide_quick_comparison" useCase="guide_comparison"
                     className="inline-flex w-full items-center justify-center rounded-lg bg-slate-900 hover:bg-sky-900 dark:bg-sky-700 dark:hover:bg-sky-600 text-white px-3 py-2 text-xs font-black transition"
                   >
                     Visit →
-                  </a>
+                  </CommercialOutboundLink>
                 ) : (
                   <span className="inline-flex w-full items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-800 px-3 py-2 text-xs font-black">
-                    Link pending
+                    No provider link
                   </span>
+                )}
+                {link && isAffiliateDestination(link) && (
+                  <p className="mt-2 text-xs text-slate-600 dark:text-gray-300">Affiliate link — we may earn commission.</p>
                 )}
               </div>
             </div>
@@ -539,7 +415,6 @@ export default function AuthorityPage() {
 
   const title = page?.title || "Guide";
   const category = page?.category || "";
-  const monetisation = page?.monetisation || "";
   const displayCategory = (() => {
     const value = String(category || "").trim();
     if (!value || /^(none|null|undefined|n\/a|unknown)$/i.test(value)) return "";
@@ -548,7 +423,15 @@ export default function AuthorityPage() {
   const sections = Array.isArray(page?.sections) ? page.sections : [];
 
   const intro = sections.find((s) => s?.type === "intro")?.content || "";
-  const tools = sections.filter((s) => s?.type === "tool" && String(s?.affiliate_link || "").trim());
+  // Resolve once on a copy: visibility, display and measurement share the same label.
+  const tools = sections.filter((s) => s?.type === "tool")
+    .map((s) => ({
+      ...s,
+      name: (typeof s.name === "string" ? s.name.trim() : "")
+        || (typeof s.title === "string" ? s.title.trim() : ""),
+    }))
+    .filter((s) => s.name);
+  const hasAffiliateLinks = tools.some((s) => isAffiliateDestination(s.affiliate_link));
   const contentSections = sections.filter((s) => s?.type === "content" || s?.type === "section");
 
 
@@ -619,7 +502,7 @@ export default function AuthorityPage() {
                       {displayCategory}
                     </span>
                   )}
-                  {monetisation === "affiliate" && (
+                  {hasAffiliateLinks && (
                     <span className="text-xs px-2.5 py-1 rounded-full bg-[#FBFAF7] text-slate-700 dark:bg-gray-900 dark:text-gray-200 border border-[#E6E1D8] dark:border-gray-700 font-semibold">
                       Affiliate supported
                     </span>
@@ -637,15 +520,15 @@ export default function AuthorityPage() {
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2 text-[12px] text-slate-600 dark:text-gray-400">
                       <span className="font-semibold">Updated comparison guide</span>
-                      <span>•</span>
-                      <span>Links may earn commission at no extra cost to you</span>
+                      {hasAffiliateLinks && <span>•</span>}
+                      {hasAffiliateLinks && <span>Some links may earn commission at no extra cost to you</span>}
                     </div>
                   </div>
                 )}
               </div>
             </section>
-            <BestPickCta tools={tools.slice(0,1)} monetisation={monetisation} />
-            <QuickComparison tools={tools.slice(1)} />
+            {/* No explicit editorial-pick field exists in the current guide schema. */}
+            <QuickComparison tools={tools} slug={slug} />
 
             {contentSections.length > 0 && (
               <div className="mt-8 space-y-8">
@@ -669,7 +552,7 @@ export default function AuthorityPage() {
 
 
 
-            {monetisation === "affiliate" && (
+            {hasAffiliateLinks && (
               <div className="mt-6 rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/70 dark:bg-amber-900/10 p-5">
                 <div className="text-sm font-semibold mb-1">Affiliate disclosure</div>
                 <div className="text-sm text-slate-700 dark:text-gray-300 leading-relaxed">
@@ -689,7 +572,7 @@ export default function AuthorityPage() {
                       Provider list
                     </div>
                     <h2 className="mt-1 text-xl md:text-2xl font-black tracking-tight text-slate-950 dark:text-white">
-                      Recommended tools
+                      Comparison options
                     </h2>
                   </div>
                   <div className="hidden sm:block text-xs text-slate-500 dark:text-gray-400">
@@ -701,7 +584,7 @@ export default function AuthorityPage() {
                   {tools.map((t, idx) => {
                     const name = t?.name || `Tool ${idx + 1}`;
                     const rating = Number(t?.rating || 0);
-                    const link = (t?.affiliate_link || "").trim();
+                    const link = typeof t?.affiliate_link === "string" ? t.affiliate_link.trim() : "";
                     const logoSrc = getToolLogoSrc(name);
                     const initials = getToolInitials(name);
                     const summary = String(t?.content || t?.title || "").trim();
@@ -756,23 +639,16 @@ export default function AuthorityPage() {
 
                             <div className="mt-4">
                               {link ? (
-                                <a
-                                  href={link}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={() => trackEvent("guide_provider_click", {
-                                    guide: slug,
-                                    provider: name,
-                                    position: idx + 1,
-                                    destination: link,
-                                  })}
+                                <CommercialOutboundLink
+                                  href={link} provider={name} destination={slug}
+                                  placement="guide_provider_list" useCase="guide_comparison"
                                   className="inline-flex w-full sm:w-auto items-center justify-center rounded-xl bg-slate-950 hover:bg-emerald-800 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white px-4 py-2.5 text-sm font-black transition"
                                 >
                                   Visit provider →
-                                </a>
+                                </CommercialOutboundLink>
                               ) : (
                                 <span className="inline-flex items-center justify-center rounded-xl bg-gray-200 dark:bg-gray-800 px-4 py-2.5 text-sm font-black">
-                                  Link pending
+                                  No provider link
                                 </span>
                               )}
                             </div>

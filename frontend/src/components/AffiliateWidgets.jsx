@@ -2,6 +2,7 @@ import React from 'react';
 import { ExternalLink, ShoppingBag, Star, TrendingUp } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { getApiUrl } from '../utils/api';
+import CommercialOutboundLink from './monetisation/CommercialOutboundLink';
 
 // Affiliate configuration - Amazon Associates only
 export const AFFILIATE_CONFIG = {
@@ -13,13 +14,24 @@ export const AFFILIATE_CONFIG = {
 
 // Generate Amazon affiliate link
 export const getAmazonLink = (productUrl) => {
-  const tag = AFFILIATE_CONFIG.amazon.associateId;
-  if (productUrl.includes('amazon.co.uk')) {
-    // Handle both product and search URLs
-    const separator = productUrl.includes('?') ? '&' : '?';
-    return `${productUrl}${separator}tag=${tag}`;
+  try {
+    const url = new URL(productUrl);
+    if (!['http:', 'https:'].includes(url.protocol)
+      || !['amazon.co.uk', 'www.amazon.co.uk'].includes(url.hostname.toLowerCase())
+      || url.username || url.password) return productUrl;
+    url.searchParams.set('tag', AFFILIATE_CONFIG.amazon.associateId);
+    return url.toString();
+  } catch (_) {
+    return productUrl;
   }
-  return productUrl;
+};
+
+const isSearchProduct = (product) => {
+  try {
+    const url = new URL(product.url);
+    return /^\/s\/?$/.test(url.pathname) || url.searchParams.has('k');
+  }
+  catch (_) { return true; }
 };
 
 // Sample products for different categories - Multiple products per category for rotation
@@ -174,7 +186,7 @@ export const ProductCard = ({ product, compact = false }) => {
         <img src={product.image} alt={product.name} className="w-12 h-12 object-cover rounded" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
-          <p className="text-sm font-bold text-[#1E3A8A]">{product.price}</p>
+          {!isSearchProduct(product) && <p className="text-sm font-bold text-[#1E3A8A]">{product.price}</p>}
         </div>
         <ExternalLink className="h-4 w-4 text-gray-400 flex-shrink-0" />
       </a>
@@ -200,9 +212,9 @@ export const ProductCard = ({ product, compact = false }) => {
         <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-2 mb-1">
           {product.name}
         </h4>
-        <StarRating rating={product.rating} />
+        {!isSearchProduct(product) && <StarRating rating={product.rating} />}
         <div className="flex items-center justify-between mt-2">
-          <span className="text-lg font-bold text-[#1E3A8A]">{product.price}</span>
+          {!isSearchProduct(product) && <span className="text-lg font-bold text-[#1E3A8A]">{product.price}</span>}
           <span className="text-xs text-gray-500 flex items-center gap-1">
             View <ExternalLink className="h-3 w-3" />
           </span>
@@ -282,8 +294,8 @@ export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
             <ShoppingBag className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 dark:text-white text-lg">Top Picks</h3>
-            <p className="text-xs text-amber-700 dark:text-amber-300">Handpicked for you</p>
+            <h3 className="font-bold text-gray-900 dark:text-white text-lg">Amazon shopping</h3>
+            <p className="text-xs text-amber-700 dark:text-amber-300">Browse categories</p>
           </div>
           <Badge className="ml-auto bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">Ad</Badge>
         </div>
@@ -325,8 +337,8 @@ export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
           <ShoppingBag className="h-5 w-5 text-white" />
         </div>
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Top Picks</h3>
-          <p className="text-xs text-amber-700 dark:text-amber-300">Handpicked for you</p>
+          <h3 className="font-bold text-gray-900 dark:text-white text-lg">Amazon shopping</h3>
+          <p className="text-xs text-amber-700 dark:text-amber-300">Browse categories</p>
         </div>
         <Badge className="ml-auto bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">Ad</Badge>
       </div>
@@ -334,11 +346,11 @@ export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
       {/* Large Product Cards */}
       <div className="space-y-4">
         {products.map((product, idx) => (
-          <a
+          <CommercialOutboundLink
             key={idx}
             href={getAmazonLink(product.url)}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
+            provider="amazon" destination={product.name} useCase={category}
+            placement="homepage_sidebar"
             className="block bg-white dark:bg-gray-700 rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group"
           >
             {/* Large Image */}
@@ -355,15 +367,15 @@ export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
               <h4 className="font-semibold text-gray-900 dark:text-gray-50 text-base mb-2 line-clamp-2 group-hover:text-[#1E3A8A] dark:group-hover:text-blue-300 transition-colors">
                 {product.name}
               </h4>
-              <StarRating rating={product.rating} />
+              {!isSearchProduct(product) && <StarRating rating={product.rating} />}
               <div className="flex items-center justify-between mt-3">
-                <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{product.price}</span>
+                {!isSearchProduct(product) && <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{product.price}</span>}
                 <span className="bg-[#1E3A8A] text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1 group-hover:bg-[#2d4a9e] transition-colors">
-                  View Deal <ExternalLink className="h-3 w-3" />
+                  Shop on Amazon <ExternalLink className="h-3 w-3" />
                 </span>
               </div>
             </div>
-          </a>
+          </CommercialOutboundLink>
         ))}
       </div>
       
@@ -376,7 +388,7 @@ export const AffiliateWidgetSidebar = ({ category = 'default' }) => {
 
 // In-article widget - Shows first 2 products
 // Can receive products prop directly to avoid duplicate fetching
-export const AffiliateWidgetInline = ({ category = 'default', title = 'You Might Like', products: propProducts = null }) => {
+export const AffiliateWidgetInline = ({ category = 'default', title = 'Amazon shopping', products: propProducts = null }) => {
   const { products: fetchedProducts, loaded } = useAffiliateProducts(category, 4, 0); // Get first 4 products
   
   // Use prop products if provided, otherwise use fetched products
@@ -407,11 +419,11 @@ export const AffiliateWidgetInline = ({ category = 'default', title = 'You Might
         {/* Product Cards - Large and prominent */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {displayProducts.map((product, idx) => (
-            <a
+            <CommercialOutboundLink
               key={idx}
               href={getAmazonLink(product.url)}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
+              provider="amazon" destination={product.name} useCase={category}
+              placement="amazon_inline"
               className="flex gap-4 p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 hover:shadow-lg transition-all duration-300 group"
             >
               {/* Product Image - Larger */}
@@ -429,17 +441,17 @@ export const AffiliateWidgetInline = ({ category = 'default', title = 'You Might
                   <h5 className="font-semibold text-gray-900 dark:text-gray-50 text-base mb-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors line-clamp-2">
                     {product.name}
                   </h5>
-                  <StarRating rating={product.rating} />
+                  {!isSearchProduct(product) && <StarRating rating={product.rating} />}
                 </div>
                 
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>
+                  {!isSearchProduct(product) && <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>}
                   <span className="text-sm text-[#1E3A8A] dark:text-blue-300 font-medium flex items-center gap-1 group-hover:underline underline-offset-2">
                     Shop now <ExternalLink className="h-3.5 w-3.5" />
                   </span>
                 </div>
               </div>
-            </a>
+            </CommercialOutboundLink>
           ))}
         </div>
         
@@ -526,8 +538,8 @@ export const AffiliateWidgetEndArticle = ({ category = 'default', products: prop
           <ShoppingBag className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h3 className="font-bold text-gray-900 dark:text-white text-xl">You Might Also Like</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Recommended products for you</p>
+          <h3 className="font-bold text-gray-900 dark:text-white text-xl">Amazon shopping</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Browse categories</p>
         </div>
         <Badge className="ml-auto bg-gray-100 dark:bg-gray-800 text-gray-500 text-xs">Sponsored</Badge>
       </div>
@@ -535,11 +547,11 @@ export const AffiliateWidgetEndArticle = ({ category = 'default', products: prop
       {/* Large Product Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {products.map((product, idx) => (
-          <a
+          <CommercialOutboundLink
             key={idx}
             href={getAmazonLink(product.url)}
-            target="_blank"
-            rel="noopener noreferrer sponsored"
+            provider="amazon" destination={product.name} useCase={category}
+            placement="amazon_end"
             className="block bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden hover:shadow-xl hover:border-emerald-300 dark:hover:border-emerald-500 transition-all duration-300 group"
           >
             {/* Larger Image */}
@@ -556,13 +568,13 @@ export const AffiliateWidgetEndArticle = ({ category = 'default', products: prop
               <h4 className="font-semibold text-gray-900 dark:text-gray-50 text-sm line-clamp-2 mb-2 min-h-[2.5rem] group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
                 {product.name}
               </h4>
-              <StarRating rating={product.rating} />
+              {!isSearchProduct(product) && <StarRating rating={product.rating} />}
               <div className="flex items-center justify-between mt-3">
-                <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>
+                {!isSearchProduct(product) && <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>}
                 <ExternalLink className="h-4 w-4 text-gray-400 dark:text-gray-300 group-hover:text-emerald-500 transition-colors" />
               </div>
             </div>
-          </a>
+          </CommercialOutboundLink>
         ))}
       </div>
       
@@ -585,10 +597,10 @@ export const AffiliateWidgetMobile = ({ category = 'default' }) => {
   
   return (
     <div className="block lg:hidden my-6" data-testid="affiliate-mobile">
-      <a
+      <CommercialOutboundLink
         href={getAmazonLink(product.url)}
-        target="_blank"
-        rel="noopener noreferrer sponsored"
+        provider="amazon" destination={product.name} useCase={category}
+        placement="amazon_mobile"
         className="block bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800 rounded-2xl border-2 border-amber-200 dark:border-amber-800/50 p-4 shadow-lg"
       >
         {/* Header */}
@@ -596,7 +608,7 @@ export const AffiliateWidgetMobile = ({ category = 'default' }) => {
           <div className="bg-amber-500 p-1.5 rounded-lg">
             <TrendingUp className="h-4 w-4 text-white" />
           </div>
-          <span className="font-bold text-gray-900 dark:text-white text-sm">Featured Deal</span>
+          <span className="font-bold text-gray-900 dark:text-white text-sm">Amazon shopping</span>
           <Badge className="ml-auto bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 text-xs">Ad</Badge>
         </div>
         
@@ -617,11 +629,11 @@ export const AffiliateWidgetMobile = ({ category = 'default' }) => {
               <h4 className="font-semibold text-gray-900 dark:text-gray-50 text-sm line-clamp-2 mb-1">
                 {product.name}
               </h4>
-              <StarRating rating={product.rating} />
+              {!isSearchProduct(product) && <StarRating rating={product.rating} />}
             </div>
             
             <div className="flex items-center justify-between mt-2">
-              <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>
+              {!isSearchProduct(product) && <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{product.price}</span>}
               <span className="bg-[#1E3A8A] text-white text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1">
                 Shop <ExternalLink className="h-3 w-3" />
               </span>
@@ -632,7 +644,7 @@ export const AffiliateWidgetMobile = ({ category = 'default' }) => {
         <p className="text-xs text-amber-700 dark:text-gray-300 mt-2 text-center">
           Affiliate link • We may earn commission
         </p>
-      </a>
+      </CommercialOutboundLink>
     </div>
   );
 };
