@@ -312,6 +312,96 @@ Only the four governance documents were reconciled afterward for a documentation
 only commit; no push is authorised. Unrelated newsletter query-log, deliverability,
 security and QA gates remain unchanged.
 
+## 27 September 2026 — Virtual-office editorial baseline correction
+
+### Preconditions and backup
+
+Branch `full-scrape-prod`, local HEAD and live remote ref all matched
+`8c8788f86bc88a4ee5f9ea8039014ad46d5d37f0`. Tracked tree and whitespace checks
+passed; only the two protected untracked files remained. Render's current Live
+deployment was `dep-dasdclgae00c73b0g7ag` at that exact documentation revision,
+above unchanged application baseline `3a9b81e`. Public health returned HTTP
+200/healthy. This task did not push or trigger deployment.
+
+The exact slug `best-virtual-office-services-small-business-uk` resolved to one
+published Business/affiliate document with 11 sections and two uniquely identified
+tool entries. All approved old target values, timestamp, provider order and
+advertisers 36030/83191 passed; public API matched the complete serialised record.
+No backend enrichment mapping applies. A first combined preflight/write-mode
+script was not executed by the safety gate; a separate structurally read-only
+script then passed before the authorised write-mode execution.
+
+At 16:08 UTC a new private timestamp/random-suffix directory under
+`~/cheshiretoday-private-backups/commercial-trust/` received exactly one original
+document in `authority-pages-before.bson`. Exclusive creation, directory 0700,
+file 0600, flush/fsync, decode, slug/cardinality and exact BSON equality passed.
+No contents or full tracking URLs are recorded here. Rollback requires separate
+approval.
+
+### Transaction and exact changed paths
+
+Snapshot reread matched the backup exactly. Section identities/order and the
+approved snapshot were revalidated before deriving the update. Conditional
+`update_one`, `upsert=False`, guarded identity, timestamp, sections and full
+original document; it matched and modified exactly one record. Complete expected
+post-image equality passed before commit. **Commit acknowledged**, no retry;
+majority readback matched exactly and confirmed this complete difference set:
+
+```text
+title
+sections.0.content
+sections.1.content
+sections.2.content
+sections.2.rating
+sections.3.title
+sections.3.content
+sections.4.content
+sections.5.content
+sections.6.content
+sections.7.title
+sections.7.content
+sections.8.content
+updatedAt
+```
+
+These are 13 editorial fields plus execution-time UTC ISO `updatedAt`. The new
+title is “Virtual office options for UK small businesses: address services and
+mail handling”. Both provider ratings are null. Both affiliate URLs are exactly
+preserved, including advertiser IDs 36030 and 83191; stored provider names/order,
+section types, slug, category, published status, `monetisation=affiliate`, all
+unlisted sections and other metadata are unchanged. No provider was added/removed.
+
+### Public acceptance and evidence boundary
+
+- Public API matched the complete expected serialised post-image. Googlebot HTML
+  showed the new title and all copy, both provider names and unchanged links, and
+  no 4.4 rating; no enrichment restored old wording.
+- Desktop 1440px and mobile 390px passed exact guide title/copy, provider order,
+  two provider-list CTAs, unchanged destinations and the existing exact
+  `sponsored noreferrer noopener` rel. Frontend affiliate disclosure remained;
+  neither provider showed a numeric rating, and edited provider/location wording
+  contained no old “Best for” / “best virtual office” claims. No automatic top
+  pick, horizontal overflow or runtime error was observed.
+- Crawler HTML's existing renderer has no affiliate-disclosure block. Disclosure
+  preservation is verified on the React frontend; crawler disclosure is not
+  claimed or changed by this data-only operation.
+- Isolated interception preceded navigation, blocked service workers, commercial,
+  sponsor/article measurement, analytics and off-site navigation, and allowed only
+  GET/HEAD. Two passes each blocked six desktop and five mobile commercial
+  requests: **22 blocked, zero allowed through**, zero forbidden responses,
+  zero synthetic clicks. Expected blocked-resource console errors were harmless.
+  The first pass incorrectly selected the site-brand h1 and expected `nofollow`;
+  temporary assertions were aligned with existing markup and the second passed.
+  No application code or production data was changed to satisfy the checks.
+
+The correction is the clean baseline for the first virtual-office affiliate
+engagement experiment. It does not establish conversion/revenue improvement or
+launch a variant. Route, related-guide inputs, placements, disclosure/CTA logic,
+measurement identifiers, Awin, configuration and all application code remain
+unchanged. Four governance documents record the result in a documentation-only
+commit; no push is authorised. Unrelated privacy, deliverability and QA gates
+remain open as previously recorded.
+
 ## Unreconciled later production evidence
 
 - The 7–21 August duplicate-cleanup, scheduler-lock, event-anchor and isolated

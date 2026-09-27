@@ -819,6 +819,37 @@ See [Production Timeline](../PRODUCTION_TIMELINE.md#27-september-2026--commercia
 for the production evidence boundary. Historical Phase 1 test counts were not rerun
 for this data/documentation-only operation.
 
+## 27 September 2026 — Virtual-office editorial baseline correction
+
+Initial local/remote `full-scrape-prod` matched `8c8788f86bc88a4ee5f9ea8039014ad46d5d37f0`;
+tracked tree was clean with only the two protected untracked files. Render now
+showed that documentation revision Live in `dep-dasdclgae00c73b0g7ag`; public
+health was HTTP 200/healthy. No deployment was triggered by this task.
+
+Exact production preconditions and public API equality passed for the single
+`best-virtual-office-services-small-business-uk` record. A private one-document
+BSON backup outside Git passed exclusive creation, permissions, fsync and exact
+round-trip validation. A snapshot transaction used complete original-state guards,
+no upsert and only a minimal `$set`: 13 approved editorial fields plus `updatedAt`.
+Matched/modified 1/1, complete expected post-image verified, commit acknowledged,
+and majority readback verified the same exact post-image without retry.
+
+The unsupported 4.4 rating and targeted ranking/suitability claims were removed.
+Both providers, stored labels/order, affiliate URLs/IDs 36030/83191, affiliate
+monetisation, route, placements, measurement and all unrelated fields remained
+unchanged. API/crawler checks and 1440px/390px browser acceptance passed. Two
+intercepted passes blocked 22 commercial requests, allowed zero through, generated
+no clicks and found no runtime errors or overflow. Temporary browser assertions
+were corrected for the separate site-brand h1 and the existing exact
+`sponsored noreferrer noopener` rel; no production change was needed. Frontend
+disclosure was preserved; crawler HTML has no existing disclosure block.
+
+This Mongo-only correction establishes the clean virtual-office experiment
+baseline, not improved commercial performance. Only governance docs changed in
+the repository; no application code, account, configuration or deployment changes.
+The documentation-only follow-up is not authorised for push. Detailed evidence:
+[Production Timeline](../PRODUCTION_TIMELINE.md#27-september-2026--virtual-office-editorial-baseline-correction).
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.

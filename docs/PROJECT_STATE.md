@@ -4,8 +4,8 @@
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
 > - **Application baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e` (Commercial Trust Phase 1 committed, deployed and production-accepted)
-> - **Last repository reconciliation:** 27 September 2026 (production acceptance and authorised two-record affiliate correction; documentation-only commit, no push authorised)
-> - **Production-verification status:** Fresh Render inspection confirms service `cheshiretoday-migration-` Live at `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`, deployment `dep-dasccr0ae00c73avpep0`, public health HTTP 200/healthy. Commercial Trust Phase 1 acceptance and the bounded affiliate-data correction are complete. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
+> - **Last repository reconciliation:** 27 September 2026 (single-record virtual-office editorial baseline correction; documentation-only follow-up, no push authorised)
+> - **Production-verification status:** Fresh Render inspection confirms service `cheshiretoday-migration-` Live at `8c8788f86bc88a4ee5f9ea8039014ad46d5d37f0`, deployment `dep-dasdclgae00c73b0g7ag`, public health HTTP 200/healthy. That revision changes documentation only above application baseline `3a9b81e`. Commercial Trust Phase 1 acceptance, the earlier two-record affiliate correction and the single-record virtual-office editorial correction are complete. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application / remote baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`
+- **Current application baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`
+- **Verified remote / deployed documentation baseline:** `8c8788f86bc88a4ee5f9ea8039014ad46d5d37f0`
 - **Latest application commit:** `Improve commercial trust and outbound measurement`
-- **Local documentation reconciliation:** the subsequent documentation-only commit records the accepted deployment and affiliate correction; it is not a new application deployment and must not be pushed without separate approval.
+- **Local documentation reconciliation:** `8c8788f` was subsequently pushed/deployed outside the earlier correction task, as now verified read-only. The next documentation-only commit records the virtual-office baseline correction; no push is authorised for this task.
 
 Repository HEAD and production acceptance revision are distinct: the controlled
 acceptance below ran at `2f40374`, before the later copy-only commit.
@@ -891,6 +892,35 @@ attribution and product-specific data verification remain separate work. Existin
 ratings and unrelated copy were deliberately preserved. Click events are not
 Amazon purchase/conversion evidence. Detailed evidence is in the
 [Production Timeline](PRODUCTION_TIMELINE.md#27-september-2026--commercial-trust-production-acceptance-and-affiliate-correction).
+
+### Virtual-office editorial baseline — production verified 27 September 2026
+
+The separately authorised single-record Mongo snapshot transaction corrected
+`best-virtual-office-services-small-business-uk`: 13 approved editorial fields
+plus `updatedAt`, removing the unsupported 4.4 rating and ranking/suitability
+wording in the targeted copy. A private one-record BSON backup outside Git passed
+0700/0600 permissions, fsync and exact decode/equality checks. The conditional
+update matched/modified 1/1, exact complete post-image checks passed before and
+after acknowledged commit, and no retry was needed.
+
+Registered Office (UK) Ltd / MYCO Works and Virtual Office / Your Virtual Office
+London retain their stored names/order, original affiliate URLs and advertiser
+IDs 36030/83191. Monetisation remains `affiliate`; slug, category, published state,
+unlisted sections, placements, measurement identifiers and application code are
+unchanged. Both provider ratings are now null. API and crawler copy/link checks
+passed; 1440px desktop and 390px mobile acceptance retained both linked CTAs,
+frontend disclosure and existing commercial rel attributes, without overflow or
+runtime errors. Two isolated browser passes blocked 22 commercial requests and
+allowed zero through; no affiliate clicks were generated. The first pass needed
+temporary selector/rel assertions corrected to match existing markup, not a
+production fix. Crawler HTML retains its existing lack of a disclosure block;
+the verified disclosure is the public React frontend's unchanged disclosure.
+
+This is the clean baseline for the first virtual-office affiliate engagement
+experiment, not evidence of conversion/revenue improvement or a launched variant.
+Natural observation and any later variation remain separately scoped. No Awin,
+configuration, provider-link or deployment change was performed by this task.
+See [Production Timeline](PRODUCTION_TIMELINE.md#27-september-2026--virtual-office-editorial-baseline-correction).
 
 The commercial strategy is affiliate-first and reader-focused.
 
