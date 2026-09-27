@@ -852,6 +852,37 @@ The documentation-only follow-up is not authorised for push. Detailed evidence:
 
 ## Unreconciled history
 
+### 27 September 2026 — UX/commercial refinement batch 1 local verification
+
+Baseline `f4fb2bd28060655c3d3e6465bfc8737d36b40e28`, branch `full-scrape-prod`,
+clean tracked tree and only the protected untracked files. The bounded change
+adds the existing article-completion condition to mobile More stories, removes
+only desktop sidebar Latest / More from Cheshire Today, and removes only the
+savings entry from `homepage_primary`. Main More stories data and presentation
+counts, article thresholds/reset, related stories, sponsor/newsletter behaviour,
+rotation/partitions and other registries are preserved. No redesign, Mongo,
+guide-content, affiliate URL/ID, Amazon or measurement architecture change.
+
+Red: 9 failed / 9 passed. Green focused: 25 tests / 3 suites; related: 101 / 10;
+full frontend: 460 / 44, zero failures. Tests cover mobile collapse/expansion,
+three-paragraph content, navigation reset, 639/640 transitions, preserved main
+list order/count/expansion, sponsor genuine/absent/house/error behaviour, a real
+sponsor fetch rejection, fixed-date rotation, unique destinations, partitions,
+two-card density, retained non-homepage savings references and feature gating.
+One initial assertion included CSS-hidden summary text; correcting its scope to
+the body resolved the harness issue without production changes. Production build
+passed; existing React act deprecation and eight-month-old Browserslist warning
+remain. Full diff and whitespace checks passed.
+
+Eight local built-page browser scenarios passed (390px and 1440px). All APIs used
+local fixtures, with request interception installed before navigation: 12
+first-party measurement attempts and 30 external requests were handled locally,
+zero external requests forwarded, zero affiliate clicks/form submissions, no
+horizontal overflow or runtime errors. No production acceptance is claimed and
+Production Timeline is unchanged. Desktop hero/headline placement, footer naming,
+homepage guide-strip first-party measurement and broader dedupe remain deferred.
+The authorised single commit is local only; no push or deployment is authorised.
+
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
 - Production evidence through the 21 August 06:00 run on `b3550c0` is reconciled

@@ -63,6 +63,18 @@ test("article placements suppress no-inventory fallback and report unavailable",
   expect(onAvailabilityChange).toHaveBeenLastCalledWith(false);
 });
 
+test("failed article sponsor fetch reports unavailable without a fallback or impression", async () => {
+  const onAvailabilityChange = jest.fn();
+  global.fetch = jest.fn().mockRejectedValue(new Error('Fixture transport failure'));
+  await act(async () => {
+    root.render(<SponsoredPlacement placement="article_sidebar" suppressFallback onAvailabilityChange={onAvailabilityChange} />);
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+  expect(container.textContent).toBe('');
+  expect(onAvailabilityChange).toHaveBeenLastCalledWith(false);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+});
+
 test("article placements suppress database-backed house-guide inventory", async () => {
   const onAvailabilityChange = jest.fn();
   await renderPlacement(

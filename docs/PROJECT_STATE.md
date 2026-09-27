@@ -842,6 +842,39 @@ provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
 
+### UX/commercial refinement batch 1 — local implementation verified
+
+Implemented against `f4fb2bd28060655c3d3e6465bfc8737d36b40e28` on
+`full-scrape-prod`; not pushed or deployed. Exactly three changes: mobile article
+More stories now uses the existing completion/expansion gate; desktop article
+sidebar Latest and More from Cheshire Today presentation blocks are removed; and
+the savings guide is removed only from `homepage_primary` rotation. Read more,
+the >3-paragraph threshold, first-paragraph preview, navigation reset, main story
+fetch/order/count/expansion, related stories, sponsor/newsletter logic, other
+registries and the rotation algorithm remain unchanged.
+
+Red verification: 9 failed / 9 passed before implementation. Final focused tests:
+25 passed across 3 suites; related regression: 101 passed across 10 suites; full
+frontend: 460 passed across 44 suites. Production frontend build and diff
+whitespace checks passed. Existing ReactDOMTestUtils.act deprecation and stale
+Browserslist data warnings remain. A test assertion was scoped to body content
+rather than CSS-hidden desktop summary text; no production behaviour was changed
+to satisfy that assertion.
+
+Eight isolated local production-build browser scenarios passed at 390px/1440px:
+long mobile collapsed/expanded, short mobile, four desktop sponsor states
+(genuine/absent/house/error), and both homepage widths. Fixture API responses
+were intercepted before navigation; 12 first-party measurement requests and 30
+external requests were blocked/fulfilled locally, with zero forwarded external
+requests, affiliate clicks or form submissions. No overflow or runtime errors.
+This is local built-page evidence, not production deployment acceptance.
+
+No redesign, Mongo/guide-data change, affiliate destination/ID change, Amazon
+change, measurement architecture change or Latest newest-first change. Desktop
+hero/headline position, footer “Guides” naming, homepage first-party guide-strip
+measurement and broader homepage dedupe remain deferred. Commit approval does
+not authorise push; production verification is required after separate deployment.
+
 ### Commercial Trust Phase 1 — deployed and production-accepted
 
 Implemented against `full-scrape-prod` at `40b3da2` on 26 September 2026.

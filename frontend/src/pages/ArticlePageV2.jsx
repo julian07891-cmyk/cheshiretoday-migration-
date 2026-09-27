@@ -1359,7 +1359,7 @@ export default function ArticlePageV2({ categories }) {
               {/* More stories (publisher-style) — collapsed shows only one row */}
               
               {/* More stories (homepage card style) — collapsed shows only one row */}
-              {Array.isArray(moreStories) && moreStories.length > 0 && (
+              {(!isMobileView || !mobileRemainingContent || articleExpanded) && Array.isArray(moreStories) && moreStories.length > 0 && (
                 <section className="mt-10">
                   <SectionHeader
                     title="More stories"
@@ -1463,72 +1463,6 @@ export default function ArticlePageV2({ categories }) {
                 />
 
 
-                {/* Filler blocks (match homepage rhythm / avoids empty sidebar) */}                {/* Latest (fills sidebar height, compact) */}
-                {Array.isArray(moreStories) && moreStories.length > 0 && (
-                  <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-foreground">Latest</h3>
-                      <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
-                        Updated
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {moreStories.slice(0, 6).map((a, idx) => (
-                        <CompactArticleCard
-                          key={a?.id || a?._id || idx}
-                          horizontal
-                          onClick={() => navigate(a?.url || buildArticleUrl(a))}
-                          article={{
-                            id: a?.id || a?._id || String(idx),
-                            title: a?.title,
-                            content: a?.summary || a?.content || "",
-                            summary: a?.summary || "",
-                            image: a?.image,
-                            category: a?.category,
-                            location: a?.town || a?.location || "Cheshire",
-                            publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
-                            readTime: a?.readTime || 3,
-                            url: a?.url || buildArticleUrl(a),
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {Array.isArray(moreStories) && moreStories.length > 6 && (
-                  <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-foreground">More from Cheshire Today</h3>
-                      <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
-                        Editorial
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {moreStories.slice(6, 12).map((a, idx) => (
-                        <CompactArticleCard
-                          key={a?.id || a?._id || `more-sidebar-${idx}`}
-                          horizontal
-                          onClick={() => navigate(a?.url || buildArticleUrl(a))}
-                          article={{
-                            id: a?.id || a?._id || String(idx),
-                            title: a?.title,
-                            content: a?.summary || a?.content || "",
-                            summary: a?.summary || "",
-                            image: a?.image,
-                            category: a?.category,
-                            location: a?.town || a?.location || "Cheshire",
-                            publishedDate: a?.publishedDate || a?.published_at || a?.created_at,
-                            readTime: a?.readTime || 3,
-                            url: a?.url || buildArticleUrl(a),
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
 
 
                 {!isMobileView && desktopSponsorAvailable === false && (
