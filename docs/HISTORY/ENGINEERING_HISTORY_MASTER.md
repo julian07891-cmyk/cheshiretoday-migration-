@@ -786,6 +786,39 @@ Project State committed-HEAD metadata now distinguishes `40b3da2` from the
 unchanged documented production revision. Phase 1 remains unstaged/uncommitted,
 unpushed and undeployed. No affiliate relationship or destination changed.
 
+## 27 September 2026 — Commercial Trust production acceptance and affiliate correction
+
+The preceding local-only checkpoint is historical. Phase 1 was committed as
+`3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e` (`Improve commercial trust and outbound
+measurement`), deployed Live in `dep-dasccr0ae00c73avpep0`, and production-accepted.
+Fresh local/remote SHA, clean tracked tree, protected untracked set and HTTP
+200/healthy checks passed before the separately authorised data operation.
+
+An exclusive private backup preserved exactly the two original target documents
+as BSON outside Git, with 0700/0600 permissions, fsync and exact round-trip checks.
+A snapshot transaction reread the originals, resolved tool indices by trimmed
+name/title, guarded complete original state and applied minimal `$set` updates.
+EMPLA 127533's link was cleared after its verified 25 September closure. Emma
+Sleep's incorrect 79506 (Emma App) link was cleared, monetisation set to `none`,
+and only its approved neutral provider copy substituted. Both updates matched
+and modified one record, exact expected post-images passed and commit was
+acknowledged: two records, four business fields, two `updatedAt` timestamps.
+
+The complete education control document and API/crawler outputs stayed identical;
+CloudLearn and Alison links were not changed. API/crawler checks passed 3/3 and
+isolated 1440px/390px guide checks passed 6/6. Two protected browser passes blocked
+22 commercial requests, allowed zero, used no synthetic clicks and observed no
+runtime errors or horizontal overflow. Temporary harness corrections resolved the
+control's full label (`Alison Free Online Courses`) and provider-label div selector;
+neither required an application change or transaction retry. No replacement
+affiliate programme, Awin/CJ change, code change or sponsor change accompanied the
+operation. Alison UK monetisation remains unresolved. Rollback needs separate
+approval. The follow-up commit is documentation-only and is not pushed.
+
+See [Production Timeline](../PRODUCTION_TIMELINE.md#27-september-2026--commercial-trust-production-acceptance-and-affiliate-correction)
+for the production evidence boundary. Historical Phase 1 test counts were not rerun
+for this data/documentation-only operation.
+
 ## Unreconciled history
 
 - The requested ChatGPT export has not been received.

@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Repository baseline:** `40b3da277b3b9b12f6a99673d185618c30cdd539` (Commercial Trust Phase 1 remains local/uncommitted)
-> - **Last repository reconciliation:** 26 September 2026 (documentation changes local/uncommitted)
-> - **Production-verification status:** Owner-supplied evidence confirms Render service `cheshiretoday-migration-` Live at `8ed19846ccf9242b646ea38440d71e1f85f59141`, public health HTTP 200. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
+> - **Application baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e` (Commercial Trust Phase 1 committed, deployed and production-accepted)
+> - **Last repository reconciliation:** 27 September 2026 (production acceptance and authorised two-record affiliate correction; documentation-only commit, no push authorised)
+> - **Production-verification status:** Fresh Render inspection confirms service `cheshiretoday-migration-` Live at `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`, deployment `dep-dasccr0ae00c73avpep0`, public health HTTP 200/healthy. Commercial Trust Phase 1 acceptance and the bounded affiliate-data correction are complete. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,8 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current committed HEAD:** `40b3da277b3b9b12f6a99673d185618c30cdd539`
-- **Latest baseline commit:** `Reconcile newsletter deliverability evidence through September 26`
+- **Current application / remote baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`
+- **Latest application commit:** `Improve commercial trust and outbound measurement`
+- **Local documentation reconciliation:** the subsequent documentation-only commit records the accepted deployment and affiliate correction; it is not a new application deployment and must not be pushed without separate approval.
 
 Repository HEAD and production acceptance revision are distinct: the controlled
 acceptance below ran at `2f40374`, before the later copy-only commit.
@@ -840,7 +841,7 @@ provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
 
-### Commercial Trust Phase 1 — local, uncommitted; not deployed
+### Commercial Trust Phase 1 — deployed and production-accepted
 
 Implemented against `full-scrape-prod` at `40b3da2` on 26 September 2026.
 Guide tool visibility no longer depends on affiliate links; unlinked options
@@ -858,15 +859,38 @@ are omitted; valid configured order and link-independent visibility are preserve
 Local verification after this correction: 34 focused tests, 64 related commercial tests, all 446 frontend
 tests across 43 suites, production frontend build and diff whitespace check passed.
 See [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md#26-september-2026--commercial-trust-phase-1-local-implementation)
-for red/green evidence and limits. Review/commit approval is next; no staging,
-commit, push or deployment is part of this work.
+for historical red/green evidence and limits. Commit `3a9b81e` is now deployed in
+`dep-dasccr0ae00c73avpep0` and production-accepted. Linked/unlinked and zero-link
+comparisons, removal of automatic top picks, neutral Amazon fallback copy,
+single UK associate-tag handling and commercial rel attributes passed the earlier
+bounded Phase 1 acceptance. These are presentation checks, not conversion evidence.
 
-Affiliate programme/account status remains unresolved. No advertiser relationship,
-merchant URL/ID, guide database record or sponsor inventory was changed. The owner
-reports some Awin closures/non-paying programmes but individual statuses are not
-verified. Existing broader disclosure-page wording, guide quality, plain-link
-attribution and product-specific data verification remain separate work. Click
-events are not Amazon purchase/conversion evidence.
+On 27 September the separately authorised production snapshot transaction changed
+exactly two `authority_pages` records / four business fields: EMPLA's link was
+cleared in `best-ai-productivity-tools-uk` (advertiser 127533 closed 25 September);
+Emma Sleep's link was cleared in `best-mattress-deals-uk`, monetisation changed
+from `affiliate` to `none`, and its promotional provider copy was replaced with
+the approved neutral text (79506 is Emma App, not Emma Sleep). Each record also
+received an `updatedAt` timestamp. Complete post-images matched; all seven AI
+providers, including the six alternatives, remained unchanged otherwise.
+
+A private two-record BSON backup outside Git was flushed, read back and validated
+with 0700 directory / 0600 file permissions before either write. Both conditional
+updates matched/modified exactly one record; commit was acknowledged. The complete
+education control document, public API and crawler response remained unchanged.
+All three API/crawler checks and six desktop/mobile guide checks passed. Isolated
+browser interception blocked 22 commercial requests across two passes (the first
+needed a test-selector correction); zero were allowed through, with no synthetic
+clicks, horizontal overflow or runtime errors. No application code, provider
+account, sponsor inventory or replacement programme was changed. Rollback requires
+separate approval; the backup is not authority to restore automatically.
+
+Alison UK monetisation remains unresolved; its education-guide link and CloudLearn
+remain untouched. Broader disclosure-page wording, guide quality, plain-link
+attribution and product-specific data verification remain separate work. Existing
+ratings and unrelated copy were deliberately preserved. Click events are not
+Amazon purchase/conversion evidence. Detailed evidence is in the
+[Production Timeline](PRODUCTION_TIMELINE.md#27-september-2026--commercial-trust-production-acceptance-and-affiliate-correction).
 
 The commercial strategy is affiliate-first and reader-focused.
 

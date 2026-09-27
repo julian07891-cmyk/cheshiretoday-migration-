@@ -230,6 +230,88 @@ Reported focused verification: 11 passed, 2,848 deselected; `git diff --check` p
 It was pushed after the acceptance run. The earlier welcome receipt does not prove
 this later wording; this record does not independently establish its deployment.
 
+## 27 September 2026 — Commercial Trust production acceptance and affiliate correction
+
+### Deployment and preconditions
+
+Local and freshly queried remote `full-scrape-prod` both matched
+`3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`, `Improve commercial trust and outbound
+measurement`. Tracked tree was clean; only the two protected local files were
+untracked. Render deployment `dep-dasccr0ae00c73avpep0` showed **Deploy succeeded |
+Live**, the exact source SHA and runtime `74qjv`; startup completed at 08:34:21
+BST and Live was logged at 08:34:22. Fresh public `/api/health` returned HTTP
+200/healthy. Phase 1 deployment acceptance was complete before the data write:
+linked/unlinked and zero-link comparisons, no automatic top-pick panel, neutral
+Amazon fallback without price/rating claims, one UK associate tag and intended
+commercial rel handling passed bounded desktop/mobile inspection.
+
+Fresh production reads found exactly one record for each of the AI productivity,
+mattress and education slugs. Published state, monetisation, advertiser IDs,
+target labels, exact old mattress copy and all six AI alternatives passed. API
+identity/sections/monetisation matched Mongo. No configured enrichment mapping
+could restore either cleared link. An aborted snapshot read transaction confirmed
+transaction capability without changing data.
+
+### Private backup and atomic correction
+
+At approximately 08:30 UTC, a unique timestamp/random-suffix private directory
+under `~/cheshiretoday-private-backups/commercial-trust/` was created outside Git.
+It contains only `authority-pages-before.bson` for the two target records.
+Directory mode 0700, file mode 0600, exclusive creation, flush/fsync, BSON decode,
+exact encoded equality, record count and slug checks all passed. No backup content
+or tracking URL is retained in repository documentation.
+
+The authorised snapshot transaction reread complete originals, resolved provider
+indices by trimmed name with title fallback, and conditionally matched original
+identity, slug, timestamp, sections, status, monetisation and complete record state.
+No upsert or whole-document replacement was used.
+
+| Record | Approved business changes | Matched / modified |
+|---|---|---|
+| `best-ai-productivity-tools-uk` | EMPLA AI Employees `affiliate_link` → empty string; 127533 closed 25 September | 1 / 1 |
+| `best-mattress-deals-uk` | Emma Sleep `affiliate_link` → empty string; `monetisation` affiliate → none; provider `content` → approved neutral text; 79506 identifies Emma App, not Emma Sleep | 1 / 1 |
+
+The exact replacement copy is: “An option covered in this guide for readers
+comparing online mattresses, delivery and trial-period terms.” Both records also
+received the correction's UTC ISO `updatedAt`. Exactly four business fields changed.
+Before commit, both complete expected post-images and the unchanged education
+control passed. **Commit acknowledged; no ambiguous result or write retry.**
+Immediate majority readback again matched both complete post-images and the
+complete unchanged education document. AI monetisation stayed `none`; all seven
+providers and the six alternative sections were preserved byte/value-equivalently.
+
+### Post-write acceptance and boundaries
+
+- Public API and Googlebot/static HTML passed for all three slugs. EMPLA and Emma
+  remained present with no restored outbound link; AI alternatives remained and
+  mattress copy matched exactly. Education API and crawler response were identical
+  to the pre-write baseline.
+- Six browser samples (three guides at 1440px and 390px) passed. AI showed all
+  seven providers without outbound CTAs/disclosure; Emma showed neutral exact copy,
+  no outbound CTA/disclosure and intact layout; education retained CloudLearn and
+  Alison Free Online Courses with both CTAs. No automatic top pick, horizontal
+  document overflow or runtime error was observed.
+- Isolated Playwright interception was installed before navigation; service workers,
+  commercial/sponsor/article measurement, analytics and off-site navigation were
+  blocked. Two passes blocked **22 commercial requests** (11 each); **zero allowed
+  through**, zero forbidden responses and zero synthetic clicks. The initial
+  browser selector incorrectly expected h3 labels; correcting it to the deployed
+  div markup produced the six passing checks. Expected blocked-resource console
+  messages were not application errors. Consent remained untouched.
+- Before backup/write, a temporary precondition incorrectly treated shorthand
+  “Alison” as an exact label; a read-only label check confirmed the expected full
+  name, and the corrected preflight passed. No production mismatch or mutation
+  occurred on that initial stopped preflight.
+- Alison UK monetisation remains unresolved and the education record remains
+  unchanged. Existing ratings/unrelated editorial copy were preserved. No
+  replacement programme or Amazon replacement was invented; no Awin/CJ account,
+  sponsor inventory, subscriber, application code, configuration or deployment
+  change accompanied this correction. **Rollback requires separate approval.**
+
+Only the four governance documents were reconciled afterward for a documentation-
+only commit; no push is authorised. Unrelated newsletter query-log, deliverability,
+security and QA gates remain unchanged.
+
 ## Unreconciled later production evidence
 
 - The 7–21 August duplicate-cleanup, scheduler-lock, event-anchor and isolated
