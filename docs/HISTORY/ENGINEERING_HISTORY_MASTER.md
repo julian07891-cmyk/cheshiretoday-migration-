@@ -901,3 +901,24 @@ horizontal overflow or runtime errors. The implementation was subsequently commi
 - **Tests:** new `HeroStoryCard.test.jsx` covers link/heading uniqueness, href/metadata, image identity/crop/eager/high-priority attributes, responsive ordering, missing image and image-error behaviour. Focused/related verification passed 53 tests; full frontend passed 465 tests; production build and whitespace checks passed.
 - **Browser evidence:** isolated local built-page checks confirmed text-first at 1024px+ and image-first below; the current public lead headline fitted fully within 1440×900, with short/long headline and missing/failed-image scenarios also passing.
 - **Status:** local implementation only. Not yet committed, pushed or deployed. Production Timeline remains unchanged until deployment.
+
+### Latest card consistency — 28 September 2026
+
+The subsequent baseline was `8ed336fe426a140d2cabb006b2c405611e22d594`, with
+deployment owner-reported. The owner visually identified mismatched Latest cards
+after Popular Guides: the post-guide CompactArticleCard call omitted the
+`editorial` variant. The existing uncommitted one-line fix was reviewed and kept;
+its test mock exposes the variant and verifies the Latest cards all opt in.
+No allocation, order/count, headline-strip, guide placement/rotation, navigation,
+monetisation, backend or data change. Only the two expected source/test changes
+and the two protected untracked files existed at task start.
+
+HomePageV1: 3 passed; related: 54 passed / 5 suites; full frontend: 466 passed /
+45 suites. Production build and whitespace checks passed. Existing React act,
+fetchPriority and Browserslist warnings remain. No tests were weakened or added
+beyond the supplied regression. Local production-build browser checks passed at
+1440x900 and 390x844: Latest expanded 12→36 and 4→36 respectively, preserving
+fixture order and guide insertion after six/four cards. Both sides used the same
+editorial variant; no overflow or console errors. Fixture fetch responses and
+restrictive CSP prevented production analytics; no affiliate clicks or production
+navigation occurred. Correction verified locally; no push or deployment authorised.

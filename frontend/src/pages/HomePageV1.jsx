@@ -1194,6 +1194,7 @@ return (
                       <CompactArticleCard
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
+                        variant="editorial"
                       />
                     </div>
                   ))}

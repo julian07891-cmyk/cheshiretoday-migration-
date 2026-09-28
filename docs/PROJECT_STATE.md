@@ -874,7 +874,26 @@ change, measurement architecture change or Latest newest-first change. Footer �
 homepage dedupe remain deferred. The desktop hero/headline issue was taken as a
 separate bounded follow-up described below.
 
-### Desktop lead-story hierarchy — local implementation verified
+### Latest card consistency — local correction verified
+
+The owner reported the desktop hierarchy deployed at `8ed336f` and visually
+identified inconsistent Latest cards after Popular Guides. The post-guide
+`latestSplit.remainingCards` omitted `variant="editorial"`, unlike the pre-guide
+cards. The one-line presentation correction now supplies that same variant.
+Allocation, ordering, counts, headline strip, guide position/rotation, navigation,
+monetisation and backend/data are unchanged. This correction is not deployed.
+
+Verification: HomePageV1 3 tests passed; related homepage/commercial regression
+54 tests across 5 suites passed; full frontend 466 tests across 45 suites passed;
+production build and diff whitespace checks passed. Existing React act,
+fetchPriority development and stale Browserslist warnings remain.
+Isolated local built-page checks at 1440x900 and 390x844 passed: desktop 12→36
+and mobile 4→36 cards in fixture order, identical editorial styling before/after
+the guide, unchanged insertion after six desktop/four mobile cards, functional
+Show more, no overflow and no console errors. Local fixtures and restrictive CSP
+prevented production analytics; no production navigation or affiliate clicks.
+
+### Desktop lead-story hierarchy — implementation verified; deployment owner-reported
 
 A separate bounded follow-up against deployed baseline
 `386887c8119467ca0e6dc7eb3ec72718633afe81` changes only the homepage hero visual
@@ -894,8 +913,10 @@ text-first ordering at 1024px and above and image-first below it. The current le
 headline rendered fully inside the 1440×900 viewport; short/long headline and
 missing/failed-image cases also passed.
 
-This hero follow-up is local only at this point: it has not yet been committed,
-pushed or deployed. `PRODUCTION_TIMELINE.md` remains unchanged until deployment.
+The hero follow-up was committed as `8ed336fe426a140d2cabb006b2c405611e22d594`;
+the owner subsequently reported it deployed. That deployment was not independently
+reverified during the Latest consistency correction. `PRODUCTION_TIMELINE.md`
+is unchanged by this local correction.
 
 ### Commercial Trust Phase 1 — deployed and production-accepted
 

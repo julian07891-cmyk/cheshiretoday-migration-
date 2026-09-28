@@ -38,8 +38,8 @@ jest.mock("../components/homepage/LeadSection", () => ({ title, items }) => (
 jest.mock("../components/homepage/SectionHeader", () => ({ title, meta }) => (
   <h2 data-section-title={title}>{title}{meta ? ` ${meta}` : ""}</h2>
 ));
-jest.mock("../components/CompactArticleCard", () => ({ article }) => (
-  <article data-card-id={article.id}>{article.title}</article>
+jest.mock("../components/CompactArticleCard", () => ({ article, variant }) => (
+  <article data-card-id={article.id} data-card-variant={variant || "default"}>{article.title}</article>
 ));
 jest.mock("../components/homepage/TextHeadlineStrip", () => ({ articles }) => (
   <div data-headline-strip>
@@ -161,6 +161,17 @@ test("dead Most Read allocation reserves nothing and Latest expands deterministi
   for (const card of sectionCards("More stories")) {
     expect(exclusiveIds.has(card.textContent)).toBe(false);
   }
+});
+
+test("Latest uses the editorial card variant before and after the guide strip", async () => {
+  const articles = Array.from({ length: 12 }, (_, index) => makeArticle(index));
+  await renderHomepage(articles);
+
+  const latest = sectionByTitle("Latest");
+  const compactCards = Array.from(latest.querySelectorAll("[data-card-variant]"));
+
+  expect(compactCards.length).toBeGreaterThan(0);
+  expect(compactCards.every((card) => card.getAttribute("data-card-variant") === "editorial")).toBe(true);
 });
 
 test("Latest keeps approved unique stories only and hides an unnecessary toggle", async () => {
