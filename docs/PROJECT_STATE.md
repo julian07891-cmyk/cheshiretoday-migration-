@@ -870,9 +870,24 @@ requests, affiliate clicks or form submissions. No overflow or runtime errors.
 The local built-page evidence remains the strongest browser acceptance evidence. A later isolated production-browser acceptance attempt was inconclusive because the temporary QA harness did not complete article discovery reliably; no production defect was demonstrated and no rollback was indicated.
 
 No redesign, Mongo/guide-data change, affiliate destination/ID change, Amazon
-change, measurement architecture change or Latest newest-first change. Footer “Guides” naming, homepage first-party guide-strip measurement and broader
+change, measurement architecture change or Latest newest-first change. Homepage first-party guide-strip measurement and broader
 homepage dedupe remain deferred. The desktop hero/headline issue was taken as a
 separate bounded follow-up described below.
+
+### Footer topic naming — local correction verified
+
+Against baseline `f3fff461bb406bbcaa00962e4933787c18e6c79f`, NewsFooter's
+misleading “Guides” heading is renamed “Topics”. AI & Tech still links to
+`/category/ai-tech` and Finance to `/category/finance`. This is copy-only:
+routes, navigation structure, homepage guide strips, monetisation, SEO and data
+are unchanged. Not pushed or deployed.
+
+The new footer regression failed before the copy change and passed afterward;
+related verification passed 22 tests / 5 suites, full frontend 467 / 46 suites,
+and the production build and whitespace checks passed. Isolated local built-page
+checks at 1440x900 and 390x844 confirmed Topics, unchanged destinations, intact
+layout, no overflow and no console errors. No production navigation, analytics
+or affiliate clicks. Existing React and Browserslist warnings remain.
 
 ### Latest card consistency — local correction verified
 

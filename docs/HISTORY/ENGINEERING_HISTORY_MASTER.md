@@ -929,3 +929,18 @@ navigation occurred. The correction was committed as
 `f07c792ed7646b63f01e61bd054dc56db855d477`
 (`Unify Latest card styling after guides`), pushed to `full-scrape-prod`, and
 confirmed Live on Render. Public health returned HTTP 200 / healthy.
+
+### Footer topic naming — 28 September 2026
+
+Baseline `f3fff461bb406bbcaa00962e4933787c18e6c79f`, clean tracked tree and only
+the two protected untracked files. Read-only inspection confirmed NewsFooter's
+Guides group contained AI & Tech (`/category/ai-tech`) and Finance
+(`/category/finance`), rather than guides. Renamed only that label to Topics;
+destinations, structure, homepage guide headings, monetisation, SEO and data
+remain unchanged. One new footer test verifies heading and navigation groups:
+red before the change, green afterward. Related: 22 passed / 5 suites; full:
+467 passed / 46 suites; production build and diff whitespace passed. Existing
+React act/fetchPriority and stale Browserslist warnings remain. Isolated local
+built-page desktop 1440x900 and mobile 390x844 DOM/visual checks confirmed the
+heading, destinations and intact layout with no overflow or console errors.
+No production navigation, analytics, affiliate clicks, push or deployment.

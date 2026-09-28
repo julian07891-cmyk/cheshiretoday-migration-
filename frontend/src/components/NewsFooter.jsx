@@ -22,7 +22,7 @@ const NewsFooter = () => {
 
   const footerLinks = {
     'Coverage': ['Local', 'Business', 'UK'],
-    'Guides': ['AI & Tech', 'Finance'],
+    'Topics': ['AI & Tech', 'Finance'],
     'Company': ['Contact', 'Advertise']
   };
 
