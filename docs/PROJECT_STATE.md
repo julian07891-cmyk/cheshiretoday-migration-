@@ -874,13 +874,15 @@ change, measurement architecture change or Latest newest-first change. Homepage 
 homepage dedupe remain deferred. The desktop hero/headline issue was taken as a
 separate bounded follow-up described below.
 
-### Footer topic naming — local correction verified
+### Footer topic naming — deployed and production-healthy
 
 Against baseline `f3fff461bb406bbcaa00962e4933787c18e6c79f`, NewsFooter's
-misleading “Guides” heading is renamed “Topics”. AI & Tech still links to
+misleading “Guides” heading was renamed “Topics”. AI & Tech still links to
 `/category/ai-tech` and Finance to `/category/finance`. This is copy-only:
 routes, navigation structure, homepage guide strips, monetisation, SEO and data
-are unchanged. Not pushed or deployed.
+are unchanged. The correction was committed as
+`f5af386a9557ab079231628aa9d7af4aad25c857`, pushed to `full-scrape-prod`,
+confirmed Live on Render, and public health returned HTTP 200 / healthy.
 
 The new footer regression failed before the copy change and passed afterward;
 related verification passed 22 tests / 5 suites, full frontend 467 / 46 suites,

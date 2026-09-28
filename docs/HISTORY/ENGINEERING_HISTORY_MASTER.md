@@ -943,4 +943,8 @@ red before the change, green afterward. Related: 22 passed / 5 suites; full:
 React act/fetchPriority and stale Browserslist warnings remain. Isolated local
 built-page desktop 1440x900 and mobile 390x844 DOM/visual checks confirmed the
 heading, destinations and intact layout with no overflow or console errors.
-No production navigation, analytics, affiliate clicks, push or deployment.
+No production navigation, analytics or affiliate clicks occurred during local
+acceptance. The correction was committed as
+`f5af386a9557ab079231628aa9d7af4aad25c857`
+(`Clarify footer topic navigation`), pushed to `full-scrape-prod`, confirmed Live
+on Render, and public health returned HTTP 200 / healthy.

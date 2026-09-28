@@ -464,3 +464,22 @@ analytics or affiliate clicks were generated during those local checks.
 `f07c792` was pushed to `full-scrape-prod`, confirmed Live on Render, and public
 health returned HTTP 200 with
 `{"status":"healthy","service":"cheshire-news"}`.
+
+## 28 September 2026 — footer topic naming deployment
+
+Commit `f5af386a9557ab079231628aa9d7af4aad25c857`
+(`Clarify footer topic navigation`) was pushed to `full-scrape-prod` and
+confirmed Live on Render. Public `/health` returned HTTP 200 with
+`{"status":"healthy","service":"cheshire-news"}`.
+
+The change is copy-only: the NewsFooter category group label changed from
+“Guides” to “Topics”. AI & Tech still links to `/category/ai-tech` and Finance
+to `/category/finance`. Routes, navigation structure, homepage guide strips,
+monetisation, SEO, backend and data are unchanged.
+
+Verification passed one focused footer test, 22 related tests across five suites,
+467 full frontend tests across 46 suites, the production build and whitespace
+checks. Isolated local browser checks at 1440×900 and 390×844 confirmed the
+Topics heading, unchanged destinations, intact layout, no horizontal overflow
+and no console errors. No production navigation, analytics or affiliate clicks
+were generated during those local checks.
