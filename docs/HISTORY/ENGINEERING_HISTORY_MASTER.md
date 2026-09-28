@@ -900,7 +900,11 @@ horizontal overflow or runtime errors. The implementation was subsequently commi
 - **Implementation:** `HeroStoryCard.jsx` keeps one link and one `h1` and preserves DOM image-before-text order, but activates `lg:flex lg:flex-col` and `lg:order-first` so category/headline/meta render visually before the image from 1024px upward. Below 1024px remains image-first. `HomePageV1.jsx` applies the same desktop ordering to the loading skeleton. Image aspect ratios, crop, article selection/allocation, sidebar, commercial placements, guide rotation, backend and data are unchanged.
 - **Tests:** new `HeroStoryCard.test.jsx` covers link/heading uniqueness, href/metadata, image identity/crop/eager/high-priority attributes, responsive ordering, missing image and image-error behaviour. Focused/related verification passed 53 tests; full frontend passed 465 tests; production build and whitespace checks passed.
 - **Browser evidence:** isolated local built-page checks confirmed text-first at 1024px+ and image-first below; the current public lead headline fitted fully within 1440×900, with short/long headline and missing/failed-image scenarios also passing.
-- **Status:** local implementation only. Not yet committed, pushed or deployed. Production Timeline remains unchanged until deployment.
+- **Deployment:** committed as `8ed336fe426a140d2cabb006b2c405611e22d594`
+  (`Improve desktop lead-story hierarchy`), pushed to `full-scrape-prod` and
+  confirmed Live on Render. Public health returned HTTP 200 / healthy. A final
+  local 1440×900 geometry check measured the lead headline at 310–405px and the
+  hero image beginning at 461px.
 
 ### Latest card consistency — 28 September 2026
 
@@ -921,4 +925,7 @@ beyond the supplied regression. Local production-build browser checks passed at
 fixture order and guide insertion after six/four cards. Both sides used the same
 editorial variant; no overflow or console errors. Fixture fetch responses and
 restrictive CSP prevented production analytics; no affiliate clicks or production
-navigation occurred. Correction verified locally; no push or deployment authorised.
+navigation occurred. The correction was committed as
+`f07c792ed7646b63f01e61bd054dc56db855d477`
+(`Unify Latest card styling after guides`), pushed to `full-scrape-prod`, and
+confirmed Live on Render. Public health returned HTTP 200 / healthy.

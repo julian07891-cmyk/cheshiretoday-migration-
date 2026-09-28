@@ -417,3 +417,50 @@ remain open as previously recorded.
 - Historical PDFs remain unreconciled and cannot establish live state.
 - No event in this section should be upgraded to “verified” without a timestamped,
   repository-backed evidence record.
+
+## 28 September 2026 — desktop lead-story hierarchy deployment
+
+Commit `8ed336fe426a140d2cabb006b2c405611e22d594`
+(`Improve desktop lead-story hierarchy`) was pushed to `full-scrape-prod` and
+confirmed Live on Render. Public `/health` returned HTTP 200 with
+`{"status":"healthy","service":"cheshire-news"}`.
+
+The bounded frontend change visually orders the existing category/headline/meta
+block before the hero image at `lg` widths (1024px and above) while preserving
+image-first presentation below 1024px. It retains one article link, one `h1`,
+existing image crop/aspect ratios, hero selection/allocation, sidebar,
+monetisation and backend/data behaviour. The matching loading skeleton uses the
+same desktop ordering.
+
+Pre-deployment verification passed 53 focused/related tests, 465 full frontend
+tests and the production build. Isolated local browser checks confirmed text-first
+desktop ordering and image-first mobile/tablet behaviour. A final 1440×900 check
+measured the lead headline at 310–405px and the hero image starting at 461px.
+The local fixture intentionally substituted `/fixture.svg` for real article
+images, so placeholder imagery was not a production-image defect.
+
+
+## 28 September 2026 — Latest card consistency deployment
+
+After the hero deployment, visual production review identified that the Latest
+cards following the Popular Guides insertion used the default CompactArticleCard
+presentation while the cards before the insertion used `variant="editorial"`.
+The cause was a single missing prop on `latestSplit.remainingCards`.
+
+Commit `f07c792ed7646b63f01e61bd054dc56db855d477`
+(`Unify Latest card styling after guides`) adds only the existing
+`variant="editorial"` presentation to that post-guide render path. Article
+allocation, newest-first order, counts, headline strip, guide placement/rotation,
+navigation, monetisation and backend/data are unchanged.
+
+Verification passed 3 focused homepage tests, 54 related tests across five suites,
+466 full frontend tests across 45 suites, the production build and whitespace
+checks. Isolated browser acceptance passed at 1440×900 and 390×844: Latest
+expanded 12→36 desktop and 4→36 mobile in fixture order, Popular Guides remained
+in the same insertion position, both card groups used the editorial style, Show
+more worked, and no overflow or console errors were observed. No production
+analytics or affiliate clicks were generated during those local checks.
+
+`f07c792` was pushed to `full-scrape-prod`, confirmed Live on Render, and public
+health returned HTTP 200 with
+`{"status":"healthy","service":"cheshire-news"}`.

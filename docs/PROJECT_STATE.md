@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `386887c8119467ca0e6dc7eb3ec72718633afe81`
-- **Verified remote / deployed documentation baseline:** `386887c8119467ca0e6dc7eb3ec72718633afe81`
-- **Latest application commit:** `Improve article flow and reduce repeated promotion`
-- **Local documentation reconciliation:** deployed state is reconciled through `386887c`. The current desktop lead-story hierarchy follow-up is local and verified but not yet committed, pushed or deployed.
+- **Current application baseline:** `f07c792ed7646b63f01e61bd054dc56db855d477`
+- **Verified remote / deployed documentation baseline:** `f07c792ed7646b63f01e61bd054dc56db855d477`
+- **Latest application commit:** `Unify Latest card styling after guides`
+- **Local documentation reconciliation:** deployed state is reconciled through `f07c792`. The desktop lead-story hierarchy (`8ed336f`) and Latest-card consistency correction (`f07c792`) are both deployed; Render Live was confirmed and public health returned HTTP 200 / healthy.
 
 Repository HEAD and production acceptance revision are distinct: the controlled
 acceptance below ran at `2f40374`, before the later copy-only commit.
@@ -881,7 +881,9 @@ identified inconsistent Latest cards after Popular Guides. The post-guide
 `latestSplit.remainingCards` omitted `variant="editorial"`, unlike the pre-guide
 cards. The one-line presentation correction now supplies that same variant.
 Allocation, ordering, counts, headline strip, guide position/rotation, navigation,
-monetisation and backend/data are unchanged. This correction is not deployed.
+monetisation and backend/data are unchanged. The correction was committed as
+`f07c792ed7646b63f01e61bd054dc56db855d477`, pushed to `full-scrape-prod`, and
+subsequently confirmed Live on Render. Public health returned HTTP 200 / healthy.
 
 Verification: HomePageV1 3 tests passed; related homepage/commercial regression
 54 tests across 5 suites passed; full frontend 466 tests across 45 suites passed;
@@ -913,10 +915,11 @@ text-first ordering at 1024px and above and image-first below it. The current le
 headline rendered fully inside the 1440×900 viewport; short/long headline and
 missing/failed-image cases also passed.
 
-The hero follow-up was committed as `8ed336fe426a140d2cabb006b2c405611e22d594`;
-the owner subsequently reported it deployed. That deployment was not independently
-reverified during the Latest consistency correction. `PRODUCTION_TIMELINE.md`
-is unchanged by this local correction.
+The hero follow-up was committed as `8ed336fe426a140d2cabb006b2c405611e22d594`,
+pushed to `full-scrape-prod`, and confirmed Live on Render. Public health returned
+HTTP 200 / healthy. A direct local geometry check before push measured the lead
+headline at 310–405px and the hero image beginning at 461px in a 1440×900 viewport,
+confirming the intended text-first desktop hierarchy.
 
 ### Commercial Trust Phase 1 — deployed and production-accepted
 
