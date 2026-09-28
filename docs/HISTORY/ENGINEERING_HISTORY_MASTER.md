@@ -878,10 +878,7 @@ Eight local built-page browser scenarios passed (390px and 1440px). All APIs use
 local fixtures, with request interception installed before navigation: 12
 first-party measurement attempts and 30 external requests were handled locally,
 zero external requests forwarded, zero affiliate clicks/form submissions, no
-horizontal overflow or runtime errors. No production acceptance is claimed and
-Production Timeline is unchanged. Desktop hero/headline placement, footer naming,
-homepage guide-strip first-party measurement and broader dedupe remain deferred.
-The authorised single commit is local only; no push or deployment is authorised.
+horizontal overflow or runtime errors. The implementation was subsequently committed as `386887c` (`Improve article flow and reduce repeated promotion`), pushed and deployed Live on the exact SHA. Production health returned HTTP 200 / healthy. Isolated production-browser acceptance remained inconclusive because the temporary QA harness did not complete the intended article checks; no production defect was demonstrated and no rollback was indicated. Footer naming, homepage guide-strip first-party measurement and broader dedupe remain deferred.
 
 - The requested ChatGPT export has not been received.
 - Codex tasks and production investigations have not been systematically preserved.
@@ -894,3 +891,13 @@ The authorised single commit is local only; no push or deployment is authorised.
   event. They remain historical claims, not current deployment assertions.
 - The July engineering log includes August entries; it is retained unchanged and
   treated according to the date of each entry.
+
+
+### Desktop lead-story hierarchy — 28 September 2026
+
+- **Baseline:** deployed `386887c8119467ca0e6dc7eb3ec72718633afe81` on `full-scrape-prod`, tracked tree clean before implementation and only the two protected untracked files present.
+- **Problem:** the desktop homepage hero placed its 4:3 image before the lead headline, pushing the primary editorial heading too far down the first viewport at common desktop sizes.
+- **Implementation:** `HeroStoryCard.jsx` keeps one link and one `h1` and preserves DOM image-before-text order, but activates `lg:flex lg:flex-col` and `lg:order-first` so category/headline/meta render visually before the image from 1024px upward. Below 1024px remains image-first. `HomePageV1.jsx` applies the same desktop ordering to the loading skeleton. Image aspect ratios, crop, article selection/allocation, sidebar, commercial placements, guide rotation, backend and data are unchanged.
+- **Tests:** new `HeroStoryCard.test.jsx` covers link/heading uniqueness, href/metadata, image identity/crop/eager/high-priority attributes, responsive ordering, missing image and image-error behaviour. Focused/related verification passed 53 tests; full frontend passed 465 tests; production build and whitespace checks passed.
+- **Browser evidence:** isolated local built-page checks confirmed text-first at 1024px+ and image-first below; the current public lead headline fitted fully within 1440×900, with short/long headline and missing/failed-image scenarios also passing.
+- **Status:** local implementation only. Not yet committed, pushed or deployed. Production Timeline remains unchanged until deployment.

@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e`
-- **Verified remote / deployed documentation baseline:** `8c8788f86bc88a4ee5f9ea8039014ad46d5d37f0`
-- **Latest application commit:** `Improve commercial trust and outbound measurement`
-- **Local documentation reconciliation:** `8c8788f` was subsequently pushed/deployed outside the earlier correction task, as now verified read-only. The next documentation-only commit records the virtual-office baseline correction; no push is authorised for this task.
+- **Current application baseline:** `386887c8119467ca0e6dc7eb3ec72718633afe81`
+- **Verified remote / deployed documentation baseline:** `386887c8119467ca0e6dc7eb3ec72718633afe81`
+- **Latest application commit:** `Improve article flow and reduce repeated promotion`
+- **Local documentation reconciliation:** deployed state is reconciled through `386887c`. The current desktop lead-story hierarchy follow-up is local and verified but not yet committed, pushed or deployed.
 
 Repository HEAD and production acceptance revision are distinct: the controlled
 acceptance below ran at `2f40374`, before the later copy-only commit.
@@ -842,10 +842,10 @@ provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
 
-### UX/commercial refinement batch 1 — local implementation verified
+### UX/commercial refinement batch 1 — deployed; production health verified
 
-Implemented against `f4fb2bd28060655c3d3e6465bfc8737d36b40e28` on
-`full-scrape-prod`; not pushed or deployed. Exactly three changes: mobile article
+Implemented against `f4fb2bd28060655c3d3e6465bfc8737d36b40e28` and deployed in
+`386887c8119467ca0e6dc7eb3ec72718633afe81` on `full-scrape-prod`. Render reached Live on the exact SHA and production health returned HTTP 200 / healthy. Exactly three changes: mobile article
 More stories now uses the existing completion/expansion gate; desktop article
 sidebar Latest and More from Cheshire Today presentation blocks are removed; and
 the savings guide is removed only from `homepage_primary` rotation. Read more,
@@ -867,13 +867,35 @@ long mobile collapsed/expanded, short mobile, four desktop sponsor states
 were intercepted before navigation; 12 first-party measurement requests and 30
 external requests were blocked/fulfilled locally, with zero forwarded external
 requests, affiliate clicks or form submissions. No overflow or runtime errors.
-This is local built-page evidence, not production deployment acceptance.
+The local built-page evidence remains the strongest browser acceptance evidence. A later isolated production-browser acceptance attempt was inconclusive because the temporary QA harness did not complete article discovery reliably; no production defect was demonstrated and no rollback was indicated.
 
 No redesign, Mongo/guide-data change, affiliate destination/ID change, Amazon
-change, measurement architecture change or Latest newest-first change. Desktop
-hero/headline position, footer “Guides” naming, homepage first-party guide-strip
-measurement and broader homepage dedupe remain deferred. Commit approval does
-not authorise push; production verification is required after separate deployment.
+change, measurement architecture change or Latest newest-first change. Footer “Guides” naming, homepage first-party guide-strip measurement and broader
+homepage dedupe remain deferred. The desktop hero/headline issue was taken as a
+separate bounded follow-up described below.
+
+### Desktop lead-story hierarchy — local implementation verified
+
+A separate bounded follow-up against deployed baseline
+`386887c8119467ca0e6dc7eb3ec72718633afe81` changes only the homepage hero visual
+order at `lg` widths and the matching loading skeleton. Below 1024px the existing
+image-first presentation is preserved; at 1024px and above the existing single
+category/headline/meta block is visually ordered before the existing hero image.
+The card keeps one article link and one `h1`; hero selection, article allocation,
+image crop/aspect ratios, sidebar, monetisation, guide rotation, backend and data
+are unchanged.
+
+A new `HeroStoryCard.test.jsx` covers the single-link/single-heading contract,
+metadata, href, image identity/crop/eager/high-priority behaviour, responsive
+ordering, missing image and failed-image behaviour. Focused/related verification
+passed 53 tests; the full frontend suite passed 465 tests; the production frontend
+build and `git diff --check` passed. Local built-page browser checks confirmed
+text-first ordering at 1024px and above and image-first below it. The current lead
+headline rendered fully inside the 1440×900 viewport; short/long headline and
+missing/failed-image cases also passed.
+
+This hero follow-up is local only at this point: it has not yet been committed,
+pushed or deployed. `PRODUCTION_TIMELINE.md` remains unchanged until deployment.
 
 ### Commercial Trust Phase 1 — deployed and production-accepted
 

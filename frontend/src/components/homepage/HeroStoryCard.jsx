@@ -36,7 +36,7 @@ export default function HeroStoryCard({
     <article className="w-full border-b border-slate-200 pb-5 dark:border-gray-800">
       <Link
         to={url}
-        className="group block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] focus-visible:ring-offset-4 dark:focus-visible:ring-offset-gray-900"
+        className="group block lg:flex lg:flex-col rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] focus-visible:ring-offset-4 dark:focus-visible:ring-offset-gray-900"
       >
         {showImage && (
           <div className="relative aspect-[21/10] w-full overflow-hidden rounded-2xl bg-slate-100 md:aspect-[4/3] dark:bg-gray-800">
@@ -58,7 +58,7 @@ export default function HeroStoryCard({
           </div>
         )}
 
-        <div className={showImage ? "mt-5" : ""}>
+        <div className={showImage ? "mt-5 lg:order-first lg:mt-0 lg:mb-5" : "lg:order-first"}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold uppercase tracking-[0.12em]">
             <span className="text-emerald-700 dark:text-emerald-400">
               {category}

@@ -1040,7 +1040,7 @@ return (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               <div className="lg:col-span-8 flex flex-col">
                 <div className="w-full aspect-[16/9] md:aspect-[4/3] rounded-xl bg-slate-200/70 dark:bg-gray-800" />
-                <div className="mt-4 h-20 w-full rounded-xl bg-slate-200/70 dark:bg-gray-800" />
+                <div className="mt-4 lg:order-first lg:mt-0 lg:mb-4 h-20 w-full rounded-xl bg-slate-200/70 dark:bg-gray-800" />
               </div>
               <aside className="lg:col-span-4">
                 <div className="rounded-xl border border-slate-200/50 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4 lg:h-full">
