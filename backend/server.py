@@ -4878,7 +4878,7 @@ async def get_articles(
                 homepage_timing["force_candidates"] = len(force_articles)
 
             local_started = time.perf_counter() if homepage_timing_enabled else None
-            local_candidate_limit = 100 if exact_homepage_list_request else limit * 6
+            local_candidate_limit = limit * 6
             local_articles = await db.articles.find(local_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
@@ -4892,7 +4892,7 @@ async def get_articles(
                 homepage_timing["local_candidates_before_filter"] = len(local_articles)
             
             uk_started = time.perf_counter() if homepage_timing_enabled else None
-            uk_candidate_limit = 100 if exact_homepage_list_request else limit * 4
+            uk_candidate_limit = limit * 4
             uk_articles = await db.articles.find(uk_q,
                 {
                     '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
