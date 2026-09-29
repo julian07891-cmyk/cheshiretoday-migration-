@@ -1186,10 +1186,6 @@ return (
                   />
                 )}
 
-                <div className="lg:hidden mt-3">
-                  <SubscribeInlineBanner signupPlacement="homepage" compactMobile />
-                </div>
-
                 <div className="hidden lg:block">
                   <HeroMonetisationStrip start={0} limit={2} compact eyebrow="Popular guides" title="More practical next steps" excludeFocus="finance" />
                 </div>
@@ -1218,6 +1214,10 @@ return (
                     </button>
                   </div>
                 )}
+
+                <div className="lg:hidden mt-3">
+                  <SubscribeInlineBanner signupPlacement="homepage" compactMobile />
+                </div>
 </section>
             )}
 
