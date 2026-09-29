@@ -74,7 +74,7 @@ export const JobsInlineBanner = () => {
 };
 
 // Inline banner for within article content - Subscribe
-export const SubscribeInlineBanner = ({ signupPlacement = 'article' }) => {
+export const SubscribeInlineBanner = ({ signupPlacement = 'article', compactMobile = false }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -110,10 +110,10 @@ export const SubscribeInlineBanner = ({ signupPlacement = 'article' }) => {
 
   return (
     <>
-    <div className="block my-4" data-testid="subscribe-inline-banner">
-      <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/20 px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+    <div className={compactMobile ? "block my-2 lg:my-4" : "block my-4"} data-testid="subscribe-inline-banner">
+      <div className={compactMobile ? "rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/20 px-3 py-2 lg:px-4 lg:py-3" : "rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/20 px-4 py-3"}>
+        <div className={compactMobile ? "flex items-start gap-2 lg:gap-3" : "flex items-start gap-3"}>
+          <div className={compactMobile ? "hidden lg:flex w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl items-center justify-center flex-shrink-0" : "w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0"}>
             <Mail className="h-5 w-5 text-white" />
           </div>
 
