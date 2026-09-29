@@ -208,10 +208,10 @@ def test_exact_homepage_avoids_count_and_uses_bounded_candidate_caps(monkeypatch
 
     assert not any(call[0] == "count_documents" for call in collection.calls)
     assert ("limit", 400) in _find_call(collection, "force")[3]
-    assert ("limit", 480) in _find_call(collection, "local")[3]
-    assert ("to_list", 480) in _find_call(collection, "local")[3]
-    assert ("limit", 320) in _find_call(collection, "uk")[3]
-    assert ("to_list", 320) in _find_call(collection, "uk")[3]
+    assert ("limit", 100) in _find_call(collection, "local")[3]
+    assert ("to_list", 100) in _find_call(collection, "local")[3]
+    assert ("limit", 100) in _find_call(collection, "uk")[3]
+    assert ("to_list", 100) in _find_call(collection, "uk")[3]
     expected_ids = []
     for index in range(40):
         expected_ids.extend(
