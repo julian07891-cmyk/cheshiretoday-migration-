@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `3a9b81e7b9dc9e1cf57fd7347b02e9d8bea5122e` (Commercial Trust Phase 1 committed, deployed and production-accepted)
-> - **Last repository reconciliation:** 27 September 2026 (single-record virtual-office editorial baseline correction; documentation-only follow-up, no push authorised)
-> - **Production-verification status:** Fresh Render inspection confirms service `cheshiretoday-migration-` Live at `8c8788f86bc88a4ee5f9ea8039014ad46d5d37f0`, deployment `dep-dasdclgae00c73b0g7ag`, public health HTTP 200/healthy. That revision changes documentation only above application baseline `3a9b81e`. Commercial Trust Phase 1 acceptance, the earlier two-record affiliate correction and the single-record virtual-office editorial correction are complete. CT-DEC-021 functional acceptance is complete; upstream **POTENTIAL QUERY LOG EXPOSURE** remains open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
+> - **Application baseline:** `d4165800662131cded5cedf064a03cbdef21f531` (`Add homepage guide measurement`, deployed and production-accepted)
+> - **Last repository reconciliation:** 30 September 2026 (mobile homepage news-flow refinement, homepage guide measurement, and UK homepage-filter investigation reconciled; no UK filter-policy change approved)
+> - **Production-verification status:** Production is verified at `d4165800662131cded5cedf064a03cbdef21f531`; local and remote branch SHAs matched, public `/health` returned HTTP 200/healthy, desktop guide strips remained visible, and mobile guide strips remained absent as intended. The mobile homepage refinement and homepage guide measurement are production-accepted. The UK homepage-filter investigation made no approved filter-policy change. Commercial Trust Phase 1 and the earlier affiliate/editorial corrections remain complete. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** still open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,13 +36,13 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `f07c792ed7646b63f01e61bd054dc56db855d477`
-- **Verified remote / deployed documentation baseline:** `f07c792ed7646b63f01e61bd054dc56db855d477`
-- **Latest application commit:** `Unify Latest card styling after guides`
-- **Local documentation reconciliation:** deployed state is reconciled through `f07c792`. The desktop lead-story hierarchy (`8ed336f`) and Latest-card consistency correction (`f07c792`) are both deployed; Render Live was confirmed and public health returned HTTP 200 / healthy.
+- **Current application baseline:** `d4165800662131cded5cedf064a03cbdef21f531`
+- **Verified remote / deployed application baseline:** `d4165800662131cded5cedf064a03cbdef21f531`
+- **Latest application commit:** `Add homepage guide measurement`
+- **Local documentation reconciliation:** deployed application state is reconciled through `d416580`. Mobile homepage news-flow refinement (`609d9d5`, `6afb0b3`) and homepage guide measurement (`d416580`) are production-accepted; public health returned HTTP 200 / healthy. The UK homepage-filter investigation is recorded as investigation-only with the Friday 100/100 candidate caps restored and no UK filter-policy change approved.
 
-Repository HEAD and production acceptance revision are distinct: the controlled
-acceptance below ran at `2f40374`, before the later copy-only commit.
+The CT-DEC-021 acceptance record below is historical: that controlled acceptance
+ran at `2f40374`, before later application and documentation revisions.
 
 ### CT-DEC-021 production acceptance — 23 September 2026
 

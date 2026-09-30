@@ -483,3 +483,15 @@ checks. Isolated local browser checks at 1440×900 and 390×844 confirmed the
 Topics heading, unchanged destinations, intact layout, no horizontal overflow
 and no console errors. No production navigation, analytics or affiliate clicks
 were generated during those local checks.
+
+## 29–30 September 2026 — mobile homepage refinement and guide measurement deployment
+
+Commits `609d9d5` (`Simplify mobile homepage news flow`) and `6afb0b3` (`Move mobile newsletter below Latest controls`) were pushed to `full-scrape-prod` and production-accepted. The mobile homepage now prioritises news, does not show Finance or Popular Guides, and places the compact newsletter below the Latest Show more/Show less control. Exact local/remote SHA equality was verified after deployment and public `/health` returned HTTP 200/healthy. Owner mobile acceptance passed.
+
+A UK News homepage-visibility investigation during the same period confirmed several raw-feed articles were omitted by the existing homepage UK editorial/noise filter path rather than by archive or Manual Review state. A temporary candidate-depth experiment was reverted after historical comparison showed the Friday baseline already used 100/100 Local/UK caps. The 100/100 caps were restored and no UK filter-policy change was approved.
+
+Commit `d4165800662131cded5cedf064a03cbdef21f531` (`Add homepage guide measurement`) was then pushed after explicit approval. It adds first-party desktop homepage guide-card measurement with stable guide IDs, distinct Finance/Popular Guide placement IDs, and `rendered`, `viewable` and `clicked` events. Viewability requires 50% continuous visibility for 1,000 ms while the document is visible. Measurement is best-effort, deduplicated and privacy-bounded, and failures do not block native navigation or the legacy guide-click analytics path.
+
+The homepage now does not mount guide strips on mobile, preventing hidden mobile rendered impressions, while desktop retains both guide placements. Verification passed three focused suites with 23/23 tests and a successful production frontend build. After deployment, local and remote SHAs matched exactly, public `/health` returned HTTP 200/healthy, and owner production acceptance confirmed desktop guide strips visible and mobile guide strips absent.
+
+This deployment establishes a measurement baseline only; it does not establish CTR, conversion improvement, revenue or guide popularity.

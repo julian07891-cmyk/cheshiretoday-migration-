@@ -34,6 +34,10 @@ Advertising checkout creates or associates a lead, creates a Stripe session and 
 
 Sponsored impression/click counters, advertiser lead states and payment summaries feed Admin analytics. Affiliate/provider clicks are a separate signal. These counters do not prove realised revenue or conversion attribution.
 
+Homepage guide cards also emit first-party commercial measurement through the shared commercial measurement path. Each homepage guide has an explicit stable `guideId`; measurement uses provider `cheshire_today_guides`, destination type `guide`, and distinct placement IDs `homepage_finance_guides` and `homepage_popular_guides`. Supported event types are `rendered`, `viewable` and `clicked`. `viewable` requires at least 50% intersection continuously for 1,000 ms while the document is visible. Event submission is best-effort, deduplicated per navigation/card/event identity and must not prevent native same-tab navigation or the separate legacy `guide_click` analytics path.
+
+The measurement payload is deliberately bounded: stable IDs and classification metadata are used instead of raw guide URLs, titles, query strings or email-like values. Missing/invalid identifiers or missing placement fail measurement closed without hiding cards. On the homepage the guide strips are not mounted on mobile; the Finance and Popular Guides placements remain desktop-only, avoiding hidden mobile rendered impressions.
+
 ## Feature and provider boundaries
 
 Stripe, provider links, advert-live email, external social systems and specific inventory depend on environment configuration and data. Social Publishing prepares deterministic assets/links but does not belong to automatic advertising publication.

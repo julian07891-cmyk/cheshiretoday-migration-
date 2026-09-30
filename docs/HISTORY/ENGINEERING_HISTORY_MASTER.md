@@ -948,3 +948,29 @@ acceptance. The correction was committed as
 `f5af386a9557ab079231628aa9d7af4aad25c857`
 (`Clarify footer topic navigation`), pushed to `full-scrape-prod`, confirmed Live
 on Render, and public health returned HTTP 200 / healthy.
+
+## 29–30 September 2026 — homepage investigation, mobile refinement and guide measurement
+
+### UK News homepage visibility investigation
+
+A production-facing investigation examined several UK News articles that were present in the raw national feed but absent from the homepage feed. Read-only comparison confirmed that the affected records were not actually archived, not hidden in Manual Review and not force-live. The omission was attributable to the existing homepage UK editorial/noise filtering path rather than the late-September presentation changes.
+
+A temporary candidate-depth experiment widened the exact homepage Local/UK candidate caps, but historical comparison established that the Friday baseline already used 100/100. The experiment was reverted and the 100/100 caps were restored. No UK filter-policy change was approved. The issue remains monitoring/investigation-only unless reopened with new feed evidence.
+
+### Mobile homepage news-flow refinement
+
+The mobile homepage was simplified to prioritise news rather than commercial guide interruptions. Commit `609d9d5` (`Simplify mobile homepage news flow`) removed Finance and Popular Guides from the mobile presentation and introduced the compact homepage newsletter while preserving desktop guide presentation. Commit `6afb0b3` (`Move mobile newsletter below Latest controls`) moved the compact newsletter below the Latest Show more/Show less control so the accepted mobile sequence is Latest stories → Show more/Show less → compact newsletter → Business & Finance.
+
+Both revisions were pushed to `full-scrape-prod`, exact local/remote SHA equality was verified after deployment, public `/health` returned HTTP 200/healthy, and owner mobile production acceptance passed. Desktop behaviour remained unchanged by this refinement.
+
+### First-party homepage guide measurement
+
+Commit `d416580` (`Add homepage guide measurement`) added first-party measurement to the desktop homepage guide cards. Homepage guide inventory now has explicit stable `guideId` values. Finance and Popular Guides use distinct placements `homepage_finance_guides` and `homepage_popular_guides`; provider identity is `cheshire_today_guides` and destination type is `guide`.
+
+The shared commercial measurement path records `rendered`, `viewable` and `clicked`. Viewability requires at least 50% intersection continuously for 1,000 ms while the document remains visible. Measurement is best-effort and deduplicated per navigation/card/event identity; failures do not block native same-tab navigation or the separate legacy `guide_click` analytics path. Payloads use bounded identifiers/classification metadata rather than raw guide URLs, titles, query strings or email-like values. Missing/invalid IDs or missing placement fail measurement closed without hiding cards.
+
+Because CSS-only hiding would still mount guide components and could create false mobile rendered impressions, the homepage was tightened so Finance and Popular Guides are not mounted when `isMobileView` is true. Desktop still mounts both guide strips. Regression coverage explicitly verifies desktop selection/placement props and zero mobile guide-strip mounts.
+
+Verification passed three focused suites with 23/23 tests, including dedicated rendered/viewable/clicked, dedupe, consent-separation, failure-safety, transport and device-classification coverage. The production frontend build compiled successfully; the only build notice was the existing stale Browserslist-data warning. `d4165800662131cded5cedf064a03cbdef21f531` was pushed after explicit approval, local and remote SHAs matched, public `/health` returned HTTP 200/healthy, and owner production acceptance confirmed desktop guide strips remained visible while mobile guide strips remained absent.
+
+This establishes a first-party measurement baseline only. It does not establish CTR, conversion uplift, revenue performance or guide popularity.
