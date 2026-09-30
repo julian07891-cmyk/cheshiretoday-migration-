@@ -1,4 +1,6 @@
 import React, { useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import { useCommercialCardMeasurement } from "../../hooks/useCommercialCardMeasurement";
 import { FEATURES } from "../../config/features";
 import { monetisationTools } from "../../config/monetisationTools";
 import { trackEvent } from "../../utils/trackEvent";
@@ -38,7 +40,40 @@ function getRotatedSlice(items = [], start = 0, limit = 0, key = "") {
   );
 }
 
-export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "", excludeFocus = "" }) {
+function MeasuredGuideCard({ tool, placement, start, compact, title, className, children }) {
+  const location = useLocation();
+  const measurement = useCommercialCardMeasurement({
+    navigationKey: location.key,
+    metadata: {
+      card_id: tool.guideId,
+      provider_id: "cheshire_today_guides",
+      placement_id: placement,
+      destination_type: "guide",
+      destination_id: tool.guideId,
+      use_case: "guide_discovery",
+      rule_reason_code: "homepage_daily_rotation",
+      variant_version: "homepage_guides_v1",
+      disclosure_version: "homepage_affiliate_strip_v1",
+    },
+  });
+
+  return <a href={tool.href} className={className} ref={measurement.cardRef}
+    onClick={() => {
+      // Independent best-effort paths must never prevent native navigation.
+      try {
+        trackEvent("guide_click", {
+          placement: "homepage_monetisation_strip",
+          title,
+          href: tool.href,
+          start,
+          compact: Boolean(compact),
+        });
+      } catch (_) { /* analytics must not block first-party measurement */ }
+      try { measurement.onCommercialClick(); } catch (_) { /* navigation remains native */ }
+    }}>{children}</a>;
+}
+
+export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "", excludeFocus = "", placement }) {
   if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
   const items = useMemo(() => {
@@ -81,16 +116,13 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
           const cta = it.cta || "View guide";
 
           return (
-            <a
+            <MeasuredGuideCard
               key={it.href}
-              href={it.href}
-              onClick={() => trackEvent("guide_click", {
-                placement: "homepage_monetisation_strip",
-                title,
-                href: it.href,
-                start,
-                compact: Boolean(compact),
-              })}
+              tool={it}
+              placement={placement}
+              title={title}
+              start={start}
+              compact={compact}
               className="group relative rounded-2xl border border-[#E6E1D8] dark:border-gray-800 bg-[#FBFAF7] dark:bg-gray-950/40 p-3.5 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-sky-300 dark:hover:border-sky-700 transition-all duration-200"
             >
               <div className="flex items-start justify-between gap-3">
@@ -147,7 +179,7 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
                   </span>
                 </div>
               </div>
-            </a>
+            </MeasuredGuideCard>
           );
         })}
       </div>

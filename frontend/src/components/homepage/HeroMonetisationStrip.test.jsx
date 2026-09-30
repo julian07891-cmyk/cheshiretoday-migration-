@@ -1,5 +1,6 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import HeroMonetisationStrip from './HeroMonetisationStrip';
 import { monetisationTools } from '../../config/monetisationTools';
 import { FEATURES } from '../../config/features';
@@ -15,7 +16,7 @@ beforeEach(() => {
   root = createRoot(container);
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); jest.useRealTimers(); });
-const render = props => act(() => root.render(<HeroMonetisationStrip {...props} />));
+const render = props => act(() => root.render(<MemoryRouter><HeroMonetisationStrip {...props} /></MemoryRouter>));
 const links = () => Array.from(container.querySelectorAll('a')).map(a => a.getAttribute('href'));
 const finance = item => /mortgage|savings|energy|tariff|bills|credit|mobile|sim|phone/i.test(`${item.title} ${item.href}`);
 

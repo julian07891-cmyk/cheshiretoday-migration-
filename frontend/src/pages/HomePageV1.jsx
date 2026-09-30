@@ -1148,9 +1148,11 @@ return (
               <SponsoredPlacement placement="homepage_mobile" compact />
             </div>
 
-            <div className="hidden lg:block mb-4 w-full">
-              <HeroMonetisationStrip limit={2} compact focus="finance" />
-            </div>
+            {!isMobileView && (
+              <div className="mb-4 w-full">
+                <HeroMonetisationStrip limit={2} compact focus="finance" placement="homepage_finance_guides" />
+              </div>
+            )}
 
 
             {/* Latest */}
@@ -1186,9 +1188,11 @@ return (
                   />
                 )}
 
-                <div className="hidden lg:block">
-                  <HeroMonetisationStrip start={0} limit={2} compact eyebrow="Popular guides" title="More practical next steps" excludeFocus="finance" />
-                </div>
+                {!isMobileView && (
+                  <div>
+                    <HeroMonetisationStrip start={0} limit={2} compact eyebrow="Popular guides" title="More practical next steps" excludeFocus="finance" placement="homepage_popular_guides" />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
                   {latestSplit.remainingCards.map((a, idx) => (

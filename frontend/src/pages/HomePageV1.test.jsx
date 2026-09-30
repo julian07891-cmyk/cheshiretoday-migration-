@@ -14,7 +14,7 @@ jest.mock("../components/JobsWidget", () => ({
   SubscribeInlineBanner: () => null,
 }));
 jest.mock("../components/SponsoredPlacement", () => () => null);
-jest.mock("../components/homepage/HeroMonetisationStrip", () => () => null);
+jest.mock("../components/homepage/HeroMonetisationStrip", () => props => <div data-guide-strip={JSON.stringify(props)} />);
 jest.mock("../components/AffiliateWidgets", () => ({
   AffiliateWidgetSidebar: () => null,
 }));
@@ -172,6 +172,25 @@ test("Latest uses the editorial card variant before and after the guide strip", 
 
   expect(compactCards.length).toBeGreaterThan(0);
   expect(compactCards.every((card) => card.getAttribute("data-card-variant") === "editorial")).toBe(true);
+});
+
+test("guide strips retain selection props and distinct measurement placements", async () => {
+  await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)));
+  expect(Array.from(container.querySelectorAll('[data-guide-strip]')).map(el => JSON.parse(el.dataset.guideStrip))).toEqual([
+    { limit: 2, compact: true, focus: 'finance', placement: 'homepage_finance_guides' },
+    { start: 0, limit: 2, compact: true, eyebrow: 'Popular guides', title: 'More practical next steps', excludeFocus: 'finance', placement: 'homepage_popular_guides' },
+  ]);
+});
+
+test("mobile homepage does not mount guide strips", async () => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: 390,
+  });
+
+  await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)));
+
+  expect(container.querySelectorAll("[data-guide-strip]")).toHaveLength(0);
 });
 
 test("Latest keeps approved unique stories only and hides an unnecessary toggle", async () => {
