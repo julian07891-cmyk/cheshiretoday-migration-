@@ -173,6 +173,21 @@ def test_low_impact_non_crime_local_story_is_queued(monkeypatch):
         assert inserted[0][field] == story[field]
 
 
+def test_queued_local_excerpt_is_complete_without_changing_review_routing(monkeypatch):
+    source = "Chester volunteers confirmed " + "the garden project details " * 9 + "at the meeting."
+    story = candidate("Chester volunteers open a community garden", content=source + "\n\nContinue reading...")
+    story["summary"] = story["content"][:200] + "..."
+    result, inserted = run_import(monkeypatch, [story])
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert_hidden_manual_review(inserted[0])
+    assert "Community feature" in inserted[0]["manual_review_reason"]
+    assert inserted[0]["summary"] == source
+    assert inserted[0]["content"] == server.sanitize_rss_text(story["content"])
+    for field in ("title", "source", "source_url", "category", "image", "publishedDate"):
+        assert inserted[0][field] == story[field]
+
+
 @pytest.mark.parametrize(
     "title",
     [

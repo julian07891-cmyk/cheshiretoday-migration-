@@ -262,23 +262,9 @@ function buildDescription(article) {
 }
 
 function buildVisibleIntro(article) {
-  const summary = safeText(article?.summary).trim();
-  const source = summary.length >= 40 ? summary : safeText(article?.content).trim();
-  const compact = source.replace(/\s+/g, " ").trim();
-
-  if (!compact) return "";
-
-  const firstSentence = compact.match(/^(.+?[.!?])(?:\s|$)/);
-  if (firstSentence && firstSentence[1].length >= 60 && firstSentence[1].length <= 260) {
-    return firstSentence[1].trim();
-  }
-
-  if (compact.length <= 190) {
-    return /[.!?]$/.test(compact) ? compact : `${compact.replace(/[,.…\s]+$/, "")}…`;
-  }
-
-  const clipped = compact.slice(0, 187).replace(/\s+\S*$/, "").replace(/[,.…\s]+$/, "").trim();
-  return `${clipped || compact.slice(0, 187).trim()}…`;
+  // An empty stored excerpt is intentional; do not manufacture one from a
+  // possibly incomplete body or truncate a complete editorial sentence again.
+  return safeText(article?.summary).replace(/\s+/g, " ").trim();
 }
 
 

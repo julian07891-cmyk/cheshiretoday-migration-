@@ -191,6 +191,32 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 1 October 2026 — excerpt correction, local/uncommitted
+
+Against `41444da57dcc629cc0d746595798617071e104fd`, a deterministic
+`select_rss_excerpt` helper cleans the complete source text and selects complete
+sentences to a soft 200-character target, permitting a longer first sentence.
+It falls back to the available detailed body only when the source yields no safe
+sentence, otherwise returning empty; no AI call or ellipsis is added. Category,
+Local and queued Local Manual Review RSS records receive the display summary
+after existing editorial decisions. Legacy temporary summary inputs remain in
+place for the guards; raw continuation detection, body sanitisation, metadata,
+publication routing, prompts, scheduler, caps and providers are unchanged.
+Compact card excerpts and the visible article intro no longer hard-slice stored
+summaries; card line clamps and navigation remain unchanged. Historical records
+and manually edited content are not rewritten, so existing stored truncation can
+remain visible. SEO-description generation and legacy/manual import endpoints
+are outside this correction.
+
+Red evidence: 19 backend and 3 frontend failures, plus one queued-Local regression
+failure before its correction. Final offline backend regression: 143 passed,
+12 skipped, 5 existing framework warnings. Frontend: 3 focused tests, 36 related
+tests across 5 suites, and 485 full-suite tests across 48 suites passed. Production
+frontend build passed; existing React development and stale Browserslist warnings
+remain. No production request, import, provider call or data mutation was made
+for this implementation. This is local implementation evidence, not deployment
+or production acceptance; nothing has been staged, committed, pushed or deployed.
+
 The target editorial mix is:
 
 - **40% Local Cheshire**;

@@ -2774,6 +2774,9 @@ async def _import_hybrid_news_internal(
                     article = apply_public_import_cap(article, title)
                     article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
                     article = attach_manual_review_editorial_metadata(article)
+                    # Preserve the legacy summary input to all editorial guards;
+                    # only the stored/displayed excerpt changes after routing.
+                    article['summary'] = select_rss_excerpt(original_content, article['content'], article.get('source_url', ''))
                     try:
                         await insert_hybrid_article(article, "category_rss")
                     except DuplicateKeyError:
@@ -2941,6 +2944,9 @@ async def _import_hybrid_news_internal(
             review_doc["rewrite_status"] = "manual_review_required"
             review_doc["archive_reason"] = "needs_manual_review"
             review_doc = attach_manual_review_editorial_metadata(review_doc)
+            review_doc["summary"] = select_rss_excerpt(
+                article.get("content", ""), review_doc["content"], review_doc.get("source_url", "")
+            )
 
             try:
                 await insert_hybrid_article(
@@ -3179,6 +3185,8 @@ async def _import_hybrid_news_internal(
             article = apply_public_import_cap(article, title)
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
             article = attach_manual_review_editorial_metadata(article)
+            # Select the display excerpt only after existing editorial decisions.
+            article['summary'] = select_rss_excerpt(original_content, article['content'], article.get('source_url', ''))
             try:
                 await insert_hybrid_article(article, "local_rss")
             except DuplicateKeyError:
@@ -18647,6 +18655,50 @@ def sanitize_rss_text(text: str, source_url: str = "", *, is_summary: bool = Fal
         return '\n\n'.join(chunks)
 
     return t
+
+
+def select_rss_excerpt(source_content: str, accepted_content: str = "", source_url: str = "") -> str:
+    """Select complete sentences, never a character slice or invented completion.
+
+    The 200-character target is soft: retain a longer first complete sentence,
+    but do not add another sentence that would exceed it. Raw source and body
+    are not mutated; this helper has no role in publication decisions.
+    """
+    for candidate in (source_content, accepted_content):
+        clean = sanitize_rss_text(candidate, source_url, is_summary=True)
+        if not clean:
+            continue
+        # Protect non-terminal periods without changing the returned wording.
+        protected = set()
+        for pattern in (
+            r"\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ltd|No|vs|etc)\.",
+            r"\b(?:[A-Za-z]\.){2,}",
+            r"\b[A-Z]\.(?=\s+[A-Z])",
+            r"(?<=\d)\.(?=\d)",
+        ):
+            for match in re.finditer(pattern, clean):
+                protected.update(i for i in range(match.start(), match.end()) if clean[i] == '.')
+        sentences = []
+        start = 0
+        for match in re.finditer(r'''[.!?]+["'’”)]*(?=\s|$)''', clean):
+            if match.start() in protected:
+                continue
+            sentence = clean[start:match.end()].strip()
+            start = match.end()
+            # Ellipses are not evidence of sentence completion. Do not salvage
+            # a continuation fragment or a later fragment from that paragraph.
+            if '...' in sentence or '…' in sentence:
+                break
+            if re.match(r"(?i)^(?:continue(?:\s+reading)?|read(?:\s+more)?|full(?:\s+story)?)\b", sentence):
+                break
+            if not re.search(r"\w", sentence):
+                continue
+            if sentences and len(' '.join(sentences + [sentence])) > 200:
+                break
+            sentences.append(sentence)
+        if sentences:
+            return ' '.join(sentences)
+    return ""
 
 
 def _normalise_rss_replacement_comparison(text: str) -> str:

@@ -183,7 +183,7 @@ const formatDate = (dateString) => {
             {article.title}
           </h3>
           <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 line-clamp-3 mb-3">
-            {article.content ? article.content.substring(0, 160) + '...' : ''}
+            {article.summary ?? ''}
           </p>
           <div className="flex items-center justify-between text-xs md:text-sm text-gray-500 dark:text-gray-400">
             <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ const formatDate = (dateString) => {
           {article.title}
         </h3>
         <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
-          {article.content ? article.content.substring(0, 120) + '...' : ''}
+          {article.summary ?? ''}
         </p>
         
         <div className="flex items-center justify-between text-xs md:text-sm text-gray-500 dark:text-gray-400">

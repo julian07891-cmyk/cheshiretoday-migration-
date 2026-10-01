@@ -329,3 +329,30 @@ def test_complete_rss_content_without_marker_keeps_existing_sanitizer_contract()
     assert server.sanitize_rss_text(content) == (
         "First fact. Second fact.\n\nThird fact. Fourth fact."
     )
+
+
+@pytest.mark.parametrize("ai_available,rewrite", [(False, None), (True, "complete"), (True, "")])
+def test_safe_excerpt_preserves_raw_classification_and_import_decisions(monkeypatch, ai_available, rewrite):
+    raw = source_preview()
+    candidate = rss_candidate()
+    monkeypatch.setitem(run_hybrid.__globals__, "rss_candidate", lambda: copy.deepcopy(candidate))
+    original_detector = server.has_terminal_rss_continuation_marker
+    observed = []
+
+    def observe(value):
+        observed.append(value)
+        return original_detector(value)
+
+    monkeypatch.setattr(server, "has_terminal_rss_continuation_marker", observe)
+    rewrite_value = complete_rewrite() if rewrite == "complete" else rewrite
+    result, inserted, _ = run_hybrid(monkeypatch, ai_available=ai_available, rewrite=rewrite_value)
+    assert raw in observed
+    assert len(inserted) == 1
+    article = inserted[0]
+    assert article["summary"] == "The cost of living remains high for students. Household budgets remain under pressure across the country."
+    for field in ("title", "source", "source_url", "category", "image", "publishedDate"):
+        assert article[field] == candidate[field]
+    expected_body = server.sanitize_rss_text(raw) if rewrite is None else rewrite_value
+    assert article["content"] == expected_body
+    assert result["public_imported"] == int(rewrite == "complete")
+    assert result["manual_review_imported"] == int(rewrite != "complete")
