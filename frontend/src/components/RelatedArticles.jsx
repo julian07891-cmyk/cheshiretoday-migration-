@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { getApiUrl } from "../utils/api";
 import { Clock } from "lucide-react";
 
@@ -7,30 +7,39 @@ import { Clock } from "lucide-react";
  * - default variant: "grid" (existing behavior)
  * - sidebar variant: "sidebar" (vertical list for Layout B)
  */
-const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 4 }) => {
+const RelatedArticles = ({ articleId, onArticleClick, variant = "grid", limit = 4, onResultsChange }) => {
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
+  const reportRef = useRef(onResultsChange);
+  reportRef.current = onResultsChange;
 
   useEffect(() => {
-    if (articleId) fetchRelatedArticles();
-  }, [articleId, limit]);
-
-  const fetchRelatedArticles = async () => {
-    try {
-      setLoading(true);
-      const API_URL = getApiUrl();
-      const response = await fetch(
-        `${API_URL}/api/related-articles/${encodeURIComponent(articleId)}?limit=${limit}`
-      );
-      const data = await response.json();
-      setRelated(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching related articles:", error);
-      setRelated([]);
-    } finally {
-      setLoading(false);
+    let active = true;
+    const report = (items, pending) => {
+      if (!active) return;
+      setRelated(items);
+      setLoading(pending);
+      reportRef.current?.(items, { articleId, loading: pending });
+    };
+    report([], Boolean(articleId));
+    async function fetchRelatedArticles() {
+      try {
+        const API_URL = getApiUrl();
+        const response = await fetch(
+          `${API_URL}/api/related-articles/${encodeURIComponent(articleId)}?limit=${limit}`
+        );
+        if (!response.ok) throw new Error("Related articles unavailable");
+        const data = await response.json();
+        report(Array.isArray(data) ? data : [], false);
+      } catch (error) {
+        if (!active) return;
+        console.error("Error fetching related articles:", error);
+        report([], false);
+      }
     }
-  };
+    if (articleId) fetchRelatedArticles();
+    return () => { active = false; };
+  }, [articleId, limit]);
 
   const formatDate = (dateString) => {
     if (!dateString) return "";

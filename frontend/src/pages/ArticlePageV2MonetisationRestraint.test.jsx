@@ -7,6 +7,8 @@ import ArticlePageV2 from "./ArticlePageV2";
 const mockLoadPublicArticle = jest.fn();
 const mockSelectContextualRecommendation = jest.fn();
 let mockSponsorKind = "none";
+let mockRelatedResults = [];
+let mockUseRealRelated = false;
 
 jest.mock("react-helmet-async", () => ({ Helmet: ({ children }) => <>{children}</> }));
 jest.mock("../services/articleViewTracking", () => ({
@@ -19,13 +21,22 @@ jest.mock("../config/contextualRecommendations", () => ({
 jest.mock("../components/NewsHeader", () => () => <header>Cheshire Today</header>);
 jest.mock("../components/NewsFooter", () => () => <footer>Footer newsletter</footer>);
 jest.mock("../components/FestiveTheme", () => () => null);
-jest.mock("../components/RelatedArticles", () => () => <div data-testid="related-articles">Related articles</div>);
+jest.mock("../components/RelatedArticles", () => function MockRelated({ articleId, onResultsChange }) {
+  const ReactModule = require("react");
+  ReactModule.useEffect(() => {
+    if (!mockUseRealRelated) onResultsChange?.(mockRelatedResults, { articleId, loading: false });
+  }, [articleId, onResultsChange]);
+  if (mockUseRealRelated) {
+    const RealRelated = jest.requireActual('../components/RelatedArticles').default;
+    return <RealRelated articleId={articleId} limit={6} variant="sidebar" onArticleClick={() => {}} onResultsChange={onResultsChange} />;
+  }
+  return <div data-testid="related-articles">Related articles</div>;
+});
 jest.mock("../components/SubscribeSection", () => () => <div data-testid="sidebar-newsletter">Sidebar newsletter</div>);
 jest.mock("../components/JobsWidget", () => ({
   SubscribeInlineBanner: () => <div data-testid="inline-newsletter">Inline newsletter</div>,
 }));
 jest.mock("../components/CompactArticleCard", () => ({ article }) => <div data-testid="story-card">{article.title}</div>);
-jest.mock("../components/homepage/TextHeadlineStrip", () => () => null);
 jest.mock("../components/homepage/SectionHeader", () => ({ title }) => <h2>{title}</h2>);
 jest.mock("../components/monetisation/ContextualRecommendationCard", () => ({ recommendation }) => (
   recommendation ? <div data-testid="contextual-card">Contextual recommendation</div> : null
@@ -78,6 +89,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   mockSponsorKind = "none";
+  mockRelatedResults = [];
+  mockUseRealRelated = false;
   mockSelectContextualRecommendation.mockReturnValue(null);
   mockLoadPublicArticle.mockResolvedValue(article);
   global.fetch = jest.fn().mockImplementation(async (url) => ({
@@ -234,4 +247,104 @@ test("mobile house-guide inventory renders no commercial card and keeps one news
   expect(container.querySelector('[data-testid="sponsor-article_mobile"]')).toBeNull();
   expect(container.querySelector('[data-testid="contextual-card"]')).toBeNull();
   expect(container.querySelectorAll('[data-testid="inline-newsletter"]')).toHaveLength(1);
+});
+
+const further = () => Array.from(container.querySelectorAll('aside h3'))
+  .find(h => h.textContent === 'Further reading')?.parentElement.parentElement;
+const furtherTitles = () => Array.from(further()?.querySelectorAll('h4') || []).map(h => h.textContent);
+const setStories = (list) => global.fetch.mockImplementation(async url => ({
+  ok: true, json: async () => String(url).includes('/api/articles?') ? list : [],
+}));
+const extraStories = () => Array.from({ length: 24 }, (_, i) => ({
+  ...stories[0], id: `extra-${i}`, title: `Cheshire business report ${i}`,
+  publishedDate: new Date(Date.UTC(2026, 8, 1, 0, 0, 30 - i)).toISOString(),
+}));
+
+test('Further reading reserves twelve main stories, excludes related, and caps at four without fetching', async () => {
+  const list = extraStories();
+  mockRelatedResults = [list[12]];
+  setStories(list);
+  await renderArticle(1440);
+  expect(furtherTitles()).toEqual(list.slice(13, 17).map(a => a.title));
+  expect(further().querySelector('img')).toBeNull();
+  expect(further().textContent).not.toContain('min read');
+  expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/api/articles?'))).toHaveLength(1);
+  expect(global.fetch.mock.calls.map(([url]) => String(url))).toHaveLength(2); // stories + existing guide request
+  const titles = () => Array.from(container.querySelectorAll('article [data-testid="story-card"]')).map(e => e.textContent);
+  expect(titles()).toEqual(list.slice(0, 6).map(a => a.title));
+  await press('Show more');
+  expect(titles()).toEqual(list.slice(0, 12).map(a => a.title));
+  expect(furtherTitles()).toEqual(list.slice(13, 17).map(a => a.title));
+});
+
+test('Further reading excludes all ID aliases and normalised titles without mutating main inventory', async () => {
+  const list = extraStories();
+  list[12] = { ...list[12], _id: article.id };
+  list[13] = { ...list[13], title: `  ${list[0].title.toUpperCase().replaceAll(' ', '   ')}  ` };
+  list[14] = { ...list[14], _id: 'related-alias' };
+  list[16] = { ...list[16], title: list[15].title.toUpperCase() };
+  list[17] = { ...list[17], title: article.title };
+  mockRelatedResults = [{ id: 'related-alias', title: 'Another related story' }];
+  const before = JSON.stringify(list);
+  setStories(list);
+  await renderArticle(1440);
+  expect(furtherTitles()).toEqual([15, 18, 19, 20].map(i => list[i].title));
+  expect(JSON.stringify(list)).toBe(before);
+});
+
+test.each([12, 14])('Further reading with %s candidates omits empty block or shows only available items', async count => {
+  setStories(extraStories().slice(0, count));
+  await renderArticle(1440);
+  if (count === 12) expect(further()).toBeUndefined();
+  else expect(furtherTitles()).toHaveLength(2);
+});
+
+test('navigation resets related exclusions for the next article', async () => {
+  const list = extraStories();
+  mockRelatedResults = [list[12]];
+  setStories(list);
+  await renderArticle(1440);
+  expect(furtherTitles()).not.toContain(list[12].title);
+  mockRelatedResults = [];
+  mockLoadPublicArticle.mockResolvedValue({ ...article, id: 'article-2' });
+  await act(async () => { navigateArticle('/article/article-2/next'); await new Promise(r => setTimeout(r, 0)); });
+  expect(furtherTitles()[0]).toBe(list[12].title);
+});
+
+test.each([390, 768, 1023, 1024, 1440])('Further reading stays inside existing lg-only sidebar at %spx', async width => {
+  setStories(extraStories());
+  await renderArticle(width);
+  expect(further()).toBeTruthy();
+  expect(further().closest('aside').className).toContain('hidden lg:block');
+  expect(container.querySelector('article').textContent).not.toContain('Further reading');
+  expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/api/articles?'))).toHaveLength(1);
+});
+
+test.each(['genuine', 'none', 'house', 'error'])('Further reading follows unchanged %s sponsor/newsletter opportunity', async kind => {
+  mockSponsorKind = kind;
+  setStories(extraStories());
+  await renderArticle(1440);
+  const opportunity = container.querySelector(kind === 'genuine' ? '[data-testid="sponsor-article_sidebar"]' : '[data-testid="sidebar-newsletter"]');
+  expect(further()).toBeTruthy();
+  expect(opportunity.compareDocumentPosition(further()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(container.querySelectorAll('[data-testid="inline-newsletter"], [data-testid="sidebar-newsletter"]')).toHaveLength(1);
+});
+
+test.each(['success', 'empty', 'error'])('real RelatedArticles %s uses only existing requests and waits for exclusions', async outcome => {
+  mockUseRealRelated = true;
+  const list = extraStories();
+  let resolveRelated;
+  global.fetch.mockImplementation(url => {
+    if (String(url).includes('/api/related-articles/')) return new Promise(r => { resolveRelated = r; });
+    return Promise.resolve({ ok: true, json: async () => String(url).includes('/api/articles?') ? list : [] });
+  });
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  try {
+    await renderArticle(1440);
+    expect(further()).toBeUndefined();
+    await act(async () => resolveRelated({ ok: outcome !== 'error', json: async () => outcome === 'success' ? [list[12]] : [] }));
+    expect(furtherTitles()[0]).toBe(list[outcome === 'success' ? 13 : 12].title);
+    expect(global.fetch).toHaveBeenCalledTimes(3); // existing stories, related and guides only
+    expect(global.fetch.mock.calls.every(([, options]) => !options?.method || options.method === 'GET')).toBe(true);
+  } finally { errorSpy.mockRestore(); }
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 
@@ -755,6 +755,11 @@ export default function ArticlePageV2({ categories }) {
   const articleBodyRef = useRef(null);
   // --- More stories (below article) ---
   const [moreStories, setMoreStories] = useState([]);
+  const [moreStoriesArticleId, setMoreStoriesArticleId] = useState(null);
+  const [relatedResults, setRelatedResults] = useState(null);
+  const handleRelatedResults = useCallback((items, context) => {
+    setRelatedResults({ ...context, items });
+  }, []);
   const [moreStoriesOpen, setMoreStoriesOpen] = useState(false);
 
   const fmtShort = (dateString) => {
@@ -777,6 +782,7 @@ export default function ArticlePageV2({ categories }) {
     let mounted = true;
 
     async function fetchMoreStories() {
+      setMoreStoriesArticleId(null);
       try {
         const API = getApiUrl().replace(/\/$/, "");
         const res = await fetch(`${API}/api/articles?limit=24`);
@@ -793,7 +799,10 @@ export default function ArticlePageV2({ categories }) {
           .filter((a) => a && (a.id || a._id) && String(a.id || a._id) !== String(articleId))
           .filter((a) => String(a.title || "").trim().length > 0);
 
-        if (mounted) setMoreStories(filterEditorialPool(cleaned).sort((a, b) => Date.parse(b?.publishedDate || b?.created_at || 0) - Date.parse(a?.publishedDate || a?.created_at || 0)));
+        if (mounted) {
+          setMoreStories(filterEditorialPool(cleaned).sort((a, b) => Date.parse(b?.publishedDate || b?.created_at || 0) - Date.parse(a?.publishedDate || a?.created_at || 0)));
+          setMoreStoriesArticleId(articleId);
+        }
       } catch (_) {
         // ignore
       }
@@ -830,6 +839,30 @@ export default function ArticlePageV2({ categories }) {
   const [desktopSponsorAvailable, setDesktopSponsorAvailable] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const furtherReading = useMemo(() => {
+    // Do not combine results belonging to different article navigations, or
+    // display candidates before the current related exclusions are known.
+    if (moreStoriesArticleId !== articleId || relatedResults?.articleId !== articleId
+        || relatedResults.loading) return [];
+    const ids = (item) => [item?.id, item?._id]
+      .filter(value => value != null).map(value => String(value).trim()).filter(Boolean);
+    const titleKey = (item) => String(item?.title || "").trim().replace(/\s+/g, " ").toLowerCase();
+    const excluded = [article, { id: articleId }, ...relatedResults.items, ...moreStories.slice(0, 12)];
+    const seenIds = new Set(excluded.flatMap(ids));
+    const seenTitles = new Set(excluded.map(titleKey).filter(Boolean));
+    const picked = [];
+    for (const candidate of moreStories.slice(12)) {
+      const keys = ids(candidate);
+      const title = titleKey(candidate);
+      if (!keys.length || !title || keys.some(key => seenIds.has(key)) || seenTitles.has(title)) continue;
+      picked.push(candidate);
+      keys.forEach(key => seenIds.add(key));
+      seenTitles.add(title);
+      if (picked.length === 4) break;
+    }
+    return picked;
+  }, [article, articleId, moreStories, moreStoriesArticleId, relatedResults]);
 
   const publicUrl =
     process.env.REACT_APP_PUBLIC_URL || (typeof window !== "undefined" ? window.location.origin : "");
@@ -1437,6 +1470,7 @@ export default function ArticlePageV2({ categories }) {
                     articleId={articleId}
                     variant="sidebar"
                     limit={6}
+                    onResultsChange={handleRelatedResults}
                     onArticleClick={(a) => navigate(buildArticleUrl(a))}
                   />
                 </div>
@@ -1456,6 +1490,11 @@ export default function ArticlePageV2({ categories }) {
                     <SubscribeSection compact />
                   </div>
                 )}
+                <TextHeadlineStrip
+                  title="Further reading"
+                  articles={furtherReading}
+                  showReadTime={false}
+                />
                 </div>
             </aside>
           </div>

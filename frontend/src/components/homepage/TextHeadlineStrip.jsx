@@ -26,7 +26,7 @@ const calculateReadTime = (content) => {
   return minutes < 1 ? 1 : minutes;
 };
 
-export default function TextHeadlineStrip({ title = "More headlines", articles = [] }) {
+export default function TextHeadlineStrip({ title = "More headlines", articles = [], showReadTime = true }) {
   if (!Array.isArray(articles) || articles.length === 0) return null;
 
   return (
@@ -65,10 +65,10 @@ export default function TextHeadlineStrip({ title = "More headlines", articles =
                     {published}
                   </span>
                 ) : null}
-                <span className="flex items-center gap-1">
+                {showReadTime && <span className="flex items-center gap-1">
                   <BookOpen className="h-3 w-3" />
                   {readTime} min read
-                </span>
+                </span>}
               </div>
             </Link>
           );

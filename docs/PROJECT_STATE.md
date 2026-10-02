@@ -191,6 +191,35 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 2 October 2026 — Stage B2 restrained desktop further reading implementation
+
+Against `dd17d6d8dd02b3eec5ccd0fa7491438c75f3c04a`, the short desktop article
+sidebar gains a secondary text-only Further reading block after the existing
+related and sponsor-or-newsletter area. It reuses sorted/filtered `moreStories`,
+reserves its first 12 records for the unchanged main collapsed/expanded list,
+and excludes current/related/main IDs (both id and _id) and trimmed,
+whitespace-collapsed, case-insensitive exact titles. Up to four distinct remaining
+items retain source order; empty results omit the block. No fetch/backfill is added.
+
+RelatedArticles optionally reports results and loading/reset state for the current
+article; stale/unmounted completions cannot report. Further reading waits for
+matching current-article results from both existing requests. Related selection
+remains backend-owned. TextHeadlineStrip's optional showReadTime defaults true;
+only this summary-backed block hides that estimate. Existing hidden lg:block,
+640px article expansion, main More stories, sponsor props/measurement, newsletter
+rules, homepage, category pages and B1 navigation are unchanged. This is the
+approved four-headline exception, not restoration of old Latest/More from feeds;
+their absence assertions remain intact.
+
+Pre-commit verification: 19 failed / 15 passed before production changes; final
+focused coverage 38 tests, related regression 71 tests across 8 suites, and full
+frontend 531 tests across 51 suites passed. Production build passed with unchanged
+CSS output; existing React development and stale Browserslist warnings remain.
+Mocked integration verifies only the existing stories/related/guides requests,
+including related success/empty/error. Responsive evidence is DOM/class-contract
+testing, not browser geometry acceptance. No production requests/data changes or
+provider calls were made; deployment and production acceptance are separate gates.
+
 ### 2 October 2026 — Stage B1 category-header navigation implementation
 
 Against `74b2a0d01e93989193d57c94719722901f40fae0`, CategoryPage's header
