@@ -191,6 +191,27 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 2 October 2026 — Stage B1 category-header navigation implementation
+
+Against `74b2a0d01e93989193d57c94719722901f40fae0`, CategoryPage's header
+callback no longer discards the selected ID and always navigates Home. Its local
+mapping sends all/home to `/`, local to `/category/local-news`, uk to
+`/category/uk-news`, and business to `/category/business`; unknown IDs do nothing.
+NewsHeader itself, desktop/mobile layout, header choices and existing Finance/
+AI & Tech topic links are unchanged. Category queries, article selection,
+homepage query-parameter tabs, ArticlePageV2 and sidebar behaviour are unchanged;
+the callback adds no fetching logic.
+
+Pre-commit verification: real-NewsHeader desktop/mobile interactions reproduced
+8 failures / 7 passes before the fix; all 15 focused tests pass afterward,
+including mobile-menu closure and unknown-ID handling. Related frontend tests:
+40 passed across 4 suites; public-hub regression: 39 passed, 5 existing framework
+warnings; full frontend: 506 passed across 49 suites. Production build passed;
+existing React development warnings and stale Browserslist data remain.
+At this implementation checkpoint no production data/settings were changed;
+deployment and production acceptance remain separate gates. Stage B2 is not
+implemented by this correction.
+
 ### 2 October 2026 — Stage A UK fuel-supply filter implementation
 
 Baseline `b98a49eaba32659bd0e83fa27506c944802e5d65`; deployment of that

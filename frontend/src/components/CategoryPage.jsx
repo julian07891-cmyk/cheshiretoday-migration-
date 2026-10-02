@@ -12,6 +12,14 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { categories } from "../mockData";
 
+const HEADER_CATEGORY_ROUTES = new Map([
+  ["all", "/"],
+  ["home", "/"],
+  ["local", "/category/local-news"],
+  ["uk", "/category/uk-news"],
+  ["business", "/category/business"],
+]);
+
 const CategoryPage = ({ categorySlug }) => {
   const hub = findCategoryHub(categorySlug);
   const navigate = useNavigate();
@@ -92,7 +100,10 @@ const CategoryPage = ({ categorySlug }) => {
         <NewsHeader
           categories={categories}
           activeCategory={hub.label.toLowerCase()}
-          onCategoryChange={() => navigate("/")}
+          onCategoryChange={(categoryId) => {
+            const route = HEADER_CATEGORY_ROUTES.get(categoryId);
+            if (route) navigate(route);
+          }}
         />
         <main className="container mx-auto px-4 py-8">
           <Button
