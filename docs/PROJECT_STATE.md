@@ -191,6 +191,36 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 2 October 2026 — Stage A UK fuel-supply filter implementation
+
+Baseline `b98a49eaba32659bd0e83fa27506c944802e5d65`; deployment of that
+baseline is owner-reported. The preceding read-only audit found the public
+diesel-stockpiles story first on the UK hub but excluded by the homepage's legacy
+title/summary impact whitelist. Stage A adds only an exact `UK News` contextual
+exception: UK/Britain/British plus emergency/strategic diesel/petrol/fuel
+reserves/stockpiles, fuel-type shortages, or fuel-type supply security/disruption/
+threats. Bare fuel/supply/reserve words do not qualify. Earlier noise/politics
+exclusions and later editorial/sensitive filters retain precedence. The existing
+standalone energy whitelist remains unchanged; this is not a broader policy
+cleanup. The March `d44bfeb` generic-UK-noise exclusion intent is preserved.
+
+Pre-commit verification: Red: 4 failed / 21 passed before production modification. Green: 31 focused tests;
+combined homepage, public-hub, RSS-preview, Local Manual Review, hybrid fallback
+and sync-editorial regression: 153 passed, 5 existing framework deprecation
+warnings. Tests exercise the actual nested predicate and mocked handler's normal
+and fallback paths; AST comparison pins all other server decisions to baseline.
+Article generation, excerpts, imports, scheduler, public visibility, 100/100
+candidate caps, response limits, allocation, frontend and category semantics are
+unchanged. At this implementation checkpoint, no production data or configuration
+was changed and no import/provider call was made. Production deployment and
+acceptance remain separate gates.
+
+Separate pre-existing edge case observed in a synthetic handler check: both
+initial candidate pools empty followed by a national fallback record can reference
+an undefined nested filter. Stage A does not change that branch; it remains a
+separate review item. Eligibility is not a guarantee of prominent placement, and
+the deliberately narrow phrases do not recognise every paraphrase.
+
 ### 1 October 2026 — excerpt correction, local/uncommitted
 
 Against `41444da57dcc629cc0d746595798617071e104fd`, a deterministic

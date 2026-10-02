@@ -4961,7 +4961,20 @@ async def get_articles(
                             r"trade|tariff|regulation|regulator|ofgem|ofwat|boe|bank of england)\b",
                             re.I,
                         )
-                        if not econ_hint.search(text_meta) and not impact_kw.search(text_meta):
+                        # Recognise UK fuel-supply security, not isolated fuel/reserve words.
+                        # Earlier noise/politics exclusions and later sensitive guards still apply.
+                        uk_fuel_supply_impact = (
+                            re.search(r"\b(uk|britain|british)\b", text_meta)
+                            and re.search(
+                                r"\b(?:(?:emergency|strategic)\s+(?:diesel|petrol|fuel)\s+"
+                                r"(?:reserves?|stockpiles?)|(?:diesel|petrol|fuel)\s+"
+                                r"(?:shortages?|supply\s+(?:security|disruptions?|threats?)))\b",
+                                text_meta,
+                            )
+                        )
+                        if (not econ_hint.search(text_meta)
+                                and not impact_kw.search(text_meta)
+                                and not uk_fuel_supply_impact):
                             return True
 
 
