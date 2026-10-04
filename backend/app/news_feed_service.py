@@ -320,6 +320,195 @@ def select_nub_news_coverage_candidates(candidates: List[Dict[str, Any]]) -> Lis
     return selected
 
 
+
+CHESHIRE_EAST_MEDIA_HUB_BASE_URL = "https://www.cheshireeast.gov.uk"
+CHESHIRE_EAST_MEDIA_HUB_URL = CHESHIRE_EAST_MEDIA_HUB_BASE_URL + "/council_and_democracy/council_information/media_hub/media-hub.aspx"
+
+
+def _cheshire_east_parse_date(value: str) -> str:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    value = str(value or "").strip()
+    for fmt in ("%d/%m/%Y", "%d %B %Y"):
+        try:
+            dt = datetime.strptime(value, fmt).replace(tzinfo=ZoneInfo("Europe/London"))
+            return dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+        except ValueError:
+            continue
+    return ""
+
+
+def extract_cheshire_east_media_hub_candidates(html: str) -> List[Dict[str, Any]]:
+    from html import unescape
+    from urllib.parse import urljoin
+
+    candidates = []
+    pattern = re.compile(
+        r"(?:<img\b[^>]*\bsrc=[\"'](?P<image>[^\"']+)[\"'][^>]*>\s*)?"
+        r"<div\b[^>]*class=[\"'][^\"']*\bmedia-info\b[^\"']*[\"'][^>]*>"
+        r"\s*(?P<date>\d{2}/\d{2}/\d{4})\s*-\s*Media release\s*</div>\s*"
+        r"(?:<img\b[^>]*\bsrc=[\"'](?P<image2>[^\"']+)[\"'][^>]*>\s*)?"
+        r"<h3>\s*<a\b[^>]*\bhref=[\"'](?P<href>[^\"']+)[\"'][^>]*>"
+        r"(?P<title>.*?)</a>\s*</h3>\s*"
+        r"(?:<p>(?P<summary>.*?)</p>)?",
+        re.I | re.S,
+    )
+
+    for match in pattern.finditer(html or ""):
+        href = unescape(match.group("href") or "").strip()
+        if "/media_hub/media_releases/" not in href.lower():
+            continue
+        title = re.sub(r"<[^>]+>", " ", match.group("title") or "")
+        title = unescape(re.sub(r"\s+", " ", title)).strip()
+        title = re.sub(r"^\d{2}/\d{2}/\d{4}\s*-\s*", "", title).strip()
+        summary = re.sub(r"<[^>]+>", " ", match.group("summary") or "")
+        summary = unescape(re.sub(r"\s+", " ", summary)).strip()
+        image = (match.group("image2") or match.group("image") or "").strip()
+
+        candidates.append({
+            "title": title,
+            "summary": summary,
+            "publishedDate": _cheshire_east_parse_date(match.group("date")),
+            "source_url": urljoin(CHESHIRE_EAST_MEDIA_HUB_BASE_URL, href),
+            "image": urljoin(CHESHIRE_EAST_MEDIA_HUB_BASE_URL, image) if image else "",
+            "source": "Cheshire East Council",
+            "category": "Local News",
+            "is_real_news": True,
+            "is_local_source": True,
+            "is_local_feed": True,
+        })
+
+    return candidates
+
+
+def parse_cheshire_east_media_hub_article_html(html: str, source_url: str) -> Dict[str, Any]:
+    from html import unescape
+
+    text = html or ""
+    main_match = re.search(r"<main\b[^>]*>(.*?)</main>", text, re.I | re.S)
+    main_html = main_match.group(1) if main_match else ""
+
+    h1_match = re.search(r"<h1\b[^>]*>(.*?)</h1>", main_html, re.I | re.S)
+    title = re.sub(r"<[^>]+>", " ", h1_match.group(1) if h1_match else "")
+    title = unescape(re.sub(r"\s+", " ", title)).strip()
+
+    description_match = re.search(
+        r"<meta\b[^>]*name=[\"']description[\"'][^>]*content=[\"']([^\"']*)[\"']",
+        text,
+        re.I,
+    )
+    summary = unescape(description_match.group(1)).strip() if description_match else ""
+
+    paragraphs = []
+    published_date = ""
+    for raw in re.findall(r"<p\b[^>]*>(.*?)</p>", main_html, re.I | re.S):
+        paragraph = re.sub(r"<[^>]+>", " ", raw)
+        paragraph = unescape(re.sub(r"\s+", " ", paragraph)).strip()
+        if not paragraph:
+            continue
+        if not published_date and re.fullmatch(r"\d{1,2}\s+[A-Za-z]+\s+\d{4}", paragraph):
+            published_date = _cheshire_east_parse_date(paragraph)
+            continue
+        if paragraph.lower().startswith("for more information"):
+            break
+        paragraphs.append(paragraph)
+
+    return {
+        "title": title,
+        "summary": summary,
+        "content": "\n\n".join(paragraphs),
+        "publishedDate": published_date,
+        "source_url": source_url,
+        "source": "Cheshire East Council",
+        "category": "Local News",
+        "is_real_news": True,
+        "is_local_source": True,
+        "is_local_feed": True,
+    }
+
+
+
+async def fetch_cheshire_east_media_hub(
+    *,
+    client=None,
+    timeout: float = 12.0,
+    max_articles: int = 5,
+) -> List[Dict[str, Any]]:
+    """Fetch a bounded set of current Cheshire East Council media releases."""
+    try:
+        article_limit = max(0, int(max_articles))
+    except (TypeError, ValueError):
+        article_limit = 0
+
+    if article_limit == 0:
+        return []
+
+    owns_client = client is None
+    http_client = client or httpx.AsyncClient(
+        timeout=timeout,
+        headers={"User-Agent": "Mozilla/5.0 (CheshireTodayBot/1.0)"},
+        follow_redirects=True,
+    )
+
+    try:
+        try:
+            response = await http_client.get(CHESHIRE_EAST_MEDIA_HUB_URL)
+            response.raise_for_status()
+        except Exception as exc:
+            logger.warning(f"Unable to fetch Cheshire East Media Hub: {exc}")
+            return []
+
+        candidates = extract_cheshire_east_media_hub_candidates(response.text)
+        candidates.sort(
+            key=lambda item: str(item.get("publishedDate") or ""),
+            reverse=True,
+        )
+
+        articles = []
+        for candidate in candidates[:article_limit]:
+            article_url = str(candidate.get("source_url") or "").strip()
+            if not article_url:
+                continue
+
+            try:
+                article_response = await http_client.get(article_url)
+                article_response.raise_for_status()
+                article = parse_cheshire_east_media_hub_article_html(
+                    article_response.text,
+                    article_url,
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Unable to fetch Cheshire East Media Hub article: "
+                    f"{article_url} | {exc}"
+                )
+                continue
+
+            if not (
+                article.get("title")
+                and article.get("publishedDate")
+                and article.get("source_url")
+            ):
+                logger.info(
+                    f"Skipping incomplete Cheshire East Media Hub article: "
+                    f"{article_url}"
+                )
+                continue
+
+            if not article.get("summary"):
+                article["summary"] = candidate.get("summary") or ""
+            if not article.get("image"):
+                article["image"] = candidate.get("image") or ""
+
+            articles.append(article)
+
+        return articles
+    finally:
+        if owns_client:
+            await http_client.aclose()
+
+
 def parse_nub_news_article_html(html: str, source_url: str, hub: str) -> Dict[str, Any]:
     # Parse one Nub News article page into the existing Local candidate shape.
     if not html:
@@ -1231,12 +1420,13 @@ def _flatten_feed_groups(feeds: dict) -> dict:
 class NewsFeedService:
     """Service to fetch and parse real news from RSS feeds"""
     
-    def __init__(self, enable_nub_news: bool = False):
+    def __init__(self, enable_nub_news: bool = False, enable_cheshire_east_media_hub: bool = False):
         self.feeds = RSS_FEEDS
         self.feeds = _flatten_feed_groups(self.feeds)
         self.timeout = 15.0
         self.max_concurrent_fetches = 8
         self.enable_nub_news = enable_nub_news
+        self.enable_cheshire_east_media_hub = enable_cheshire_east_media_hub
     
     def _clean_html(self, text: str) -> str:
         """Remove HTML tags and clean up text"""
@@ -2001,6 +2191,21 @@ class NewsFeedService:
                     eligible_articles.append(article)
                 other_local_articles.extend(eligible_articles)
 
+        if self.enable_cheshire_east_media_hub:
+            try:
+                cheshire_east_articles = await fetch_cheshire_east_media_hub()
+            except Exception as exc:
+                logger.warning(
+                    f"Unable to fetch Cheshire East Media Hub coverage: {exc}"
+                )
+                cheshire_east_articles = []
+
+            for article in cheshire_east_articles:
+                article["is_cheshire_related"] = True
+                article["is_local_feed"] = True
+                article["feed_priority"] = 1
+                other_local_articles.append(article)
+
         nub_articles = []
         if self.enable_nub_news:
             try:
@@ -2057,7 +2262,7 @@ class NewsFeedService:
 
 
 # Global instance
-news_feed_service = NewsFeedService(enable_nub_news=True)
+news_feed_service = NewsFeedService(enable_nub_news=True, enable_cheshire_east_media_hub=True)
 
 
 def fetch_full_article_content(url):
