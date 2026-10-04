@@ -17,6 +17,7 @@ from typing import Optional, List, Dict, Any
 from uuid import uuid4
 import xml.etree.ElementTree as ET
 from html import unescape
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 
 # --- Full article extraction helpers (auto) ---
@@ -77,6 +78,294 @@ def _try_fetch_full_article_text(url: str, timeout: int = 12) -> str:
     except Exception:
         return ""
 # --- end full article extraction helpers ---
+
+
+
+NUB_NEWS_HUBS = (
+    "macclesfield",
+    "sandbach",
+    "congleton",
+    "nantwich",
+    "crewe",
+    "alsager",
+)
+
+NUB_NEWS_BOILERPLATE_PREFIXES = (
+    "download our nub news app",
+    "it’s free and available now",
+    "its free and available now",
+    "local news is in crisis",
+    "please consider supporting us",
+    "monthly supporters will enjoy",
+)
+
+
+def extract_nub_news_homepage_urls(html: str, base_url: str) -> List[str]:
+    # Extract unique canonical Nub News local-news article URLs in page order.
+    if not html or not base_url:
+        return []
+
+    soup = BeautifulSoup(html, "html.parser")
+    discovered = []
+    seen = set()
+
+    for anchor in soup.find_all("a", href=True):
+        href = str(anchor.get("href") or "").strip()
+        absolute = urljoin(base_url, href)
+        parsed = urlsplit(absolute)
+
+        if "/news/local-news/" not in parsed.path:
+            continue
+
+        canonical = urlunsplit(
+            (parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), parsed.query, "")
+        )
+        if canonical in seen:
+            continue
+
+        seen.add(canonical)
+        discovered.append(canonical)
+
+    return discovered
+
+
+def _nub_news_clean_body(root) -> str:
+    if root is None:
+        return ""
+
+    paragraphs = []
+
+    for paragraph in root.find_all("p"):
+        text = _clean_ws(paragraph.get_text(" ", strip=True))
+        if not text:
+            continue
+
+        text_l = text.lower()
+
+        if any(text_l.startswith(prefix) for prefix in NUB_NEWS_BOILERPLATE_PREFIXES):
+            continue
+
+        if re.fullmatch(r"By\s+[^\W\d_][^\s\d]*(?:\s+[^\W\d_][^\s\d]*){0,7}", text):
+            continue
+
+        paragraphs.append(text)
+
+    return "\n\n".join(paragraphs)
+
+
+
+def deduplicate_nub_news_candidates(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Deduplicate Nub News stories across town hubs while preserving first-seen order."""
+    unique = []
+    seen = set()
+
+    for candidate in candidates or []:
+        source_url = str(candidate.get("source_url") or "").strip()
+        parsed = urlsplit(source_url)
+        path = parsed.path.rstrip("/")
+
+        story_id_match = re.search(r"-(\d+)$", path)
+        if story_id_match and parsed.netloc.lower().endswith(".nub.news"):
+            key = ("nub_story_id", story_id_match.group(1))
+        elif source_url:
+            canonical = urlunsplit(
+                (parsed.scheme.lower(), parsed.netloc.lower(), path, parsed.query, "")
+            )
+            key = ("url", canonical)
+        else:
+            title = re.sub(
+                r"\s+",
+                " ",
+                str(candidate.get("title") or "").strip().lower(),
+            )
+            key = ("title", title)
+
+        if not key[1] or key in seen:
+            continue
+
+        seen.add(key)
+        unique.append(candidate)
+
+    return unique
+
+
+async def fetch_nub_news_hub(
+    hub: str,
+    *,
+    client=None,
+    timeout: float = 12.0,
+) -> List[Dict[str, Any]]:
+    """Fetch one Nub News town homepage and parse its current local-news articles."""
+    hub_name = str(hub or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9-]+", hub_name):
+        return []
+
+    base_url = f"https://{hub_name}.nub.news/"
+    owns_client = client is None
+    http_client = client or httpx.AsyncClient(
+        timeout=timeout,
+        headers={"User-Agent": "Mozilla/5.0 (CheshireTodayBot/1.0)"},
+        follow_redirects=True,
+    )
+
+    try:
+        try:
+            response = await http_client.get(base_url)
+            response.raise_for_status()
+        except Exception as exc:
+            logger.warning(f"Unable to fetch Nub News hub {hub_name}: {exc}")
+            return []
+
+        article_urls = extract_nub_news_homepage_urls(response.text, base_url)
+        candidates = []
+
+        for article_url in article_urls:
+            try:
+                article_response = await http_client.get(article_url)
+                article_response.raise_for_status()
+                article = parse_nub_news_article_html(
+                    article_response.text,
+                    article_url,
+                    hub_name,
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Unable to fetch Nub News article for {hub_name}: "
+                    f"{article_url} | {exc}"
+                )
+                continue
+
+            if not (
+                article.get("title")
+                and article.get("image")
+                and article.get("publishedDate")
+                and article.get("source_url")
+            ):
+                logger.info(
+                    f"Skipping incomplete Nub News article for {hub_name}: "
+                    f"{article_url}"
+                )
+                continue
+
+            candidates.append(article)
+
+        return deduplicate_nub_news_candidates(candidates)
+    finally:
+        if owns_client:
+            await http_client.aclose()
+
+
+
+async def fetch_nub_news_hubs(
+    hubs: List[str],
+    *,
+    client=None,
+    timeout: float = 12.0,
+) -> List[Dict[str, Any]]:
+    """Fetch multiple Nub News town hubs and deduplicate shared stories."""
+    candidates = []
+
+    for hub in hubs or []:
+        try:
+            articles = await fetch_nub_news_hub(
+                hub,
+                client=client,
+                timeout=timeout,
+            )
+        except Exception as exc:
+            logger.warning(f"Unable to fetch Nub News hub {hub}: {exc}")
+            continue
+
+        candidates.extend(articles or [])
+
+    return deduplicate_nub_news_candidates(candidates)
+
+
+
+async def fetch_configured_nub_news(
+    *,
+    client=None,
+    timeout: float = 12.0,
+) -> List[Dict[str, Any]]:
+    """Fetch the explicitly configured Nub News hubs only."""
+    return await fetch_nub_news_hubs(
+        list(NUB_NEWS_HUBS),
+        client=client,
+        timeout=timeout,
+    )
+
+
+
+def select_nub_news_coverage_candidates(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Keep at most the newest candidate per configured Nub hub without assigning locality."""
+    newest_by_hub = {}
+
+    for candidate in candidates or []:
+        hub = str(candidate.get("nub_hub") or "").strip().lower()
+        if hub not in NUB_NEWS_HUBS:
+            continue
+
+        published = str(candidate.get("publishedDate") or "")
+        current = newest_by_hub.get(hub)
+        if current is None or published > str(current.get("publishedDate") or ""):
+            newest_by_hub[hub] = candidate
+
+    return [
+        newest_by_hub[hub]
+        for hub in NUB_NEWS_HUBS
+        if hub in newest_by_hub
+    ]
+
+
+def parse_nub_news_article_html(html: str, source_url: str, hub: str) -> Dict[str, Any]:
+    # Parse one Nub News article page into the existing Local candidate shape.
+    if not html:
+        return {}
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    def meta_content(*, property_name: str = "", name: str = "") -> str:
+        tag = None
+        if property_name:
+            tag = soup.find("meta", attrs={"property": property_name})
+        elif name:
+            tag = soup.find("meta", attrs={"name": name})
+        return _clean_ws(tag.get("content", "")) if tag else ""
+
+    title = meta_content(property_name="og:title")
+    if not title and soup.title:
+        title = _clean_ws(soup.title.get_text(" ", strip=True))
+
+    summary = (
+        meta_content(property_name="og:description")
+        or meta_content(name="description")
+    )
+    image = meta_content(property_name="og:image")
+    published = meta_content(property_name="article:published_time")
+
+    root = soup.find("article") or soup.find("main")
+    content = _nub_news_clean_body(root)
+
+    return {
+        "id": str(uuid4()),
+        "title": title,
+        "content": content,
+        "summary": summary,
+        "source": "Nub News",
+        "source_url": source_url,
+        "link": source_url,
+        "url": source_url,
+        "category": "Local News",
+        "image": image,
+        "publishedDate": published,
+        "author": "Nub News",
+        "is_real_news": True,
+        "is_local_source": True,
+        "is_local_feed": True,
+        "nub_hub": str(hub or "").strip().lower(),
+        "tags": ["Nub News", "Local News"],
+    }
+
 
 # Alias for RSS category guard
 def category_guard(cat: str) -> str:
@@ -939,11 +1228,12 @@ def _flatten_feed_groups(feeds: dict) -> dict:
 class NewsFeedService:
     """Service to fetch and parse real news from RSS feeds"""
     
-    def __init__(self):
+    def __init__(self, enable_nub_news: bool = False):
         self.feeds = RSS_FEEDS
         self.feeds = _flatten_feed_groups(self.feeds)
         self.timeout = 15.0
         self.max_concurrent_fetches = 8
+        self.enable_nub_news = enable_nub_news
     
     def _clean_html(self, text: str) -> str:
         """Remove HTML tags and clean up text"""
@@ -1707,6 +1997,25 @@ class NewsFeedService:
                     article['feed_priority'] = 1  # Lower priority
                     eligible_articles.append(article)
                 other_local_articles.extend(eligible_articles)
+
+        nub_articles = []
+        if self.enable_nub_news:
+            try:
+                discovered_nub_articles = await fetch_configured_nub_news()
+            except Exception as exc:
+                logger.warning(
+                    f"Unable to fetch configured Nub News coverage: {exc}"
+                )
+                discovered_nub_articles = []
+
+            nub_articles = select_nub_news_coverage_candidates(
+                discovered_nub_articles
+            )
+            for article in nub_articles:
+                article['is_cheshire_related'] = True
+                article['is_local_feed'] = True
+                article['feed_priority'] = 1
+
         
         # Remove duplicates from Cheshire Live articles
         seen_titles = set()
@@ -1725,19 +2034,27 @@ class NewsFeedService:
                 seen_titles.add(title_lower)
                 unique_others.append(article)
         
+        unique_nub = []
+        for article in nub_articles:
+            title_lower = article.get('title', '').lower().strip()
+            if title_lower and title_lower not in seen_titles:
+                seen_titles.add(title_lower)
+                unique_nub.append(article)
+
         # Sort each group by date (newest first)
         unique_cheshire.sort(key=lambda x: x.get('publishedDate', ''), reverse=True)
         unique_others.sort(key=lambda x: x.get('publishedDate', ''), reverse=True)
+        unique_nub.sort(key=lambda x: x.get('publishedDate', ''), reverse=True)
         
-        # CHESHIRE LIVE FIRST, then others
-        all_articles = unique_cheshire + unique_others
+        # CHESHIRE LIVE FIRST, then existing local feeds, then bounded Nub coverage
+        all_articles = unique_cheshire + unique_others + unique_nub
         
-        logger.info(f"Local feeds: {len(unique_cheshire)} Cheshire Live + {len(unique_others)} other = {len(all_articles)} total")
+        logger.info(f"Local feeds: {len(unique_cheshire)} Cheshire Live + {len(unique_others)} other + {len(unique_nub)} Nub News = {len(all_articles)} total")
         return all_articles
 
 
 # Global instance
-news_feed_service = NewsFeedService()
+news_feed_service = NewsFeedService(enable_nub_news=True)
 
 
 def fetch_full_article_content(url):
