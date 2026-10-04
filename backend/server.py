@@ -3134,6 +3134,26 @@ async def _import_hybrid_news_internal(
                 logger.info(f"Skipping low-impact local RSS article before Perplexity: {title[:60]}...")
                 continue
 
+            # A Cheshire place-name used only in an ambiguous road/address reference
+            # must not establish Local eligibility when the source text clearly places
+            # the main story outside the intended Cheshire geography.
+            if has_conflicting_local_location_detail(
+                article,
+                article.get("content", ""),
+                title,
+            ):
+                if await queue_local_rss_manual_review(
+                    article,
+                    title,
+                    LOCALITY_AMBIGUOUS_OUT_OF_AREA_REASON,
+                ):
+                    continue
+                logger.info(
+                    "Skipping unsafe locality-conflict Local RSS candidate: "
+                    f"{title[:60]}..."
+                )
+                continue
+
             local_text = " ".join([
                 str(article.get("title") or ""),
                 str(article.get("summary") or ""),
@@ -19043,9 +19063,59 @@ def has_specific_local_location_detail(article: dict, content: str, title: str =
     return known_place_found or stored_location_in_text
 
 
+LOCALITY_AMBIGUOUS_OUT_OF_AREA_REASON = "locality_ambiguous_out_of_area"
+
+
+def has_conflicting_local_location_detail(article: dict, content: str, title: str = "") -> bool:
+    """Catch the bounded Heswall/Wirral false-positive without banning road-name matches."""
+    title_text = str(title or "")
+    text = " ".join([
+        title_text,
+        str(article.get("summary") or ""),
+        str(content or "")[:3500],
+    ])
+
+    heswall_is_story_location = bool(
+        re.search(r"\bHeswall\b", title_text, re.I)
+        or re.search(r"\b(?:Old\s+)?Chester\s+Road\s+in\s+Heswall\b", text, re.I)
+    )
+
+    if not (
+        heswall_is_story_location
+        and re.search(r"\bWirral Council\b", text, re.I)
+        and re.search(r"\b(?:Old\s+)?Chester\s+Road\b", text, re.I)
+    ):
+        return False
+
+    text_without_road = re.sub(
+        r"\b(?:Old\s+)?Chester\s+Road\b",
+        " ",
+        text,
+        flags=re.I,
+    )
+
+    if LOCAL_SPECIFIC_LOCATION_PATTERN.search(text_without_road):
+        return False
+
+    stored_locations = [
+        str(article.get("location") or "").strip(),
+        str(article.get("priority_location") or "").strip(),
+    ]
+    if any(
+        loc and re.search(r"\b" + re.escape(loc) + r"\b", text_without_road, re.I)
+        for loc in stored_locations
+    ):
+        return False
+
+    return True
+
+
 def find_local_location_review_reason(article: dict, content: str, title: str = "") -> str:
     if not is_local_article_for_location_review(article):
         return ""
+
+    if has_conflicting_local_location_detail(article, content, title):
+        return LOCALITY_AMBIGUOUS_OUT_OF_AREA_REASON
 
     if has_specific_local_location_detail(article, content, title):
         return ""
