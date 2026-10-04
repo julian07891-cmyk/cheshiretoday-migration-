@@ -69,6 +69,15 @@ def test_importer_only_changes_summary_not_raw_detection_or_routing():
         fn = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "_import_hybrid_news_internal")
         summary_assignments = []
         class RemoveExcerptOnly(ast.NodeTransformer):
+            def visit_If(self, node):
+                # The separately tested P0 source-format branch is an authorised
+                # addition; all pre-existing importer routing remains pinned.
+                if (isinstance(node.test, ast.Call)
+                        and isinstance(node.test.func, ast.Name)
+                        and node.test.func.id == "is_guardian_politics_liveblog"):
+                    return None
+                return self.generic_visit(node)
+
             def visit_Assign(self, node):
                 if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "select_rss_excerpt":
                     summary_assignments.append(node.value)

@@ -2345,6 +2345,27 @@ async def _load_editorial_similarity_shadow_evaluator():
     return evaluator
 
 
+def is_guardian_politics_liveblog(source_url: str) -> bool:
+    """Recognise only dated Guardian politics liveblogs, without fetching them."""
+    from urllib.parse import urlparse
+
+    if not isinstance(source_url, str):
+        return False
+    try:
+        parsed = urlparse(source_url)
+        if parsed.scheme not in {"http", "https"} or parsed.hostname not in {
+            "theguardian.com", "www.theguardian.com"
+        }:
+            return False
+        return bool(re.fullmatch(
+            r"/politics/live/[0-9]{4}/(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/"
+            r"(?:0[1-9]|[12][0-9]|3[01])/.+",
+            parsed.path,
+        ))
+    except ValueError:
+        return False
+
+
 async def _import_hybrid_news_internal(
     request: HybridNewsRequest,
     memory_started_at: Optional[float] = None,
@@ -2674,6 +2695,34 @@ async def _import_hybrid_news_internal(
 
                     # Get content - either generate via Perplexity or use RSS content
                     original_content = article.get('content', '')
+                    if is_guardian_politics_liveblog(article.get('source_url', '')):
+                        # Existing source/image, hard-reject, duplicate and freshness
+                        # checks retain precedence. Format review never invokes AI.
+                        article['image_source'] = 'rss_feed'
+                        article['content'] = sanitize_rss_text(original_content, article.get('source_url', ''))
+                        article['summary'] = select_rss_excerpt(original_content, article['content'], article.get('source_url', ''))
+                        article['scope'] = 'uk'
+                        article['author'] = article.get('source', 'BBC News')
+                        article['id'] = str(uuid4())
+                        article['manual_review_hidden_from_public'] = True
+                        article['verification_status'] = 'needs_manual_review'
+                        article['rewrite_status'] = 'manual_review_required'
+                        article['manual_review_reason'] = 'source_format_review_guardian_politics_liveblog'
+                        article['manual_review_created_at'] = datetime.now(timezone.utc).isoformat()
+                        article['archive_reason'] = 'needs_manual_review'
+                        article = attach_manual_review_editorial_metadata(article)
+                        try:
+                            await insert_hybrid_article(article, "category_rss")
+                        except DuplicateKeyError:
+                            continue
+                        existing_titles.add(title.lower())
+                        if source_url:
+                            existing_source_urls.add(source_url)
+                        used_image_urls.add(rss_image)
+                        imported_articles.append(article)
+                        count_inserted_article_visibility(article)
+                        imported_count += 1  # Retained category candidates, not public slots.
+                        continue
                     source_is_incomplete_preview = has_terminal_rss_continuation_marker(
                         original_content
                     )

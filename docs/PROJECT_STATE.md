@@ -191,6 +191,35 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 4 October 2026 — Guardian politics-liveblog eligibility implementation
+
+Against `40005e80272ee5988dbdb7573a01a7727b17b7f9`, the category RSS importer
+routes dated Guardian politics liveblogs to hidden Manual Review before generation.
+Reporting-depth evidence exposed possible accidental reliance on the unchanged
+1,000-character floor as an editorial filter; individual prompt causation remains
+unproven. The pure helper parses HTTP(S) URLs, requires exactly `theguardian.com`
+or `www.theguardian.com`, and matches `/politics/live/YYYY/mon/DD/nonempty-path`
+with an English abbreviated month and day 01–31. Title/body length is irrelevant.
+Existing image, hard-reject, duplicate and freshness checks retain precedence.
+
+The stable reason is `source_format_review_guardian_politics_liveblog`. Existing
+category RSS metadata, safe excerpts, hidden-review status and insertion accounting
+are reused. The branch makes no generation call and consumes no public slot;
+retained-record/category counts still include the review candidate, as before.
+No general liveblog, sport-adjacent, sensitive-incident or business-feature policy
+is added. Prompts, thresholds, existing preview/excerpt logic, Local/fallback paths,
+caps, locks, scheduler, homepage and frontend remain unchanged.
+
+Pre-commit verification: RED 4 failed / 14 passed (generation occurred); GREEN
+27 focused tests, 148 requested regression tests and 89 additional cap/memory/
+public-hub tests passed. Five existing framework deprecation warnings per run.
+The excerpt AST contract now excludes only the separately tested P0 branch;
+all other importer routing remains pinned. A whole-server AST comparison after
+removing only the new helper/branch matched baseline. Python compilation passed.
+No live provider/import or production-data operation was performed. This is a
+local implementation checkpoint; deployment and production acceptance remain
+separate gates. Existing historical articles are not rerouted.
+
 ### 2 October 2026 — Stage B2 restrained desktop further reading implementation
 
 Against `dd17d6d8dd02b3eec5ccd0fa7491438c75f3c04a`, the short desktop article
