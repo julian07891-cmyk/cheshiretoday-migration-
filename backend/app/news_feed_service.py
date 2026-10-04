@@ -88,6 +88,8 @@ NUB_NEWS_HUBS = (
     "nantwich",
     "crewe",
     "alsager",
+    "chester",
+    "wilmslow",
 )
 
 NUB_NEWS_BOILERPLATE_PREFIXES = (

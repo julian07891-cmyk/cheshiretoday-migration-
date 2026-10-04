@@ -306,6 +306,8 @@ def test_nub_news_configured_hubs_are_explicit_and_bounded():
         "nantwich",
         "crewe",
         "alsager",
+        "chester",
+        "wilmslow",
     )
 
 
