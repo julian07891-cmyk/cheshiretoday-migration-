@@ -342,24 +342,36 @@ def test_fetch_configured_nub_news_uses_only_configured_hubs(monkeypatch):
     assert result == [{"title": "Example"}]
 
 
-def test_select_nub_news_coverage_keeps_at_most_one_story_per_hub():
+def test_select_nub_news_coverage_keeps_at_most_three_stories_per_hub():
     articles = [
         {
             "title": "Macclesfield newest",
             "nub_hub": "macclesfield",
             "publishedDate": "2026-10-04T17:00:00+0100",
-            "source_url": "https://macclesfield.nub.news/news/local-news/newest-310301",
+            "source_url": "https://macclesfield.nub.news/news/local-news/newest-310303",
         },
         {
-            "title": "Macclesfield older",
+            "title": "Macclesfield second",
+            "nub_hub": "macclesfield",
+            "publishedDate": "2026-10-04T16:00:00+0100",
+            "source_url": "https://macclesfield.nub.news/news/local-news/second-310302",
+        },
+        {
+            "title": "Macclesfield third",
             "nub_hub": "macclesfield",
             "publishedDate": "2026-10-04T15:00:00+0100",
-            "source_url": "https://macclesfield.nub.news/news/local-news/older-310300",
+            "source_url": "https://macclesfield.nub.news/news/local-news/third-310301",
+        },
+        {
+            "title": "Macclesfield fourth",
+            "nub_hub": "macclesfield",
+            "publishedDate": "2026-10-04T14:00:00+0100",
+            "source_url": "https://macclesfield.nub.news/news/local-news/fourth-310300",
         },
         {
             "title": "Sandbach newest",
             "nub_hub": "sandbach",
-            "publishedDate": "2026-10-04T16:00:00+0100",
+            "publishedDate": "2026-10-04T16:30:00+0100",
             "source_url": "https://sandbach.nub.news/news/local-news/newest-310401",
         },
     ]
@@ -368,6 +380,8 @@ def test_select_nub_news_coverage_keeps_at_most_one_story_per_hub():
 
     assert [item["title"] for item in selected] == [
         "Macclesfield newest",
+        "Macclesfield second",
+        "Macclesfield third",
         "Sandbach newest",
     ]
 
@@ -461,10 +475,11 @@ def test_fetch_local_feeds_only_includes_bounded_nub_supplement(monkeypatch):
         "Knutsford council story",
         "Macclesfield Nub story",
         "Sandbach Nub story",
+        "Macclesfield older Nub story",
     ]
 
     nub_items = [item for item in result if item.get("source") == "Nub News"]
-    assert len(nub_items) == 2
+    assert len(nub_items) == 3
     assert all(item["feed_priority"] == 1 for item in nub_items)
     assert all(item["is_local_feed"] is True for item in nub_items)
     assert all(item["is_cheshire_related"] is True for item in nub_items)

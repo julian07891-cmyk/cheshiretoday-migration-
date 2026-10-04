@@ -299,24 +299,25 @@ async def fetch_configured_nub_news(
 
 
 def select_nub_news_coverage_candidates(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Keep at most the newest candidate per configured Nub hub without assigning locality."""
-    newest_by_hub = {}
+    """Keep at most the three newest candidates per configured Nub hub without assigning locality."""
+    by_hub = {hub: [] for hub in NUB_NEWS_HUBS}
 
     for candidate in candidates or []:
         hub = str(candidate.get("nub_hub") or "").strip().lower()
-        if hub not in NUB_NEWS_HUBS:
+        if hub not in by_hub:
             continue
+        by_hub[hub].append(candidate)
 
-        published = str(candidate.get("publishedDate") or "")
-        current = newest_by_hub.get(hub)
-        if current is None or published > str(current.get("publishedDate") or ""):
-            newest_by_hub[hub] = candidate
+    selected = []
+    for hub in NUB_NEWS_HUBS:
+        hub_candidates = sorted(
+            by_hub[hub],
+            key=lambda item: str(item.get("publishedDate") or ""),
+            reverse=True,
+        )
+        selected.extend(hub_candidates[:3])
 
-    return [
-        newest_by_hub[hub]
-        for hub in NUB_NEWS_HUBS
-        if hub in newest_by_hub
-    ]
+    return selected
 
 
 def parse_nub_news_article_html(html: str, source_url: str, hub: str) -> Dict[str, Any]:
