@@ -1029,6 +1029,22 @@ provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
 
+### 5 October 2026 — homepage Finance eligibility accuracy
+
+Against `8a1b593`, removed only the empty Finance sidebar pool's arbitrary
+non-AI fallback. Existing money classification, AI exclusion, two-item housing/
+planning enrichment, deduplication and six-card maximum remain unchanged. Fewer
+eligible cards render fewer; an empty pool omits the section. Business, AI,
+Hero/Latest, mobile layout, commercial modules, APIs and backend are unchanged.
+
+Pre-commit RED: 4 failed / 6 passed, exposing unrelated stories labelled Finance.
+Final homepage/component regression: 34 passed across five suites, including all
+10 HomePageV1 tests. The housing fixture was corrected to account for two records
+reserved by the existing earlier pool; production logic was not broadened.
+Production frontend build passed. Existing React fetchPriority and stale
+Browserslist warnings remain. No production operation occurred; deployment and
+acceptance remain separate gates.
+
 ### 5 October 2026 — neutral article-sidebar heading
 
 Against `8e8a0890fe8471366f0702dec37605e646b952dc`, the desktop article-sidebar

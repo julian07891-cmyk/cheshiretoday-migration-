@@ -31,7 +31,7 @@ jest.mock("../components/homepage/TopStoriesGrid", () => ({ stories }) => (
 jest.mock("../components/homepage/LeadSection", () => ({ title, items }) => (
   <section data-lead-section={title}>
     {items.map((item) => (
-      <article key={item.id} data-card-id={item.id}>{item.title}</article>
+      <article key={item.id} data-card-id={item.id} data-card-category={item.category}>{item.title}</article>
     ))}
   </section>
 ));
@@ -125,6 +125,63 @@ const clickButton = async (section, label) => {
     button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
 };
+
+const sidebarCards = title => Array.from(container.querySelectorAll(
+  `aside [data-lead-section="${title}"] [data-card-id]`
+));
+
+test.each([1440, 390])("Finance omits unrelated fallback stories at %ipx", async width => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  await renderHomepage(Array.from({ length: 30 }, (_, index) => makeArticle(index)));
+  expect(sidebarCards('Finance')).toHaveLength(0);
+  expect(container.querySelector('aside [data-lead-section="Finance"]')).toBeNull();
+  expect(container.querySelector('aside').classList.contains('hidden')).toBe(true);
+  expect(container.querySelector('aside').classList.contains('lg:block')).toBe(true);
+});
+
+test("Finance retains a smaller eligible pool without filling unrelated slots", async () => {
+  const articles = Array.from({ length: 30 }, (_, index) => makeArticle(index));
+  for (let index = 10; index < 13; index += 1) {
+    articles[index] = makeArticle(index, {
+      title: `Savings interest update ${index}`, category: 'Finance', section: 'money',
+    });
+  }
+  await renderHomepage(articles);
+  const cards = sidebarCards('Finance');
+  // The existing earlier finance pool reserves the first two eligible stories.
+  expect(cards.map(card => card.textContent)).toEqual([articles[12].title]);
+  expect(cards[0].dataset.cardCategory).toBe('Finance');
+  expect(new Set(cards.map(card => card.dataset.cardId)).size).toBe(cards.length);
+});
+
+test("Finance preserves capped housing enrichment without unrelated fallback", async () => {
+  const articles = Array.from({ length: 30 }, (_, index) => makeArticle(index));
+  for (let index = 15; index < 20; index += 1) {
+    articles[index] = makeArticle(index, { title: `Housing development update ${index}`, section: 'housing' });
+  }
+  await renderHomepage(articles);
+  expect(sidebarCards('Finance').map(card => card.textContent)).toEqual(
+    // The earlier finance pool reserves two; enrichment remains capped at two.
+    articles.slice(17, 19).map(item => item.title)
+  );
+});
+
+test("Business and AI sidebar pools retain their own stories while Finance stays empty", async () => {
+  const articles = Array.from({ length: 12 }, (_, index) => makeArticle(index));
+  for (let index = 12; index < 36; index += 1) {
+    articles.push(makeArticle(index, index < 24 ? {
+      category: 'Business', title: `Company manufacturing investment ${index}`, scope: 'uk',
+    } : {
+      category: 'AI & Tech', title: `Artificial intelligence software update ${index}`, scope: 'uk',
+    }));
+  }
+  await renderHomepage(articles);
+  expect(sidebarCards('Business')).toHaveLength(3);
+  expect(sidebarCards('AI & Tech')).toHaveLength(6);
+  expect(sidebarCards('Business').every(card => card.textContent.startsWith('Company manufacturing'))).toBe(true);
+  expect(sidebarCards('AI & Tech').every(card => card.textContent.startsWith('Artificial intelligence'))).toBe(true);
+  expect(sidebarCards('Finance')).toHaveLength(0);
+});
 
 test("dead Most Read allocation reserves nothing and Latest expands deterministically", async () => {
   const articles = Array.from({ length: 33 }, (_, index) => makeArticle(index));

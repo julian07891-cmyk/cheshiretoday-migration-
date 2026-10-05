@@ -871,14 +871,7 @@ const isMoney = (a) => {
     }
 
 
-    // Fallback: if Mortgages & Savings ends up empty, fill with newest 6 non-AI
-    if (moneyFeed.length === 0) {
-      for (const a of poolRanked) {
-        if (moneyFeed.length >= 6) break;
-        if (isAiTech(a)) continue;
-        pushMoney(a);
-      }
-    }
+    // Keep Finance eligibility-specific; do not fill empty slots with unrelated stories.
 
 // 4c) Finance housing/planning enrichment — capped so Finance is not overtaken by Property
     const isPropertyish = (a) => {
