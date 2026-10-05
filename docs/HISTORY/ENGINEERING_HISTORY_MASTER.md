@@ -1,5 +1,120 @@
 # Cheshire Today — Engineering History Master
 
+## 5 October 2026 reconciliation boundary
+
+This continuation records committed engineering through
+`b83d2c3e4932a9870555b156a4c7e774eed8d226`. Production evidence is bounded to the
+4 October observation, not a claim of 5 October natural-run acceptance. Earlier
+dated records retain their original evidence boundaries. Full chat/PDF recovery
+remains incomplete; see [Source Register](SOURCE_REGISTER.md).
+
+### Selective August–September implementation backfill
+
+These are commit-backed implementation notes, not newly recovered deployment or
+test-run evidence:
+
+- `275e131` (9 August): corrected legacy SEO article canonical identity, with
+  route regression coverage in `test_article_canonical_routes.py`.
+- `9bf8877` (27 August): streamed visible-pool planning state in
+  `cap_visible_articles`, with expanded `test_article_live_pool_cap.py` coverage.
+  Implementation is complete; memory improvement and OOM closure must not be
+  inferred from the commit alone.
+- `f0f1a00`, `54702d6`, `5ec0bdf` (21 August): introduced backend commercial
+  events, the frontend measurement hook/transport, and the contextual article
+  recommendation component/configuration. Later Commercial Trust and homepage
+  guide measurement build on these foundations; their existing acceptance
+  records are not repeated here.
+- `de87f23` (7 September): added safe named article links in ArticlePageV2 and
+  focused content-link tests. No separate deployment date/count is asserted.
+
+## 1–4 October 2026 — editorial precision, presentation and source diversity
+
+### Evidence-led depth and safe excerpts
+
+`41444da` changed only Perplexity generation prompts and direct mocked service
+tests. Ordinary evidence-rich reports are guided toward 400–650 words; substantial
+stories may reach 700–900. These are not quotas: shorter accurate output is
+permitted, with no invented/repeated filler. Primary-source-led research and
+verified names, dates, figures, chronology, attributed responses and confirmed
+next steps are encouraged. Retry refusal pressure was replaced with evidence-led
+wording, including empty output when no usable verified report exists. Provider
+parameters, retry conditions and downstream public-length/editorial routing were
+not redesigned. No new QA count is reconstructed from the number of test functions.
+
+`b98a49e` separated safe display excerpts from raw preview/body classification.
+`select_rss_excerpt` cleans full source text and selects complete sentences with
+a soft size target; it can fall back to available detailed text or return empty,
+without another provider call or arbitrary ellipsis. Stored-summary card/intro
+rendering no longer hard-slices another preview. Raw continuation classification,
+body generation and routing remain distinct. The existing Project State checkpoint
+records 143 backend passes/12 skips and 485 frontend passes, plus build evidence;
+these are historical records, not rerun results. Git proves the work is committed,
+not still local/uncommitted. Existing production articles were not regenerated.
+
+### Presentation and navigation corrections
+
+`74b2a0d`, `dd17d6d` and `40005e8` form a bounded homepage/category/article phase:
+UK fuel-supply impact wording gained a narrow homepage-filter exception; dedicated
+category headers now use canonical Home/Local/UK/Business destinations; desktop
+articles gained up to four distinct further-reading headlines after existing
+related/sponsor content. The sidebar reuses existing fetched records and excludes
+main/related/current items rather than adding another feed request. Project State
+retains their detailed RED/GREEN, frontend/build and scope evidence. These changes
+do not establish a broader editorial-filter or mobile-layout redesign.
+
+### Eligibility before generation
+
+`113c150` routed dated Guardian politics liveblog URLs to hidden Manual Review
+before generation, using the bounded source-format reason and existing category
+accounting. It removed accidental dependence on short output as a format filter,
+without changing the 1,000-character floor, provider prompts or general liveblog
+policy. Existing Project State records 27 focused, 148 requested regression and
+89 additional passes; those are preserved checkpoint results.
+
+`b27a7f1` addressed the longstanding Heswall false positive: Chester Road plus
+feed `location=chester` could satisfy specificity despite the Wirral subject.
+The shared deterministic helper requires the bounded Heswall/Wirral Council/
+Chester Road conflict and absence of independent locality evidence. It routes
+eligible source-stage candidates through existing hidden review before generation
+and protects final locality validation when evidence emerges later. Road names
+are not globally banned; feed-location storage is unchanged. Early review leaves
+Local target/topic/public capacity available; final review preserves existing
+Local/topic accounting while consuming no public slot. Tests cover the confirmed
+case and legitimate/background counterexamples; no historical record was repaired.
+
+### Bounded source expansion and test isolation
+
+`2cd1b6e` added bounded Nub News discovery. `d0b14f5` added Chester and Wilmslow;
+`b515af0` set selection to at most three newest candidates per configured hub.
+Final hubs: Macclesfield, Sandbach, Congleton, Nantwich, Crewe, Alsager, Chester
+and Wilmslow. Existing Local feed priority and downstream eligibility remain
+authoritative; candidates are not guaranteed publication.
+
+`b83d2c3` added Cheshire East Council Media Hub index/release discovery. The
+production call fetches at most five newest release pages, handles index/article
+errors safely, skips incomplete parsed records and does not invent `location` or
+`priority_location`. Ordinary service instances disable both new adapters by
+default; the production global instance explicitly enables them.
+
+**Supplied engineering incident evidence:** the initial unconditional Cheshire
+East integration caused unrelated tests to perform live requests and contaminated
+expected result lists. Constructor feature-gating fixed isolation: disabled by
+default, explicitly enabled in production, without weakening test expectations.
+The committed implementation/tests establish the final gate; the transient failed
+run is supplied evidence, not independently recoverable from the final Git diff.
+
+**Supplied pre-deployment QA:** focused source tests passed; broader regression
+226 passed with six known warnings; Python compilation, `git diff --check` and
+pre-push remote drift checks passed. Protected files remained untouched. No new
+tests/providers were run to reconcile this account.
+
+Source-investigation decisions and their supplied provenance are recorded in
+[Editorial Evolution](../EDITORIAL_EVOLUTION.md#october-2026--separate-discovery-depth-excerpts-and-eligibility).
+The five locality/source commits were deployed together at `b83d2c3`; see
+[Production Timeline](../PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment).
+Deployment/health are verified; source-adapter, single-execution/lock, downstream
+routing and resource acceptance await verified natural-run evidence.
+
 ## 24–26 September 2026 — newsletter evidence and documentation reconciliation
 
 Implementation sequence verified in Git:

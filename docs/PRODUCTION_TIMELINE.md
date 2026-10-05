@@ -1,5 +1,40 @@
 # Cheshire Today — Production Timeline
 
+## 4 October 2026 — combined locality and source-expansion deployment
+
+Reconciled 5 October from the authenticated Render observation supplied/preserved
+in the task, not a new production inspection. Exact deployed SHA:
+`b83d2c3e4932a9870555b156a4c7e774eed8d226`. The combined chain includes `b27a7f1`,
+`2cd1b6e`, `d0b14f5`, `b515af0` and `b83d2c3`; separate deployments are not
+asserted for those individual commits.
+
+| Evidence | Observed value |
+|---|---|
+| Service | `cheshiretoday-migration-` / `srv-d5virmm3jp1c73c9d6tg` |
+| Deployment | `dep-db19qndckfvc73dh6ang`, Deploy succeeded / Live |
+| Instance | `srv-d5virmm3jp1c73c9d6tg-7d974dd84d-w7p9z` |
+| Deployment started | 4 October 2026, 19:39:25 BST |
+| Application startup complete | 19:42:33 BST |
+| Service Live | 19:42:44 BST |
+| Public health | HTTP 200; `{"status":"healthy","service":"cheshire-news"}` |
+| Post-start observation | Same instance serving through approximately 21:04 BST |
+
+The inspected evidence showed no visible crash loop, OOM, fatal traceback or
+post-deployment restart. The Twitter-credentials warning was non-blocking.
+These are bounded observations, not an exhaustive absence-of-errors guarantee.
+Startup registered the morning/midday/evening jobs and started the scheduler;
+registration is not execution evidence.
+
+**Deployment and health verified; natural scheduled-run acceptance pending.**
+This deployment followed the 4 October 18:00 slot. The first required slot was
+5 October 06:00 BST. No verified result for that run is supplied by this
+reconciliation, even though the nominal time has passed. Hub fetch/selection
+counts, Cheshire East parser outcomes, Local review/import counts, lock ownership,
+single execution, duration, memory and cleanup remain unverified for the new run.
+Next: inspect that natural run's retained logs without manually triggering work.
+Implementation/QA provenance: [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md)
+and [Source Register](HISTORY/SOURCE_REGISTER.md).
+
 ## 24–26 September 2026 — suppression, deployment and deliverability evidence
 
 `34ecf74` provider-suppression eligibility was deployed/verified; `5afd7b1`
@@ -26,8 +61,7 @@ changes, not proven to cause later reputation deterioration. No production
 operations were repeated to reconcile these records.
 
 
-> **Reconstruction status:** production chronology reconciled through September 26
-> at `8ed19846ccf9242b646ea38440d71e1f85f59141`, with owner-supplied evidence labelled. A historical “deployed” statement
+> **Reconstruction status:** selected production evidence reconciled through the 4 October rollout at `b83d2c3`, with natural-run acceptance pending and supplied evidence labelled. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose

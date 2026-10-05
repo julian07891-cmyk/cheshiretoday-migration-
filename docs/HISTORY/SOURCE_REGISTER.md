@@ -1,5 +1,54 @@
 # Cheshire Today Reconstruction Source Register
 
+## 5 October 2026 reconciliation sources and limits
+
+### Git and repository evidence
+
+Branch `full-scrape-prod`, local HEAD and local `origin/full-scrape-prod` reference
+matched `b83d2c3e4932a9870555b156a4c7e774eed8d226` at task start. Tracked tree was
+clean; only the two protected untracked files were present. No fresh remote fetch
+is claimed. Git/code/tests establish the October implementation chain and the
+selective earlier backfill; existing Project State supplies historical QA counts
+for excerpt and presentation/liveblog work. Tests were not rerun for this
+documentation-only reconciliation.
+
+### Supplied engineering QA and source research
+
+The owner supplied focused source passes, broader regression **226 passed / six
+known warnings**, successful compile/diff checks and pre-push remote drift check.
+The transient Cheshire East live-network leakage incident and fix are supplied
+engineering evidence: unrelated result lists were contaminated until constructor
+feature-gating disabled ordinary instances and explicitly enabled production;
+expected test results were not weakened. Git independently establishes the final
+gate, not every transient command result.
+
+Source-investigation evidence is also supplied: Alty Post's low relevant RSS
+yield; no obvious normal RSS plus observed AI-agent blocking at alderleyedge.com
+and wilmslow.co.uk; no custom scrapers for those sites; selection of Cheshire East
+Media Hub. No external source/robots recheck was performed for this reconciliation.
+
+### Authenticated operational observation
+
+The preceding authenticated Render read-only observation, reiterated in the
+approved brief, identified deployment `dep-db19qndckfvc73dh6ang` on exact `b83d2c3`,
+service `cheshiretoday-migration-` / `srv-d5virmm3jp1c73c9d6tg`, instance `w7p9z`.
+Start/startup/Live were 4 October 19:39:25/19:42:33/19:42:44 BST, health HTTP 200
+and healthy; same-instance activity was observed through approximately 21:04 BST.
+No visible crash/OOM/fatal traceback/post-deployment restart appeared in the
+inspected evidence; the Twitter warning was non-blocking. See
+[Production Timeline](../PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment)
+for the full instance identity and limitations. This is preserved observation,
+not a new Render inspection or exhaustive log audit.
+
+### Outstanding evidence
+
+No verified result for the first required natural run (5 October 06:00 BST) is
+supplied here. Passing that time does not close acceptance. Source yield, locking,
+single execution, downstream decisions and runtime/resource outcomes remain
+pending. The August documentation architecture remains in use; initial rebuild
+completion is not complete recovery of historical ChatGPT/Codex/PDF sources.
+Those recovery limitations and protected archives remain unchanged.
+
 ## 26 September 2026 reconciliation sources
 
 - **Local Git/code:** branch `full-scrape-prod`, HEAD

@@ -1,5 +1,26 @@
 # Cheshire Today — Roadmap Master
 
+## 5 October 2026 priority reconciliation
+
+Engineering is reconciled through `b83d2c3e4932a9870555b156a4c7e774eed8d226`.
+The October reporting-depth, safe-excerpt, homepage fuel-impact, category-header,
+desktop further-reading, Guardian liveblog and bounded locality/source changes
+are implemented. The latest five-commit source/locality chain is deployed, with
+health verified; **full natural-run production acceptance is not complete**.
+
+**Next acceptance gate:** inspect the first natural scheduled import on `b83d2c3`
+(nominally 5 October 06:00 BST): scheduler identity, one execution/lock ownership,
+Nub discovery/selection, Cheshire East fetch/parser behaviour, downstream Local
+review/import handling, completion and resource stability. The nominal time has
+passed, but this record contains no verified result. Do not manually trigger it
+or weaken filters to increase yield. See [Production Timeline](PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment).
+
+`9bf8877` already implemented visible-pool planning-state streaming. Remaining
+memory work is evidence-led monitoring/diagnosis, not repeating that implementation
+or claiming OOM closure. Unrelated newsletter privacy, Gmail, similarity, analytics
+and QA gates remain open as previously recorded. Earlier dated priorities below
+are historical where superseded by completed work.
+
 ## 26 September 2026 priority reconciliation
 
 Baseline `8ed1984`; [detailed evidence](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
@@ -22,7 +43,7 @@ Amazon Associates optimisation. This is direction for a separate task, not
 implementation approval in this pass.
 
 
-> **Reconstruction status:** Reconciled 26 September 2026 at `8ed19846ccf9242b646ea38440d71e1f85f59141`; newsletter hygiene complete, Gmail investigation/FBL support pending; unrelated roadmap gates preserved.
+> **Reconstruction status:** Reconciled through `b83d2c3` on 5 October 2026; deployment/health verified, natural-run acceptance pending; unrelated roadmap gates preserved.
 
 ## Document purpose
 
@@ -81,7 +102,7 @@ reliability risk.
 | Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | The 13 August run was +174.8 MB net; the 15 August 12:00 run was +162.1 MB with no observable material event-anchor regression. Retained growth remains material and variable; require a broader comparable window before selecting a target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
-| Next | P1 | Current authority reconciliation review | Review and approve the 13 August scheduler/memory evidence update before its documentation-only commit |
+| Next | P1 | Current authority reconciliation review | Review the seven-file reconciliation through `b83d2c3` before any separately authorised documentation commit |
 
 Security and production stability precede feature expansion.
 
@@ -245,11 +266,11 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 - **Completed locally:** Authority synchronisation across the rebuilt set.
 - **Completed locally:** Archive privacy/preservation decision; exact archive
   excluded and privacy-safe repository copy prepared.
-- **Next:** Final read-only review and approved commit of the 13 August authority reconciliation.
+- **Next:** Final review of the reconciliation through `b83d2c3`; commit requires separate approval.
 - **Blocked:** ChatGPT export reconciliation until export is received.
 - **Next:** Systematic Codex-history integration when records are collected and source-ranked.
 - **Deferred:** Historical PDF reconciliation pending source availability and prioritisation.
-- **Monitoring:** Production evidence after the 13 August 18:00 run pending preservation and reconciliation.
+- **Monitoring:** First natural scheduled-run acceptance on `b83d2c3`; earlier reconciled observations remain dated evidence, not new verification.
 
 ## Related records
 

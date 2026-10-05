@@ -1,8 +1,50 @@
 # Cheshire Today — Editorial Evolution
 
-> **Reconstruction status:** editorial policy reconstructed from repository evidence
-> through HEAD `1601ae48be281153e5dd4af0eee0889a26835162`. Later chat-only conclusions and
-> post-HEAD production findings remain unreconciled.
+> **Reconstruction status:** August foundation retained; bounded October continuation reconciled through `b83d2c3` on 5 October 2026. Historical chat/PDF recovery remains incomplete. New-source natural-run acceptance is not established.
+
+## October 2026 — separate discovery, depth, excerpts and eligibility
+
+Five distinct concerns now have explicit implementation boundaries:
+
+1. **Reporting depth (`41444da`):** research additional verified detail when
+   available, with conditional 400–650/700–900-word guidance rather than quotas.
+   Thin evidence permits shorter accurate reports; no padding or invention.
+2. **Excerpt quality (`b98a49e`):** deterministic complete-sentence summaries,
+   fallback to available detailed copy or empty output, without rewriting bodies
+   or sacrificing raw incomplete-preview evidence.
+3. **Publication suitability (`113c150`):** Guardian politics liveblogs enter
+   hidden review on a bounded source-format rule, independent of whether longer
+   AI output could clear the unchanged length floor.
+4. **Locality precision (`b27a7f1`):** Chester Road does not establish Cheshire
+   locality for the confirmed Heswall/Wirral Council conflict without independent
+   local evidence. Early/final hidden review, not a general road ban or feed
+   metadata redesign, addresses the longstanding gap.
+5. **Discovery breadth (`2cd1b6e`, `d0b14f5`, `b515af0`, `b83d2c3`):** eight Nub
+   hubs, at most three newest candidates per hub, plus a production-default
+   five-release Cheshire East Media Hub fetch. Discovery remains subordinate to
+   all ordinary locality/editorial/image/safety gates; council releases are not
+   assigned invented town identities.
+
+**Increasing source coverage must not weaken editorial or locality standards
+merely to increase article volume.** Neither richer copy nor a reputable feed
+confers automatic publication eligibility. Manual Review remains a meaningful
+hidden state, not a failed quota-fill mechanism.
+
+### Source-investigation decisions — supplied evidence
+
+The supplied engineering investigation reports that Alty Post RSS worked but
+yielded too little Cheshire-relevant material to justify integration.
+alderleyedge.com had no obvious RSS and explicit GPTBot/ChatGPT-User blocking was
+observed; wilmslow.co.uk similarly lacked normal RSS and showed explicit AI-agent
+blocking. No custom scraper was built for either. Cheshire East Media Hub was
+selected as the bounded additional source. These observations are attributed
+research evidence, not robots/feed availability rechecked in this reconciliation
+or conclusions reconstructed solely from Git.
+
+Implementation and QA details: [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md).
+Current behaviour: [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md).
+The verified combined deployment does not prove source yield, locality precision
+or successful natural imports: [Production Timeline](PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment).
 
 ## Document purpose
 

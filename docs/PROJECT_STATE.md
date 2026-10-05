@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `d4165800662131cded5cedf064a03cbdef21f531` (`Add homepage guide measurement`, deployed and production-accepted)
-> - **Last repository reconciliation:** 30 September 2026 (mobile homepage news-flow refinement, homepage guide measurement, and UK homepage-filter investigation reconciled; no UK filter-policy change approved)
-> - **Production-verification status:** Production is verified at `d4165800662131cded5cedf064a03cbdef21f531`; local and remote branch SHAs matched, public `/health` returned HTTP 200/healthy, desktop guide strips remained visible, and mobile guide strips remained absent as intended. The mobile homepage refinement and homepage guide measurement are production-accepted. The UK homepage-filter investigation made no approved filter-policy change. Commercial Trust Phase 1 and the earlier affiliate/editorial corrections remain complete. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** still open. Provider suppression hygiene is reconciled. Gmail placement remains under investigation; custom Feedback-ID does not survive the tested Resend/SES paths and support response is pending. Existing unrelated QA gates remain unchanged.
+> - **Application baseline:** `b83d2c3e4932a9870555b156a4c7e774eed8d226` (`Add Cheshire East Media Hub coverage`)
+> - **Last repository reconciliation:** 5 October 2026; committed engineering through `b83d2c3`, with production observations bounded to 4 October.
+> - **Production-verification status:** **Deployment/health verified; natural-run acceptance pending.** Render was Live on the exact baseline and public health returned HTTP 200/healthy on 4 October. Passing the nominal 5 October 06:00 BST slot does not establish a successful run. Prior commercial/homepage acceptance remains historical evidence. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `d4165800662131cded5cedf064a03cbdef21f531`
-- **Verified remote / deployed application baseline:** `d4165800662131cded5cedf064a03cbdef21f531`
-- **Latest application commit:** `Add homepage guide measurement`
-- **Local documentation reconciliation:** deployed application state is reconciled through `d416580`. Mobile homepage news-flow refinement (`609d9d5`, `6afb0b3`) and homepage guide measurement (`d416580`) are production-accepted; public health returned HTTP 200 / healthy. The UK homepage-filter investigation is recorded as investigation-only with the Friday 100/100 candidate caps restored and no UK filter-policy change approved.
+- **Current application baseline:** `b83d2c3e4932a9870555b156a4c7e774eed8d226`
+- **Verified deployed baseline / local origin reference:** `b83d2c3e4932a9870555b156a4c7e774eed8d226`; remote equality before push is supplied QA evidence, not a new remote fetch in this reconciliation.
+- **Latest application commit:** `Add Cheshire East Media Hub coverage`
+- **Documentation reconciliation:** October implementation and selective earlier omissions are recorded in [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md). The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment) separates rollout health from pending natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
 ran at `2f40374`, before later application and documentation revisions.
@@ -191,6 +191,33 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 4 October 2026 — deployed locality and bounded source coverage
+
+The deployed chain is `b27a7f1` (ambiguous local road-name routing), `2cd1b6e`
+(bounded Nub discovery), `d0b14f5` (Chester/Wilmslow hubs), `b515af0` (three
+newest stories per hub), and `b83d2c3` (Cheshire East Media Hub).
+The bounded Heswall/Wirral Council/Chester Road conflict routes to hidden Manual
+Review, early without generation where source evidence suffices and again at the
+final locality guard. It is not a road-name ban or feed-location redesign.
+
+Nub covers Macclesfield, Sandbach, Congleton, Nantwich, Crewe, Alsager, Chester
+and Wilmslow, selecting at most three newest candidates per hub. Cheshire East
+Media Hub fetches at most five release pages in the production path, newest-first,
+with safe index/article failure handling and no invented `location` or
+`priority_location`. Both adapters are explicitly enabled on the global service;
+ordinary `NewsFeedService()` instances default to disabled. Discovery adds
+candidates, not publication entitlement: locality, usefulness, image, duplicate,
+freshness, safety and downstream editorial controls remain authoritative.
+
+Supplied pre-deployment QA: focused source tests passed; broader gate 226 passed
+with six known warnings; compilation, diff check and pre-push remote drift check
+passed. These are historical supplied results, not tests rerun by this documentation
+task. See [Source Register](HISTORY/SOURCE_REGISTER.md) for provenance and the
+test-isolation incident, and [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md)
+for routing/accounting boundaries. Production deployment/health were verified on
+4 October; the first required natural-run gate was 5 October 06:00 BST and remains
+unverified here. Do not trigger an import to complete that evidence.
+
 ### 4 October 2026 — Guardian politics-liveblog eligibility implementation
 
 Against `40005e80272ee5988dbdb7573a01a7727b17b7f9`, the category RSS importer
@@ -300,7 +327,7 @@ an undefined nested filter. Stage A does not change that branch; it remains a
 separate review item. Eligibility is not a guarantee of prominent placement, and
 the deliberately narrow phrases do not recognise every paraphrase.
 
-### 1 October 2026 — excerpt correction, local/uncommitted
+### 1 October 2026 — excerpt correction implementation (`b98a49e`)
 
 Against `41444da57dcc629cc0d746595798617071e104fd`, a deterministic
 `select_rss_excerpt` helper cleans the complete source text and selects complete
@@ -323,8 +350,10 @@ failure before its correction. Final offline backend regression: 143 passed,
 tests across 5 suites, and 485 full-suite tests across 48 suites passed. Production
 frontend build passed; existing React development and stale Browserslist warnings
 remain. No production request, import, provider call or data mutation was made
-for this implementation. This is local implementation evidence, not deployment
-or production acceptance; nothing has been staged, committed, pushed or deployed.
+for this implementation. These counts describe pre-commit local verification.
+The implementation was subsequently committed as `b98a49e` and is included in
+the verified `b83d2c3` deployment; that inclusion does not establish separate
+natural excerpt-quality acceptance or repair historical stored summaries.
 
 The target editorial mix is:
 
@@ -1348,7 +1377,7 @@ Completed and committed:
 
 Still pending:
 
-- reconcile this 15 August authority update through final review and an approved
+- review this reconciliation through `b83d2c3` before a separately approved
   documentation commit;
 - receive and reconcile the ChatGPT export;
 - preserve and reconcile structured Codex history;
@@ -1378,8 +1407,9 @@ No manual import should be triggered solely to accelerate observation.
 1. Keep the isolated short-content `batch_size(250)` change provisionally and
    continue cumulative memory monitoring; its two-run phase improvement does not
    close `QA-OPS-001`.
-2. Review the visible-pool lifecycle separately using current heap/RSS evidence;
-   do not combine another memory change with the batching decision.
+2. Observe visible-pool memory after the committed `9bf8877` planning-state
+   streaming change; do not describe that implementation as still pending or
+   infer OOM closure without production evidence.
 3. Continue Weekly Roundup delivery, bounce and engagement monitoring without
    treating provider acceptance as final inbox delivery.
 4. Investigate the separate Apple Mail/iPhone management-email CTA compatibility
@@ -1548,6 +1578,7 @@ Register. No nonexistent future history file is linked here.
 
 Complete historical reconstruction has **not** yet been achieved.
 
-This file is the concise repository operational authority. This 11 August update
-becomes current repository evidence only after final review and the approved
-commit. Production facts that can change must still be freshly verified.
+This file is the concise repository operational authority. The 5 October
+reconciliation records implementation through `b83d2c3` and production evidence
+through the bounded 4 October observation. It awaits review and a separately
+approved documentation commit; mutable production facts require fresh evidence.
