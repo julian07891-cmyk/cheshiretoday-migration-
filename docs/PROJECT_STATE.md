@@ -1029,6 +1029,20 @@ provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
 
+### 5 October 2026 — neutral article-sidebar heading
+
+Against `8e8a0890fe8471366f0702dec37605e646b952dc`, the desktop article-sidebar
+heading changes from “More in {pillarLabel}” to “Related stories”: UK can map to
+Finance and related results can include other categories. This is heading copy
+only; the existing badge, API request/limit, selection/order, sponsor/newsletter
+fallback, Further reading and mobile behaviour are unchanged.
+
+Pre-commit verification: the UK/mixed-category regression failed on “More in
+Finance” (1 failed, 30 passed); after the one-line correction, 49 tests across
+four article/related-story suites passed. Production frontend build passed with
+the existing stale Browserslist-data warning. Deployment and production
+acceptance remain separate gates; no production operation was performed.
+
 ### UX/commercial refinement batch 1 — deployed; production health verified
 
 Implemented against `f4fb2bd28060655c3d3e6465bfc8737d36b40e28` and deployed in

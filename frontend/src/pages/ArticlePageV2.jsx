@@ -1461,7 +1461,7 @@ export default function ArticlePageV2({ categories }) {
               <div className="space-y-6 md:space-y-8">
                 <div className="rounded-xl border border-slate-200/60 dark:border-gray-800 bg-white/70 dark:bg-transparent p-4">
                   <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold">More in {pillarLabel}</h3>
+                  <h3 className="text-sm font-bold">Related stories</h3>
                   <span className="text-[11px] px-2 py-1 rounded bg-muted text-muted-foreground">
                     {pillarLabel}
                   </span>

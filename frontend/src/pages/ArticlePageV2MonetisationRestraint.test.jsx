@@ -21,14 +21,14 @@ jest.mock("../config/contextualRecommendations", () => ({
 jest.mock("../components/NewsHeader", () => () => <header>Cheshire Today</header>);
 jest.mock("../components/NewsFooter", () => () => <footer>Footer newsletter</footer>);
 jest.mock("../components/FestiveTheme", () => () => null);
-jest.mock("../components/RelatedArticles", () => function MockRelated({ articleId, onResultsChange }) {
+jest.mock("../components/RelatedArticles", () => function MockRelated({ articleId, onResultsChange, ...props }) {
   const ReactModule = require("react");
   ReactModule.useEffect(() => {
     if (!mockUseRealRelated) onResultsChange?.(mockRelatedResults, { articleId, loading: false });
   }, [articleId, onResultsChange]);
   if (mockUseRealRelated) {
     const RealRelated = jest.requireActual('../components/RelatedArticles').default;
-    return <RealRelated articleId={articleId} limit={6} variant="sidebar" onArticleClick={() => {}} onResultsChange={onResultsChange} />;
+    return <RealRelated {...props} articleId={articleId} onResultsChange={onResultsChange} />;
   }
   return <div data-testid="related-articles">Related articles</div>;
 });
@@ -122,6 +122,30 @@ const renderArticle = async (width) => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
 };
+
+test("UK article uses a neutral sidebar heading for mixed-category related results", async () => {
+  mockUseRealRelated = true;
+  mockLoadPublicArticle.mockResolvedValue({ ...article, category: "UK News" });
+  const related = [
+    { ...article, id: "related-uk", category: "UK News", title: "National transport update" },
+    { ...article, id: "related-business", category: "Business", title: "Business investment update" },
+  ];
+  global.fetch.mockImplementation(async url => ({
+    ok: true,
+    json: async () => String(url).includes('/api/related-articles/')
+      ? related : String(url).includes('/api/articles?') ? stories : [],
+  }));
+  await renderArticle(1440);
+
+  const sidebar = container.querySelector('aside');
+  expect(sidebar.querySelector('h3').textContent).toBe('Related stories');
+  expect(sidebar.textContent).not.toContain('More in Finance');
+  related.forEach(item => expect(sidebar.textContent).toContain(item.title));
+  const requests = global.fetch.mock.calls
+    .map(([url]) => String(url)).filter(url => url.includes('/api/related-articles/'));
+  expect(requests).toHaveLength(1);
+  expect(requests[0]).toMatch(/\/api\/related-articles\/article-1\?limit=6$/);
+});
 
 test("desktop keeps a genuine sponsor after related editorial content and one inline newsletter", async () => {
   mockSponsorKind = "genuine";
