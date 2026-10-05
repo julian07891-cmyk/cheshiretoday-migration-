@@ -1533,6 +1533,21 @@ class NewsFeedService:
         # Fallback to current time
         return datetime.now(timezone.utc)
     
+    def _published_date_sort_key(self, value) -> datetime:
+        """Return a comparable UTC datetime for mixed article date values."""
+        if isinstance(value, datetime):
+            return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+        raw = str(value or "").strip()
+        if raw:
+            try:
+                parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+
+        return datetime.min.replace(tzinfo=timezone.utc)
+
     def _is_cheshire_related(self, title: str, description: str) -> bool:
         """Strict local check for genuine Cheshire civic/community relevance."""
         text = f"{title} {description}".lower()
@@ -2250,9 +2265,9 @@ class NewsFeedService:
                 unique_nub.append(article)
 
         # Sort each group by date (newest first)
-        unique_cheshire.sort(key=lambda x: x.get('publishedDate', ''), reverse=True)
-        unique_others.sort(key=lambda x: x.get('publishedDate', ''), reverse=True)
-        unique_nub.sort(key=lambda x: x.get('publishedDate', ''), reverse=True)
+        unique_cheshire.sort(key=lambda x: self._published_date_sort_key(x.get('publishedDate')), reverse=True)
+        unique_others.sort(key=lambda x: self._published_date_sort_key(x.get('publishedDate')), reverse=True)
+        unique_nub.sort(key=lambda x: self._published_date_sort_key(x.get('publishedDate')), reverse=True)
         
         # CHESHIRE LIVE FIRST, then existing local feeds, then bounded Nub coverage
         all_articles = unique_cheshire + unique_others + unique_nub

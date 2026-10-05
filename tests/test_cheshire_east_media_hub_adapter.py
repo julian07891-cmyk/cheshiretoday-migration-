@@ -244,3 +244,51 @@ def test_fetch_local_feeds_only_includes_cheshire_east_media_hub(monkeypatch):
     assert item["is_cheshire_related"] is True
     assert "location" not in item
     assert "priority_location" not in item
+
+
+def test_fetch_local_feeds_only_handles_mixed_datetime_and_string_dates(monkeypatch):
+    import asyncio
+    from datetime import datetime, timezone
+    from backend.app.news_feed_service import NewsFeedService
+
+    service = NewsFeedService(enable_cheshire_east_media_hub=True)
+
+    async def fake_fetch_feed(feed_key):
+        if feed_key == "warrington_guardian":
+            return [{
+                "title": "Existing local story",
+                "summary": "Existing local summary",
+                "publishedDate": datetime(2026, 10, 5, 4, 30, tzinfo=timezone.utc),
+                "source_url": "https://example.com/existing-local",
+                "image": "https://example.com/existing.jpg",
+            }]
+        return []
+
+    async def fake_media_hub(**_kwargs):
+        return [{
+            "title": "Cheshire East story",
+            "summary": "Council release",
+            "content": "Council release body",
+            "publishedDate": "2026-10-05T06:00:00+0100",
+            "source_url": "https://www.cheshireeast.gov.uk/example.aspx",
+            "image": "https://www.cheshireeast.gov.uk/images/example.png",
+            "source": "Cheshire East Council",
+            "category": "Local News",
+            "is_real_news": True,
+            "is_local_source": True,
+            "is_local_feed": True,
+        }]
+
+    service.fetch_feed = fake_fetch_feed
+    monkeypatch.setattr(
+        news_feed_module,
+        "fetch_cheshire_east_media_hub",
+        fake_media_hub,
+    )
+
+    result = asyncio.run(service.fetch_local_feeds_only())
+
+    assert [item["title"] for item in result] == [
+        "Cheshire East story",
+        "Existing local story",
+    ]
