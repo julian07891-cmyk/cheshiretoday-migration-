@@ -909,16 +909,19 @@ const isMoney = (a) => {
 
 
 
-// 5) Latest feed (36) — true newest-first, non-exclusive, initially displays 12
-    // Keep the wider homepage strategy untouched. Latest alone uses the full eligible basePool.
+// 5) Latest feed (36) — true newest-first, excluding the active Hero, initially displays 12
+    // Keep the wider homepage strategy untouched. Latest uses the full eligible basePool
+    // except for the article already occupying the dominant Hero position.
     const latestCards = [];
     const latestSeen = new Set();
+    const heroKey = articleKey(heroArticle);
 
     const pushLatest = (a, overrideCategory = null) => {
       if (latestCards.length >= 36) return;
 
       const k = articleKey(a);
       if (!k) return;
+      if (heroKey && k === heroKey) return;
       if (latestSeen.has(k)) return;
       const titleKey = String(a?.title || "").trim().toLowerCase();
       if (

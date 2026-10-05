@@ -137,14 +137,14 @@ test("dead Most Read allocation reserves nothing and Latest expands deterministi
 
   expect(sectionCards("Latest")).toHaveLength(12);
   expect(sectionCards("Latest").map((card) => card.textContent)).toEqual(
-    articles.slice(0, 12).map((article) => article.title)
+    articles.slice(1, 13).map((article) => article.title)
   );
   expect(sectionCards("More stories")).toHaveLength(12);
 
   await clickButton(latest, "Show more");
-  expect(sectionCards("Latest")).toHaveLength(33);
+  expect(sectionCards("Latest")).toHaveLength(32);
   expect(sectionCards("Latest").map((card) => card.textContent)).toEqual(
-    articles.map((article) => article.title)
+    articles.slice(1).map((article) => article.title)
   );
   expect(latest.textContent).not.toContain("Show more");
 
@@ -211,10 +211,12 @@ test("Latest keeps approved unique stories only and hides an unnecessary toggle"
 
   const latestCards = sectionCards("Latest");
   expect(latestCards.map((card) => card.textContent)).toEqual([
-    articles[0].title,
     duplicateTitle,
     articles[3].title,
   ]);
+  expect(latestCards.map((card) => card.textContent)).not.toContain(
+    container.querySelector("[data-hero-title]")?.getAttribute("data-hero-title")
+  );
   expect(new Set(latestCards.map((card) => card.getAttribute("data-card-id"))).size)
     .toBe(latestCards.length);
   expect(sectionByTitle("Latest").textContent).not.toContain("Show more");
