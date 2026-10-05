@@ -3,10 +3,33 @@
 ## 5 October 2026 reconciliation boundary
 
 This continuation records committed engineering through
-`b83d2c3e4932a9870555b156a4c7e774eed8d226`. Production evidence is bounded to the
-4 October observation, not a claim of 5 October natural-run acceptance. Earlier
+`c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40`, following documentation commit
+`109134b`. Production evidence now includes the 5 October 12:00 post-hotfix
+natural-run acceptance, **APPROVED WITH OBSERVATIONS**. Earlier
 dated records retain their original evidence boundaries. Full chat/PDF recovery
 remains incomplete; see [Source Register](SOURCE_REGISTER.md).
+
+### 5 October — mixed local publication-date correction
+
+The 06:00 natural import on `b83d2c3` failed during local aggregation with
+`'<' not supported between instances of 'datetime.datetime' and 'str'`.
+Cleanup/wrapper completion did not make that import successful. The exact failure
+was reproduced locally by a RED regression before `c4a977b` (`Handle mixed local
+feed publication dates`). Its `_published_date_sort_key` accepts datetimes and
+ISO strings, treats naive values as UTC, and puts missing/invalid values at an
+aware `datetime.min`. All three local groups use comparable keys newest-first;
+stored source dates and Cheshire Live/other/Nub group priority are unchanged.
+The committed regression is in `tests/test_cheshire_east_media_hub_adapter.py`.
+
+Supplied GREEN verification: focused adapter suite **8 passed**; broader gate
+**227 passed, 6 known warnings**; compile and `git diff --check` passed. These
+are preserved engineering results, not tests rerun by this documentation task.
+The corrective deployment became Live at 06:42:11 BST; the first post-hotfix
+natural article run, at 12:00, completed in 124.16 seconds with no recurrence and
+with local processing completed. Gate closed **APPROVED WITH OBSERVATIONS**.
+See [Production Timeline](../PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance)
+for runtime counts, resource evidence and the retained source-count/editorial
+limitations; unrelated memory/QA and historical-recovery gates are not closed.
 
 ### Selective August–September implementation backfill
 
@@ -112,8 +135,9 @@ Source-investigation decisions and their supplied provenance are recorded in
 [Editorial Evolution](../EDITORIAL_EVOLUTION.md#october-2026--separate-discovery-depth-excerpts-and-eligibility).
 The five locality/source commits were deployed together at `b83d2c3`; see
 [Production Timeline](../PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment).
-Deployment/health are verified; source-adapter, single-execution/lock, downstream
-routing and resource acceptance await verified natural-run evidence.
+Deployment/health were verified at that checkpoint. The subsequent 06:00 failure,
+`c4a977b` correction and accepted 12:00 natural run are recorded above; per-hub
+selection and exact Cheshire East contribution remain runtime evidence limits.
 
 ## 24–26 September 2026 — newsletter evidence and documentation reconciliation
 

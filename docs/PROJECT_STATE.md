@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `b83d2c3e4932a9870555b156a4c7e774eed8d226` (`Add Cheshire East Media Hub coverage`)
-> - **Last repository reconciliation:** 5 October 2026; committed engineering through `b83d2c3`, with production observations bounded to 4 October.
-> - **Production-verification status:** **Deployment/health verified; natural-run acceptance pending.** Render was Live on the exact baseline and public health returned HTTP 200/healthy on 4 October. Passing the nominal 5 October 06:00 BST slot does not establish a successful run. Prior commercial/homepage acceptance remains historical evidence. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40` (`Handle mixed local feed publication dates`)
+> - **Last repository reconciliation:** 5 October 2026; `109134b` committed the earlier seven-file reconciliation; this update records `c4a977b` and its first post-hotfix natural run.
+> - **Production-verification status:** **Production accepted on first post-hotfix natural run — APPROVED WITH OBSERVATIONS.** The 5 October 06:00 run on `b83d2c3` failed with mixed-date sorting; `c4a977b` became Live at 06:42:11 BST and the 12:00 natural run completed without recurrence. Source-count limitations and a separate editorial-filter observation remain below. Prior commercial/homepage acceptance remains historical evidence. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,10 +36,10 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `b83d2c3e4932a9870555b156a4c7e774eed8d226`
-- **Verified deployed baseline / local origin reference:** `b83d2c3e4932a9870555b156a4c7e774eed8d226`; remote equality before push is supplied QA evidence, not a new remote fetch in this reconciliation.
-- **Latest application commit:** `Add Cheshire East Media Hub coverage`
-- **Documentation reconciliation:** October implementation and selective earlier omissions are recorded in [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md). The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment) separates rollout health from pending natural-run acceptance.
+- **Current application baseline:** `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40`
+- **Verified deployed baseline:** `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40`; local/remote equality after push is supplied evidence, not a new remote fetch in this reconciliation.
+- **Latest application commit:** `Handle mixed local feed publication dates`
+- **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
 ran at `2f40374`, before later application and documentation revisions.
@@ -191,6 +191,29 @@ See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 
 ## 6. Current editorial operating model
 
+### 5 October 2026 — mixed-date hotfix accepted with observations
+
+The 06:00 run on `b83d2c3` failed comparing `datetime.datetime` with `str` in
+local-feed sorting; wrapper completion did not mean import success. RED local
+reproduction preceded `c4a977b`'s comparable date-sort keys. Supplied QA: **8 passed**
+focused, **227 passed / 6 known warnings** broader regression, compile/diff checks
+passed. No tests were rerun for this documentation update.
+
+Deployment `dep-db1jg8lg1s2s739nhsr0` became Live at 06:42:11 BST. The first
+post-hotfix natural article run at 12:00 acquired `article_gen_2026100511` once,
+completed at 12:02:04 BST in 124.16 seconds, and progressed through local processing
+without the previous exception or observed OOM/restart/fatal error. It logged 218
+local candidates (213 with images), including 21 Nub candidates; retained/imported
+Local 7, UK 3, Finance 1, Business 5, Tech 4 are not all-public counts. Manual
+Review and rejection safeguards remained active.
+
+**APPROVED WITH OBSERVATIONS:** Nub per-hub selection counts and Cheshire East's
+exact contribution within “other” were not separately logged; code/tests, not
+runtime totals, prove the three-per-hub bound. The “Cheshire clean energy plan
+could create …” crime-like rejection remains a separate non-blocking editorial
+observation, not a hotfix failure or permission to change filters. Full deployment,
+source and resource evidence: [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance).
+
 ### 4 October 2026 — deployed locality and bounded source coverage
 
 The deployed chain is `b27a7f1` (ambiguous local road-name routing), `2cd1b6e`
@@ -215,8 +238,8 @@ passed. These are historical supplied results, not tests rerun by this documenta
 task. See [Source Register](HISTORY/SOURCE_REGISTER.md) for provenance and the
 test-isolation incident, and [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md)
 for routing/accounting boundaries. Production deployment/health were verified on
-4 October; the first required natural-run gate was 5 October 06:00 BST and remains
-unverified here. Do not trigger an import to complete that evidence.
+4 October. The 5 October 06:00 failure and successful post-hotfix 12:00 acceptance
+are recorded above; no manual import was used for acceptance.
 
 ### 4 October 2026 — Guardian politics-liveblog eligibility implementation
 
@@ -1377,8 +1400,8 @@ Completed and committed:
 
 Still pending:
 
-- review this reconciliation through `b83d2c3` before a separately approved
-  documentation commit;
+- the earlier seven-file reconciliation was reviewed and committed as `109134b`;
+  the current hotfix-acceptance documentation update awaits separate review/commit;
 - receive and reconcile the ChatGPT export;
 - preserve and reconcile structured Codex history;
 - reconcile historical PDFs;
@@ -1579,6 +1602,7 @@ Register. No nonexistent future history file is linked here.
 Complete historical reconstruction has **not** yet been achieved.
 
 This file is the concise repository operational authority. The 5 October
-reconciliation records implementation through `b83d2c3` and production evidence
-through the bounded 4 October observation. It awaits review and a separately
-approved documentation commit; mutable production facts require fresh evidence.
+reconciliation was committed as `109134b`. This update records implementation
+through `c4a977b` and its 5 October 12:00 natural-run acceptance, APPROVED WITH
+OBSERVATIONS. This documentation update awaits separate review/commit; mutable
+production facts require fresh evidence.

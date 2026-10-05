@@ -40,12 +40,28 @@ inspected evidence; the Twitter warning was non-blocking. See
 for the full instance identity and limitations. This is preserved observation,
 not a new Render inspection or exhaustive log audit.
 
-### Outstanding evidence
+### Post-hotfix acceptance evidence and remaining limits
 
-No verified result for the first required natural run (5 October 06:00 BST) is
-supplied here. Passing that time does not close acceptance. Source yield, locking,
-single execution, downstream decisions and runtime/resource outcomes remain
-pending. The August documentation architecture remains in use; initial rebuild
+The earlier reconciliation was committed as `109134b`. Subsequent authenticated
+Render read-only observations, reiterated in the approved brief, establish the
+06:00 `b83d2c3` mixed datetime/string failure, corrective `c4a977b` deployment
+`dep-db1jg8lg1s2s739nhsr0` Live at 06:42:11 BST, and the first post-hotfix natural
+article run at 12:00 on instance `jnkrn`. One observed execution acquired
+`article_gen_2026100511`, completed in 124.16 seconds, and passed the former local
+failure point without recurrence. **APPROVED WITH OBSERVATIONS** closes this
+rollout gate. [Production Timeline](../PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance)
+owns the full deployment, source, retained-record and resource evidence.
+
+Git establishes the date-sort helper and regression test. Exact RED reproduction
+and GREEN **8 passed / 227 passed, 6 known warnings**, compile/diff success are
+supplied engineering evidence, not rerun here. Nub per-hub selected counts are
+not logged (the three-per-hub bound is code/test evidence); Cheshire East's exact
+contribution to “other” is not separately logged. The truncated “Cheshire clean
+energy plan could create …” crime-like rejection remains a separate non-blocking
+editorial observation, not proven misclassification or a hotfix failure.
+No new production inspection or mutation was performed to reconcile these records.
+
+The August documentation architecture remains in use; initial rebuild
 completion is not complete recovery of historical ChatGPT/Codex/PDF sources.
 Those recovery limitations and protected archives remain unchanged.
 

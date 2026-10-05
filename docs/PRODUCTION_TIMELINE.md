@@ -1,5 +1,84 @@
 # Cheshire Today — Production Timeline
 
+## 5 October 2026 — mixed-date hotfix production acceptance
+
+**APPROVED WITH OBSERVATIONS — production accepted on the first post-hotfix
+natural article run.** Evidence is the preceding authenticated Render read-only
+inspection, reiterated in the approved documentation brief; no production action
+or new test run was performed to record it. Times below are BST.
+
+### Original incident and correction
+
+The 06:00 scheduled run on `b83d2c3` acquired `article_gen_2026100505`, then failed
+at 06:01:27.908 with the comparison error
+`'<' not supported between instances of 'datetime.datetime' and 'str'` during
+local-feed aggregation. Cleanup and the scheduler wrapper returned at 06:01:32.844;
+their completion messages did not establish a successful import. Four UK records
+had been retained, including one explicitly hidden for Manual Review.
+
+The exact failure was reproduced locally with a RED regression test. Commit
+`c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40` (`Handle mixed local feed publication
+dates`) replaces raw mixed-date sort keys with comparable timezone-aware date
+keys in all three local-feed groups; source values and group priority remain
+unchanged. Supplied GREEN QA: **8 passed** focused Cheshire East adapter tests;
+**227 passed, 6 known warnings** broader regression; compilation and
+`git diff --check` passed. See [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md).
+
+### Corrective deployment and natural run
+
+| Evidence | Observed value |
+|---|---|
+| SHA | `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40` |
+| Service | `cheshiretoday-migration-` / `srv-d5virmm3jp1c73c9d6tg` |
+| Deployment | `dep-db1jg8lg1s2s739nhsr0`, Deploy succeeded — Live |
+| Started / startup complete / Live | 5 October 06:39:47 / 06:42:07 / 06:42:11 BST |
+| Instance | `srv-d5virmm3jp1c73c9d6tg-8445df675c-jnkrn` |
+| First post-hotfix natural article run | 5 October 12:00:00.001 BST; midday cron, scheduled at 12:00 BST |
+| Lock | `article_gen_2026100511`, acquired at 12:00:00.252 BST |
+| Execution | One observed execution; no duplicate/overlap observed |
+| Completion | Wrapper/scheduler returned at 12:02:04.160 BST; 124.16 seconds |
+
+Unlike the failed morning run, this run explicitly logged local-fetch and
+local-processing completion, `Hybrid import complete`, and import return.
+The previous datetime/string comparison exception did not recur. No `TypeError`,
+`Error in hybrid news import`, `Error in generate_articles`, traceback or
+error-level log appeared in the inspected 11:45–13:00 BST interval. No OOM,
+crash loop, unexpected restart or fatal traceback was observed. Separate lock
+release/ownership-token evidence was not retrieved; acquisition and the single
+execution are the observed evidence.
+
+### Source and editorial results
+
+- All-feed candidates **1,917**; local candidates **218**, **213** with images.
+  Completed local aggregation: **34 Cheshire Live + 163 other + 21 Nub News**.
+- Retained/imported counts: **Local 7, UK 3, Finance 1, Business 5, Tech 4**.
+  These may include Manual Review records and are **not all-public publication
+  counts**. The human-readable final summary omitted Finance; the dedicated
+  metric recorded one. Manual Review, public-cap and existing rejection/image/
+  duplicate safeguards remained active.
+- All eight Nub hubs returned HTTP 200: Macclesfield, Sandbach, Congleton,
+  Nantwich, Crewe, Alsager, Chester and Wilmslow. Aggregation recorded 21 Nub
+  candidates. Per-hub selected counts were not logged: runtime does not
+  independently prove the three-per-hub bound; code/tests provide that evidence.
+- Cheshire East Media Hub index and five release pages returned HTTP 200; no
+  source-specific HTTP/parser failure was observed. Its exact contribution
+  inside the 163 “other” candidates was not separately logged and is not inferred.
+
+### Resources and retained observations
+
+Current RSS: **169.9 MB** initially, **260.3 MB** after local fetching,
+**271.0 MB** after local processing, **406.5 MB** finally; final `rss_mb` field
+**404.8 MB**. Python heap peak **96.8 MB**, final current heap **0.5 MB**.
+Cleanup read **4,441 documents per pass**, removing **0** records. These bounded
+results do not close the separate cumulative-memory/OOM finding.
+
+The two source-count limitations above remain. A crime-like filter rejection of
+a headline beginning “Cheshire clean energy plan could create …” is a separate
+non-blocking editorial observation; the truncated log cannot establish whether
+classification was correct. It is not a hotfix failure or authority to change
+filters. The rollout acceptance gate is closed **APPROVED WITH OBSERVATIONS**;
+unrelated QA and historical-recovery limitations remain open.
+
 ## 4 October 2026 — combined locality and source-expansion deployment
 
 Reconciled 5 October from the authenticated Render observation supplied/preserved
@@ -25,13 +104,15 @@ These are bounded observations, not an exhaustive absence-of-errors guarantee.
 Startup registered the morning/midday/evening jobs and started the scheduler;
 registration is not execution evidence.
 
-**Deployment and health verified; natural scheduled-run acceptance pending.**
+**At the 4 October checkpoint: deployment and health verified; natural scheduled-run acceptance pending.**
 This deployment followed the 4 October 18:00 slot. The first required slot was
 5 October 06:00 BST. No verified result for that run is supplied by this
 reconciliation, even though the nominal time has passed. Hub fetch/selection
 counts, Cheshire East parser outcomes, Local review/import counts, lock ownership,
 single execution, duration, memory and cleanup remain unverified for the new run.
-Next: inspect that natural run's retained logs without manually triggering work.
+Subsequent evidence: the 06:00 run failed; the corrective `c4a977b` deployment
+and accepted 12:00 run are recorded above. This preserves the original checkpoint,
+not a current pending gate.
 Implementation/QA provenance: [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md)
 and [Source Register](HISTORY/SOURCE_REGISTER.md).
 
@@ -61,7 +142,7 @@ changes, not proven to cause later reputation deterioration. No production
 operations were repeated to reconcile these records.
 
 
-> **Reconstruction status:** selected production evidence reconciled through the 4 October rollout at `b83d2c3`, with natural-run acceptance pending and supplied evidence labelled. A historical “deployed” statement
+> **Reconstruction status:** selected production evidence reconciled through the 5 October `c4a977b` natural-run acceptance, APPROVED WITH OBSERVATIONS, with supplied evidence labelled. A historical “deployed” statement
 > is retained as a dated claim unless matching live verification is recorded.
 
 ## Document purpose

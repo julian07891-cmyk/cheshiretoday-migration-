@@ -2,18 +2,19 @@
 
 ## 5 October 2026 priority reconciliation
 
-Engineering is reconciled through `b83d2c3e4932a9870555b156a4c7e774eed8d226`.
+Engineering is reconciled through `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40`.
 The October reporting-depth, safe-excerpt, homepage fuel-impact, category-header,
 desktop further-reading, Guardian liveblog and bounded locality/source changes
-are implemented. The latest five-commit source/locality chain is deployed, with
-health verified; **full natural-run production acceptance is not complete**.
+are implemented. The source/locality chain and mixed-date hotfix are deployed;
+**production accepted on first post-hotfix natural run — APPROVED WITH OBSERVATIONS**.
 
-**Next acceptance gate:** inspect the first natural scheduled import on `b83d2c3`
-(nominally 5 October 06:00 BST): scheduler identity, one execution/lock ownership,
-Nub discovery/selection, Cheshire East fetch/parser behaviour, downstream Local
-review/import handling, completion and resource stability. The nominal time has
-passed, but this record contains no verified result. Do not manually trigger it
-or weaken filters to increase yield. See [Production Timeline](PRODUCTION_TIMELINE.md#4-october-2026--combined-locality-and-source-expansion-deployment).
+**Acceptance gate closed:** the 5 October 06:00 `b83d2c3` run failed on mixed
+datetime/string sorting; `c4a977b` corrected it and the 12:00 natural run completed
+once with its lock and downstream local processing, without recurrence. Retain
+the unlogged Nub per-hub selection and exact Cheshire East contribution limits,
+plus the separate non-blocking “Cheshire clean energy plan could create …”
+crime-like-filter observation. No filter change is authorised. See
+[Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance).
 
 `9bf8877` already implemented visible-pool planning-state streaming. Remaining
 memory work is evidence-led monitoring/diagnosis, not repeating that implementation
@@ -43,7 +44,7 @@ Amazon Associates optimisation. This is direction for a separate task, not
 implementation approval in this pass.
 
 
-> **Reconstruction status:** Reconciled through `b83d2c3` on 5 October 2026; deployment/health verified, natural-run acceptance pending; unrelated roadmap gates preserved.
+> **Reconstruction status:** Reconciled through `c4a977b` on 5 October 2026; first post-hotfix natural run APPROVED WITH OBSERVATIONS; unrelated roadmap gates preserved.
 
 ## Document purpose
 
@@ -102,7 +103,7 @@ reliability risk.
 | Monitoring | P0 | Broader Render memory stability after duplicate-cleanup mitigation | The 13 August run was +174.8 MB net; the 15 August 12:00 run was +162.1 MB with no observable material event-anchor regression. Retained growth remains material and variable; require a broader comparable window before selecting a target |
 | Completed | P1 | Synchronise documentation authority | Master, state, source, QA and roadmap records aligned after local completion of Phases 1–7.3 |
 | Completed | P1 | Archive privacy/preservation decision | Exact archive retained locally and excluded; privacy-safe repository derivative prepared |
-| Next | P1 | Current authority reconciliation review | Review the seven-file reconciliation through `b83d2c3` before any separately authorised documentation commit |
+| Completed | P1 | October authority reconciliation | Seven-file reconciliation committed as `109134b`; current hotfix-acceptance documentation awaits separate review/commit |
 
 Security and production stability precede feature expansion.
 
@@ -266,11 +267,11 @@ Completion refers to the defined item; residual findings remain in [Open Finding
 - **Completed locally:** Authority synchronisation across the rebuilt set.
 - **Completed locally:** Archive privacy/preservation decision; exact archive
   excluded and privacy-safe repository copy prepared.
-- **Next:** Final review of the reconciliation through `b83d2c3`; commit requires separate approval.
+- **Completed:** Seven-file reconciliation through `b83d2c3` committed as `109134b`; hotfix-acceptance documentation awaits separate review/commit.
 - **Blocked:** ChatGPT export reconciliation until export is received.
 - **Next:** Systematic Codex-history integration when records are collected and source-ranked.
 - **Deferred:** Historical PDF reconciliation pending source availability and prioritisation.
-- **Monitoring:** First natural scheduled-run acceptance on `b83d2c3`; earlier reconciled observations remain dated evidence, not new verification.
+- **Completed with observations:** First post-hotfix natural article run on `c4a977b`, 5 October 12:00 BST; source-count limitations and separate editorial observation retained. Wider memory monitoring remains open.
 
 ## Related records
 
