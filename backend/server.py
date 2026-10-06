@@ -150,6 +150,7 @@ from app.article_view_attribution import (
     normalise_article_view_attribution,
     parse_article_view_tracking_input,
 )
+from app.public_article_eligibility import is_public_article_editorially_eligible
 
 # Stripe integration for paid job listings
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionResponse, CheckoutStatusResponse, CheckoutSessionRequest
@@ -4987,150 +4988,14 @@ async def get_articles(
             editorial_filter_started = time.perf_counter() if homepage_timing_enabled else None
             UK_FILTER_NOISE = os.getenv("UK_FILTER_NOISE", "1") not in ("0", "false", "False")
             if UK_FILTER_NOISE and (uk_articles or local_articles):
-                import re
-                econ_hint = re.compile(
-                    r"\b(tax|budget|inflation|interest\s*rate|rates|mortgage|rent|wages|jobs|growth|economy|economic|"
-                    r"business|finance|markets?|prices?|bills?|energy|housing|trade|tariff|investment)\b",
-                    re.I,
-                )
-                noise_kw = re.compile(
-                    r"\b(the\s+papers|on\s+ropes|nightmare\s+for|grop(?:e|ing)|pitch\s+invader)\b",
-                    re.I,
-                )
-
-                def is_noise_uk(a: dict) -> bool:
-                    cat = (a.get("category") or "").lower()
-                    src = (a.get("source") or "").lower()
-                    url = (a.get("source_url") or "").lower()
-                    title = (a.get("title") or "").lower()
-                    summary = (a.get("summary") or "").lower()
-                    text_meta = f"{title} {summary}"
-
-                    # Sports + highlight/video clips
-                    if "sport" in cat or "sport" in src or "/sport/" in url or "skysports" in url:
-                        return True
-                    if "/watch/" in url or "/video" in url or "watch video" in title:
-                        return True
-
-                    # Tabloid/paper-roundups + low-signal drama
-                    if noise_kw.search(text_meta):
-                        return True
-
-                    # Politics drama in UK News unless it has clear economic impact
-                    if ("uk news" in cat) and re.search(r"\b(mp|labour|conservative|tory|starmer|reeves|parliament|byelection|election)\b", title, re.I):
-                        if not econ_hint.search(text_meta):
-                            return True
-                    # De-emphasize generic human-interest in UK News unless it has clear impact.
-                    # Keeps the UK pillar aligned to economy/business/policy utility.
-                    if cat == "uk news":
-                        impact_kw = re.compile(
-                            r"\b(nhs|hospital|gp|doctor|schools?|education|council|planning|housing|rent|mortgage|"
-                            r"tax|budget|inflation|interest\s*rate|rates|jobs|wages|economy|economic|business|"
-                            r"finance|markets?|prices?|bills?|energy|transport|rail|road|roadworks|investment|"
-                            r"trade|tariff|regulation|regulator|ofgem|ofwat|boe|bank of england)\b",
-                            re.I,
-                        )
-                        # Recognise UK fuel-supply security, not isolated fuel/reserve words.
-                        # Earlier noise/politics exclusions and later sensitive guards still apply.
-                        uk_fuel_supply_impact = (
-                            re.search(r"\b(uk|britain|british)\b", text_meta)
-                            and re.search(
-                                r"\b(?:(?:emergency|strategic)\s+(?:diesel|petrol|fuel)\s+"
-                                r"(?:reserves?|stockpiles?)|(?:diesel|petrol|fuel)\s+"
-                                r"(?:shortages?|supply\s+(?:security|disruptions?|threats?)))\b",
-                                text_meta,
-                            )
-                        )
-                        if (not econ_hint.search(text_meta)
-                                and not impact_kw.search(text_meta)
-                                and not uk_fuel_supply_impact):
-                            return True
-
-
-                    return False
-
-                uk_articles = [a for a in uk_articles if not is_noise_uk(a)]
-
-                def is_editorial_noise(a: dict) -> bool:
-                    cat = (a.get("category") or "").lower()
-                    src = (a.get("source") or "").lower()
-                    url = (a.get("source_url") or "").lower()
-                    title = (a.get("title") or "").lower()
-                    summary = (a.get("summary") or "").lower()
-                    text_meta = f"{title} {summary}"
-
-                    # Audio / podcasts / videos / galleries
-                    if "/audio/" in url or "podcast" in title or "podcast" in summary:
-                        return True
-                    if "/video" in url or "/watch/" in url or "watch video" in title:
-                        return True
-                    if "/gallery/" in url:
-                        return True
-
-                    # Letters / cartoons / opinion-style filler
-                    if re.search(r"\b(letter|letters|cartoon|opinion|editorial)\b", title, re.I):
-                        return True
-
-                    # Entertainment / celebrity / culture leakage that does not fit live news mix
-                    if re.search(
-                        r"\b(celebrity|showbiz|reality\s*tv|love island|netflix|concert|album|music\s*video|bts|kris jenner|kardashian)\b",
-                        text_meta,
-                        re.I,
-                    ):
-                        return True
-
-                    # Cheshire Today public-feed quality guard:
-                    # remove weak crime, tragedy, tourism/lifestyle filler, and random global tech/business items
-                    # from the homepage/API feed without affecting article URLs, imports, admin, newsletters, or archives.
-                    if re.search(
-                        r"\b(cocaine|drugs?|gangs?|devastating diagnosis|started to ache|lost everything|"
-                        r"hit-and-run|knocked off|smash between|train station crash|emergency services respond|"
-                        r"in pictures|pictures from|anniversary celebrations|"
-                        r"horror m56 crash|two in hospital after horror|chester zoo celebrates|aardvark|"
-                        r"lake study|cancel climate impact|ill health in old age|roblox|"
-                        r"keep your home.*cool|video doorbells|football club could become home|"
-                        r"fastest growing sport|five engines called|discarded cigarette|firefighters deal|city centre incident|"
-                        r"pokemon|alton towers|period drama|free to watch|animal park|tiger cubs?|hedgehogs?|"
-                        r"x limits|freeloaders|airbus gets hpc|hpc-as-a-service|zte showcases|brazil|"
-                        r"typhoon jets|swinney|first minister vote|swatch|starbucks korea|tank day|"
-                        r"elon musk has lost|new high street crime unit|st brelade|iran hints it could interfere|"
-                        r"vmware quietly debuts|mace wants to make power bills)\b",
-                        text_meta,
-                        re.I,
-                    ):
-                        return True
-
-                    # Off-brand science / tech / business filler
-                    if cat in {"science", "tech", "business", "uk news"}:
-                        if re.search(r"\b(letter|letters|cartoon|podcast)\b", text_meta, re.I):
-                            return True
-
-                    return False
-
-                def is_local_editorial_noise(a: dict) -> bool:
-                    """Light local-only homepage filter.
-
-                    Keep normal Cheshire soft/local news visible while still removing
-                    obvious media-format filler that should not lead the homepage.
-                    """
-                    url = (a.get("source_url") or "").lower()
-                    title = (a.get("title") or "").lower()
-                    summary = (a.get("summary") or "").lower()
-                    text_meta = f"{title} {summary}"
-
-                    if "/audio/" in url or "podcast" in text_meta:
-                        return True
-                    if "/video" in url or "/watch/" in url or "watch video" in title:
-                        return True
-                    if "/gallery/" in url or "in pictures" in title or "pictures from" in title:
-                        return True
-                    if re.search(r"\b(letter|letters|cartoon|opinion|editorial)\b", title, re.I):
-                        return True
-
-                    return False
-
-                local_articles = [a for a in local_articles if not is_local_editorial_noise(a)]
-                uk_articles = [a for a in uk_articles if not is_editorial_noise(a)]
+                local_articles = [
+                    article for article in local_articles
+                    if is_public_article_editorially_eligible(article)
+                ]
+                uk_articles = [
+                    article for article in uk_articles
+                    if is_public_article_editorially_eligible(article)
+                ]
 
             if homepage_timing_enabled:
                 homepage_timing["editorial_filter_ms"] = (time.perf_counter() - editorial_filter_started) * 1000
@@ -5399,10 +5264,12 @@ async def get_articles(
                     if not aid or aid in seen_ids:
                         continue
 
-                    # Re-apply homepage noise and sensitive-story filters to fallback items
-                    if a.get("is_local_source") is not True and UK_FILTER_NOISE and is_noise_uk(a):
-                        continue
-                    if UK_FILTER_NOISE and is_editorial_noise(a):
+                    # Re-apply the same binary editorial eligibility used by the
+                    # primary public-feed pools. Rank-dependent sensitive caps remain below.
+                    if not is_public_article_editorially_eligible(
+                        a,
+                        filtering_enabled=UK_FILTER_NOISE,
+                    ):
                         continue
 
                     kind = classify_sensitive(a)
@@ -9053,9 +8920,42 @@ async def get_admin_articles(
                 ]
             }
 
-        articles = await db.articles.find(
-            query
-        ).sort("publishedDate", -1).skip(skip).limit(limit).to_list(limit)
+        filtering_enabled = os.getenv("UK_FILTER_NOISE", "1") not in ("0", "false", "False")
+        eligibility_projection = {
+            "_id": 1,
+            "title": 1,
+            "summary": 1,
+            "category": 1,
+            "source": 1,
+            "source_url": 1,
+            "is_local_source": 1,
+            "force_live": 1,
+            "publishedDate": 1,
+        }
+        eligibility_candidates = await db.articles.find(
+            query,
+            eligibility_projection,
+        ).sort("publishedDate", -1).to_list(None)
+        eligible_candidates = [
+            article for article in eligibility_candidates
+            if is_public_article_editorially_eligible(
+                article,
+                filtering_enabled=filtering_enabled,
+            )
+        ]
+        total = len(eligible_candidates)
+        page_candidates = eligible_candidates[skip:skip + limit]
+        page_ids = [article.get("_id") for article in page_candidates if article.get("_id") is not None]
+
+        articles = []
+        if page_ids:
+            page_articles = await db.articles.find({"_id": {"$in": page_ids}}).to_list(len(page_ids))
+            articles_by_id = {str(article.get("_id")): article for article in page_articles}
+            articles = [
+                articles_by_id[str(article_id)]
+                for article_id in page_ids
+                if str(article_id) in articles_by_id
+            ]
 
         # Preserve the stored article `id` for existing admin actions, while
         # exposing Mongo `_id` separately for routes that require the public Mongo ID.
@@ -9063,7 +8963,6 @@ async def get_admin_articles(
             article["mongo_id"] = str(article.get("_id") or "")
             article.pop("_id", None)
 
-        total = await db.articles.count_documents(query)
         return {"articles": articles, "total": total, "skip": skip, "limit": limit, "search": search or ""}
     except Exception as e:
         logger.error(f"Error getting admin articles: {str(e)}")

@@ -98,6 +98,27 @@ every session start rather than inferring current modifications from this list.
 Verify branch, HEAD, latest commit and working tree at every session start.
 Preserve intentional untracked records and unrelated user changes.
 
+### 6 October 2026 — bounded UK relevance and Admin Articles eligibility (local/uncommitted)
+
+- A shared binary public-eligibility helper now preserves the existing UK/local
+  format and editorial exclusions while rejecting Scotland/Wales/Northern Ireland
+  or named devolved-city stories that have no explicit UK-wide scope signal.
+  The existing plural-aware `schools?` rule remains unchanged, and no broad
+  defence/security exception was added.
+- The public feed uses the helper for its primary and fallback pools. Existing
+  ranking, interleave, dedupe and rank-dependent crime/incident caps remain
+  separate and unchanged; `force_live=True` remains an explicit override.
+- `/api/admin/articles` applies the same binary eligibility before pagination and
+  total counting, while retaining the existing archived and Manual Review
+  exclusions. Stored filtered records are not deleted or archived. Because
+  crime/incident limits are rank-dependent rather than binary, this change does
+  not reinterpret those limits for Admin.
+- QA-first evidence: the three Scotland/Glasgow fixtures and Admin visibility
+  fixture failed before implementation; focused verification passed 40 tests,
+  and the broader public-feed/Admin/homepage/local-routing selection passed 158
+  tests. Python compilation and `git diff --check` passed. No database, import,
+  scheduler, frontend, newsletter or production operation was performed.
+
 ## 3. Current production architecture
 
 Cheshire Today currently consists of:

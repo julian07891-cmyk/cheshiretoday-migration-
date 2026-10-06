@@ -1,17 +1,12 @@
-"""Offline regression for the real nested homepage UK predicate; no server startup."""
-
-import ast
-import copy
-from pathlib import Path
-import re
-import subprocess
+"""Offline regressions for the shared public article eligibility rules."""
 
 import pytest
 
+from backend.app.public_article_eligibility import (
+    is_public_article_editorially_eligible,
+    is_uk_feed_noise,
+)
 
-ROOT = Path(__file__).resolve().parents[1]
-SERVER = ROOT / "backend/server.py"
-BASELINE = "b98a49eaba32659bd0e83fa27506c944802e5d65"
 DIESEL = {
     "title": "UK Engages European Allies on Emergency Diesel Stockpiles Amid US Supply Threats",
     "summary": "The UK is in discussions with European nations regarding the potential release of emergency diesel reserves following threats from the Trump administration to cut off US supplies.",
@@ -20,30 +15,24 @@ DIESEL = {
     "source_url": "https://www.theguardian.com/business/2026/oct/01/britain-talks-european-allies-eu-emergency-diesel-stockpiles-reserves",
 }
 EDUCATION = {
-    "title": "Scotland's first AI teacher warns pupils: Don't trust everything it tells you",
-    "summary": "Jamie Laycock says schools must help youngsters understand both the opportunities and dangers of AI.",
+    "title": "UK schools introduce national artificial intelligence guidance",
+    "summary": "Schools across Britain will use the new education guidance from next term.",
     "category": "UK News",
     "source": "BBC News",
+    "source_url": "https://www.bbc.co.uk/news/articles/uk-schools-guidance",
+}
+
+SCOTLAND_AI_TEACHER = {
+    **EDUCATION,
+    "title": "Scotland's first AI teacher warns pupils: Don't trust everything it tells you",
+    "summary": "Jamie Laycock says schools must help youngsters understand both the opportunities and dangers of AI.",
     "source_url": "https://www.bbc.co.uk/news/articles/c6qjk9n7gge7o",
 }
 
 
 @pytest.fixture
 def is_noise():
-    tree = ast.parse(SERVER.read_text())
-    handler = next(n for n in tree.body if isinstance(n, ast.AsyncFunctionDef) and n.name == "get_articles")
-    # Compile the actual enclosing constants and predicate, never a copied rule.
-    block = next(n for n in ast.walk(handler) if isinstance(n, ast.If) and any(
-        isinstance(child, ast.FunctionDef) and child.name == "is_noise_uk" for child in n.body
-    ))
-    nodes = []
-    for node in block.body:
-        nodes.append(node)
-        if isinstance(node, ast.FunctionDef) and node.name == "is_noise_uk":
-            break
-    namespace = {"re": re}
-    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(SERVER), "exec"), namespace)
-    return namespace["is_noise_uk"]
+    return is_uk_feed_noise
 
 
 def test_exact_diesel_metadata_is_accepted_without_body(is_noise):
@@ -53,6 +42,45 @@ def test_exact_diesel_metadata_is_accepted_without_body(is_noise):
 
 def test_plural_schools_education_story_is_accepted(is_noise):
     assert is_noise(EDUCATION) is False
+
+
+@pytest.mark.parametrize("article", [
+    SCOTLAND_AI_TEACHER,
+    {
+        **DIESEL,
+        "title": "Failure to support Scotland's most disadvantaged 'costs £5.8bn a year'",
+        "summary": "Failing to support Scotland's most disadvantaged costs at least £5.8bn a year, according to new analysis.",
+        "category": "Business",
+    },
+    {
+        **DIESEL,
+        "title": "Glasgow city council reaches pay deal with union to avert fire-and-rehire plan",
+        "summary": "The agreement applies to council workers in Glasgow.",
+    },
+])
+def test_devolved_or_regional_only_stories_are_excluded(is_noise, article):
+    assert is_noise(article) is True
+
+
+def test_uk_wide_economic_story_mentioning_scotland_is_retained(is_noise):
+    article = {
+        **DIESEL,
+        "title": "UK inflation outlook includes new figures from Scotland",
+        "summary": "The Bank of England assessment covers households across Britain.",
+    }
+    assert is_noise(article) is False
+
+
+def test_chester_university_local_story_remains_eligible():
+    article = {
+        "title": "University of Chester launches new skills programme",
+        "summary": "The programme will support students and employers across Cheshire.",
+        "category": "Local News",
+        "source": "University of Chester",
+        "source_url": "https://www.chester.ac.uk/news/skills-programme",
+        "is_local_source": True,
+    }
+    assert is_public_article_editorially_eligible(article) is True
 
 
 def test_unrelated_low_value_uk_human_interest_stays_rejected(is_noise):
@@ -141,21 +169,6 @@ def test_real_handler_keeps_later_guards_and_fallback(monkeypatch, fallback, pre
                     or query.get("$or") == archive_clause["$or"])
 
 
-def test_every_other_server_decision_matches_baseline():
-    """Locks visibility, sensitive handling, sort/caps/dedupe, hubs and imports."""
-    old = subprocess.run(
-        ["git", "show", f"{BASELINE}:backend/server.py"], cwd=ROOT,
-        check=True, capture_output=True, text=True,
-    ).stdout
-
-    class MaskPredicate(ast.NodeTransformer):
-        def visit_FunctionDef(self, node):
-            if node.name == "is_noise_uk":
-                node = copy.deepcopy(node)
-                node.body = [ast.Pass()]
-                return node
-            return self.generic_visit(node)
-
-    assert ast.dump(MaskPredicate().visit(ast.parse(SERVER.read_text()))) == ast.dump(
-        MaskPredicate().visit(ast.parse(old))
-    )
+def test_the_papers_remains_excluded_by_shared_eligibility():
+    article = {**DIESEL, "title": "The papers: UK emergency diesel stockpiles"}
+    assert is_public_article_editorially_eligible(article) is False
