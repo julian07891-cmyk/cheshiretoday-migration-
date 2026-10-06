@@ -1754,3 +1754,57 @@ Fairford/defence-security also remains unchanged. The previously named stale AST
 test `test_every_other_server_decision_matches_baseline` existed before the
 shared-helper refactor but is absent at `b413282`; no current test debt under that
 name was silently “fixed” in this documentation task.
+
+## 2026-10-06 — Resend delivery evidence production acceptance
+
+Production deployment at `4f2f006` includes `f6ddd7b Add Resend delivery evidence foundation`.
+
+Operational configuration completed:
+- Resend webhook endpoint: `https://cheshiretoday.co.uk/api/webhooks/resend`
+- Webhook status: enabled
+- Subscribed events:
+  - `email.sent`
+  - `email.delivered`
+  - `email.delivery_delayed`
+  - `email.bounced`
+  - `email.complained`
+  - `email.failed`
+- `RESEND_WEBHOOK_SECRET` configured in Render.
+- Unsigned webhook requests are rejected with HTTP 400 `Invalid webhook`.
+- Public health and homepage remained HTTP 200 after deployment/configuration.
+
+Production smoke acceptance:
+
+Successful-delivery path:
+- Synthetic campaign: `resend-foundation-prod-smoke-20261006`
+- Resend batch accepted one message.
+- Acceptance evidence persisted.
+- Correlated webhook events received:
+  - `email.sent`
+  - `email.delivered`
+- Final provider-message state: `delivered`
+- Complaint flag remained false.
+
+Bounce path:
+- Synthetic campaign: `resend-foundation-prod-bounce-20261006`
+- Resend batch accepted one message.
+- Acceptance evidence persisted.
+- Correlated webhook events received:
+  - `email.sent`
+  - `email.bounced`
+- Final provider-message state: `bounced`
+- Complaint flag remained false.
+
+The full production chain is therefore proven for both successful delivery and terminal bounce:
+
+`campaign/run -> Resend provider message ID -> signed webhook -> normalized event -> correlated campaign/message state`
+
+Additional observations:
+- `email.delivery_delayed` events were also received successfully in production.
+- Controlled production smoke tests have not yet been run for `email.complained` or `email.failed`; both remain covered by automated tests and supported webhook ingestion.
+- Historical messages sent before the foundation have no provider-message backfill and therefore cannot be correlated retrospectively.
+- Provider acceptance remains distinct from confirmed delivery in Admin terminology.
+- No automatic complaint/bounce suppression-policy change was introduced by this phase.
+
+Operational note:
+The local `backend/.env` Resend API key was found stale/invalid during smoke testing. Production Render uses a different valid key. Production acceptance was therefore performed from the Render shell using the production environment.
