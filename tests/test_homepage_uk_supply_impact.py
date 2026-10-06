@@ -19,6 +19,13 @@ DIESEL = {
     "source": "The Guardian",
     "source_url": "https://www.theguardian.com/business/2026/oct/01/britain-talks-european-allies-eu-emergency-diesel-stockpiles-reserves",
 }
+EDUCATION = {
+    "title": "Scotland's first AI teacher warns pupils: Don't trust everything it tells you",
+    "summary": "Jamie Laycock says schools must help youngsters understand both the opportunities and dangers of AI.",
+    "category": "UK News",
+    "source": "BBC News",
+    "source_url": "https://www.bbc.co.uk/news/articles/c6qjk9n7gge7o",
+}
 
 
 @pytest.fixture
@@ -42,6 +49,19 @@ def is_noise():
 def test_exact_diesel_metadata_is_accepted_without_body(is_noise):
     assert "content" not in DIESEL
     assert is_noise(DIESEL) is False
+
+
+def test_plural_schools_education_story_is_accepted(is_noise):
+    assert is_noise(EDUCATION) is False
+
+
+def test_unrelated_low_value_uk_human_interest_stays_rejected(is_noise):
+    article = {
+        **EDUCATION,
+        "title": "UK collector shares a lifelong hobby",
+        "summary": "The enthusiast says the collection brings back happy memories.",
+    }
+    assert is_noise(article) is True
 
 
 @pytest.mark.parametrize("title", [

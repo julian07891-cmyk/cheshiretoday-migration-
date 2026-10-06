@@ -5024,7 +5024,7 @@ async def get_articles(
                     # Keeps the UK pillar aligned to economy/business/policy utility.
                     if cat == "uk news":
                         impact_kw = re.compile(
-                            r"\b(nhs|hospital|gp|doctor|school|education|council|planning|housing|rent|mortgage|"
+                            r"\b(nhs|hospital|gp|doctor|schools?|education|council|planning|housing|rent|mortgage|"
                             r"tax|budget|inflation|interest\s*rate|rates|jobs|wages|economy|economic|business|"
                             r"finance|markets?|prices?|bills?|energy|transport|rail|road|roadworks|investment|"
                             r"trade|tariff|regulation|regulator|ofgem|ofwat|boe|bank of england)\b",
