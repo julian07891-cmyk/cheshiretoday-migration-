@@ -4066,7 +4066,7 @@ const handleDeleteArticle = async (articleId) => {
                                 <span className="font-semibold">{stats.sent}</span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Delivered:</span>
+                                <span className="text-muted-foreground">Accepted:</span>
                                 <span className="font-semibold text-green-600">{stats.success}</span>
                               </div>
                             </div>

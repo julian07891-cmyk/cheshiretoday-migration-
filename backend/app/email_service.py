@@ -142,6 +142,7 @@ class EmailService:
         self.base_url = 'https://cheshiretoday.co.uk'
         # API URL for tracking endpoints
         self.api_url = 'https://cheshiretoday.co.uk/api'
+        self.last_resend_acceptances = []
     
     def _generate_tracking_id(self, email_type: str, recipient_email: str = None) -> str:
         """Generate a unique tracking ID for email analytics"""
@@ -161,6 +162,15 @@ class EmailService:
         email_norm = (recipient_email or '').strip().lower()
         email_hash = hashlib.sha256(email_norm.encode()).hexdigest()[:8] if email_norm else "unknown"
         return f"{base_tracking_id}_{email_hash}"
+
+    @staticmethod
+    def _provider_evidence(delivery, tracking_id: str, newsletter_family: str) -> dict:
+        """Internal-only provider correlation metadata; never copied to the API payload."""
+        return {
+            "campaign_id": tracking_id,
+            "newsletter_family": newsletter_family,
+            "recipient_id": delivery.context.newsletter_management_id,
+        }
     
     def _get_tracked_url(self, tracking_id: str, original_url: str) -> str:
         """Generate tracked URL that redirects through our tracking endpoint"""
@@ -318,12 +328,35 @@ class EmailService:
                         f"subject={subject!r}"
                     )
                 response.raise_for_status()
+                response_body = response.json()
+                response_rows = response_body.get("data") if isinstance(response_body, dict) else None
+                if (
+                    not isinstance(response_rows, list)
+                    or len(response_rows) != len(chunk)
+                    or any(
+                        not isinstance(row, dict)
+                        or not isinstance(row.get("id"), str)
+                        or not row["id"].strip()
+                        for row in response_rows
+                    )
+                    or len({row["id"].strip() for row in response_rows}) != len(response_rows)
+                ):
+                    raise ValueError("invalid_resend_batch_response")
                 success_count += len(chunk)
                 self.last_accepted_recipients.extend(
                     str(item.get("to") or "").strip()
                     for item in chunk
                     if str(item.get("to") or "").strip()
                 )
+                for item, provider_row in zip(chunk, response_rows):
+                    evidence = item.get("evidence")
+                    if isinstance(evidence, dict):
+                        self.last_resend_acceptances.append({
+                            "provider_message_id": provider_row["id"].strip(),
+                            "campaign_id": evidence.get("campaign_id"),
+                            "newsletter_family": evidence.get("newsletter_family"),
+                            "recipient_id": evidence.get("recipient_id"),
+                        })
                 self.resend_last_successful_chunks = getattr(self, "resend_last_successful_chunks", 0) + 1
             except Exception as e:
                 status_code = getattr(response, "status_code", "no_response")
@@ -820,6 +853,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
 
         # Real subscriber content has no email-only/generic-link fallback.
@@ -1375,6 +1409,9 @@ Cheshire Today Jobs Team
             if delivery is not None:
                 item["headers"] = delivery.native_headers
                 item["feedback_id"] = "daily:::cheshtoday"
+                item["evidence"] = self._provider_evidence(
+                    delivery, tracking_id, "DailyBrief"
+                )
             return item
 
         success_count = 0
@@ -1417,6 +1454,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
         if to_emails is not None or prepared_deliveries is None:
             raise NewsletterDeliveryError("breaking_prepared_delivery_required")
@@ -1524,7 +1562,10 @@ Cheshire Today Jobs Team
             text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             batch_messages.append({"to": email, "subject": subject, "html": html_personal,
                                    "text": text_personal, "headers": delivery.native_headers,
-                                   "feedback_id": "breaking:::cheshtoday"})
+                                   "feedback_id": "breaking:::cheshtoday",
+                                   "evidence": self._provider_evidence(
+                                       delivery, tracking_id, "BreakingNews"
+                                   )})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
@@ -1561,6 +1602,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
         if preview is True:
             if (prepared_deliveries is not None or token_service is not None
@@ -1781,6 +1823,9 @@ Cheshire Today Jobs Team
             if delivery is not None:
                 batch_messages[-1]["headers"] = delivery.native_headers
                 batch_messages[-1]["feedback_id"] = "weekly:::cheshtoday"
+                batch_messages[-1]["evidence"] = self._provider_evidence(
+                    delivery, tracking_id, "WeeklyRoundup"
+                )
 
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
@@ -1807,6 +1852,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
         if to_emails is not None or prepared_deliveries is None:
             raise NewsletterDeliveryError("announcement_prepared_delivery_required")
@@ -1817,6 +1863,7 @@ Cheshire Today Jobs Team
         if not deliveries:
             return 0
         subject = "We've made some changes to Cheshire Today 📩"
+        tracking_id = self._generate_tracking_id("Announcement")
         
         html_content = f'''
         <!DOCTYPE html>
@@ -1913,7 +1960,10 @@ Cheshire Today Jobs Team
             text_personal = text_content.replace("__PREFS_URL__", prefs_url).replace("__UNSUB_URL__", unsub_url)
             batch_messages.append({"to": delivery.context.email, "subject": subject,
                                    "html": html_personal, "text": text_personal,
-                                   "headers": delivery.native_headers})
+                                   "headers": delivery.native_headers,
+                                   "evidence": self._provider_evidence(
+                                       delivery, tracking_id, "Announcement"
+                                   )})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
@@ -1937,6 +1987,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
         if to_emails is not None or prepared_deliveries is None:
             raise NewsletterDeliveryError("site_update_prepared_delivery_required")
@@ -1983,7 +2034,10 @@ Cheshire Today Jobs Team
             batch_messages.append({"to": delivery.context.email, "subject": subject,
                                    "html": html_personal, "text": text_personal,
                                    "headers": delivery.native_headers,
-                                   "feedback_id": "siteupdate:::cheshtoday"})
+                                   "feedback_id": "siteupdate:::cheshtoday",
+                                   "evidence": self._provider_evidence(
+                                       delivery, tracking_id, "SiteUpdatePart1"
+                                   )})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
@@ -2004,6 +2058,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
         if to_emails is not None or prepared_deliveries is None:
             raise NewsletterDeliveryError("site_update_prepared_delivery_required")
@@ -2048,7 +2103,10 @@ Cheshire Today Jobs Team
             batch_messages.append({"to": delivery.context.email, "subject": subject,
                                    "html": html_personal, "text": text_personal,
                                    "headers": delivery.native_headers,
-                                   "feedback_id": "siteupdate:::cheshtoday"})
+                                   "feedback_id": "siteupdate:::cheshtoday",
+                                   "evidence": self._provider_evidence(
+                                       delivery, tracking_id, "SiteUpdatePart2"
+                                   )})
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
@@ -2071,6 +2129,7 @@ Cheshire Today Jobs Team
         self.resend_last_successful_chunks = 0
         self.resend_last_failed_chunks = 0
         self.last_accepted_recipients = []
+        self.last_resend_acceptances = []
         self.last_provider_contacted = False
         if to_emails is not None or prepared_deliveries is None:
             raise NewsletterDeliveryError("manual_campaign_prepared_delivery_required")
@@ -2100,6 +2159,9 @@ Cheshire Today Jobs Team
                 "html": html_personal or ("<p>" + (text_personal or "") + "</p>"),
                 "text": text_personal, "headers": delivery.native_headers,
                 "feedback_id": "manual:::cheshtoday",
+                "evidence": self._provider_evidence(
+                    delivery, tracking_id, "ManualCampaign"
+                ),
             })
 
         if getattr(self, "resend_enabled", False):

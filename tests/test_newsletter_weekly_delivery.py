@@ -57,7 +57,11 @@ def test_weekly_isolation_at_chunk_boundary(monkeypatch, transport):
     def post(url, *, json, **kwargs):
         chunks.append(len(json))
         messages.extend([{**m, "to": m["to"][0]} for m in json])
-        return httpx.Response(200, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
         assert feedback_id == "weekly:::cheshtoday"
         service.last_provider_contacted = True
@@ -290,8 +294,12 @@ def test_resend_partial_chunks_keep_only_accepted_recipients(monkeypatch):
     sizes = []
     def post(url, *, json, **kwargs):
         sizes.append(len(json))
-        return httpx.Response(400 if len(sizes) == 1 else 200,
-                              request=httpx.Request("POST", "https://synthetic.invalid"))
+        status = 400 if len(sizes) == 1 else 200
+        return httpx.Response(
+            status,
+            json={"data": [{"id": f"email-{len(sizes)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     monkeypatch.setattr("app.email_service.httpx.post", post)
     prepared = deliveries(101)
     assert send(service, prepared)[0] == 1

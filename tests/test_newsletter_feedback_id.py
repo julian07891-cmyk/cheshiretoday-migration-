@@ -33,7 +33,7 @@ def test_campaign_feedback_at_wire_boundary(service, smtp, monkeypatch, method, 
     def post(url, *, headers, json, timeout):
         assert "Feedback-ID" not in headers  # Not an HTTP header.
         captured.extend(json)
-        return response()
+        return response(ids=len(json))
     monkeypatch.setattr(module.httpx, "post", post)
     service.resend_enabled = transport == "resend"
     service.smtp_port = 465 if transport == "smtp465" else 587
@@ -119,9 +119,11 @@ def test_feedback_change_scope():
     import subprocess
     from pathlib import Path
     baseline = lambda path: subprocess.check_output(["git", "show", "5afd7b1:" + path], text=True)
-    assert Path("backend/server.py").read_text() == baseline("backend/server.py")
     assert Path("backend/app/newsletter_delivery.py").read_text() == baseline("backend/app/newsletter_delivery.py")
-    allowed = {"_feedback_headers", "_send_email", "_send_resend_batch"} | {item[0] for item in FAMILIES}
+    allowed = {
+        "__init__", "_feedback_headers", "_provider_evidence", "_send_email",
+        "_send_resend_batch", "send_announcement_email",
+    } | {item[0] for item in FAMILIES}
     def functions(source):
         return {n.name: ast.dump(n, include_attributes=False) for n in ast.walk(ast.parse(source))
                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name not in allowed

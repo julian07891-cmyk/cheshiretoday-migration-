@@ -70,7 +70,7 @@ def test_safe_container_resend_export_and_provider_mutation(service, monkeypatch
             assert type(item["headers"]) is dict
             captured.append(item["headers"].copy())
             item["headers"].clear()
-        return response()
+        return response(ids=len(json))
     monkeypatch.setattr(module.httpx, "post", post)
     assert service._send_resend_batch(messages) == 101
     assert captured == expected
@@ -97,8 +97,15 @@ def message(index=1, *, native=True):
     return item
 
 
-def response(status=200):
-    return httpx.Response(status, request=httpx.Request("POST", "https://synthetic.invalid"))
+def response(status=200, *, ids=None):
+    kwargs = {}
+    if ids is not None:
+        kwargs["json"] = {"data": [{"id": f"email-{index}"} for index in range(ids)]}
+    return httpx.Response(
+        status,
+        request=httpx.Request("POST", "https://synthetic.invalid"),
+        **kwargs,
+    )
 
 
 def test_resend_opt_in_isolation_and_chunk_boundary(service, monkeypatch):
@@ -115,7 +122,7 @@ def test_resend_opt_in_isolation_and_chunk_boundary(service, monkeypatch):
         # Later recipient input mutation cannot affect the already validated copy.
         messages[100]["headers"].clear()
         json[0]["headers"]["List-Unsubscribe"] = "provider-side mutation"
-        return response()
+        return response(ids=len(json))
 
     monkeypatch.setattr(module.httpx, "post", post)
     assert service._send_resend_batch(messages) == 102
@@ -142,7 +149,7 @@ def test_resend_failure_preserves_chunk_accounting_without_sensitive_logs(servic
             if failure == "exception":
                 raise RuntimeError(secret + repr(kwargs["json"]))
             return response(400)
-        return response()
+        return response(ids=len(kwargs["json"]))
     monkeypatch.setattr(module.httpx, "post", post)
     assert service._send_resend_batch(messages) == 1
     assert len(calls) == 2  # No retry; the next chunk still runs.

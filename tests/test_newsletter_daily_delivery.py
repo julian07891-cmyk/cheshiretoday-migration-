@@ -145,7 +145,11 @@ def test_direct_body_headers_tracking_and_acceptance(monkeypatch, transport):
     def post(url, *, json, **kwargs):
         chunks.append(len(json))
         messages.extend([{**item, "to": item["to"][0]} for item in json])
-        return httpx.Response(200, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
         assert feedback_id == "daily:::cheshtoday"
         messages.append({"to": to, "html": html, "text": text, "headers": newsletter_headers})
@@ -489,8 +493,12 @@ def test_resend_partial_chunk_acceptance(monkeypatch):
     calls = []
     def post(url, *, json, **kwargs):
         calls.append(len(json))
-        return httpx.Response(400 if len(calls) == 1 else 200,
-                              request=httpx.Request("POST", "https://synthetic.invalid"))
+        status = 400 if len(calls) == 1 else 200
+        return httpx.Response(
+            status,
+            json={"data": [{"id": f"email-{len(calls)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     monkeypatch.setattr("app.email_service.httpx.post", post)
     prepared = deliveries(101)
     assert service.send_daily_brief(prepared_deliveries=prepared, token_service=TOKEN_SERVICE,

@@ -112,6 +112,14 @@ from app.newsletter_management_email import (
     NewsletterManagementEmailPurpose,
     NewsletterManagementEmailRequest,
 )
+from app.resend_delivery_evidence import (
+    PROVIDER_EVENT_COLLECTION,
+    PROVIDER_MESSAGE_COLLECTION,
+    ResendDeliveryEvidenceRepository,
+    aggregate_campaign_delivery,
+    normalize_resend_event,
+    verify_resend_webhook,
+)
 from app.perplexity_service import perplexity_service, ai_budget_available
 from app.article_generation_observability import (
     log_article_generation_memory,
@@ -13861,6 +13869,11 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
             success_count, tracking_id = result
         else:
             success_count, tracking_id = result, None
+
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "DailyBrief",
+            "manual": True,
+        })
         
         # Log the send
         try:
@@ -14210,6 +14223,10 @@ async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get
         else:
             success_count, tracking_id = result, None
 
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "WeeklyRoundupBatchDiagnostic",
+        })
+
         return {
             "success": success_count > 0,
             "message": f"Weekly Roundup batch diagnostic sent to {len(subscriber_emails)} subscribers",
@@ -14294,6 +14311,10 @@ async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = De
             success_count, tracking_id = result
         else:
             success_count, tracking_id = result, None
+
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "BreakingNews",
+        })
         
         # Log the send
         await db.digest_log.insert_one({
@@ -14337,6 +14358,53 @@ async def get_digest_log(limit: int = 50, auth: bool = Depends(get_admin_auth)):
     except Exception as e:
         logger.error(f"Error fetching digest log: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/webhooks/resend", status_code=204)
+async def receive_resend_webhook(request: Request):
+    """Verify and retain bounded Resend delivery evidence."""
+    max_body_bytes = 256 * 1024
+    secret = os.environ.get("RESEND_WEBHOOK_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="Webhook unavailable")
+    body_parts = []
+    body_size = 0
+    async for part in request.stream():
+        body_size += len(part)
+        if body_size > max_body_bytes:
+            raise HTTPException(status_code=413, detail="Webhook payload too large")
+        body_parts.append(part)
+    raw_body = b"".join(body_parts)
+    signature_headers = {
+        name: request.headers.get(name)
+        for name in ("svix-id", "svix-timestamp", "svix-signature")
+    }
+    try:
+        payload = verify_resend_webhook(raw_body, signature_headers, secret)
+        event = normalize_resend_event(payload, signature_headers["svix-id"])
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid webhook") from None
+    if event is None:
+        return Response(status_code=204)
+    try:
+        await _resend_delivery_evidence_repository().record_event(event)
+    except Exception:
+        logger.error("Resend webhook evidence persistence failed")
+        raise HTTPException(status_code=503, detail="Webhook unavailable") from None
+    return Response(status_code=204)
+
+
+@api_router.get("/admin/newsletter-delivery/{campaign_id}")
+async def get_newsletter_delivery_evidence(
+    campaign_id: str,
+    auth: bool = Depends(get_admin_auth),
+):
+    """Return bounded provider evidence; complaint rate uses accepted messages."""
+    if not campaign_id.strip() or len(campaign_id) > 200:
+        raise HTTPException(status_code=400, detail="Invalid campaign identity")
+    return await aggregate_campaign_delivery(
+        db[PROVIDER_MESSAGE_COLLECTION], campaign_id.strip()
+    )
 
 
 @api_router.get("/admin/email-config/status")
@@ -14572,7 +14640,7 @@ async def get_email_analytics(days: int = 30, auth: bool = Depends(get_admin_aut
                 "sent_at": log.get("sent_at").isoformat() if log.get("sent_at") else None,
                 "type": log.get("type", log.get("digest_time", "Unknown")),
                 "subscribers": log.get("subscribers_count", 0),
-                "delivered": log.get("success_count", 0),
+                "accepted": log.get("success_count", 0),
                 "opens": opens,
                 "clicks": clicks,
                 "headline": log.get("headline", "")[:60] if log.get("headline") else None
@@ -14641,7 +14709,7 @@ async def get_email_analytics_trends(auth: bool = Depends(get_admin_auth)):
             {"$group": {
                 "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$sent_at"}},
                 "emails_sent": {"$sum": "$subscribers_count"},
-                "delivered": {"$sum": "$success_count"},
+                "accepted": {"$sum": "$success_count"},
                 "sends_count": {"$sum": 1}
             }},
             {"$sort": {"_id": 1}}
@@ -14655,7 +14723,7 @@ async def get_email_analytics_trends(auth: bool = Depends(get_admin_auth)):
             trends.append({
                 "date": day["_id"],
                 "sent": day["emails_sent"],
-                "delivered": day["delivered"],
+                "accepted": day["accepted"],
                 "sends": day["sends_count"]
             })
         
@@ -14704,6 +14772,9 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
         success_count = email_service.send_announcement_email(
             prepared_deliveries=deliveries, token_service=token_service)
         provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "Announcement",
+        })
         
         # Update all subscribers to have daily_brief enabled by default
         await db.subscribers.update_many(
@@ -14758,6 +14829,9 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
         success_count = email_service.send_site_update_part1(
             prepared_deliveries=deliveries, token_service=token_service)
         provider_contacted = bool(email_service.last_provider_contacted)
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "SiteUpdatePart1",
+        })
 
         await db.digest_log.insert_one({
             "sent_at": datetime.now(timezone.utc),
@@ -14812,6 +14886,9 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
         success_count = email_service.send_site_update_part2(
             prepared_deliveries=deliveries, token_service=token_service)
         provider_contacted = bool(email_service.last_provider_contacted)
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "SiteUpdatePart2",
+        })
 
         await db.digest_log.insert_one({
             "sent_at": datetime.now(timezone.utc),
@@ -14945,6 +15022,10 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
                 prepared_deliveries=deliveries, token_service=token_service)
             accepted = tuple(email_service.last_accepted_recipients)
             provider_contacted = bool(email_service.last_provider_contacted)
+            await _save_last_resend_acceptances(run_fields={
+                "digest_time": "AutoOnboarding",
+                "type": "SiteUpdatePart1Auto",
+            })
             if accepted:
                 await db.subscribers.update_many(
                     {"email": {"$in": accepted_stored_emails(accepted)}},
@@ -14967,6 +15048,10 @@ async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get
                 prepared_deliveries=deliveries, token_service=token_service)
             accepted = tuple(email_service.last_accepted_recipients)
             provider_contacted = bool(email_service.last_provider_contacted)
+            await _save_last_resend_acceptances(run_fields={
+                "digest_time": "AutoOnboarding",
+                "type": "SiteUpdatePart2Auto",
+            })
             if accepted:
                 await db.subscribers.update_many(
                     {"email": {"$in": accepted_stored_emails(accepted)}},
@@ -15080,6 +15165,10 @@ async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = 
                 "accepted_count": success_count,
                 "provider_contacted": bool(email_service.last_provider_contacted),
             }
+            await _save_last_resend_acceptances(run_fields={
+                "digest_time": "ManualCampaign",
+                "mode": "all",
+            })
         else:
             # Explicit single-address preview: no subscriber preparation or native headers.
             if html:
@@ -19569,6 +19658,36 @@ async def _save_email_send_opportunities(
     return len(recipient_hashes)
 
 
+def _resend_delivery_evidence_repository():
+    return ResendDeliveryEvidenceRepository(
+        db[PROVIDER_MESSAGE_COLLECTION],
+        db[PROVIDER_EVENT_COLLECTION],
+    )
+
+
+async def _save_last_resend_acceptances(*, run_fields=None):
+    """Persist complete provider-ID mappings without changing send accounting."""
+    rows = tuple(getattr(email_service, "last_resend_acceptances", ()) or ())
+    if not rows:
+        return 0
+    try:
+        return await _resend_delivery_evidence_repository().save_acceptances(
+            rows, run_fields=run_fields
+        )
+    except Exception:
+        logger.error("Resend acceptance evidence persistence failed")
+        return 0
+
+
+async def _ensure_resend_delivery_evidence_indexes():
+    try:
+        await _resend_delivery_evidence_repository().ensure_indexes()
+        return True
+    except Exception:
+        logger.error("Resend delivery evidence indexes unavailable")
+        return False
+
+
 WEEKLY_ROUNDUP_DIGEST_TIME = "WeeklyRoundup"
 WEEKLY_ROUNDUP_DIGEST_INDEX = "digest_time_date_key_weekly_slot_unique_v1"
 weekly_roundup_digest_index_ready = False
@@ -20162,6 +20281,11 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             success_count, tracking_id = success_count
         else:
             tracking_id = None
+
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "DailyBrief",
+            "date_key": date_key,
+        })
         
         logger.info(f"✅ Daily Brief sent to {success_count}/{len(subscriber_emails)} subscribers")
 
@@ -20574,6 +20698,13 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             success_count, tracking_id = success_count
         else:
             tracking_id = None
+
+        await _save_last_resend_acceptances(run_fields={
+            "digest_time": "WeeklyRoundup",
+            "date_key": date_key,
+            "weekly_roundup_batch_slot": roundup_batch_slot,
+            "batch_key": f"WeeklyRoundup:{date_key}:batch:{roundup_batch_slot}",
+        })
         
         logger.info(f"✅ Weekly Roundup sent to {success_count}/{len(subscriber_emails)} subscribers")
 
@@ -20977,6 +21108,8 @@ async def startup_event():
                 logger.info("✅ Unique index on scheduler_locks.job already exists")
             else:
                 logger.warning(f"Could not create index: {idx_error}")
+
+        await _ensure_resend_delivery_evidence_indexes()
         
         # ============================================
         # CLEANUP DUPLICATE SCHEDULER LOCKS (fixes index creation)

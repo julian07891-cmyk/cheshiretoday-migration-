@@ -63,7 +63,11 @@ def test_transports_isolation_and_acceptance(monkeypatch, caplog, resend, outcom
         messages.extend([{**m, "to": m["to"][0]} for m in json])
         if outcome == "exception": raise httpx.ConnectError("PRIVATE_TOKEN secret@synthetic.invalid")
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
-        return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200 if ok else 400,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
         assert feedback_id == "manual:::cheshtoday"
         service.last_provider_contacted = True
@@ -109,7 +113,11 @@ def test_resend_exact_chunk_boundary(monkeypatch, count):
     chunks = []
     def post(url, *, json, **kwargs):
         chunks.append(len(json))
-        return httpx.Response(200, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     monkeypatch.setattr("app.email_service.httpx.post", post)
     assert send(service, deliveries(count)) == count
     assert chunks == ([100] if count == 100 else [100, 1])
@@ -140,6 +148,13 @@ def test_arbitrary_content_and_placeholder_semantics(monkeypatch, resend, html, 
         expected_html = replace(html.replace("</body>", pixel + "</body>") if "</body>" in html else html + pixel)
     else:
         expected_html = "<p>" + (expected_text or "") + "</p>"
+    if resend:
+        evidence = messages[0].pop("evidence")
+        assert evidence == {
+            "campaign_id": TRACKING,
+            "newsletter_family": "ManualCampaign",
+            "recipient_id": a.context.newsletter_management_id,
+        }
     assert messages == [{"to": a.context.email, "subject": SUBJECT, "html": expected_html,
                          "text": expected_text, "headers": a.native_headers,
                          "feedback_id": "manual:::cheshtoday"}]
@@ -267,7 +282,11 @@ def setup(monkeypatch, rows=(), outcome="all", resend=False):
         chunks.append(len(json))
         calls.extend(json)
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
-        return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200 if ok else 400,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     monkeypatch.setattr("app.email_service.httpx.post", post)
     async def insert(record):
         logs.append(record)

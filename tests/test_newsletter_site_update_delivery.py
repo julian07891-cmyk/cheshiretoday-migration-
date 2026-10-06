@@ -56,7 +56,11 @@ def test_transport_isolation(monkeypatch, part, resend, outcome):
         chunks.append(len(json))
         messages.extend([{**m, "to": m["to"][0]} for m in json])
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
-        return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200 if ok else 400,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     def smtp(to, subject, html, text, *, newsletter_headers, feedback_id):
         assert feedback_id == "siteupdate:::cheshtoday"
         service.last_provider_contacted = True
@@ -410,7 +414,11 @@ def test_endpoint_resend_accounting(monkeypatch, path, outcome):
         chunks[part].append(len(json))
         ok = outcome == "all" or outcome == "partial" and len(chunks[part]) == 2
         if ok: accepted_by_part[part].extend(m["to"][0] for m in json)
-        return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200 if ok else 400,
+            json={"data": [{"id": f"email-{part}-{len(chunks[part])}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     monkeypatch.setattr("app.email_service.httpx.post", post)
     onboard() if path == "onboarding" else manual(path)
     expected = 101 if outcome == "all" else 1 if outcome == "partial" else 0

@@ -266,8 +266,20 @@ def test_unrelated_server_functions_unchanged():
     current = Path(server.__file__).read_text()
     baseline = subprocess.check_output(
         ["git", "show", "HEAD:backend/server.py"], text=True)
+    delivery_evidence_scope = {
+        "send_digest_now", "send_weekly_roundup_batch_test",
+        "send_breaking_news_alert", "receive_resend_webhook",
+        "get_newsletter_delivery_evidence", "send_migration_announcement",
+        "send_site_update_part1", "send_site_update_part2",
+        "admin_run_onboarding_emails", "admin_send_campaign_email",
+        "_resend_delivery_evidence_repository", "_save_last_resend_acceptances",
+        "_ensure_resend_delivery_evidence_indexes", "send_scheduled_news_digest",
+        "send_weekly_roundup_email", "get_email_analytics",
+        "get_email_analytics_trends", "startup_event",
+    }
     def functions(source):
         return {node.name: ast.dump(node) for node in ast.parse(source).body
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-                and node.name != "get_cold_subscriber_report"}
+                and node.name != "get_cold_subscriber_report"
+                and node.name not in delivery_evidence_scope}
     assert functions(current) == functions(baseline)

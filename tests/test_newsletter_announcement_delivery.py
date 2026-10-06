@@ -45,7 +45,11 @@ def test_transport_isolation(monkeypatch, resend, outcome):
         chunks.append(len(json))
         messages.extend([{**m, "to": m["to"][0]} for m in json])
         ok = outcome == "all" or outcome == "partial" and len(chunks) == 2
-        return httpx.Response(200 if ok else 400, request=httpx.Request("POST", "https://synthetic.invalid"))
+        return httpx.Response(
+            200 if ok else 400,
+            json={"data": [{"id": f"email-{len(chunks)}-{index}"} for index in range(len(json))]},
+            request=httpx.Request("POST", "https://synthetic.invalid"),
+        )
     def smtp(to, subject, html, text, *, newsletter_headers):
         service.last_provider_contacted = True
         messages.append({"to": to, "subject": subject, "html": html, "text": text, "headers": newsletter_headers})
