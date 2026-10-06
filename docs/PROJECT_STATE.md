@@ -1029,6 +1029,24 @@ provider-dashboard or first-party measurement-policy conclusion.
 
 ## 10. Current monetisation model
 
+### 5 October 2026 — homepage sidebar useful-guide substitution
+
+Against `fdad609`, the homepage Amazon sidebar mount is replaced by at most one
+existing measured guide card at `homepage_sidebar_guide`. Only registered
+destinations present in the existing published-guide response are eligible;
+the existing main-strip selections are excluded using the shared unchanged
+daily selector. Empty/failed/disabled inventory renders nothing, without Amazon
+fallback. The new slot mounts only at 1024px+, uses one column, and retains the
+existing commercial measurement and separate consent-gated guide-click paths.
+Sponsor, editorial allocation, main-strip props and backend/config remain unchanged.
+
+Pre-commit RED coverage exposed the missing replacement, exclusions and inventory/
+layout controls. Final regression: 77 tests across six suites passed; production
+build passed with existing Browserslist warning (tests retain React act/fetchPriority
+warnings). No production events or affiliate clicks were generated. The existing
+ten-guide response cap can leave the slot empty; it is not a full catalogue scan.
+Visual height acceptance and deployment remain separate gates.
+
 ### 5 October 2026 — homepage Finance eligibility accuracy
 
 Against `8a1b593`, removed only the empty Finance sidebar pool's arbitrary

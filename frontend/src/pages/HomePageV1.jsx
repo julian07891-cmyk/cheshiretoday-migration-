@@ -6,11 +6,10 @@ import { Helmet } from "react-helmet-async";
 import HomepageLayout from "../components/homepage/HomepageLayout";
 import HomepageHeader from "../components/homepage/HomepageHeader";
 import CompactArticleCard from "../components/CompactArticleCard";
-import { AffiliateWidgetSidebar } from "../components/AffiliateWidgets";
 import HeroStoryCard from "../components/homepage/HeroStoryCard";
 import TopStoriesGrid from "../components/homepage/TopStoriesGrid";
 import TextHeadlineStrip from "../components/homepage/TextHeadlineStrip";
-import HeroMonetisationStrip from "../components/homepage/HeroMonetisationStrip";
+import HeroMonetisationStrip, { selectHomepageGuides } from "../components/homepage/HeroMonetisationStrip";
 import SponsoredPlacement from "../components/SponsoredPlacement";
 import LeadSection from "../components/homepage/LeadSection";
 import SectionHeader from "../components/homepage/SectionHeader";
@@ -180,10 +179,20 @@ export default function HomePageV1() {
   const [isMobileView, setIsMobileView] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
+  const [isDesktopSidebar, setIsDesktopSidebar] = useState(() =>
+    typeof window !== "undefined" && window.innerWidth >= 1024
+  );
+  const mainGuideHrefs = useMemo(() => [
+    ...selectHomepageGuides({ limit: 2, focus: "finance" }),
+    ...selectHomepageGuides({ start: 0, limit: 2, excludeFocus: "finance" }),
+  ].map(item => item.href), []);
 const navigate = useNavigate();
 
   useEffect(() => {
-    const onResize = () => setIsMobileView(window.innerWidth < 768);
+    const onResize = () => {
+      setIsMobileView(window.innerWidth < 768);
+      setIsDesktopSidebar(window.innerWidth >= 1024);
+    };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -1375,7 +1384,12 @@ return (
               />
             )}
 
-            <AffiliateWidgetSidebar category="default" />
+            {isDesktopSidebar && <HeroMonetisationStrip
+              limit={1} compact sidebar eyebrow="Useful guide" title="A practical next step"
+              placement="homepage_sidebar_guide" excludeHrefs={mainGuideHrefs}
+              allowedHrefs={guides.filter(guide => guide?.status === "published" && typeof guide.slug === "string")
+                .map(guide => `/guides/${guide.slug}`)}
+            />}
             </div>
           </aside>
         </div>

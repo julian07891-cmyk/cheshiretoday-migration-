@@ -75,12 +75,13 @@ afterEach(() => {
 test.each([
   [{}, 'homepage_finance_guides'],
   [{ focus: '', excludeFocus: 'finance', placement: 'homepage_popular_guides' }, 'homepage_popular_guides'],
+  [{ focus: '', limit: 1, sidebar: true, placement: 'homepage_sidebar_guide' }, 'homepage_sidebar_guide'],
 ])('only selected cards render bounded measurements once: %s', async (props, placement) => {
   await render(props);
   const hrefs = [...container.querySelectorAll('a')].map(a => a.getAttribute('href'));
-  expect(hrefs).toHaveLength(2);
+  expect(hrefs).toHaveLength(props.limit || 2);
   const selected = hrefs.map(href => monetisationTools.homepage_primary.find(item => item.href === href));
-  expect(events('rendered')).toHaveLength(2);
+  expect(events('rendered')).toHaveLength(props.limit || 2);
   expect(events('rendered').map(p => p.destination_id)).toEqual(selected.map(i => i.guideId));
   for (const payload of events('rendered')) {
     expect(payload).toEqual({
@@ -95,7 +96,19 @@ test.each([
     expect(JSON.stringify(payload)).not.toMatch(/https?:|\/guides\/|\?|@/);
   }
   await render(props);
-  expect(events('rendered')).toHaveLength(2);
+  expect(events('rendered')).toHaveLength(props.limit || 2);
+});
+
+test('sidebar measures one rendered, viewable and clicked guide with dedupe', async () => {
+  await render({ focus: '', limit: 1, sidebar: true, placement: 'homepage_sidebar_guide' });
+  act(() => observers[0].emit(0.5));
+  act(() => jest.advanceTimersByTime(1000));
+  await click(container.querySelector('a'));
+  await click(container.querySelector('a'));
+  for (const type of ['rendered', 'viewable', 'clicked']) {
+    expect(events(type)).toHaveLength(1);
+    expect(events(type)[0].placement_id).toBe('homepage_sidebar_guide');
+  }
 });
 
 test('viewability requires continuous 50 percent for 1000ms and cancels on visibility loss', async () => {

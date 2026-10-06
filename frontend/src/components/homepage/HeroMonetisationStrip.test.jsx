@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
-import HeroMonetisationStrip from './HeroMonetisationStrip';
+import HeroMonetisationStrip, { selectHomepageGuides } from './HeroMonetisationStrip';
 import { monetisationTools } from '../../config/monetisationTools';
 import { FEATURES } from '../../config/features';
 
@@ -45,4 +45,45 @@ test('every starting position across fixed days remains unique and savings-free'
 test('disabled feature renders no cards', () => {
   FEATURES.NON_AMAZON_MONETISATION_ENABLED = false; render({ limit: 2 });
   expect(links()).toEqual([]); expect(container.textContent).toBe('');
+});
+test('destination exclusions prevent duplicates and exhausted inventory fails closed', () => {
+  render({ limit: 2 });
+  const selected = links();
+  act(() => root.render(null));
+  render({ limit: 1, excludeHrefs: selected });
+  expect(links()).toHaveLength(1);
+  expect(selected).not.toContain(links()[0]);
+
+  act(() => root.render(null));
+  render({ limit: 1, excludeHrefs: monetisationTools.homepage_primary.map(item => item.href) });
+  expect(links()).toEqual([]);
+  expect(container.textContent).toBe('');
+});
+test('sidebar accepts only supplied published destinations and uses one column', () => {
+  const href = monetisationTools.homepage_primary[0].href;
+  render({ sidebar: true, limit: 1, allowedHrefs: [href] });
+  expect(links()).toEqual([href]);
+  expect(container.querySelector('.grid').className).not.toMatch(/sm:grid-cols/);
+  render({ sidebar: true, limit: 1, allowedHrefs: [] });
+  expect(links()).toEqual([]);
+});
+test('sidebar never duplicates main-strip destinations across daily rotations', () => {
+  for (let day = 1; day <= 31; day++) {
+    jest.setSystemTime(new Date(Date.UTC(2026, 9, day, 12)));
+    act(() => root.render(null));
+    render({ focus: 'finance', limit: 2 });
+    const financeHrefs = links();
+    act(() => root.render(null));
+    render({ excludeFocus: 'finance', limit: 2 });
+    const main = [...financeHrefs, ...links()];
+    expect(main).toEqual([
+      ...selectHomepageGuides({ focus: 'finance', limit: 2 }),
+      ...selectHomepageGuides({ excludeFocus: 'finance', limit: 2 }),
+    ].map(item => item.href));
+    act(() => root.render(null));
+    render({ sidebar: true, limit: 1, excludeHrefs: main,
+      allowedHrefs: monetisationTools.homepage_primary.map(item => item.href) });
+    expect(links()).toHaveLength(1);
+    expect(main).not.toContain(links()[0]);
+  }
 });

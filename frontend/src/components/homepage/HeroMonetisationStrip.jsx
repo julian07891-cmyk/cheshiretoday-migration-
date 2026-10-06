@@ -73,10 +73,7 @@ function MeasuredGuideCard({ tool, placement, start, compact, title, className, 
     }}>{children}</a>;
 }
 
-export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "", excludeFocus = "", placement }) {
-  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
-
-  const items = useMemo(() => {
+export function selectHomepageGuides({ start = 0, limit = 3, focus = "", excludeFocus = "", excludeHrefs = [], allowedHrefs } = {}) {
     const isFinanceGuide = (item) =>
       /mortgage|savings|energy|tariff|bills|credit|mobile|sim|phone/i.test(`${item?.title || ""} ${item?.href || ""}`);
 
@@ -90,12 +87,19 @@ export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = 
       sourceItems = sourceItems.filter((item) => !isFinanceGuide(item));
     }
 
+    sourceItems = sourceItems.filter(item => !excludeHrefs.includes(item.href)
+      && (allowedHrefs === undefined || allowedHrefs.includes(item.href)));
     return getRotatedSlice(sourceItems, start, limit, `homepage_primary_${focus || "all"}_${excludeFocus || "none"}`);
-  }, [start, limit, focus, excludeFocus]);
+}
+
+export default function HeroMonetisationStrip({ start = 0, limit = 3, compact = false, className = "", eyebrow = "Useful next steps", title = "Guides and tools for readers", focus = "", excludeFocus = "", placement, sidebar = false, excludeHrefs, allowedHrefs }) {
+  const items = useMemo(() => selectHomepageGuides({ start, limit, focus, excludeFocus, excludeHrefs, allowedHrefs }),
+    [start, limit, focus, excludeFocus, excludeHrefs, allowedHrefs]);
+  if (!FEATURES.NON_AMAZON_MONETISATION_ENABLED) return null;
 
   if (!items.length) return null;
 
-  const gridClass = compact
+  const gridClass = sidebar ? "grid grid-cols-1 gap-3" : compact
     ? "grid grid-cols-1 sm:grid-cols-2 gap-3"
     : "grid grid-cols-1 sm:grid-cols-3 gap-3";
 

@@ -13,10 +13,14 @@ jest.mock("../components/SubscribeSection", () => () => null);
 jest.mock("../components/JobsWidget", () => ({
   SubscribeInlineBanner: () => null,
 }));
-jest.mock("../components/SponsoredPlacement", () => () => null);
-jest.mock("../components/homepage/HeroMonetisationStrip", () => props => <div data-guide-strip={JSON.stringify(props)} />);
+jest.mock("../components/SponsoredPlacement", () => ({ placement }) => <div data-sponsor-placement={placement} />);
+jest.mock("../components/homepage/HeroMonetisationStrip", () => ({
+  __esModule: true,
+  ...jest.requireActual("../components/homepage/HeroMonetisationStrip"),
+  default: props => <div data-guide-strip={JSON.stringify(props)} />,
+}));
 jest.mock("../components/AffiliateWidgets", () => ({
-  AffiliateWidgetSidebar: () => null,
+  AffiliateWidgetSidebar: () => <div data-amazon-sidebar />,
 }));
 jest.mock("../components/homepage/HeroStoryCard", () => (props) => (
   <article data-hero-title={props.headline}>{props.headline}</article>
@@ -86,7 +90,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-const renderHomepage = async (articles) => {
+const renderHomepage = async (articles, guides = []) => {
   global.fetch = jest
     .fn()
     .mockResolvedValueOnce({
@@ -95,7 +99,7 @@ const renderHomepage = async (articles) => {
     })
     .mockResolvedValueOnce({
       ok: true,
-      json: async () => [],
+      json: async () => guides,
     });
 
   await act(async () => {
@@ -233,10 +237,22 @@ test("Latest uses the editorial card variant before and after the guide strip", 
 
 test("guide strips retain selection props and distinct measurement placements", async () => {
   await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)));
-  expect(Array.from(container.querySelectorAll('[data-guide-strip]')).map(el => JSON.parse(el.dataset.guideStrip))).toEqual([
+  const strips = Array.from(container.querySelectorAll('[data-guide-strip]')).map(el => JSON.parse(el.dataset.guideStrip));
+  expect(strips.slice(0, 2)).toEqual([
     { limit: 2, compact: true, focus: 'finance', placement: 'homepage_finance_guides' },
     { start: 0, limit: 2, compact: true, eyebrow: 'Popular guides', title: 'More practical next steps', excludeFocus: 'finance', placement: 'homepage_popular_guides' },
   ]);
+  expect(strips[2]).toEqual(expect.objectContaining({
+    limit: 1,
+    compact: true,
+    sidebar: true,
+    placement: 'homepage_sidebar_guide',
+    eyebrow: 'Useful guide',
+  }));
+  expect(strips[2].excludeHrefs).toHaveLength(4);
+  expect(new Set(strips[2].excludeHrefs).size).toBe(4);
+  expect(container.querySelector('[data-amazon-sidebar]')).toBeNull();
+  expect(container.querySelector('[data-sponsor-placement="homepage_sidebar"]')).not.toBeNull();
 });
 
 test("mobile homepage does not mount guide strips", async () => {
@@ -248,6 +264,27 @@ test("mobile homepage does not mount guide strips", async () => {
   await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)));
 
   expect(container.querySelectorAll("[data-guide-strip]")).toHaveLength(0);
+  expect(container.querySelector('[data-amazon-sidebar]')).toBeNull();
+});
+
+test.each([390, 768, 1023])('hidden sidebar has no guide mounted at %ipx', async width => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)));
+  expect(container.querySelector('aside [data-guide-strip]')).toBeNull();
+  expect(container.querySelector('[data-amazon-sidebar]')).toBeNull();
+});
+
+test('sidebar receives only published guide destinations from the existing request', async () => {
+  await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)), [
+    { slug: 'best-accounting-software-uk', status: 'published' },
+    { slug: 'draft-guide', status: 'draft' },
+    { status: 'published' },
+  ]);
+  const props = JSON.parse(container.querySelector('aside [data-guide-strip]').dataset.guideStrip);
+  expect(props.allowedHrefs).toEqual(['/guides/best-accounting-software-uk']);
+  expect(props.limit).toBe(1);
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(global.fetch.mock.calls[1][0]).toMatch(/\/api\/authority-pages\?limit=10&status=published$/);
 });
 
 test("Latest keeps approved unique stories only and hides an unnecessary toggle", async () => {
