@@ -1654,3 +1654,20 @@ reconciliation was committed as `109134b`. This update records implementation
 through `c4a977b` and its 5 October 12:00 natural-run acceptance, APPROVED WITH
 OBSERVATIONS. This documentation update awaits separate review/commit; mutable
 production facts require fresh evidence.
+
+
+## 21. 6 October 2026 sidebar package production acceptance
+
+Production/origin advanced from `8e8a089` to `6683413` with the verified three-commit sidebar package:
+
+- `8a1b593 Clarify article sidebar related stories heading`
+- `fdad609 Remove unrelated homepage Finance fallback`
+- `6683413 Replace homepage Amazon sidebar with a useful guide`
+
+Pre-push combined verification passed: `full-scrape-prod` was exactly three commits ahead of origin, origin was an ancestor of HEAD, `git diff --check` passed, and the production frontend build compiled successfully. The tracked working tree was clean apart from the two protected untracked files.
+
+The useful-guide change had already passed isolated visual acceptance at 1440px, 1050px, 1023px and 390px. The Amazon homepage sidebar block was absent; at most one useful guide rendered on desktop; the sidebar was not mounted below 1024px; the selected sidebar destination did not duplicate the visible main guide strips; and measurement used the distinct `homepage_sidebar_guide` placement without generating production clicks or external affiliate requests.
+
+Post-deployment verification confirmed local and origin HEAD at `6683413b5838e9966a0239896e33c67fb819ea1f`, public health HTTP 200, and the live homepage HTTP 200. The live production bundle referenced `main.3b0dac66.js` and contained `Related stories` and `homepage_sidebar_guide`, while the old `More in ` heading was absent. The live homepage also exposed the expected registered guide destination `/guides/best-accounting-software-uk`.
+
+**Production acceptance: APPROVED.** No corrective code change was required after deployment.
