@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40` (`Handle mixed local feed publication dates`)
-> - **Last repository reconciliation:** 5 October 2026; `109134b` committed the earlier seven-file reconciliation; this update records `c4a977b` and its first post-hotfix natural run.
-> - **Production-verification status:** **Production accepted on first post-hotfix natural run — APPROVED WITH OBSERVATIONS.** The 5 October 06:00 run on `b83d2c3` failed with mixed-date sorting; `c4a977b` became Live at 06:42:11 BST and the 12:00 natural run completed without recurrence. Source-count limitations and a separate editorial-filter observation remain below. Prior commercial/homepage acceptance remains historical evidence. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `b413282ca07deb44b4953dbebbf19d87f267cb0e` (`Tighten regional UK scope eligibility`)
+> - **Last repository reconciliation:** 6 October 2026; this update records the sidebar package and the education/shared-eligibility/regional-scope sequence through `b413282`.
+> - **Production-verification status:** **Current feed acceptance APPROVED WITH OBSERVATIONS.** Public health returned HTTP 200/healthy and the 97-item public window excluded the four required regional/paper fixtures while retaining the Chester University local story. One separately observed Drumcree/Portadown story carries no configured regional marker in its metadata and remains a future editorial-policy decision. Earlier mixed-date hotfix acceptance and commercial/homepage evidence remain historical. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40`
-- **Verified deployed baseline:** `c4a977bbf6e7b118375bca5b5ab9ac4be48c6d40`; local/remote equality after push is supplied evidence, not a new remote fetch in this reconciliation.
-- **Latest application commit:** `Handle mixed local feed publication dates`
+- **Current application baseline:** `b413282ca07deb44b4953dbebbf19d87f267cb0e`
+- **Verified deployed baseline:** `b413282ca07deb44b4953dbebbf19d87f267cb0e`; local/origin equality and live public behaviour were verified read-only on 6 October 2026.
+- **Latest application commit:** `Tighten regional UK scope eligibility`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -98,7 +98,7 @@ every session start rather than inferring current modifications from this list.
 Verify branch, HEAD, latest commit and working tree at every session start.
 Preserve intentional untracked records and unrelated user changes.
 
-### 6 October 2026 — bounded UK relevance and Admin Articles eligibility (local/uncommitted)
+### 6 October 2026 — bounded UK relevance and Admin Articles eligibility
 
 - A shared binary public-eligibility helper now preserves the existing UK/local
   format and editorial exclusions while rejecting Scotland/Wales/Northern Ireland
@@ -118,11 +118,11 @@ Preserve intentional untracked records and unrelated user changes.
   and the broader public-feed/Admin/homepage/local-routing selection passed 158
   tests. Python compilation and `git diff --check` passed. No database, import,
   scheduler, frontend, newsletter or production operation was performed.
-- Follow-up local patch: UK-wide rescue now requires an explicit nationwide
+- Follow-up `b413282`: UK-wide rescue now requires an explicit nationwide
   phrase or existing national institution; bare incidental `UK`/`British`
   mentions no longer rescue devolved-city coverage. The exact production Glasgow
   wording failed before the patch; 41 helper tests and 43 combined helper/Admin
-  tests passed afterward. Deployment remains a separate gate.
+  tests passed afterward. Read-only production acceptance is recorded below.
 
 ## 3. Current production architecture
 
@@ -1697,3 +1697,60 @@ The useful-guide change had already passed isolated visual acceptance at 1440px,
 Post-deployment verification confirmed local and origin HEAD at `6683413b5838e9966a0239896e33c67fb819ea1f`, public health HTTP 200, and the live homepage HTTP 200. The live production bundle referenced `main.3b0dac66.js` and contained `Related stories` and `homepage_sidebar_guide`, while the old `More in ` heading was absent. The live homepage also exposed the expected registered guide destination `/guides/best-accounting-software-uk`.
 
 **Production acceptance: APPROVED.** No corrective code change was required after deployment.
+
+`7004994 Record sidebar package production acceptance` preserved this evidence.
+
+## 22. 6 October 2026 education and regional public-eligibility acceptance
+
+Five imported records were investigated read-only: the Scotland AI teacher,
+Trump/RAF Fairford, The Papers, Chester University and the Scotland £5.8bn story.
+All existed in MongoDB and none was archived or Manual Review-hidden. Chester
+University was correctly local/public; Scotland £5.8bn was initially public; The
+Papers was intentionally filtered; RAF Fairford remained excluded by the existing
+UK utility policy. The AI-teacher false negative was caused by singular `school`
+not matching `schools`.
+
+`871874d Allow plural schools in UK education feed` changed only `school` to
+`schools?`. Focused RED/GREEN evidence passed and production observation showed
+the AI-teacher story public before the later regional-policy work. Historical
+comparison established that the September state had no general Scotland/Glasgow
+exclusion: Scotland £5.8bn and Glasgow council were historically eligible, so
+their exclusion was a newly approved bounded policy rather than a revert.
+
+`a527e74 Align public eligibility and Admin Articles` introduced
+`backend/app/public_article_eligibility.py`. The public feed and main Admin
+Articles list now share binary editorial eligibility; Admin applies it before
+pagination/counting. Filtered records remain stored, Archive/Manual Review are
+unchanged, `force_live` remains an override, and homepage rank/interleave and
+rank-dependent sensitive caps do not define Admin visibility. Verification
+passed 40 focused and 158 broader tests. Initial production checks excluded the
+AI-teacher and £5.8bn stories and retained Chester, but Glasgow remained because
+its summary said “one of the UK’s biggest ever”, and bare `UK` was incorrectly
+treated as proof of national scope.
+
+`b413282 Tighten regional UK scope eligibility` removed bare `uk`, `united
+kingdom`, `britain` and `british` as sufficient rescue signals. Explicit
+`UK-wide`/`nationwide`/across-or-throughout-UK-or-Britain forms and the existing
+UK/British Government, Westminster, Bank of England, House of Commons, Downing
+Street and National Grid signals remain. Exact Glasgow and incidental UK/British
+fixtures were added while national-scope, Chester, Scotland and The Papers
+counterexamples remain covered. The combined helper/Admin gate passed 43 tests;
+compilation and whitespace checks passed.
+
+Read-only acceptance on 6 October returned HTTP 200/healthy and 97 public
+articles: 49 Local News, 17 Business, 13 UK News, 9 Tech, 8 Finance and 1 Tax.
+There were no exact or >=0.85 title duplicates and no obvious sports, video,
+podcast, gallery or The Papers leakage. The Scotland AI teacher, Scotland £5.8bn,
+Glasgow council and specified The Papers headline were absent; Chester University
+was present. No current non-local devolved-marker story supplied a national-scope
+example, so preservation remains established by the current helper tests. The
+live bundle retained `Related stories` and `homepage_sidebar_guide`, omitted the
+old `More in ` string, and the homepage/health documents returned HTTP 200.
+
+**Acceptance: APPROVED WITH OBSERVATIONS.** A Drumcree/Portadown article remains
+in the window because its title/summary contains none of the approved regional
+markers; changing that is a separate editorial-policy decision. RAF
+Fairford/defence-security also remains unchanged. The previously named stale AST
+test `test_every_other_server_decision_matches_baseline` existed before the
+shared-helper refactor but is absent at `b413282`; no current test debt under that
+name was silently “fixed” in this documentation task.

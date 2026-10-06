@@ -610,3 +610,39 @@ Commit `d4165800662131cded5cedf064a03cbdef21f531` (`Add homepage guide measureme
 The homepage now does not mount guide strips on mobile, preventing hidden mobile rendered impressions, while desktop retains both guide placements. Verification passed three focused suites with 23/23 tests and a successful production frontend build. After deployment, local and remote SHAs matched exactly, public `/health` returned HTTP 200/healthy, and owner production acceptance confirmed desktop guide strips visible and mobile guide strips absent.
 
 This deployment establishes a measurement baseline only; it does not establish CTR, conversion improvement, revenue or guide popularity.
+
+## 6 October 2026 — sidebar package and regional eligibility acceptance
+
+The sidebar package comprised `8a1b593` (neutral `Related stories` article
+heading), `fdad609` (remove unrelated Finance fallback) and `6683413` (replace
+the homepage Amazon sidebar with one measured useful guide), with acceptance
+recorded by `7004994`. The live bundle contained `Related stories` and
+`homepage_sidebar_guide`, omitted the old `More in ` wording and retained the
+expected guide destination. Health and homepage returned HTTP 200.
+
+The subsequent article investigation found five unarchived/non-Manual-Review
+records. Chester University was correctly local/public; The Papers was filtered;
+RAF Fairford remained excluded by existing utility policy; Scotland £5.8bn was
+initially public; and the AI-teacher story exposed singular `school` failing to
+match plural `schools`. `871874d` made only the plural-aware `schools?` change.
+Historical comparison showed no prior general Scotland/Glasgow block, so the
+regional distinction was approved as new bounded policy rather than a revert.
+
+`a527e74` centralised binary public eligibility and applied it to public pools and
+Admin Articles before pagination/counting. Stored records, Archive, Manual
+Review, force-live, ranking/interleave and sensitive caps were preserved. After
+40 focused and 158 broader passing tests, production excluded the two Scotland
+fixtures and retained Chester, but Glasgow remained: “one of the UK’s biggest
+ever” matched the bare `UK` rescue.
+
+`b413282` restricted rescue to explicit nationwide phrases and existing national
+institutions. The exact Glasgow fixture and incidental UK/British cases joined
+the preserved national/local/noise counterexamples; 43 combined helper/Admin
+tests, compilation and whitespace checks passed. Read-only production acceptance
+returned HTTP 200/healthy and 97 public articles. All four required exclusions
+were absent, Chester University was present, no exact or >=0.85 title duplicates
+were found, and no obvious sports/video/podcast/gallery or paper-roundup leakage
+was observed. Acceptance is **APPROVED WITH OBSERVATIONS**: Drumcree/Portadown
+remains unclassified because its metadata contains no approved regional marker,
+and RAF Fairford/defence-security remains a separate policy question. No
+production write, import, job, newsletter or analytics event was triggered.

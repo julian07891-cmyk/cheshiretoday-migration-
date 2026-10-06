@@ -1113,3 +1113,30 @@ Because CSS-only hiding would still mount guide components and could create fals
 Verification passed three focused suites with 23/23 tests, including dedicated rendered/viewable/clicked, dedupe, consent-separation, failure-safety, transport and device-classification coverage. The production frontend build compiled successfully; the only build notice was the existing stale Browserslist-data warning. `d4165800662131cded5cedf064a03cbdef21f531` was pushed after explicit approval, local and remote SHAs matched, public `/health` returned HTTP 200/healthy, and owner production acceptance confirmed desktop guide strips remained visible while mobile guide strips remained absent.
 
 This establishes a first-party measurement baseline only. It does not establish CTR, conversion uplift, revenue performance or guide popularity.
+
+## 6 October 2026 — sidebar and public-eligibility sequence
+
+- `8a1b593`, `fdad609` and `6683413` delivered neutral article-related wording,
+  truthful Finance allocation and a measured useful-guide sidebar; `7004994`
+  recorded production acceptance. Live bundle evidence retained `Related
+  stories` and `homepage_sidebar_guide` and removed old `More in ` wording.
+- Investigation of the Scotland AI teacher, RAF Fairford, The Papers, Chester
+  University and Scotland £5.8bn established that all five records were stored
+  and visible to neither Archive nor Manual Review rules. The singular `school`
+  mismatch caused the education false negative; `871874d` changed it to
+  `schools?`. RAF Fairford remained an unchanged policy question.
+- Historical comparison found no September Scotland/Glasgow exclusion. The
+  approved regional rule was therefore new bounded policy. `a527e74` extracted
+  shared binary public eligibility and aligned Admin Articles before
+  pagination/counting without deleting records or changing force-live,
+  rank/interleave or sensitive caps. QA passed 40 focused and 158 broader tests.
+- Glasgow initially survived because incidental “one of the UK’s biggest ever”
+  matched bare `UK`. `b413282` retained only explicit nationwide phrases and
+  national institutions as rescue signals. Exact and incidental fixtures passed
+  in the 43-test shared/Admin gate with compilation and whitespace checks.
+- Read-only acceptance found health/homepage HTTP 200, 97 public articles, the
+  four required exclusions absent, Chester present and no exact or >=0.85 title
+  duplicates. One Drumcree/Portadown item lacked any configured regional marker;
+  this and defence/security remain separate editorial decisions. The historical
+  AST assertion `test_every_other_server_decision_matches_baseline` is not
+  present at `b413282`; it is not current outstanding test debt.
