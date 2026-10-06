@@ -12,10 +12,10 @@ import re
 
 _CRIME_RE = re.compile(
     r"(cops?|police|officer|mugshot|murder(?:s)?|kill(?:ed|s)?|manslaughter|"
-    r"homicide|stab(?:bing|bed|s)?|shoot(?:ing|s)?|firearm(?:s)?|gunman|"
+    r"homicide|\bstab(?:bing|bed|s)?\b|shoot(?:ing|s)?|firearm(?:s)?|gunman|"
     r"rape(?:d)?|sexual assault|sex(?:ual)? offence|indecent|pervert|predator|"
     r"groom(?:ed|ing)?|paedophile|pedophile|child\s+sex|online\s+predator|"
-    r"cctv\s+appeal|stolen|theft|shoplift(?:ing|ed)?|\bassault(?:ed|s)?\b|"
+    r"cctv\s+appeal|stolen|theft|shoplift(?:ing|ed)?|\bretail\s+offence(?:s)?\b|\bassault(?:ed|s)?\b|"
     r"\battack(?:ed|s)?\b|robber(?:y|ies)|burglar(?:y|ies)|arson|charged|"
     r"arrest(?:ed)?|raid|drug raid|cannabis plants?|prosecut(?:ed|ion)|trial|"
     r"guilty|sentenc(?:ed|ing)|jailed|jail|prison|convict(?:ed|ion)|"

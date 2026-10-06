@@ -591,3 +591,28 @@ def test_duplicate_county_wide_candidate_remains_rejected(monkeypatch):
     assert result["public_imported"] == 0
     assert result["manual_review_imported"] == 0
     assert inserted == []
+
+
+def test_retail_offences_local_story_is_rejected_before_rewrite(monkeypatch):
+    title = "Chester man banned from parts of city centre for four years over retail offences"
+    source_text = (
+        "Stephen Sanderson, 47, is banned from parts of Chester city centre for four years "
+        "under a CBO after repeated retail offences across Cheshire."
+    )
+    story = candidate(
+        title,
+        content=source_text,
+        source="Chester Standard",
+        source_url="https://www.chesterstandard.co.uk/news/example-retail-offences/?ref=rss",
+        location="Chester",
+        is_local_source=True,
+        is_cheshire_related=True,
+    )
+
+    assert server.classify_local_crime(story) is True
+
+    result, inserted = run_import(monkeypatch, [story])
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 0
+    assert inserted == []
