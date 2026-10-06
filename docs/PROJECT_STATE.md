@@ -118,6 +118,11 @@ Preserve intentional untracked records and unrelated user changes.
   and the broader public-feed/Admin/homepage/local-routing selection passed 158
   tests. Python compilation and `git diff --check` passed. No database, import,
   scheduler, frontend, newsletter or production operation was performed.
+- Follow-up local patch: UK-wide rescue now requires an explicit nationwide
+  phrase or existing national institution; bare incidental `UK`/`British`
+  mentions no longer rescue devolved-city coverage. The exact production Glasgow
+  wording failed before the patch; 41 helper tests and 43 combined helper/Admin
+  tests passed afterward. Deployment remains a separate gate.
 
 ## 3. Current production architecture
 

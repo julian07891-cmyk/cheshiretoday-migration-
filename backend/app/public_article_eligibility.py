@@ -17,9 +17,12 @@ _DEVOLVED_OR_REGIONAL_KW = re.compile(
     re.I,
 )
 _UK_WIDE_SCOPE_KW = re.compile(
-    r"\b(uk|united\s+kingdom|britain|british|westminster|uk\s+government|"
-    r"british\s+government|bank\s+of\s+england|house\s+of\s+commons|downing\s+street|"
-    r"national\s+grid)\b",
+    r"\b(uk[-\s]+wide|nationwide|"
+    r"(?:across|throughout)\s+(?:all\s+parts\s+of\s+)?(?:the\s+)?uk|"
+    r"(?:across|throughout)\s+(?:all\s+parts\s+of\s+)?britain|"
+    r"in\s+all\s+parts\s+of\s+(?:the\s+)?(?:uk|britain)|"
+    r"westminster|uk\s+government|british\s+government|bank\s+of\s+england|"
+    r"house\s+of\s+commons|downing\s+street|national\s+grid)\b",
     re.I,
 )
 

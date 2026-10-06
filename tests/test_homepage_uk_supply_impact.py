@@ -28,6 +28,11 @@ SCOTLAND_AI_TEACHER = {
     "summary": "Jamie Laycock says schools must help youngsters understand both the opportunities and dangers of AI.",
     "source_url": "https://www.bbc.co.uk/news/articles/c6qjk9n7gge7o",
 }
+GLASGOW_COUNCIL_PAY_DEAL = {
+    **DIESEL,
+    "title": "Glasgow city council reaches pay deal with union to avert fire-and-rehire plan",
+    "summary": "‘Strong and fair’ proposal to be taken to members’ ballot after previous offer led Unison to walk out of negotiations Glasgow city council has reached an agreement with the trade union Unison over pay and grading, averting one of the UK’s biggest ever fire-and-rehire exercises.",
+}
 
 
 @pytest.fixture
@@ -52,13 +57,23 @@ def test_plural_schools_education_story_is_accepted(is_noise):
         "summary": "Failing to support Scotland's most disadvantaged costs at least £5.8bn a year, according to new analysis.",
         "category": "Business",
     },
-    {
-        **DIESEL,
-        "title": "Glasgow city council reaches pay deal with union to avert fire-and-rehire plan",
-        "summary": "The agreement applies to council workers in Glasgow.",
-    },
+    GLASGOW_COUNCIL_PAY_DEAL,
 ])
 def test_devolved_or_regional_only_stories_are_excluded(is_noise, article):
+    assert is_noise(article) is True
+
+
+@pytest.mark.parametrize("incidental_scope", [
+    "The agreement would be one of the UK's biggest settlements.",
+    "The Glasgow agreement sets a British record.",
+    "The union also represents workers elsewhere in the UK.",
+])
+def test_incidental_uk_or_british_mentions_do_not_prove_national_scope(is_noise, incidental_scope):
+    article = {
+        **DIESEL,
+        "title": "Glasgow city council reaches a local pay agreement",
+        "summary": incidental_scope,
+    }
     assert is_noise(article) is True
 
 
