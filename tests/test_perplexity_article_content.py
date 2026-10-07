@@ -120,6 +120,23 @@ def test_primary_source_and_unsupported_detail_rules(provider, attempt):
         assert required in prompt
 
 
+@pytest.mark.parametrize("attempt", [0, 1], ids=["first", "retry"])
+def test_source_verification_is_silent_and_public_copy_avoids_audit_narration(
+    provider,
+    attempt,
+):
+    prompt = prompts(provider)[attempt].lower()
+    for required in (
+        "perform source verification and research silently",
+        "do not narrate the verification process in the final article",
+        "do not list people, organisations, reactions or details merely to say they are absent",
+        "cheshire east council said",
+        "the ofsted report found",
+    ):
+        assert required in prompt
+    assert "according to the source report" not in prompt
+
+
 def test_request_contract_and_short_success_is_not_retried(provider):
     assert provider.run(response(SHORT)) == SHORT
     assert len(provider.calls) == 1

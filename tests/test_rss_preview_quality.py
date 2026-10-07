@@ -83,6 +83,7 @@ def complete_rewrite():
         "Discount schemes can reduce some travel, food and entertainment costs. The available savings depend on the retailer and may require current student identification.",
         "Meal planning is another way to make spending more predictable. Preparing a shopping list can reduce waste and limit unplanned purchases during the week.",
         "Support advisers recommend reviewing a budget when income or accommodation costs change. Verified guidance remains available through university and public advice services.",
+        "Students can also check published payment dates and contact their institution before a deadline if expected support has not reached their account.",
     ]
     return "\n\n".join(paragraphs)
 

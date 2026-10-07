@@ -18907,6 +18907,30 @@ def find_ai_manual_review_hits(content: str):
     return hits
 
 
+AI_SOURCE_AUDIT_NARRATION_PATTERNS = (
+    re.compile(r"\bthe source report says\b", re.I),
+    re.compile(r"\bthe report does not identify\b", re.I),
+    re.compile(r"\bis not identified in the report\b", re.I),
+    re.compile(r"\bthere is no mention of\b", re.I),
+    re.compile(r"\bthe source does not mention\b", re.I),
+    re.compile(
+        r"\bno business or public venue is identified in the report\b",
+        re.I,
+    ),
+)
+
+
+def has_ai_source_audit_narration(content: str) -> bool:
+    """Detect narrow source-check narration that must not appear in public copy."""
+    text = str(content or "")
+    return any(pattern.search(text) for pattern in AI_SOURCE_AUDIT_NARRATION_PATTERNS)
+
+
+def count_article_words(content: str) -> int:
+    """Count prose words for the AI auto-screen floor without using character length."""
+    return len(re.findall(r"\b\w+(?:[’'-]\w+)*\b", str(content or ""), flags=re.UNICODE))
+
+
 AI_EDITORIAL_PADDING_PHRASES = [
     "serves as a reminder",
     "serves as an inspiration",
@@ -19124,6 +19148,12 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
 
     hits = find_ai_manual_review_hits(content) if ai_rewrite_used else []
     editorial_quality_reasons = find_ai_editorial_quality_reasons(content, title) if ai_rewrite_used else []
+    source_audit_narration = (
+        has_ai_source_audit_narration(content) if ai_rewrite_used else False
+    )
+    below_auto_screen_word_floor = (
+        ai_rewrite_used and count_article_words(content) < 200
+    )
     weak_rss_reason = find_weak_rss_public_review_reason(article, content, ai_rewrite_used)
     local_location_reason = find_local_location_review_reason(article, content, title)
 
@@ -19131,6 +19161,14 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
     if hits:
         review_reasons.append("AI rewrite contained risky invented-detail phrases; verify against source before promotion or social sharing.")
     review_reasons.extend(editorial_quality_reasons)
+    if source_audit_narration:
+        review_reasons.append(
+            "AI rewrite contains source-verification narration that is not suitable for public copy."
+        )
+    if below_auto_screen_word_floor:
+        review_reasons.append(
+            "AI rewrite is below the 200-word automatic-screening floor and needs manual review."
+        )
     if weak_rss_reason:
         review_reasons.append(weak_rss_reason)
     if local_location_reason:
@@ -19139,12 +19177,24 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
     if review_reasons:
         now_iso = datetime.now(timezone.utc).isoformat()
         article["verification_status"] = "needs_manual_review"
-        article["rewrite_status"] = "ai_rewrite_needs_review" if hits else "manual_review_required"
+        article["rewrite_status"] = (
+            "manual_review_required"
+            if source_audit_narration or below_auto_screen_word_floor
+            else "ai_rewrite_needs_review" if hits
+            else "manual_review_required"
+        )
         article["manual_review_hidden_from_public"] = True
         article["manual_review_reason"] = " ".join(review_reasons)
         article["manual_review_created_at"] = now_iso
 
-        if hits or editorial_quality_reasons:
+        if below_auto_screen_word_floor:
+            article.setdefault("archive_reason", "needs_manual_review")
+
+        if (
+            hits
+            or editorial_quality_reasons
+            or source_audit_narration
+        ):
             article["archived"] = True
             article["archived_at"] = now_iso
             article["archive_reason"] = "needs_manual_review"

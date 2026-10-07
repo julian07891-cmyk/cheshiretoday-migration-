@@ -360,7 +360,7 @@ CRITICAL ACCURACY RULES:
 4. Never invent street names, town centres, quotes, anonymous residents, repair bills, smashed windows, police involvement, social media reaction, business history or previous incidents unless they are clearly supported by the source material.
 5. Do not pad thin stories with generic background. Accuracy is more important than length.
 6. If source material is limited, write a shorter accurate article rather than adding unsupported details.
-7. Attribute claims carefully, using wording such as "according to the source report" or "the business said" only where supported.
+7. Perform source verification and research silently. Do not narrate the verification process in the final article.
 8. Use British English and short paragraphs for mobile reading.
 9. Add local context only when it is directly relevant and does not introduce unsupported claims.
 10. Write like a human UK local/business editor, not an AI explainer. Lead with the concrete fact first.
@@ -380,6 +380,8 @@ Produce a complete source-led news report where verified evidence supports it, n
 
 Before writing, actively research the Source URL and reputable corroborating sources for additional verified detail. The Source URL remains the primary reference. Corroboration must not override or conflate the primary story without evidence. Omit uncertain or unsupported details.
 
+Do not write sentences whose purpose is to explain what the source did not mention or identify. Do not list people, organisations, reactions or details merely to say they are absent. Attribute supported facts naturally to named organisations or documents, for example: "Cheshire East Council said..." or "The Ofsted report found...".
+
 Where available and verified, include the core development; exact names and roles; exact dates and times; exact places; figures and amounts; chronology; relevant background directly supported by sources; attributed responses and viewpoints; confirmed next steps, deadlines or practical information; and practical consequences only when explicitly supported. Do not invent missing responses or turn possible consequences into facts.
 
 Every paragraph must add distinct verified information. Avoid generic filler, broad context detached from this specific story, speculation, repetition and essay-style conclusions. Finish with the final known fact or confirmed practical next step."""
@@ -393,15 +395,17 @@ Summary: {summary}
 Source: {source}
 Source URL: {source_url}
 
-Before writing, identify the verified facts from the source URL, especially:
+Before writing, silently identify the verified facts from the source URL, especially:
 - exact business or venue name
 - exact location
 - who said what
 - what happened
 - when it happened
-- whether any police, council, parents, residents or customers are actually mentioned
+- any supported response from a named person or organisation
 
 Use only verified details in the finished article. If the source URL is unavailable, paywalled or too thin, rely only on the headline and summary and avoid all unsupported specifics.
+
+Do not narrate the verification process in the final article or explain which people, organisations, reactions or details the source does not mention or identify.
 
 Write clean plain text paragraphs. Aim for a useful article, but do not force 2000+ characters by inventing details. A shorter accurate article is better than a longer inaccurate one. Do not add word count at the end:"""
                         }
@@ -482,6 +486,8 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
 Return the most complete verified article possible from the available evidence. Produce a complete source-led news report where verified evidence supports it, not merely a rephrasing of the RSS summary. For an ordinary evidence-rich story, usually aim for about 400-650 words. A genuinely substantial story with rich verified material may extend toward 700-900 words. These ranges are editorial guidance, not quotas. If evidence is insufficient, write a shorter accurate article. Never invent facts to meet a word target. Never repeat facts merely to increase length. Do not fabricate to avoid returning empty output; if no usable verified report is possible, return empty output.
 
 Before writing, actively research the Source URL and reputable corroborating sources for additional verified detail. The Source URL remains the primary reference. Corroboration must not override or conflate the primary story without evidence. If the source URL is unavailable, paywalled or too thin, rely only on the headline and summary and avoid all unsupported specifics.
+
+Perform source verification and research silently. Do not narrate the verification process in the final article. Do not write sentences whose purpose is to explain what the source did not mention or identify. Do not list people, organisations, reactions or details merely to say they are absent. Attribute supported facts naturally to named organisations or documents, for example: "Cheshire East Council said..." or "The Ofsted report found...".
 
 Where available and verified, include the core development; exact names and roles; exact dates and times; exact places; figures and amounts; chronology; relevant background directly supported by sources; attributed responses and viewpoints; confirmed next steps, deadlines or practical information; and practical consequences only when explicitly supported. Do not invent missing responses or turn possible consequences into facts.
 

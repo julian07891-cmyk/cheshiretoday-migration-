@@ -79,10 +79,12 @@ class FeedService:
 
 
 class Perplexity:
-    def __init__(self, rewrites=None):
+    def __init__(self, rewrites=None, calls=None):
         self.rewrites = rewrites or {}
+        self.calls = calls if calls is not None else []
 
     async def generate_article_content(self, **kwargs):
+        self.calls.append(copy.deepcopy(kwargs))
         return self.rewrites.get(kwargs["title"], kwargs["summary"])
 
     async def search_cheshire_news(self, **_kwargs):
@@ -116,6 +118,7 @@ def run_import(
     rewrites=None,
     existing=None,
     archived_existing=None,
+    provider_calls=None,
 ):
     articles = Collection(existing)
     archived = Collection(archived_existing)
@@ -125,7 +128,11 @@ def run_import(
         SimpleNamespace(articles=articles, archived_articles=archived),
     )
     monkeypatch.setattr(server, "news_feed_service", FeedService(candidates))
-    monkeypatch.setattr(server, "perplexity_service", Perplexity(rewrites))
+    monkeypatch.setattr(
+        server,
+        "perplexity_service",
+        Perplexity(rewrites, calls=provider_calls),
+    )
     monkeypatch.setattr(server, "ai_budget_available", lambda _amount: True)
     monkeypatch.setattr(
         server,
@@ -157,6 +164,17 @@ def assert_hidden_manual_review(document):
     assert document["verification_status"] == "needs_manual_review"
     assert document["rewrite_status"] == "manual_review_required"
     assert document["archive_reason"] == "needs_manual_review"
+
+
+def rewrite_with_word_count(word_count):
+    words = (
+        "Chester planners reviewed confirmed housing proposals including affordable homes "
+        "public open space play facilities habitat improvements walking routes cycle links "
+        "existing trees consultation arrangements access details and the published timetable"
+    ).split()
+    content = " ".join((words * ((word_count // len(words)) + 1))[:word_count]) + "."
+    assert len(content.split()) == word_count
+    return content
 
 
 def test_low_impact_non_crime_local_story_is_queued(monkeypatch):
@@ -335,6 +353,107 @@ def test_short_local_rewrite_is_queued(monkeypatch):
     assert inserted[0]["content"] == short
     assert_hidden_manual_review(inserted[0])
     assert "below public length threshold" in inserted[0]["manual_review_reason"]
+
+
+def test_rewrite_under_200_words_is_retained_for_hidden_manual_review(monkeypatch):
+    story = candidate("Chester council approves plans for 50 new homes")
+    rewrite = rewrite_with_word_count(199)
+    provider_calls = []
+
+    assert len(rewrite) > 1000
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: rewrite},
+        provider_calls=provider_calls,
+    )
+
+    assert len(provider_calls) == 1
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert inserted[0]["content"] == rewrite
+    assert_hidden_manual_review(inserted[0])
+    assert "200" in inserted[0]["manual_review_reason"]
+
+
+def test_clean_rewrite_at_200_words_can_remain_auto_screened(monkeypatch):
+    story = candidate("Chester council approves plans for 50 new homes")
+    rewrite = rewrite_with_word_count(200)
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: rewrite},
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert len(inserted) == 1
+    assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
+    assert inserted[0]["rewrite_status"] == "ai_rewritten"
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
+
+
+@pytest.mark.parametrize(
+    "audit_narration",
+    [
+        "The source report says the application will be decided next month.",
+        "There is no mention of a council in the source material.",
+        "The report does not identify any response from residents.",
+        "A public venue is not identified in the report.",
+        "The source does not mention any reaction from local organisations.",
+        "No business or public venue is identified in the report.",
+    ],
+)
+def test_source_audit_narration_is_retained_for_hidden_manual_review(
+    monkeypatch,
+    audit_narration,
+):
+    story = candidate("Chester council approves plans for 50 new homes")
+    rewrite = f"{rewrite_with_word_count(200)} {audit_narration}"
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: rewrite},
+    )
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert inserted[0]["content"] == rewrite
+    assert_hidden_manual_review(inserted[0])
+
+
+@pytest.mark.parametrize(
+    "legitimate_attribution",
+    [
+        "Cheshire East Council said the plans would be considered next month.",
+        "The Ofsted report found that pupils were well prepared for the next stage of education.",
+        "The court heard that the application had followed the published process.",
+        "Police said road closures would remain in place until the work was complete.",
+    ],
+)
+def test_legitimate_named_attribution_does_not_trigger_source_audit_guard(
+    monkeypatch,
+    legitimate_attribution,
+):
+    story = candidate("Chester council approves plans for 50 new homes")
+    rewrite = f"{rewrite_with_word_count(200)} {legitimate_attribution}"
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: rewrite},
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert len(inserted) == 1
+    assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
+    assert inserted[0]["rewrite_status"] == "ai_rewritten"
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
 
 
 def test_crime_duplicate_missing_image_and_spam_remain_rejected(monkeypatch):
