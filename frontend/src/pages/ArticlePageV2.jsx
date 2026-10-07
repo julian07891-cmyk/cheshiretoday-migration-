@@ -1490,12 +1490,16 @@ export default function ArticlePageV2({ categories }) {
                     <SubscribeSection compact />
                   </div>
                 )}
-                <TextHeadlineStrip
-                  title="Further reading"
-                  articles={furtherReading}
-                  showReadTime={false}
-                />
                 </div>
+              {furtherReading.length > 0 && (
+                <div className="lg:sticky lg:top-24">
+                  <TextHeadlineStrip
+                    title="Further reading"
+                    articles={furtherReading}
+                    showReadTime={false}
+                  />
+                </div>
+              )}
             </aside>
           </div>
         </main>

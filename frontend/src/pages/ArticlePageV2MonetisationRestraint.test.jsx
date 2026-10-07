@@ -276,6 +276,8 @@ test("mobile house-guide inventory renders no commercial card and keeps one news
 const further = () => Array.from(container.querySelectorAll('aside h3'))
   .find(h => h.textContent === 'Further reading')?.parentElement.parentElement;
 const furtherTitles = () => Array.from(further()?.querySelectorAll('h4') || []).map(h => h.textContent);
+const stickyFurtherWrapper = () => Array.from(container.querySelector('aside')?.children || [])
+  .find(child => child.classList.contains('lg:sticky'));
 const setStories = (list) => global.fetch.mockImplementation(async url => ({
   ok: true, json: async () => String(url).includes('/api/articles?') ? list : [],
 }));
@@ -290,6 +292,7 @@ test('Further reading reserves twelve main stories, excludes related, and caps a
   setStories(list);
   await renderArticle(1440);
   expect(furtherTitles()).toEqual(list.slice(13, 17).map(a => a.title));
+  expect(furtherTitles()).toHaveLength(4);
   expect(further().querySelector('img')).toBeNull();
   expect(further().textContent).not.toContain('min read');
   expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/api/articles?'))).toHaveLength(1);
@@ -319,7 +322,10 @@ test('Further reading excludes all ID aliases and normalised titles without muta
 test.each([12, 14])('Further reading with %s candidates omits empty block or shows only available items', async count => {
   setStories(extraStories().slice(0, count));
   await renderArticle(1440);
-  if (count === 12) expect(further()).toBeUndefined();
+  if (count === 12) {
+    expect(further()).toBeUndefined();
+    expect(stickyFurtherWrapper()).toBeUndefined();
+  }
   else expect(furtherTitles()).toHaveLength(2);
 });
 
@@ -342,6 +348,34 @@ test.each([390, 768, 1023, 1024, 1440])('Further reading stays inside existing l
   expect(further().closest('aside').className).toContain('hidden lg:block');
   expect(container.querySelector('article').textContent).not.toContain('Further reading');
   expect(global.fetch.mock.calls.filter(([url]) => String(url).includes('/api/articles?'))).toHaveLength(1);
+});
+
+test.each([1024, 1440])('Further reading has its own direct-child sticky wrapper at %spx', async width => {
+  setStories(extraStories());
+  await renderArticle(width);
+
+  const aside = container.querySelector('aside');
+  const wrapper = stickyFurtherWrapper();
+  expect(wrapper).toBeTruthy();
+  expect(wrapper.parentElement).toBe(aside);
+  expect(wrapper.classList.contains('lg:sticky')).toBe(true);
+  expect(wrapper.classList.contains('lg:top-24')).toBe(true);
+  expect(wrapper.contains(further())).toBe(true);
+  expect(wrapper.querySelector('[data-testid="related-articles"]')).toBeNull();
+  expect(wrapper.querySelector('[data-testid="sponsor-article_sidebar"]')).toBeNull();
+  expect(wrapper.querySelector('[data-testid="sidebar-newsletter"]')).toBeNull();
+});
+
+test.each([390, 768, 1023])('mobile and tablet keep article content separate from the hidden sidebar at %spx', async width => {
+  mockLoadPublicArticle.mockResolvedValue({ ...article, content: 'One unique paragraph.\n\nTwo.\n\nThree.' });
+  setStories(extraStories());
+  await renderArticle(width);
+
+  const aside = container.querySelector('aside');
+  expect(aside.className).toContain('hidden lg:block');
+  expect(container.querySelector('article').textContent).not.toContain('Further reading');
+  expect(container.querySelector('article').textContent).toContain('One unique paragraph.');
+  expect(aside.textContent).not.toContain('One unique paragraph.');
 });
 
 test.each(['genuine', 'none', 'house', 'error'])('Further reading follows unchanged %s sponsor/newsletter opportunity', async kind => {
