@@ -190,6 +190,24 @@ No secret is recorded. QA classifications/counts remain unchanged (combined 18:
 - `0e4c408`: `ArticlePageV2MonetisationRestraint.test.jsx` passed **36/36**. Directly related ArticlePage/component checks and the production frontend build passed; the build emitted only the existing stale Browserslist-data warning. `git diff --check` passed. Owner live visual acceptance covered the long-desktop sidebar result.
 - The unrelated `PublicMetadataUniqueness` failure is an incomplete Jest module mock for named `selectHomepageGuides`, registered as `QA-MAINT-002`; it is not a production or sidebar failure and was not repaired by these commits.
 
+## 7 October 2026 — automatic article-depth screening
+
+- RED coverage exposed nine intended failures: both generation prompts lacked the
+  silent-verification contract, a 199-word rewrite could auto-screen, and six
+  source-audit constructions were not routed with the required Manual Review
+  status.
+- At `efc79b1`, focused prompt/local-routing verification passed **65 tests**;
+  adjacent Manual Review, fallback, preview, sync, sanitisation and regeneration
+  suites passed **86 tests**; and the bounded eligibility/import/locality/
+  Newsquest/RSS regression set passed **152 tests**. Existing framework and gzip
+  cleanup warnings remained non-blocking. Python compilation and
+  `git diff --check` passed.
+- Natural 18:00 BST production evidence covered 18 created records: zero
+  auto-screened rewrites below 200 words, zero checked source-audit-language
+  matches, four 127–192-word hidden-review records, four 209–271-word
+  auto-screened records, and one unaffected 281-word manual correction. This is
+  bounded production observation, not proof against every future leakage case.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).

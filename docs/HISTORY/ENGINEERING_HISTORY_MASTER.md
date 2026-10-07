@@ -1148,3 +1148,23 @@ The archived Chester Standard retail-offence story exposed a narrow raw-RSS crim
 The 06:00 BST natural-run review found 19 active records in the checked window, zero active retail-offence matches and no return of the archived record. The second healthy natural review at 12:00 BST / 11:00 UTC found 26 active records and again zero exact active retail-offence matches. A new Cheshire Live city-centre-ban crime story was retained hidden with `needs_manual_review` / `manual_review_required`, while ordinary local planning/school stories passed, including auto-screened examples. Because duplicate/archive state could independently prevent the original archived record from returning, its absence is supporting rather than classifier-execution proof; the committed fresh-candidate regression supplies the direct evidence. One active BBC sexual-assault record does not establish public visibility because shared public eligibility remains a separate layer, so it is not classified as a confirmed defect.
 
 `0e4c408` completed the long-desktop article-sidebar objective without reopening the earlier restraint decisions. Related stories and sponsor/newsletter remain normal-flow; only the unchanged maximum-four Further reading inventory is conditionally wrapped in `lg:sticky lg:top-24` as a direct child of the existing desktop-only aside. No request, allocation, duplicate exclusion, commercial inventory or mobile/tablet behaviour changed. The focused suite passed 36/36, related ArticlePage/component checks and the production build passed, and owner live visual acceptance confirmed the long-page result. The separately observed `PublicMetadataUniqueness` named-export mock defect predates this change and remains QA maintenance, not a production regression.
+
+## 7 October 2026 — automatic rewrite depth and source-audit safeguards
+
+Production examples established that non-empty rewrites around 165–183 words
+could exceed the existing 1,000-character threshold and auto-screen, and that
+source-verification narration could leak into public-style prose. QA-first work
+at `efc79b1` retained the existing provider/retry and source-selection architecture
+while making source research silent in both prompts, narrowly detecting confirmed
+source-audit constructions, and requiring 200 words before an otherwise clean AI
+rewrite can be automatically screened. Short rewrites remain stored in hidden
+Manual Review; the rule is not a universal publication minimum and does not
+trigger a second provider request.
+
+The first production acceptance opportunity was the natural 18:00 BST run. Its
+18-record checked window contained no auto-screened rewrite below 200 words and
+no checked source-audit-language match. Four 127–192-word rewrites were retained
+with `needs_manual_review` / `manual_review_required`; four 209–271-word clean
+rewrites auto-screened; and a 281-word manual correction retained its existing
+manual status. Acceptance is complete for the observed boundary, without
+claiming that zero leakage in one run proves impossibility of future recurrence.

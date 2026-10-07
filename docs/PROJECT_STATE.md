@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `0e4c40806b0235aeac0a79e858e62c123d97c4cf` (`Keep article further reading visible on desktop`)
-> - **Last repository reconciliation:** 7 October 2026; this update records the bounded local-RSS retail-offence correction and desktop Further reading completion through `0e4c408`.
-> - **Production-verification status:** **Current application acceptance APPROVED.** The 7 October natural-run check found no active retail-offence match in the bounded window, retained Manual Review safeguards and returned healthy public responses; the original archived record's absence is not proof that the new classifier fired, while the committed regression proves a fresh matching raw candidate is rejected before rewrite/publication. The desktop Further reading change is deployed and owner visually accepted on a long live article. Earlier regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `efc79b1d7a46320c54b29fef46c0f991ab92faa6` (`Tighten automatic article depth screening`)
+> - **Last repository reconciliation:** 7 October 2026; this update records production acceptance of the automatic article-depth and source-audit safeguards at `efc79b1`.
+> - **Production-verification status:** **Current application acceptance APPROVED.** The 7 October 18:00 BST natural run observed the intended 200-word boundary: four sub-200-word rewrites were retained in hidden Manual Review, four clean 200+ word rewrites auto-screened, no under-200 auto-screened record or source-audit-language match was found in the checked window, and existing manual-corrected content remained unaffected. This bounded observation does not prove that source-audit wording can never recur. Earlier retail-offence and desktop Further reading acceptance remains complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `0e4c40806b0235aeac0a79e858e62c123d97c4cf`
-- **Verified deployed baseline:** `0e4c40806b0235aeac0a79e858e62c123d97c4cf`; local/origin equality, healthy public responses and the live long-article sidebar were verified on 7 October 2026.
-- **Latest application commit:** `Keep article further reading visible on desktop`
+- **Current application baseline:** `efc79b1d7a46320c54b29fef46c0f991ab92faa6`
+- **Verified deployed baseline:** `efc79b1d7a46320c54b29fef46c0f991ab92faa6`; the 7 October 18:00 BST natural import supplied bounded production acceptance for the automatic depth and source-audit safeguards.
+- **Latest application commit:** `Tighten automatic article depth screening`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -1826,3 +1826,29 @@ The earlier article-sidebar package was correct for neutral wording and restrain
 `0e4c408 Keep article further reading visible on desktop` leaves Related stories and sponsor/newsletter in normal flow and moves only the existing Further reading block into a direct child of the desktop `<aside>` with `lg:sticky lg:top-24`. The wrapper renders only when the unchanged, maximum-four Further reading inventory exists. The existing `/api/articles?limit=24` request, first-12 reservation, duplicate exclusions, sponsor/newsletter exclusivity and mobile/tablet-hidden sidebar contract remain unchanged. No filler, repeated advertisement, new request or backend work was introduced.
 
 The focused restraint suite passed 36/36, the directly related ArticlePage/component checks passed, the production frontend build succeeded with only the existing stale Browserslist notice, and `git diff --check` passed. The deployed long-article layout was visually accepted by the owner; public health/homepage remained HTTP 200 and local/origin matched `0e4c408`. The unrelated `PublicMetadataUniqueness` harness still mocks only the default `HeroMonetisationStrip` export while `HomePageV1` imports named `selectHomepageGuides`; that pre-existing mock defect is tracked separately and was not changed as part of this sidebar work.
+
+## 25. 7 October 2026 automatic article-depth production acceptance
+
+`efc79b1 Tighten automatic article depth screening` keeps the existing evidence-led
+prompt ranges advisory, requires source verification to remain silent in public
+copy, narrowly routes source-audit narration to hidden Manual Review, and adds a
+200-word floor only for automatic AI screening. It does not add a retry for short
+output, remove the existing 1,000-character safeguard, require padding, or change
+manual-corrected content.
+
+The natural 18:00 BST / 17:00 UTC run created 18 records in the checked window.
+There were zero `ai_rewrite_auto_screened` records below 200 words and zero
+matches for the checked source-audit constructions. Four sub-200-word rewrites
+(127, 161, 191 and 192 words) were retained with
+`verification_status=needs_manual_review`,
+`rewrite_status=manual_review_required` and
+`manual_review_hidden_from_public=True`. Four clean rewrites at 209, 223, 260
+and 271 words retained `ai_rewrite_auto_screened` / `ai_rewritten`. A 281-word
+owner-corrected Wilmslow banking article remained
+`manual_corrected_verified_limited` / `manual_corrected`.
+
+**Production acceptance: APPROVED.** This run proves the observed production
+boundary and retention behaviour for its checked window. It does not prove that
+every future short article will be classified correctly beyond the implemented
+rules and tests, and zero observed source-audit matches does not prove that such
+language can never recur.

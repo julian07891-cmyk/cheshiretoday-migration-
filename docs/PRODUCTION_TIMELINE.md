@@ -656,3 +656,27 @@ The natural 06:00 BST production observation found 19 active records created in 
 The archived record could also be suppressed by duplicate/archive state, so its absence is not represented as direct runtime proof of the new phrase matcher; the fresh-candidate regression remains the direct classifier evidence. A BBC sexual-assault article appeared in the active collection as `ai_rewrite_auto_screened`, but active-collection presence does not prove public visibility because shared public eligibility is separate. It is therefore not classified as a confirmed production defect. Acceptance remains **APPROVED** with those evidence boundaries.
 
 `0e4c408` then deployed the desktop-only sticky Further reading completion. Only the existing conditionally rendered Further reading block is sticky (`lg:sticky lg:top-24`); Related stories and sponsor/newsletter remain normal-flow, and mobile/tablet behaviour is unchanged. Focused verification passed 36 tests, related ArticlePage/component checks and the production build passed, and the owner visually accepted the live long-article behaviour. Local/origin matched `0e4c408`; health and homepage returned HTTP 200. No production data, scheduler, newsletter or backend change accompanied this frontend deployment.
+
+## 7 October 2026 — automatic article-depth screening acceptance
+
+Commit `efc79b1d7a46320c54b29fef46c0f991ab92faa6`
+(`Tighten automatic article depth screening`) was production-observed during the
+natural 18:00 BST / 17:00 UTC import. The checked window contained 18 created
+records. No `ai_rewrite_auto_screened` record was below 200 words, and no checked
+source-audit/meta-language construction was found.
+
+Four sub-200-word rewrites were retained in hidden Manual Review: the 161-word
+Admiral Taverns Chester story, 192-word Admiral Taverns national expansion
+story, 191-word Specsavers Runcorn charity story and 127-word Paul Ferris story.
+All had `needs_manual_review`, `manual_review_required` and
+`manual_review_hidden_from_public=True`. Four clean rewrites at 209, 223, 260
+and 271 words remained `ai_rewrite_auto_screened` / `ai_rewritten`. The
+281-word manually corrected Wilmslow banking article retained
+`manual_corrected_verified_limited` / `manual_corrected`.
+
+**Acceptance: APPROVED.** The observation verifies the intended boundary in this
+natural run: short rewrites were retained rather than discarded, clean 200+ word
+rewrites could still auto-screen, and manual-corrected content was unaffected.
+The zero source-audit match is bounded run evidence, not proof that prompt
+leakage can never recur or that every future candidate is covered beyond the
+implemented rules and tests.
