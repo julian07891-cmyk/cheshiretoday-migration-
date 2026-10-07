@@ -460,6 +460,10 @@ The following principles are supported by repository evidence at
 13. Keep newsletter and social selection aligned with public editorial safeguards.
 14. Do not infer production truth, calibration or indexing recovery from tests alone.
 
+### 7 October 2026 — bounded retail-offence terminology
+
+Local RSS crime eligibility now recognises the source-supported phrase `retail offence`/`retail offences` before rewrite (`36aeafe`). The change deliberately does not add bare `CBO` or a broad second post-rewrite rejection layer. A post-rewrite experiment was reverted after demonstrating substring and context false positives, so future expansion requires a separately designed boundary/context review rather than transplanting the broad legacy expression. The existing stab term is now word-bounded to avoid matching “established”.
+
 - **Sources:** preserved state, final Version 1 and Editorial Similarity sections;
   [Decision Register](DECISION_REGISTER.md); current Git history through HEAD.
 

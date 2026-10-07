@@ -339,6 +339,15 @@ Work highest current severity first. Update an entry only when evidence changes;
 - **Separate unresolved issue:** The user-observed iPhone Apple Mail blue management-email CTA reached an invalid-link state while the complete fallback link from the same email reached valid confirmation. The precise transformation/loss is unproven; do not infer that Apple Mail strips fragments. This commit did not change management-email URL generation and does not fix or close that compatibility issue. No separate finding ID is assigned here.
 - **Closure:** The generic-entry defect's bounded implementation, deployment and production-presentation criteria are met. Adjacent delivered-message compatibility remains separate.
 
+## QA-MAINT-002 — Homepage metadata harness omits a named module export
+
+- **Severity:** Low.
+- **Status:** Open test-maintenance item; no production defect demonstrated.
+- **Area:** Frontend metadata regression harness.
+- **Finding:** `PublicMetadataUniqueness.test.jsx` mocks only the default `HeroMonetisationStrip` export, while `HomePageV1` also imports the real module's named `selectHomepageGuides` export. The incomplete mock can crash the homepage test render and cascade into stale Helmet assertions.
+- **Boundary:** The real component exports the named helper. This failure predates and is unrelated to `0e4c408`; it was not fixed or counted as a sidebar regression. No production metadata, homepage or runtime failure is inferred.
+- **Smallest closure:** Extend that test mock to preserve/provide the named export, then rerun the focused metadata suite without changing production code.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Completed Phases](COMPLETED_PHASES.md), [Test History](TEST_HISTORY.md), [Roadmap Master](../ROADMAP_MASTER.md), and [29 July QA report](QA_REPORT_2026-07-29.md).

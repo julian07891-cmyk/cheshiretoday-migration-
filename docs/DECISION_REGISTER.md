@@ -545,6 +545,20 @@ See [dated evidence](HISTORY/NEWSLETTER_DELIVERABILITY_2026-09-26.md).
 CT-DEC-021 functional acceptance and its open query-log privacy gate are unchanged.
 This clarifies existing boundaries, not a new implementation decision.
 
+## 7 October 2026 — bounded editorial and sidebar decisions
+
+### Local RSS retail-offence handling
+
+- **Decision:** Extend the established pre-rewrite local-RSS crime gate only with bounded `retail offence(s)` and correct the stab expression's word boundary. Do not add bare `CBO` and do not deploy the trialled broad post-rewrite classifier.
+- **Rationale:** The exact source phrasing was a confirmed miss, while the broad experiment produced material false positives from substring and legitimate-context matches. Any second-stage classifier requires a separate boundary/context design rather than copying the legacy expression.
+- **Evidence:** `36aeafe`; fresh-candidate RED/GREEN regression; 149 affected tests with six existing warnings; natural-run observation with the duplicate/archive limitation retained.
+
+### Long desktop article sidebar
+
+- **Decision:** Keep Related stories and sponsor/newsletter in normal flow and make only the existing conditional Further reading block sticky on desktop (`lg:sticky lg:top-24`).
+- **Rationale:** This addresses the long-page empty column while preserving commercial restraint, inventory limits, duplicate exclusions, short-page flow and the hidden mobile/tablet sidebar. Making the whole aside sticky or adding filler/repeated promotions was rejected.
+- **Evidence:** `0e4c408`; 36/36 focused tests, related component checks, production build and owner live visual acceptance.
+
 ## Unreconciled decision evidence
 
 - ChatGPT export and systematic Codex records may reveal additional alternatives or

@@ -646,3 +646,13 @@ was observed. Acceptance is **APPROVED WITH OBSERVATIONS**: Drumcree/Portadown
 remains unclassified because its metadata contains no approved regional marker,
 and RAF Fairford/defence-security remains a separate policy question. No
 production write, import, job, newsletter or analytics event was triggered.
+
+## 7 October 2026 — retail-offence gate and sticky Further reading
+
+`36aeafe` deployed the bounded local-RSS `retail offence(s)` pre-rewrite gate and corrected the existing stab expression so it does not match “established”. The broader post-rewrite crime classifier explored during diagnosis was reverted and was never deployed. Local verification passed 149 affected tests with six existing warnings, compilation and whitespace checks.
+
+The natural 06:00 BST production observation found 19 active records created in the checked window, zero active retail-offence matches and no reappearance of the previously archived Chester Standard record. The second healthy natural observation at 12:00 BST / 11:00 UTC found 26 active records and again zero exact active retail-offence matches. A new Cheshire Live crime story, “Man labelled 'persistent problem in Chester' hit with four-year city centre ban”, was routed to hidden review with `verification_status=needs_manual_review` and `rewrite_status=manual_review_required`; ordinary local planning/school stories were allowed through, including auto-screened examples.
+
+The archived record could also be suppressed by duplicate/archive state, so its absence is not represented as direct runtime proof of the new phrase matcher; the fresh-candidate regression remains the direct classifier evidence. A BBC sexual-assault article appeared in the active collection as `ai_rewrite_auto_screened`, but active-collection presence does not prove public visibility because shared public eligibility is separate. It is therefore not classified as a confirmed production defect. Acceptance remains **APPROVED** with those evidence boundaries.
+
+`0e4c408` then deployed the desktop-only sticky Further reading completion. Only the existing conditionally rendered Further reading block is sticky (`lg:sticky lg:top-24`); Related stories and sponsor/newsletter remain normal-flow, and mobile/tablet behaviour is unchanged. Focused verification passed 36 tests, related ArticlePage/component checks and the production build passed, and the owner visually accepted the live long-article behaviour. Local/origin matched `0e4c408`; health and homepage returned HTTP 200. No production data, scheduler, newsletter or backend change accompanied this frontend deployment.

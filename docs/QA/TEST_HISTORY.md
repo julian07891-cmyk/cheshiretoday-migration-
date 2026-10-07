@@ -184,6 +184,12 @@ client httpx INFO exposed an already-stale query credential during acceptance.
 No secret is recorded. QA classifications/counts remain unchanged (combined 18:
 7 unresolved, 2 repo-remediated, 9 production-verified); no new QA ID.
 
+## 7 October 2026 — local-RSS and article-sidebar verification
+
+- `36aeafe`: the affected local-RSS/editorial gate passed **149 tests** with **6 existing warnings** across import-real-news, Manual Review routing, locality ambiguity, Newsquest shadow evaluation, excerpt/preview/text sanitisation and sync editorial-guard coverage. Python compilation and `git diff --check` passed. The natural-run observation is production evidence, not another automated test count.
+- `0e4c408`: `ArticlePageV2MonetisationRestraint.test.jsx` passed **36/36**. Directly related ArticlePage/component checks and the production frontend build passed; the build emitted only the existing stale Browserslist-data warning. `git diff --check` passed. Owner live visual acceptance covered the long-desktop sidebar result.
+- The unrelated `PublicMetadataUniqueness` failure is an incomplete Jest module mock for named `selectHomepageGuides`, registered as `QA-MAINT-002`; it is not a production or sidebar failure and was not repaired by these commits.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).

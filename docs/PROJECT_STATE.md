@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `b413282ca07deb44b4953dbebbf19d87f267cb0e` (`Tighten regional UK scope eligibility`)
-> - **Last repository reconciliation:** 6 October 2026; this update records the sidebar package and the education/shared-eligibility/regional-scope sequence through `b413282`.
-> - **Production-verification status:** **Current feed acceptance APPROVED WITH OBSERVATIONS.** Public health returned HTTP 200/healthy and the 97-item public window excluded the four required regional/paper fixtures while retaining the Chester University local story. One separately observed Drumcree/Portadown story carries no configured regional marker in its metadata and remains a future editorial-policy decision. Earlier mixed-date hotfix acceptance and commercial/homepage evidence remain historical. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `0e4c40806b0235aeac0a79e858e62c123d97c4cf` (`Keep article further reading visible on desktop`)
+> - **Last repository reconciliation:** 7 October 2026; this update records the bounded local-RSS retail-offence correction and desktop Further reading completion through `0e4c408`.
+> - **Production-verification status:** **Current application acceptance APPROVED.** The 7 October natural-run check found no active retail-offence match in the bounded window, retained Manual Review safeguards and returned healthy public responses; the original archived record's absence is not proof that the new classifier fired, while the committed regression proves a fresh matching raw candidate is rejected before rewrite/publication. The desktop Further reading change is deployed and owner visually accepted on a long live article. Earlier regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `b413282ca07deb44b4953dbebbf19d87f267cb0e`
-- **Verified deployed baseline:** `b413282ca07deb44b4953dbebbf19d87f267cb0e`; local/origin equality and live public behaviour were verified read-only on 6 October 2026.
-- **Latest application commit:** `Tighten regional UK scope eligibility`
+- **Current application baseline:** `0e4c40806b0235aeac0a79e858e62c123d97c4cf`
+- **Verified deployed baseline:** `0e4c40806b0235aeac0a79e858e62c123d97c4cf`; local/origin equality, healthy public responses and the live long-article sidebar were verified on 7 October 2026.
+- **Latest application commit:** `Keep article further reading visible on desktop`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -1808,3 +1808,21 @@ Additional observations:
 
 Operational note:
 The local `backend/.env` Resend API key was found stale/invalid during smoke testing. Production Render uses a different valid key. Production acceptance was therefore performed from the Render shell using the production environment.
+
+## 23. 7 October 2026 local-RSS retail-offence correction
+
+The archived Chester Standard record “Chester man banned from parts of city centre for four years over retail offences” exposed a narrow pre-rewrite classification gap: its final copy was crime-like, but the raw RSS text used “retail offences” and `CBO`, neither of which matched the existing gate. A proposed broad post-rewrite classifier was tested and reverted because existing unbounded terms produced false positives such as `kill` in “skills”, `rape` in “grape”, `trial` in “industrial” and `cop` inside unrelated words. That abandoned approach was not shipped.
+
+`36aeafe Block retail offence stories in local RSS` instead made the smallest pre-rewrite correction in `backend/app/local_rss_editorial_policy.py`: `retail offence(s)` is now a bounded crime phrase, and the existing stab expression is word-bounded so it no longer matches “established”. Bare `CBO` was not added. The regression proves a fresh raw retail-offence candidate is rejected before rewrite or publication. The wider gate passed 149 tests with six existing warnings; Python compilation and `git diff --check` passed.
+
+The first natural 7 October 06:00 BST observation found 19 active records created in the checked window, zero active retail-offence matches, no reappearance of the archived source record and continued Manual Review routing for sensitive/weaker candidates. A second healthy natural observation at 12:00 BST / 11:00 UTC found 26 active records and again zero exact active retail-offence matches. The archived record did not reappear. A new Cheshire Live crime story, “Man labelled 'persistent problem in Chester' hit with four-year city centre ban”, was retained hidden with `verification_status=needs_manual_review` and `rewrite_status=manual_review_required`, while ordinary local planning/school stories passed, including auto-screened examples.
+
+This is accepted production evidence with an explicit limitation: duplicate/archive handling may independently intercept the exact archived record, so its absence in either run does not prove the new phrase matcher executed. The committed fresh-candidate regression remains the direct proof; a naturally occurring nonduplicate runtime example is optional follow-up, not a deployment blocker. A BBC sexual-assault record was present in the active collection as `ai_rewrite_auto_screened`, but active-collection presence does not establish public visibility because shared public eligibility is a separate layer; no production defect is inferred from that observation.
+
+## 24. 7 October 2026 desktop Further reading completion
+
+The earlier article-sidebar package was correct for neutral wording and restrained commercial/editorial inventory, but remained incomplete relative to eliminating the empty lower column on long desktop articles. Related stories, the genuine sponsor or newsletter fallback, and Further reading all ended in finite normal flow.
+
+`0e4c408 Keep article further reading visible on desktop` leaves Related stories and sponsor/newsletter in normal flow and moves only the existing Further reading block into a direct child of the desktop `<aside>` with `lg:sticky lg:top-24`. The wrapper renders only when the unchanged, maximum-four Further reading inventory exists. The existing `/api/articles?limit=24` request, first-12 reservation, duplicate exclusions, sponsor/newsletter exclusivity and mobile/tablet-hidden sidebar contract remain unchanged. No filler, repeated advertisement, new request or backend work was introduced.
+
+The focused restraint suite passed 36/36, the directly related ArticlePage/component checks passed, the production frontend build succeeded with only the existing stale Browserslist notice, and `git diff --check` passed. The deployed long-article layout was visually accepted by the owner; public health/homepage remained HTTP 200 and local/origin matched `0e4c408`. The unrelated `PublicMetadataUniqueness` harness still mocks only the default `HeroMonetisationStrip` export while `HomePageV1` imports named `selectHomepageGuides`; that pre-existing mock defect is tracked separately and was not changed as part of this sidebar work.
