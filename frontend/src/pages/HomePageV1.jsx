@@ -739,6 +739,11 @@ const navigate = useNavigate();
     }
 
 // 3) AI feed (6) — exclude used (exclusive; no duplicates)
+    const isSidebarPublicationCurrent = (a) => {
+      const publishedMs = safeDateMs(a?.publishedDate);
+      return publishedMs > 0 && publishedMs >= Date.now() - (7 * 24 * 60 * 60 * 1000);
+    };
+
     const latestPreviewKeys = (() => {
       const keys = new Set();
       for (const a of newestFirst) {
@@ -755,18 +760,14 @@ const navigate = useNavigate();
       if (aiArticles.length >= 6) break;
       const k = articleKey(a);
       if (!k || latestPreviewKeys.has(k) || sidebarUsed.has(k)) continue;
+      if (!isSidebarPublicationCurrent(a)) continue;
       if (!isAiTech(a)) continue;
       if (!mark(a)) continue;
       aiArticles.push(toCard(a, `ai-${aiArticles.length}`, { category: "AI & Tech" }));
     }
 
-// 4) Finance feed — structured (4 business, 1 local, 1 business latest)
-    const financeArticles = [];
-    const financeSeen = new Set();
-
-        const isBusiness = (a) => {
-      return isBusinessPillar(a);
-    };
+    const isBusiness = (a) => isBusinessPillar(a);
+    const isMoney = (a) => isFinancePillar(a);
 
     const isStrongBusinessSidebar = (a) => {
       const t = (String(a?.title || "") + " " + String(a?.summary || "") + " " + String(a?.content || "")).toLowerCase();
@@ -786,58 +787,11 @@ const navigate = useNavigate();
       return false;
     };
 
-const isMoney = (a) => {
-      return isFinancePillar(a);
-    };
-
-    const pushFinance = (a) => {
-      const k = articleKey(a);
-      if (!k || financeSeen.has(k) || latestPreviewKeys.has(k)) return false;
-      financeSeen.add(k);
-      sidebarUsed.add(k);
-      financeArticles.push(toCard(a, `fin-${financeArticles.length}`));
-      return true;
-    };
-
     const sectionFreshPool = [...poolRanked].sort((a, b) => {
       const dateDiff = safeDateMs(b?.created_at || b?.publishedDate) - safeDateMs(a?.created_at || a?.publishedDate);
       if (dateDiff !== 0) return dateDiff;
       return rankScore(b) - rankScore(a);
     });
-
-    // Pass 1: Prefer Money-ish first (2)
-    for (const a of sectionFreshPool) {
-      if (financeArticles.length >= 2) break;
-      if (!isMoney(a)) continue;
-      pushFinance(a);
-    }
-
-// Pass 2: 1 local news// Pass 2: 1 local news (to keep the sidebar grounded in Cheshire)
-    for (const a of sectionFreshPool) {
-      if (financeArticles.length >= 5) break;
-
-      const sec = String(a?.section || "").toLowerCase();
-      // Avoid pulling AI items into Business & Money
-      if (isAiTech(a)) continue;
-
-      if (!isLocal(a)) continue;
-      pushFinance(a);
-    }
-
-
-
-
-    // Fallback: if Business & Money ends up empty, fill with newest 3 non-AI
-    if (financeArticles.length === 0) {
-      for (const a of poolRanked) {
-        if (financeArticles.length >= 3) break;
-        if (isAiTech(a)) continue;
-        pushFinance(a);
-      }
-    }
-
-
-    financeArticles.sort((a,b)=> new Date(b.created_at||b.publishedDate||b.date||0)-new Date(a.created_at||a.publishedDate||a.date||0));
 
 // 4a) Business (3) — business-first, exclude AI and exclude used
     const businessFeed = [];
@@ -846,6 +800,7 @@ const isMoney = (a) => {
       const sec = String(a?.section || "").toLowerCase();
       const k = articleKey(a);
       if (!k || latestPreviewKeys.has(k) || sidebarUsed.has(k)) continue;
+      if (!isSidebarPublicationCurrent(a)) continue;
       if (isAiTech(a)) continue;
       if (!isStrongBusinessSidebar(a)) continue;
       if (!mark(a)) continue;
@@ -860,7 +815,7 @@ const isMoney = (a) => {
       const sec = String(a?.section || "").toLowerCase();
       if (["money", "tax", "property", "mortgages"].includes(sec)) return true;
       const t = (String(a?.title || "") + " " + String(a?.summary || "")).toLowerCase();
-      return /\b(mortgage|mortgages|rate|rates|isa|savings|save|interest|remortgage|fixed\s*rate|tracker|stamp\s*duty|council\s*tax)\b/.test(t);
+      return /\b(mortgage|mortgages|isa|savings|interest|remortgage|fixed\s*rate|tracker|stamp\s*duty|council\s*tax)\b/.test(t);
     };
 
     const pushMoney = (a) => {
@@ -874,6 +829,7 @@ const isMoney = (a) => {
     for (const a of sectionFreshPool) {
       if (moneyFeed.length >= 6) break;
       const sec = String(a?.section || "").toLowerCase();
+      if (!isSidebarPublicationCurrent(a)) continue;
       if (isAiTech(a)) continue; // keep this block focused
       if (!isMoneyish(a)) continue;
       pushMoney(a);
@@ -895,6 +851,7 @@ const isMoney = (a) => {
     for (const a of sectionFreshPool) {
       if (moneyFeed.length >= 6) break;
       if (propertyIntoFinanceCount >= 2) break;
+      if (!isSidebarPublicationCurrent(a)) continue;
       if (isAiTech(a)) continue;
       if (!isPropertyish(a)) continue;
       if (pushMoney(a)) propertyIntoFinanceCount += 1;
@@ -987,7 +944,6 @@ return {
       topStories: topStoriesCards,
       aiFeed: aiArticles,
       aiBizFeed: aiBizFeedCards,
-      financeFeed: financeArticles,
       businessFeed: businessFeed,
       moneyFeed: moneyFeed,
       latestFeed: latestCards,
@@ -1000,7 +956,6 @@ return {
   // Always default to arrays to prevent runtime crashes (blank page)
   const topStories = Array.isArray(home?.topStories) ? home.topStories : [];
   const aiFeed = Array.isArray(home?.aiFeed) ? home.aiFeed : [];
-  const financeFeed = Array.isArray(home?.financeFeed) ? home.financeFeed : [];
 
   const businessFeed = Array.isArray(home?.businessFeed) ? home.businessFeed : [];
   const moneyFeed = Array.isArray(home?.moneyFeed) ? home.moneyFeed : [];

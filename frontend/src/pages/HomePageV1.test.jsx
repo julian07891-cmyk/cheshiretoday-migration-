@@ -134,6 +134,49 @@ const sidebarCards = title => Array.from(container.querySelectorAll(
   `aside [data-lead-section="${title}"] [data-card-id]`
 ));
 
+const SIDEBAR_NOW = Date.parse("2026-10-08T12:00:00.000Z");
+const hoursBeforeSidebarNow = hours => new Date(SIDEBAR_NOW - hours * 60 * 60 * 1000).toISOString();
+
+const makeNeutralRecentArticles = () => Array.from({ length: 4 }, (_, index) => makeArticle(index, {
+  title: `Cheshire public services briefing ${index}`,
+  publishedDate: hoursBeforeSidebarNow(index + 1),
+  created_at: hoursBeforeSidebarNow(index + 1),
+}));
+
+const makeSidebarArticle = (index, module, hoursAgo, overrides = {}) => {
+  const moduleDefaults = {
+    Business: {
+      category: "Business",
+      scope: "uk",
+      title: `Company manufacturing investment update ${index}`,
+      summary: "Companies announced investment, jobs and manufacturing plans.",
+    },
+    AI: {
+      category: "AI & Tech",
+      scope: "uk",
+      title: `Artificial intelligence software update ${index}`,
+      summary: "An artificial intelligence company released a software update.",
+    },
+    Finance: {
+      category: "Finance",
+      scope: "uk",
+      title: `Mortgage savings update ${index}`,
+      summary: "Mortgage and savings interest rate information for customers.",
+    },
+  }[module];
+
+  return makeArticle(index, {
+    ...moduleDefaults,
+    publishedDate: hoursBeforeSidebarNow(hoursAgo),
+    created_at: hoursBeforeSidebarNow(hoursAgo),
+    ...overrides,
+  });
+};
+
+beforeEach(() => {
+  jest.spyOn(Date, "now").mockReturnValue(SIDEBAR_NOW);
+});
+
 test.each([1440, 390])("Finance omits unrelated fallback stories at %ipx", async width => {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   await renderHomepage(Array.from({ length: 30 }, (_, index) => makeArticle(index)));
@@ -144,29 +187,48 @@ test.each([1440, 390])("Finance omits unrelated fallback stories at %ipx", async
 });
 
 test("Finance retains a smaller eligible pool without filling unrelated slots", async () => {
-  const articles = Array.from({ length: 30 }, (_, index) => makeArticle(index));
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    ...Array.from({ length: 6 }, (_, index) => makeArticle(index + 4, {
+      publishedDate: hoursBeforeSidebarNow(10 + index),
+      created_at: hoursBeforeSidebarNow(10 + index),
+    })),
+  ];
   for (let index = 10; index < 13; index += 1) {
     articles[index] = makeArticle(index, {
       title: `Savings interest update ${index}`, category: 'Finance', section: 'money',
+      publishedDate: hoursBeforeSidebarNow(30 + index),
+      created_at: hoursBeforeSidebarNow(30 + index),
     });
   }
   await renderHomepage(articles);
   const cards = sidebarCards('Finance');
-  // The existing earlier finance pool reserves the first two eligible stories.
-  expect(cards.map(card => card.textContent)).toEqual([articles[12].title]);
+  expect(cards.map(card => card.textContent)).toEqual(
+    articles.slice(10, 13).map(article => article.title)
+  );
   expect(cards[0].dataset.cardCategory).toBe('Finance');
   expect(new Set(cards.map(card => card.dataset.cardId)).size).toBe(cards.length);
 });
 
 test("Finance preserves capped housing enrichment without unrelated fallback", async () => {
-  const articles = Array.from({ length: 30 }, (_, index) => makeArticle(index));
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    ...Array.from({ length: 26 }, (_, index) => makeArticle(index + 4, {
+      publishedDate: hoursBeforeSidebarNow(10 + index),
+      created_at: hoursBeforeSidebarNow(10 + index),
+    })),
+  ];
   for (let index = 15; index < 20; index += 1) {
-    articles[index] = makeArticle(index, { title: `Housing development update ${index}`, section: 'housing' });
+    articles[index] = makeArticle(index, {
+      title: `Housing development update ${index}`,
+      section: 'housing',
+      publishedDate: hoursBeforeSidebarNow(30 + index),
+      created_at: hoursBeforeSidebarNow(30 + index),
+    });
   }
   await renderHomepage(articles);
   expect(sidebarCards('Finance').map(card => card.textContent)).toEqual(
-    // The earlier finance pool reserves two; enrichment remains capped at two.
-    articles.slice(17, 19).map(item => item.title)
+    articles.slice(15, 17).map(item => item.title)
   );
 });
 
@@ -175,8 +237,10 @@ test("Business and AI sidebar pools retain their own stories while Finance stays
   for (let index = 12; index < 36; index += 1) {
     articles.push(makeArticle(index, index < 24 ? {
       category: 'Business', title: `Company manufacturing investment ${index}`, scope: 'uk',
+      publishedDate: hoursBeforeSidebarNow(12 + index), created_at: hoursBeforeSidebarNow(12 + index),
     } : {
       category: 'AI & Tech', title: `Artificial intelligence software update ${index}`, scope: 'uk',
+      publishedDate: hoursBeforeSidebarNow(12 + index), created_at: hoursBeforeSidebarNow(12 + index),
     }));
   }
   await renderHomepage(articles);
@@ -185,6 +249,171 @@ test("Business and AI sidebar pools retain their own stories while Finance stays
   expect(sidebarCards('Business').every(card => card.textContent.startsWith('Company manufacturing'))).toBe(true);
   expect(sidebarCards('AI & Tech').every(card => card.textContent.startsWith('Artificial intelligence'))).toBe(true);
   expect(sidebarCards('Finance')).toHaveLength(0);
+});
+
+test("Finance does not treat vaccination rates or save-our-school campaigns as money stories", async () => {
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    makeSidebarArticle(10, "Finance", 10),
+    makeSidebarArticle(11, "Finance", 11),
+    makeArticle(12, {
+      title: "Childhood vaccination rates fall below public-health target",
+      summary: "Health officials discussed vaccination rates across the region.",
+      category: "UK News",
+      scope: "uk",
+      publishedDate: hoursBeforeSidebarNow(12),
+      created_at: hoursBeforeSidebarNow(12),
+    }),
+    makeArticle(13, {
+      title: "Parents launch save our school campaign",
+      summary: "Families urged councillors to save their community school.",
+      category: "UK News",
+      scope: "uk",
+      publishedDate: hoursBeforeSidebarNow(13),
+      created_at: hoursBeforeSidebarNow(13),
+    }),
+  ];
+
+  await renderHomepage(articles);
+
+  const financeTitles = sidebarCards("Finance").map(card => card.textContent);
+  expect(financeTitles).not.toContain(articles[6].title);
+  expect(financeTitles).not.toContain(articles[7].title);
+});
+
+test.each([
+  ["Mortgage rate falls for first-time buyers", "Mortgage rates changed for first-time buyers.", "Finance", undefined],
+  ["Bank cuts interest rate on home loans", "The bank reduced its interest rate.", "Finance", undefined],
+  ["New ISA and savings options announced", "New ISA and savings accounts were announced.", "Finance", undefined],
+  ["Council tax changes take effect next month", "Council tax bills will change.", "Finance", "tax"],
+  ["Planning application approved for new homes", "The housing development includes 80 homes.", "Local News", "planning"],
+])("Finance retains genuine context: %s", async (title, summary, category, section) => {
+  const candidate = makeArticle(24, {
+    title,
+    summary,
+    category,
+    section,
+    scope: category === "Local News" ? "cheshire" : "uk",
+    publishedDate: hoursBeforeSidebarNow(16),
+    created_at: hoursBeforeSidebarNow(16),
+  });
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    makeSidebarArticle(20, "Business", 8, { title: "Company profits rise after manufacturing investment" }),
+    makeSidebarArticle(21, "Business", 9, { title: "Industry company reports revenue growth" }),
+    makeArticle(22, {
+      title: "Housing development approved for town centre",
+      summary: "A planning application for homes was approved.",
+      category: "Local News",
+      scope: "cheshire",
+      publishedDate: hoursBeforeSidebarNow(10),
+      created_at: hoursBeforeSidebarNow(10),
+    }),
+    candidate,
+  ];
+
+  await renderHomepage(articles);
+
+  expect(sidebarCards("Finance").map(card => card.textContent)).toContain(candidate.title);
+});
+
+test.each([
+  ["Business", 3],
+  ["AI & Tech", 6],
+  ["Finance", 6],
+])("%s prefers qualified published stories from the first 48 hours", async (section, capacity) => {
+  const module = section === "AI & Tech" ? "AI" : section;
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    ...Array.from({ length: capacity + 3 }, (_, index) =>
+      makeSidebarArticle(100 + index, module, 12 + index)
+    ),
+    ...Array.from({ length: capacity }, (_, index) =>
+      makeSidebarArticle(200 + index, module, 72 + index)
+    ),
+  ];
+
+  await renderHomepage(articles);
+
+  const selectedTitles = sidebarCards(section).map(card => card.textContent);
+  expect(selectedTitles).toHaveLength(capacity);
+  expect(selectedTitles.every(title => articles.slice(4, 4 + capacity + 3).some(article => article.title === title))).toBe(true);
+});
+
+test.each([
+  ["Business", "Business", 3, 2],
+  ["AI & Tech", "AI", 6, 2],
+  ["Finance", "Finance", 6, 2],
+])("%s widens through seven days but does not use older stories to fill capacity", async (section, module, capacity, recentCount) => {
+  const recent = Array.from({ length: recentCount + (module === "Business" ? 1 : module === "AI" ? 1 : 0) }, (_, index) =>
+    makeSidebarArticle(300 + index, module, 24 + index)
+  );
+  const withinSevenDays = Array.from({ length: module === "Business" ? 1 : 2 }, (_, index) =>
+    makeSidebarArticle(400 + index, module, 72 + index * 24)
+  );
+  const older = Array.from({ length: capacity + 2 }, (_, index) =>
+    makeSidebarArticle(500 + index, module, 8 * 24 + index)
+  );
+  const articles = [...makeNeutralRecentArticles(), ...recent, ...withinSevenDays, ...older];
+
+  await renderHomepage(articles);
+
+  const selectedTitles = sidebarCards(section).map(card => card.textContent);
+  expect(selectedTitles).toEqual(expect.arrayContaining(withinSevenDays.map(article => article.title)));
+  for (const article of older) expect(selectedTitles).not.toContain(article.title);
+  expect(selectedTitles.length).toBeLessThan(capacity);
+});
+
+test.each([
+  ["Business", "Business"],
+  ["AI & Tech", "AI"],
+  ["Finance", "Finance"],
+])("%s uses publishedDate rather than recent import metadata for its seven-day boundary", async (section, module) => {
+  const staleButRecentlyImported = Array.from({ length: 4 }, (_, index) =>
+    makeSidebarArticle(600 + index, module, 8 * 24 + index, {
+      created_at: hoursBeforeSidebarNow(index + 1),
+      id: `6ac7777${index}0000000000000000`,
+    })
+  );
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    ...Array.from({ length: module === "Business" ? 2 : module === "AI" ? 1 : 0 }, (_, index) =>
+      makeSidebarArticle(610 + index, module, 24 + index)
+    ),
+    ...staleButRecentlyImported,
+  ];
+
+  await renderHomepage(articles);
+
+  const selectedTitles = sidebarCards(section).map(card => card.textContent);
+  for (const article of staleButRecentlyImported) expect(selectedTitles).not.toContain(article.title);
+});
+
+test("sidebar freshness contract preserves Hero, Top Stories, editorial filtering, dedupe and shared requests", async () => {
+  const duplicateTitle = "Company manufacturing investment duplicate";
+  const crimeStory = makeSidebarArticle(700, "Business", 10, {
+    title: "Company director jailed after crown court trial",
+    summary: "The court sentenced the company director after a trial.",
+  });
+  const articles = [
+    ...makeNeutralRecentArticles(),
+    makeSidebarArticle(701, "Business", 8, { title: duplicateTitle }),
+    makeSidebarArticle(702, "Business", 9, { title: duplicateTitle }),
+    crimeStory,
+    ...Array.from({ length: 6 }, (_, index) => makeSidebarArticle(710 + index, "AI", 12 + index)),
+  ];
+
+  await renderHomepage(articles);
+
+  expect(container.querySelector("[data-hero-title]")).toBeTruthy();
+  expect(container.querySelectorAll("[data-top-stories] [data-card-id]").length).toBeGreaterThan(0);
+  expect(container.textContent).not.toContain(crimeStory.title);
+  const renderedSidebarIds = Array.from(container.querySelectorAll("aside [data-card-id]"))
+    .map(card => card.dataset.cardId);
+  expect(new Set(renderedSidebarIds).size).toBe(renderedSidebarIds.length);
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(global.fetch.mock.calls[0][0]).toMatch(/\/api\/articles\?limit=80$/);
+  expect(global.fetch.mock.calls.filter(([url]) => String(url).includes("/api/articles"))).toHaveLength(1);
 });
 
 test("dead Most Read allocation reserves nothing and Latest expands deterministically", async () => {
