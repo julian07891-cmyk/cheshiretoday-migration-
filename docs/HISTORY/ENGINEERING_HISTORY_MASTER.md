@@ -1168,3 +1168,28 @@ with `needs_manual_review` / `manual_review_required`; four 209–271-word clean
 rewrites auto-screened; and a 281-word manual correction retained its existing
 manual status. Acceptance is complete for the observed boundary, without
 claiming that zero leakage in one run proves impossibility of future recurrence.
+
+### Homepage sidebar publication freshness — 9 October
+
+The Business, AI & Tech and Finance sidebar investigation established a
+frontend selection defect rather than a public-eligibility or Top Stories
+failure. The modules had no maximum age, their ordering could use import/ObjectId
+freshness, and an unrendered legacy Finance pool reserved newer candidates. Bare
+`rate`/`rates` and `save` also admitted non-financial stories. Backend supply
+included old inventory but already contained newer suitable candidates.
+
+`10d5a8a` (`Keep homepage sidebar articles fresh`) retained the existing
+deterministic ordering but limited all three visible sidebar modules to valid
+`publishedDate` values within seven days. It removed the dead Finance allocation
+and its reservation side effect, narrowed only the confirmed Finance false-positive
+terms, and preserved genuine financial and bounded property/planning matching.
+Hero, Top Stories, public eligibility, backend/API behavior and the single shared
+article request were unchanged.
+
+The QA-first sequence recorded 13 intended RED failures and 17 passes, then
+30/30 focused GREEN, 45/45 related component passes, 553/553 broader frontend
+passes excluding documented `QA-MAINT-002`, a successful production build and
+clean whitespace validation. After deployment, local/origin matched the full
+`10d5a8a` SHA, health and homepage returned HTTP 200, and the owner accepted the
+live Business, AI & Tech and Finance result. Acceptance is bounded to the
+observed deployment and does not eliminate future inventory edge cases.

@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `efc79b1d7a46320c54b29fef46c0f991ab92faa6` (`Tighten automatic article depth screening`)
-> - **Last repository reconciliation:** 7 October 2026; this update records production acceptance of the automatic article-depth and source-audit safeguards at `efc79b1`.
-> - **Production-verification status:** **Current application acceptance APPROVED.** The 7 October 18:00 BST natural run observed the intended 200-word boundary: four sub-200-word rewrites were retained in hidden Manual Review, four clean 200+ word rewrites auto-screened, no under-200 auto-screened record or source-audit-language match was found in the checked window, and existing manual-corrected content remained unaffected. This bounded observation does not prove that source-audit wording can never recur. Earlier retail-offence and desktop Further reading acceptance remains complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `10d5a8a4452868a69b91484cc64b2f62d2f0f895` (`Keep homepage sidebar articles fresh`)
+> - **Last repository reconciliation:** 9 October 2026; this update records deployment and owner production acceptance of the Business, AI & Tech and Finance sidebar freshness correction at `10d5a8a`.
+> - **Production-verification status:** **Current application acceptance APPROVED.** Local and origin matched `10d5a8a`, health and homepage returned HTTP 200, and owner live review accepted the corrected Business, AI & Tech and Finance sidebar behaviour with Hero and Top Stories unchanged. This bounded observation does not prove future inventory cannot expose another classification or selection edge case. The 7 October article-depth, retail-offence and desktop Further reading acceptance remains complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `efc79b1d7a46320c54b29fef46c0f991ab92faa6`
-- **Verified deployed baseline:** `efc79b1d7a46320c54b29fef46c0f991ab92faa6`; the 7 October 18:00 BST natural import supplied bounded production acceptance for the automatic depth and source-audit safeguards.
-- **Latest application commit:** `Tighten automatic article depth screening`
+- **Current application baseline:** `10d5a8a4452868a69b91484cc64b2f62d2f0f895`
+- **Verified deployed baseline:** `10d5a8a4452868a69b91484cc64b2f62d2f0f895`; public health and homepage returned HTTP 200 and owner live review accepted the corrected Business, AI & Tech and Finance sidebar behaviour.
+- **Latest application commit:** `Keep homepage sidebar articles fresh`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -1852,3 +1852,39 @@ boundary and retention behaviour for its checked window. It does not prove that
 every future short article will be classified correctly beyond the implemented
 rules and tests, and zero observed source-audit matches does not prove that such
 language can never recur.
+
+## 26. 9 October 2026 homepage sidebar freshness production acceptance
+
+The Business, AI & Tech and Finance homepage sidebar audit found that all three
+visible modules could continue into arbitrarily old inventory, and that import
+or ObjectId freshness could outrank source publication time. A separate,
+unrendered `financeArticles` allocation also reserved newer Finance candidates,
+while bare `rate`/`rates` and `save` admitted vaccination and campaign-language
+false positives. The backend supplied older inventory but was not the principal
+defect because newer suitable candidates were already present. Hero and Top
+Stories were verified as satisfactory and deliberately left unchanged.
+
+`10d5a8a Keep homepage sidebar articles fresh` applies a seven-day eligibility
+boundary based only on valid `publishedDate` values to the three visible sidebar
+modules. Existing deterministic fresh-first ordering remains; modules render
+fewer cards rather than using older stories. The dead Finance allocation and its
+reservation side effect were removed, and visible Finance no longer treats bare
+`rate`, `rates` or `save` as sufficient. Mortgage, interest/fixed-rate, ISA,
+savings, tax and the existing bounded property/planning enrichment remain.
+There is no random rotation, unrelated fallback, backend/API/public-eligibility
+change or additional request.
+
+QA was RED then GREEN: the focused homepage suite moved from **13 failed / 17
+passed** to **30/30 passed**; related components passed **45/45**; the frontend
+suite excluding documented `QA-MAINT-002` passed **553/553**; the production
+build and `git diff --check` passed. `QA-MAINT-002` remains the pre-existing
+`PublicMetadataUniqueness` mock omission of named `selectHomepageGuides`; it was
+neither caused nor fixed here.
+
+Local and `origin/full-scrape-prod` matched
+`10d5a8a4452868a69b91484cc64b2f62d2f0f895` after push. Production health
+returned HTTP 200 with `{"status":"healthy","service":"cheshire-news"}` and
+the homepage returned HTTP 200. The owner then visually accepted the corrected
+Business, AI & Tech and Finance sidebar behaviour; Top Stories remained
+satisfactory and unchanged. **Production acceptance: APPROVED.** This verifies
+the observed deployed homepage, not every possible future inventory edge case.

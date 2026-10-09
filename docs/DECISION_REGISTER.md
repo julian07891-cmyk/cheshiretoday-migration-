@@ -559,6 +559,31 @@ This clarifies existing boundaries, not a new implementation decision.
 - **Rationale:** This addresses the long-page empty column while preserving commercial restraint, inventory limits, duplicate exclusions, short-page flow and the hidden mobile/tablet sidebar. Making the whole aside sticky or adding filler/repeated promotions was rejected.
 - **Evidence:** `0e4c408`; 36/36 focused tests, related component checks, production build and owner live visual acceptance.
 
+## 9 October 2026 — homepage sidebar publication freshness
+
+- **Decision:** Business, AI & Tech and visible Finance sidebar inventory must
+  have a valid source `publishedDate` no older than seven days. Preserve the
+  existing deterministic fresh-first order and render fewer cards when the
+  bounded pool is insufficient. Do not use `created_at`, ObjectId or import time
+  to rescue an older publication date.
+- **Rationale:** The shared backend response already contained newer suitable
+  candidates, while unbounded frontend fill kept old stories visible. A
+  publication-date boundary corrects that presentation without changing public
+  eligibility, backend supply, Hero or Top Stories, and avoids random rotation
+  or low-quality freshness-only filling.
+- **Finance boundary:** The unused legacy Finance allocation must not reserve
+  candidates for the visible module. Bare `rate`, `rates` and `save` are not
+  sufficient Finance evidence; mortgage, interest/fixed-rate, ISA, savings, tax
+  and the existing bounded property/planning enrichment remain eligible.
+- **Alternatives rejected:** backend/category API changes, explicit random
+  rotation, unrelated fallback, a larger ranking rewrite, and changes to Hero or
+  Top Stories.
+- **Evidence:** `10d5a8a`; focused RED 13/17 and GREEN 30/30, related 45/45,
+  broader frontend 553/553 excluding documented `QA-MAINT-002`, successful
+  production build, HTTP 200 health/homepage and owner live acceptance. The
+  acceptance is bounded to observed inventory and does not guarantee absence of
+  every future classification edge case.
+
 ## Unreconciled decision evidence
 
 - ChatGPT export and systematic Codex records may reveal additional alternatives or

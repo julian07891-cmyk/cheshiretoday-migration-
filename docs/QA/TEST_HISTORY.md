@@ -208,6 +208,27 @@ No secret is recorded. QA classifications/counts remain unchanged (combined 18:
   auto-screened records, and one unaffected 281-word manual correction. This is
   bounded production observation, not proof against every future leakage case.
 
+## 9 October 2026 — homepage sidebar freshness
+
+- RED `HomePageV1` coverage recorded **13 failed / 17 passed / 30 total**. The
+  failures isolated the dead Finance reservation, vaccination-rate/save-school
+  false positives, missing seven-day limits and old `publishedDate` values being
+  rescued by recent import metadata.
+- At `10d5a8a`, focused `HomePageV1` verification passed **30/30** and directly
+  related component suites passed **45/45**.
+- The broader frontend suite excluding documented `QA-MAINT-002` passed
+  **553/553**. The excluded `PublicMetadataUniqueness.test.jsx` failure is the
+  pre-existing `HeroMonetisationStrip` mock omission of named
+  `selectHomepageGuides`; this work neither caused nor repaired it.
+- The production frontend build compiled successfully and `git diff --check`
+  passed. Existing `fetchPriority` and stale Browserslist-data warnings remained
+  non-blocking.
+- Post-deployment evidence: local/origin matched
+  `10d5a8a4452868a69b91484cc64b2f62d2f0f895`, health and homepage returned HTTP
+  200, and the owner visually accepted the live Business, AI & Tech and Finance
+  modules with Hero and Top Stories unchanged. This is bounded observed behavior,
+  not proof against every future inventory edge case.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).

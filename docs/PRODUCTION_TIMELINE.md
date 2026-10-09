@@ -680,3 +680,36 @@ rewrites could still auto-screen, and manual-corrected content was unaffected.
 The zero source-audit match is bounded run evidence, not proof that prompt
 leakage can never recur or that every future candidate is covered beyond the
 implemented rules and tests.
+
+## 9 October 2026 — homepage sidebar freshness deployment and acceptance
+
+Commit `10d5a8a4452868a69b91484cc64b2f62d2f0f895` (`Keep homepage
+sidebar articles fresh`) was pushed from `ccc6e26` to `full-scrape-prod` and
+deployed. Local HEAD and `origin/full-scrape-prod` matched the full SHA. Public
+`/api/health` returned HTTP 200 with
+`{"status":"healthy","service":"cheshire-news"}`, and the production homepage
+returned HTTP 200.
+
+The correction is confined to the visible Business, AI & Tech and Finance
+homepage sidebar modules. They now accept only valid `publishedDate` values no
+older than seven days, retain existing deterministic fresh-first ordering and
+may render fewer cards rather than filling from older inventory. Recent
+`created_at`, ObjectId or import timestamps cannot rescue an old publication
+date. The unrendered legacy Finance allocation no longer reserves candidates,
+and bare `rate`, `rates` and `save` no longer classify unrelated stories as
+Finance. Genuine mortgage, interest/fixed-rate, ISA, savings, tax and existing
+bounded property/planning matching remain. Hero, Top Stories, backend/API,
+public eligibility and request behaviour are unchanged.
+
+QA recorded focused RED **13 failed / 17 passed**, followed by GREEN **30/30**;
+related component suites passed **45/45**; the frontend suite excluding the
+documented `QA-MAINT-002` harness defect passed **553/553**; and the production
+frontend build and `git diff --check` passed. `QA-MAINT-002` remains an unrelated
+pre-existing `PublicMetadataUniqueness` mock omission and was not fixed here.
+
+The owner performed a live homepage visual/content check after deployment and
+explicitly accepted the corrected Business, AI & Tech and Finance behaviour.
+Top Stories remained satisfactory and intentionally unchanged. **Production
+acceptance: APPROVED.** This evidence covers the observed deployed homepage; it
+does not establish that future inventory can never expose another bounded
+classification or selection edge case.
