@@ -9658,7 +9658,8 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             logger.info(f"Auto-detected location '{detected_location}' for new article: {article.title}")
         
         # Insert into database
-        await db.articles.insert_one(article_doc)
+        insert_result = await db.articles.insert_one(article_doc)
+        mongo_id = str(insert_result.inserted_id)
         
         # Remove _id for response
         article_doc.pop('_id', None)
@@ -9668,6 +9669,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
         return {
             "success": True,
             "message": "Article created successfully",
+            "mongo_id": mongo_id,
             "article": article_doc,
             "location_detected": detected_location
         }
@@ -9815,6 +9817,8 @@ async def update_article(article_id: str, article: ManualArticleCreate, authoriz
         return {
             "success": True,
             "message": "Article updated and restored successfully" if restored_from_manual_review else "Article updated successfully",
+            "mongo_id": str(existing["_id"]),
+            "article_id": existing.get("id") or str(existing["_id"]),
             "location_detected": detected_location,
             "restored_from_manual_review": restored_from_manual_review
         }

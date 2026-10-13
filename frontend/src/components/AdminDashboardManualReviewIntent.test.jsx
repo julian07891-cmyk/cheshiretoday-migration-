@@ -90,6 +90,7 @@ describe('Admin Manual Review publication intent safeguard', () => {
   let originalConsoleLog;
   let updateResult;
   let updateStatus;
+  let createResult;
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -110,6 +111,7 @@ describe('Admin Manual Review publication intent safeguard', () => {
     root = createRoot(container);
     updateResult = { success: true, restored_from_manual_review: true };
     updateStatus = 200;
+    createResult = { success: true, article: { id: 'created-article-id' } };
 
     global.fetch = jest.fn(async (url, options = {}) => {
       const path = String(url);
@@ -117,7 +119,7 @@ describe('Admin Manual Review publication intent safeguard', () => {
         return response(updateResult, updateStatus);
       }
       if (options.method === 'POST' && /\/api\/admin\/articles$/.test(path)) {
-        return response({ success: true, article: { id: 'created-article-id' } });
+        return response(createResult);
       }
       if (path.includes('/api/admin/articles/manual-review')) {
         return response({ articles: [manualReviewArticle], total: 1 });
@@ -327,6 +329,69 @@ describe('Admin Manual Review publication intent safeguard', () => {
     expect(JSON.stringify(JSON.parse(putCalls[0][1].body))).not.toContain('manual_review');
     expect(getEditor()).toBeNull();
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: '✅ Article Restored' }));
+  });
+
+  test('shows Social Publishing immediately after manual creation using only canonical mongo_id', async () => {
+    createResult = {
+      success: true,
+      mongo_id: '64b7f9d4aabbccddeeff0012',
+      article: { id: '12f79f40-e147-4c94-9328-d8d00d979ee6' },
+    };
+    await renderDashboard();
+    await click(container.querySelector('[data-testid="tab-articles"]'));
+    await click(Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent.trim() === 'Add Article'));
+
+    await act(async () => {
+      setControlValue(getEditor().querySelector('[data-testid="article-title-input"]'), 'New manual article');
+      setControlValue(getEditor().querySelector('[data-testid="article-content-input"]'), 'Verified manual article content.');
+    });
+    await click(getEditor().querySelector('[data-testid="submit-article-button"]'));
+
+    expect(container.querySelector('[data-testid="social-publishing-64b7f9d4aabbccddeeff0012"]'))
+      .not.toBeNull();
+    expect(container.querySelector('[data-testid="social-publishing-12f79f40-e147-4c94-9328-d8d00d979ee6"]'))
+      .toBeNull();
+  });
+
+  test('shows Social Publishing immediately after Manual Review correction and restoration', async () => {
+    updateResult = {
+      success: true,
+      restored_from_manual_review: true,
+      mongo_id: '64b7f9d4aabbccddeeff0013',
+      article_id: 'manual-review-mongo-id',
+    };
+    await renderDashboard();
+    await openArchiveTab();
+    await click(container.querySelector('[data-testid="edit-manual-review-manual-review-mongo-id"]'));
+    await click(getEditor().querySelector('[data-testid="submit-article-button"]'));
+    await click(Array.from(getConfirmation().querySelectorAll('button'))
+      .find((button) => button.textContent.trim() === 'Confirm update'));
+    await click(container.querySelector('[data-testid="tab-articles"]'));
+
+    expect(container.querySelector('[data-testid="social-publishing-64b7f9d4aabbccddeeff0013"]'))
+      .not.toBeNull();
+    expect(container.querySelector('[data-testid="social-publishing-manual-review-mongo-id"]'))
+      .toBeNull();
+  });
+
+  test('does not expose Social Publishing by substituting a manual UUID for mongo_id', async () => {
+    createResult = {
+      success: true,
+      article: { id: '12f79f40-e147-4c94-9328-d8d00d979ee6' },
+    };
+    await renderDashboard();
+    await click(container.querySelector('[data-testid="tab-articles"]'));
+    await click(Array.from(container.querySelectorAll('button'))
+      .find((button) => button.textContent.trim() === 'Add Article'));
+    await act(async () => {
+      setControlValue(getEditor().querySelector('[data-testid="article-title-input"]'), 'UUID-only manual article');
+      setControlValue(getEditor().querySelector('[data-testid="article-content-input"]'), 'Verified content.');
+    });
+    await click(getEditor().querySelector('[data-testid="submit-article-button"]'));
+
+    expect(container.querySelector('[data-testid="social-publishing-12f79f40-e147-4c94-9328-d8d00d979ee6"]'))
+      .toBeNull();
   });
 
   test('closes and resets after a successful non-restored Manual Review update', async () => {

@@ -1589,6 +1589,7 @@ const AdminDashboard = ({ onBack }) => {
           ...(data.article || {}),
           ...payload,
           id: data.article?.id || editingArticle?.id,
+          mongo_id: data.mongo_id || data.article?.mongo_id || editingArticle?.mongo_id,
           publishedDate: data.article?.publishedDate || editingArticle?.publishedDate || new Date().toISOString(),
           source: payload.source || editingArticle?.source || data.article?.source || "Manual Entry",
           source_url: payload.source_url ?? editingArticle?.source_url ?? editingArticle?.sourceUrl ?? data.article?.source_url ?? "",
