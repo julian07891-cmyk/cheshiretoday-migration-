@@ -1,6 +1,7 @@
 import asyncio
 import os
 from copy import deepcopy
+from datetime import datetime
 
 from bson import ObjectId
 
@@ -81,6 +82,8 @@ def test_manual_create_returns_canonical_mongo_id_separate_from_article_uuid(mon
     assert result["article"]["id"] != result["mongo_id"]
     assert articles.inserted["id"] == result["article"]["id"]
     assert str(articles.inserted["_id"]) == result["mongo_id"]
+    assert isinstance(articles.inserted["publishedDate"], datetime)
+    assert articles.inserted["publishedDate"].tzinfo is not None
 
 
 def test_manual_update_returns_existing_canonical_mongo_id_without_changing_identity(monkeypatch):
@@ -123,4 +126,3 @@ def test_manual_update_returns_existing_canonical_mongo_id_without_changing_iden
     assert articles.updated[0] == {"id": article_uuid}
     assert "id" not in articles.updated[1]["$set"]
     assert "_id" not in articles.updated[1]["$set"]
-

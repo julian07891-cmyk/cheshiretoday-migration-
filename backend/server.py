@@ -8885,6 +8885,43 @@ async def get_admin_instagram_reels_cover_social_asset(
     )
 
 
+def _admin_article_publication_sort_key(article: dict):
+    """Return a comparable UTC key for mixed stored publication-date types."""
+    raw_date = article.get("publishedDate")
+    parsed_date = None
+
+    if isinstance(raw_date, datetime):
+        parsed_date = raw_date
+    elif isinstance(raw_date, str) and raw_date.strip():
+        try:
+            parsed_date = datetime.fromisoformat(raw_date.strip().replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            parsed_date = None
+
+    if parsed_date is not None:
+        if parsed_date.tzinfo is None:
+            parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+        else:
+            parsed_date = parsed_date.astimezone(timezone.utc)
+        return (
+            1,
+            parsed_date,
+            0,
+            "",
+        )
+
+    # Missing and malformed dates remain deterministically oldest. A malformed
+    # stored value sorts ahead of a missing value, but neither gains recency
+    # from import time, ObjectId, or any unrelated metadata.
+    malformed_rank = 1 if raw_date not in (None, "") else 0
+    return (
+        0,
+        datetime.min.replace(tzinfo=timezone.utc),
+        malformed_rank,
+        str(article.get("_id") or article.get("id") or ""),
+    )
+
+
 @api_router.get("/admin/articles")
 async def get_admin_articles(
     skip: int = 0,
@@ -8943,7 +8980,7 @@ async def get_admin_articles(
         eligibility_candidates = await db.articles.find(
             query,
             eligibility_projection,
-        ).sort("publishedDate", -1).to_list(None)
+        ).to_list(None)
         eligible_candidates = [
             article for article in eligibility_candidates
             if is_public_article_editorially_eligible(
@@ -8951,6 +8988,10 @@ async def get_admin_articles(
                 filtering_enabled=filtering_enabled,
             )
         ]
+        eligible_candidates.sort(
+            key=_admin_article_publication_sort_key,
+            reverse=True,
+        )
         total = len(eligible_candidates)
         page_candidates = eligible_candidates[skip:skip + limit]
         page_ids = [article.get("_id") for article in page_candidates if article.get("_id") is not None]
@@ -9634,6 +9675,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
         resolved_image = resolve_manual_article_image(article.image or default_image, resolved_source_url)
 
         # Create article document
+        created_at = datetime.now(timezone.utc)
         article_doc = {
             "id": article_id,
             "title": article.title,
@@ -9641,7 +9683,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             "content": article.content,
             "category": article.category,
             "author": article.author or "Cheshire Today",
-            "publishedDate": datetime.now(timezone.utc).isoformat(),
+            "publishedDate": created_at,
             "image": resolved_image,
             "tags": tags,
             "featured": article.featured or False,
@@ -9649,7 +9691,7 @@ async def create_manual_article(article: ManualArticleCreate, authorized: bool =
             "source": article.source or "Manual Entry",
             "source_url": resolved_source_url,
             "scope": article.scope or "cheshire",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": created_at.isoformat()
         }
         
         # Add location if detected
