@@ -258,6 +258,18 @@ _GENERIC_EVENT_ENTITIES = frozenset(
         "school",
     }
 )
+_STATISTICAL_ISSUERS = frozenset(
+    {
+        "international monetary fund",
+        "worldpanel by numerator",
+    }
+)
+_IMF_CONTEXT_TERMS = frozenset(
+    {"economy", "gdp", "growth", "inflation", "forecast", "outlook"}
+)
+_WORLDPANEL_CONTEXT_TERMS = frozenset(
+    {"food", "grocery", "inflation", "prices", "shoppers", "supermarket"}
+)
 
 _CURRENCY_RE = re.compile(
     r"(?P<symbol>[£$€])\s*(?P<number>[0-9][0-9,]*(?:\.[0-9]+)?)\s*"
@@ -277,7 +289,88 @@ _REPORTING_PERIOD_RE = re.compile(
     r"\b(?:q([1-4])\s*(20[0-9]{2})|(20[0-9]{2})\s*q([1-4]))\b", re.I
 )
 
+_RELEASE_MONTHS = {
+    "january": "01",
+    "february": "02",
+    "march": "03",
+    "april": "04",
+    "may": "05",
+    "june": "06",
+    "july": "07",
+    "august": "08",
+    "september": "09",
+    "october": "10",
+    "november": "11",
+    "december": "12",
+}
+_RELEASE_MONTH_PATTERN = "|".join(_RELEASE_MONTHS)
+_RELEASE_NOUN_PATTERN = (
+    r"world economic outlook|outlook|release|report|bulletin|survey|index"
+)
+_MONTHLY_RELEASE_PERIOD_PATTERNS = (
+    re.compile(
+        rf"\b({_RELEASE_MONTH_PATTERN})\s+(20[0-9]{{2}})\s+"
+        rf"(?:{_RELEASE_NOUN_PATTERN})\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\b(?:{_RELEASE_NOUN_PATTERN})\s+(?:for\s+)?"
+        rf"({_RELEASE_MONTH_PATTERN})\s+(20[0-9]{{2}})\b",
+        re.I,
+    ),
+)
+_QUARTERLY_RELEASE_PERIOD_PATTERNS = (
+    re.compile(
+        rf"\bq([1-4])\s*(20[0-9]{{2}})\s+(?:{_RELEASE_NOUN_PATTERN})\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\b(?:{_RELEASE_NOUN_PATTERN})\s+(?:for\s+)?q([1-4])\s*"
+        rf"(20[0-9]{{2}})\b",
+        re.I,
+    ),
+)
+_ANNUAL_RELEASE_PERIOD_PATTERNS = (
+    re.compile(
+        rf"\b(20[0-9]{{2}})\s+annual\s+(?:{_RELEASE_NOUN_PATTERN})\b",
+        re.I,
+    ),
+    re.compile(
+        rf"\bannual\s+(?:{_RELEASE_NOUN_PATTERN})\s+(?:for\s+)?"
+        rf"(20[0-9]{{2}})\b",
+        re.I,
+    ),
+)
+_FOUR_WEEK_RELEASE_PERIOD_RE = re.compile(
+    rf"\bfour(?:-|\s+)weeks?(?:\s+period)?\s+(?:ending|to)\s+"
+    rf"(?:on\s+)?([0-9]{{1,2}})\s+({_RELEASE_MONTH_PATTERN})\s+"
+    rf"(20[0-9]{{2}})\b",
+    re.I,
+)
+_STATISTICAL_EVENT_PHRASES = frozenset(
+    {
+        "uk_economic_growth_release",
+        "worldpanel_grocery_inflation_release",
+    }
+)
+
 _EVENT_STAGE_PATTERNS = (
+    (
+        "official_correction",
+        re.compile(
+            r"\b(?:"
+            r"official(?:\s+[a-z][a-z0-9&'’-]*){0,3}\s+correction|"
+            r"corrected\s+(?:economic|official|statistical)\s+"
+            r"(?:figures?|data|estimate|forecast)|"
+            r"updated\s+official\s+(?:estimate|figures?|data|forecast)|"
+            r"(?:withdrawn|superseded)\s+(?:official|statistical)\s+"
+            r"(?:figures?|data|estimate|forecast)|"
+            r"(?:imf|international monetary fund|office for national statistics|"
+            r"bank of england)\s+(?:has\s+)?issued\s+(?:a\s+)?revised\s+forecast"
+            r")\b",
+            re.I,
+        ),
+    ),
     ("fatal_outcome", re.compile(r"\b(die|died|dies|dead|death|fatal|killed)\b", re.I)),
     (
         "opening",
@@ -331,7 +424,21 @@ _FORMAT_PATTERNS = (
     ("live_blog", re.compile(r"\b(?:live blog|live updates?|politics live)\b", re.I)),
     ("video", re.compile(r"\b(?:video|watch:)\b", re.I)),
     ("roundup", re.compile(r"\b(?:roundup|the papers|morning briefing)\b", re.I)),
-    ("explainer", re.compile(r"\b(?:explainer|explained|what .* mean|why is)\b", re.I)),
+    (
+        "explainer",
+        re.compile(
+            r"\b(?:"
+            r"explainer|explained|why is|"
+            r"what\s+(?:we|you)(?:['’]ve|\s+have)?\s+(?:learned|learnt)|"
+            r"(?:one|two|three|four|five|six|seven|eight|nine|ten|[0-9]+)\s+"
+            r"things\s+(?:we|you)(?:['’]ve|\s+have)?\s+(?:learned|learnt)|"
+            r"what\s+(?:it|this|that)\s+means?|"
+            r"what\s+(?:does|do|did|will|would|could|can)\s+.{1,80}?\s+means?|"
+            r"what\s+you\s+need\s+to\s+know|how\s+it\s+works"
+            r")\b",
+            re.I,
+        ),
+    ),
     (
         "analysis",
         re.compile(
@@ -555,7 +662,25 @@ def _event_entity_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
         anchor = _normalise_text(value, MAX_EVENT_ANCHOR_CHARACTERS)
         if anchor and anchor not in _GENERIC_EVENT_ENTITIES:
             anchors.add(anchor)
+    anchors.update(_statistical_issuer_anchors(article))
     return _bounded_sorted(anchors, MAX_EVENT_ENTITY_ANCHORS)
+
+
+def _statistical_issuer_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
+    text = _normalise_text(_article_text(article))
+    tokens = set(text.split())
+    anchors: set[str] = set()
+    if tokens & _IMF_CONTEXT_TERMS and (
+        "international monetary fund" in text
+        or re.search(r"(?:^| )imf(?: |$)", text)
+    ):
+        anchors.add("international monetary fund")
+    if tokens & _WORLDPANEL_CONTEXT_TERMS and (
+        "worldpanel by numerator" in text
+        or re.search(r"(?:^| )worldpanel(?: |$)", text)
+    ):
+        anchors.add("worldpanel by numerator")
+    return _bounded_sorted(anchors, len(_STATISTICAL_ISSUERS))
 
 
 def _normalise_decimal(value: str) -> str:
@@ -610,6 +735,32 @@ def _event_quantitative_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
     return _bounded_sorted(anchors, MAX_EVENT_QUANTITY_ANCHORS)
 
 
+def _release_period_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
+    """Extract only explicit release periods, never forecast target years."""
+
+    text = _article_text(article)
+    anchors: set[str] = set()
+    for pattern in _MONTHLY_RELEASE_PERIOD_PATTERNS:
+        for month, year in pattern.findall(text):
+            anchors.add(f"month:{year}-{_RELEASE_MONTHS[month.casefold()]}")
+    for pattern in _QUARTERLY_RELEASE_PERIOD_PATTERNS:
+        for quarter, year in pattern.findall(text):
+            anchors.add(f"quarter:{year}-q{quarter}")
+    for pattern in _ANNUAL_RELEASE_PERIOD_PATTERNS:
+        for year in pattern.findall(text):
+            anchors.add(f"annual:{year}")
+    if "worldpanel by numerator" in _statistical_issuer_anchors(article):
+        for day, month, year in _FOUR_WEEK_RELEASE_PERIOD_RE.findall(text):
+            try:
+                period_end = datetime(
+                    int(year), int(_RELEASE_MONTHS[month.casefold()]), int(day)
+                )
+            except ValueError:
+                continue
+            anchors.add(f"four_weeks_ending:{period_end.date().isoformat()}")
+    return _bounded_sorted(anchors, 6)
+
+
 def _event_phrase_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
     text = _normalise_text(_article_text(article))
     tokens = set(text.split())
@@ -638,6 +789,13 @@ def _event_phrase_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
         }
     ):
         anchors.add("uk_economic_growth_release")
+    if (
+        "worldpanel" in tokens
+        and "grocery" in tokens
+        and "inflation" in tokens
+        and set(_release_period_anchors(article))
+    ):
+        anchors.add("worldpanel_grocery_inflation_release")
     if (
         "twitch" in tokens
         and tokens & {"ai", "artificial"}
@@ -732,6 +890,8 @@ def _event_stage_tags(article: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def _dominant_stage(tags: tuple[str, ...]) -> Optional[str]:
+    if "official_correction" in tags:
+        return "official_correction"
     progression = [tag for tag in tags if tag in _PROGRESS_STAGES]
     if progression:
         return max(progression, key=_PROGRESS_STAGES.__getitem__)
@@ -755,6 +915,10 @@ def _dominant_article_stage(article: Mapping[str, Any]) -> Optional[str]:
 def _stage_relation(candidate: Mapping[str, Any], existing: Mapping[str, Any]) -> str:
     candidate_stage = _dominant_article_stage(candidate)
     existing_stage = _dominant_article_stage(existing)
+    if (candidate_stage == "official_correction") != (
+        existing_stage == "official_correction"
+    ):
+        return "material_transition"
     if candidate_stage is None or existing_stage is None:
         return "unknown"
     if candidate_stage == existing_stage:
@@ -807,6 +971,17 @@ def _event_anchor_evidence(
     shared_localities = set(_event_locality_anchors(candidate)) & set(
         _event_locality_anchors(existing)
     )
+    candidate_release_periods = set(_release_period_anchors(candidate))
+    existing_release_periods = set(_release_period_anchors(existing))
+    shared_release_periods = candidate_release_periods & existing_release_periods
+    shared_quantities.update(
+        f"reporting_period:{period}" for period in shared_release_periods
+    )
+    release_period_conflict = bool(
+        candidate_release_periods
+        and existing_release_periods
+        and candidate_release_periods.isdisjoint(existing_release_periods)
+    )
     stage_relation = _stage_relation(candidate, existing)
     format_relation = _format_relation(candidate, existing)
     candidate_host = _source_host(candidate)
@@ -814,10 +989,27 @@ def _event_anchor_evidence(
     cross_source = bool(
         candidate_host and existing_host and candidate_host != existing_host
     )
+    shared_statistical_issuers = shared_entities & _STATISTICAL_ISSUERS
+    shared_statistical_measures = {
+        value
+        for value in shared_quantities
+        if not value.startswith("reporting_period:")
+    }
+    shared_statistical_events = shared_event_phrases & _STATISTICAL_EVENT_PHRASES
+    statistical_release_identity = bool(
+        shared_statistical_events
+        and shared_statistical_issuers
+        and shared_release_periods
+        and shared_statistical_measures
+    )
+    non_statistical_event_identity = bool(
+        shared_event_phrases - _STATISTICAL_EVENT_PHRASES
+    )
     compatible = bool(
         provenance == "same_run"
         and cross_source
-        and shared_event_phrases
+        and (statistical_release_identity or non_statistical_event_identity)
+        and not release_period_conflict
         and stage_relation in {"compatible", "unknown"}
         and format_relation == "compatible"
     )
@@ -826,9 +1018,11 @@ def _event_anchor_evidence(
         (bool(shared_entities), "entity_overlap"),
         (bool(shared_event_phrases), "event_phrase_overlap"),
         (bool(shared_quantities), "quantity_overlap"),
+        (statistical_release_identity, "statistical_release_identity"),
         (bool(shared_localities), "locality_overlap"),
         (stage_relation == "material_transition", "stage_transition_guard"),
         (format_relation == "guard", "format_guard"),
+        (release_period_conflict, "reporting_period_conflict"),
         (cross_source, "cross_source"),
         (provenance == "same_run", "same_run"),
         (compatible, "same_run_event_compatible"),

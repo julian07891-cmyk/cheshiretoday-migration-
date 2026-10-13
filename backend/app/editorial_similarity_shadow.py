@@ -73,9 +73,11 @@ ALLOWED_EVENT_EVIDENCE_CODES = frozenset(
         "format_guard",
         "locality_overlap",
         "quantity_overlap",
+        "reporting_period_conflict",
         "same_run",
         "same_run_event_compatible",
         "stage_transition_guard",
+        "statistical_release_identity",
     }
 )
 

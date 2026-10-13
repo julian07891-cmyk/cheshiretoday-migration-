@@ -50,13 +50,19 @@ LABELLED_PAIRS = (
         "positive",
         "same_run",
         article(
-            "UK economy grows 0.4%",
-            "UK GDP growth reached 0.4% in Q2 2026.",
+            "IMF October outlook says UK economy grows 0.4%",
+            (
+                "The IMF October 2026 World Economic Outlook said UK GDP growth "
+                "reached 0.4% in Q2 2026."
+            ),
             "sky.example",
         ),
         article(
-            "UK economy grows",
-            "The UK economy recorded GDP growth of 0.4% in 2026 Q2.",
+            "UK economy grows in IMF October outlook",
+            (
+                "The International Monetary Fund October 2026 World Economic "
+                "Outlook recorded UK GDP growth of 0.4% in 2026 Q2."
+            ),
             "bbc.example",
         ),
     ),
