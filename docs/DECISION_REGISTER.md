@@ -389,6 +389,26 @@ describes the decision at current repository HEAD, not an unverified live claim.
 - **Sources:** preserved state, “Editorial Similarity deployment and
   production-observation gate”; Git `1601ae4`.
 
+### CT-DEC-017A — Hardened Editorial Similarity remains shadow-only after acceptance
+
+- **ID:** CT-DEC-017A
+- **Date:** 14 October 2026.
+- **Status:** Active.
+- **Area:** Editorial Similarity operations.
+- **Evidence:** `214f3d0` added bounded release, period, format and stage evidence;
+  its first natural production run completed normally and emitted bounded
+  `scheduled_log_only` diagnostics without an observed publishing-state decision.
+- **Decision:** retain Editorial Similarity as advisory shadow evidence only.
+- **Rationale:** one accepted natural run verifies safe deployment and execution,
+  but does not establish sufficient classification precision or performance
+  evidence for an authoritative duplicate-review gate.
+- **Rejected interpretation:** production acceptance does not enable automatic
+  suppression, Manual Review routing, archive, deletion or merge.
+- **Follow-up:** any authoritative gate requires separate engineering approval,
+  RED/GREEN regression coverage and production QA.
+- **Sources:** Git `214f3d0`; Render deployment `dep-db7a5mu7bikc73cpk2e0`;
+  14 October 2026 06:00 BST natural-run acceptance.
+
 ### CT-DEC-018 — Observe production memory before optimising
 
 - **ID:** CT-DEC-018

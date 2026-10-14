@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `10d5a8a4452868a69b91484cc64b2f62d2f0f895` (`Keep homepage sidebar articles fresh`)
-> - **Last repository reconciliation:** 9 October 2026; this update records deployment and owner production acceptance of the Business, AI & Tech and Finance sidebar freshness correction at `10d5a8a`.
-> - **Production-verification status:** **Current application acceptance APPROVED.** Local and origin matched `10d5a8a`, health and homepage returned HTTP 200, and owner live review accepted the corrected Business, AI & Tech and Finance sidebar behaviour with Hero and Top Stories unchanged. This bounded observation does not prove future inventory cannot expose another classification or selection edge case. The 7 October article-depth, retail-offence and desktop Further reading acceptance remains complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf` (`Harden editorial similarity release evidence in shadow mode`)
+> - **Last repository reconciliation:** 14 October 2026; this update records first-natural-run production acceptance of the shadow-only Editorial Similarity hardening at `214f3d0`.
+> - **Production-verification status:** **Current application acceptance PASS for the deployed shadow-only Editorial Similarity hardening.** The 14 October 06:00 BST natural run completed once in 130.00 seconds on instance `dxknx`; the evaluator emitted bounded `scheduled_log_only` diagnostics and did not produce an observed publishing, Manual Review, archive or deletion decision. This one run does not establish all future classification or performance behaviour and does not approve an authoritative duplicate-review gate. Earlier homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `10d5a8a4452868a69b91484cc64b2f62d2f0f895`
-- **Verified deployed baseline:** `10d5a8a4452868a69b91484cc64b2f62d2f0f895`; public health and homepage returned HTTP 200 and owner live review accepted the corrected Business, AI & Tech and Finance sidebar behaviour.
-- **Latest application commit:** `Keep homepage sidebar articles fresh`
+- **Current application baseline:** `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf`
+- **Verified deployed baseline:** `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf`; deployment `dep-db7a5mu7bikc73cpk2e0` became Live on 13 October at approximately 22:32 BST and passed its first-natural-run shadow acceptance on 14 October.
+- **Latest application commit:** `Harden editorial similarity release evidence in shadow mode`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -203,13 +203,15 @@ unique-index and duplicate-key controls remain authoritative.
 
 Editorial Similarity Phase 2B is explicitly enabled only on normal scheduled
 hybrid imports. It is shadow-only and log-only. It cannot block, merge, archive,
-delete, publish, reroute or alter an article. Commit `5e8f0ef` added bounded,
-deterministic `phase2a_event_anchors_v1` evidence for entities/event phrases,
-typed quantities, ordered/outcome-aware stages, format/angle and exact-boundary
-locality. Scorer weights and bands remain unchanged; the corpus remains 50 active
-plus 50 archived and the shortlist remains 20. No database scan or publication
-behaviour was added. The first natural run verified execution and compact logging,
-not routing precision. No threshold, UI or publication-state decision is approved.
+delete, publish, reroute or alter an article. Commit `214f3d0` retains the bounded
+comparison architecture and numerical score thresholds while adding official
+correction/revision transition guards, explicit reporting-period conflict
+protection, bounded analysis/explainer recognition, and IMF/Worldpanel
+statistical-release evidence. Statistical-release identity requires multiple
+corroborating components rather than a lone broad signal. The 14 October first
+natural run verified bounded diagnostics and safe advisory execution, not routing
+precision or permission to enable a gate. No threshold, UI or publication-state
+decision is approved.
 
 See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md) and
@@ -1475,7 +1477,8 @@ Completed and committed:
 Still pending:
 
 - the earlier seven-file reconciliation was reviewed and committed as `109134b`;
-  the current hotfix-acceptance documentation update awaits separate review/commit;
+  the current Editorial Similarity acceptance documentation awaits separate
+  review/commit;
 - receive and reconcile the ChatGPT export;
 - preserve and reconcile structured Codex history;
 - reconcile historical PDFs;
@@ -1676,9 +1679,9 @@ Register. No nonexistent future history file is linked here.
 Complete historical reconstruction has **not** yet been achieved.
 
 This file is the concise repository operational authority. The 5 October
-reconciliation was committed as `109134b`. This update records implementation
-through `c4a977b` and its 5 October 12:00 natural-run acceptance, APPROVED WITH
-OBSERVATIONS. This documentation update awaits separate review/commit; mutable
+reconciliation was committed as `109134b`. This update records deployment and
+first-natural-run acceptance through `214f3d0`, with Editorial Similarity still
+shadow-only. This documentation update awaits separate review/commit; mutable
 production facts require fresh evidence.
 
 
@@ -1888,3 +1891,41 @@ the homepage returned HTTP 200. The owner then visually accepted the corrected
 Business, AI & Tech and Finance sidebar behaviour; Top Stories remained
 satisfactory and unchanged. **Production acceptance: APPROVED.** This verifies
 the observed deployed homepage, not every possible future inventory edge case.
+
+## 27. 14 October 2026 Editorial Similarity shadow-hardening acceptance
+
+`214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf` deployed the correction/revision,
+reporting-period, analysis/explainer and bounded statistical-release hardening
+without changing score thresholds, comparison bounds or article insertion.
+Render deployment `dep-db7a5mu7bikc73cpk2e0` on service
+`srv-d5virmm3jp1c73c9d6tg` was Live from approximately 22:32 BST on 13 October.
+
+The first natural run began at 06:00:00 BST on 14 October on instance `dxknx`,
+acquired `article_gen_2026101405`, completed hybrid import at 06:02:01, returned
+from the wrapper at 06:02:09 and recorded its final checkpoint at 06:02:10. One
+lock acquisition, start, hybrid completion and wrapper completion were observed;
+no overlapping execution appeared. The run logged 1,513 all-feed and 212 local
+candidates, then category counters Local 4, UK 4, Business 3, Tech 4 and Sports
+0. Their total of 15 is retained/imported accounting, not a public-visible count.
+
+The evaluator ran with `shadow_mode=scheduled_log_only` across `category_rss`
+and `local_rss_manual_review`, with `active` and `same_run` provenance. Four
+diagnostics emitted `stage_transition_guard` and one emitted `format_guard`.
+Neither `reporting_period_conflict` nor `statistical_release_identity` appeared;
+their absence is not failure because the observed candidate set need not exercise
+every branch. Existing Manual Review routing remained independently active.
+Insertion continued, and no similarity-driven review routing, archive or deletion
+was observed. Architecture separately guarantees shadow non-authority; runtime
+observation confirms how this run behaved, not every possible future run.
+
+Runtime was 130.00 seconds. Final process RSS was 283.6 MB, current RSS 280.3 MB,
+Python heap current 12.7 MB and heap peak 76.7 MB. No fatal error, OOM, restart or
+second execution was observed. The earlier 5 October 12:00 success took 124.16
+seconds, but it is not an equivalent workload and does not isolate shadow cost.
+Lock release, aggregate duplicate skips, aggregate Manual Review count and cleanup
+removals were not separately logged. One natural run does not establish all future
+performance or classification behaviour.
+
+**Production acceptance: PASS for shadow-only operation.** Editorial Similarity
+remains advisory. Any authoritative duplicate-review gate requires separate
+engineering approval, RED/GREEN regression coverage and production QA.

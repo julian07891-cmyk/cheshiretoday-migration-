@@ -1193,3 +1193,29 @@ clean whitespace validation. After deployment, local/origin matched the full
 `10d5a8a` SHA, health and homepage returned HTTP 200, and the owner accepted the
 live Business, AI & Tech and Finance result. Acceptance is bounded to the
 observed deployment and does not eliminate future inventory edge cases.
+
+## Editorial Similarity release-evidence hardening — 13–14 October 2026
+
+`214f3d0` extended the deterministic shadow scorer with official revision and
+correction transitions, explicit reporting-period conflicts, bounded
+analysis/explainer formats, and IMF/Worldpanel statistical-release evidence.
+Release identity requires multiple corroborating components. Existing numerical
+thresholds, corpus/shortlist bounds and shadow-only, non-authoritative integration
+were preserved.
+
+Deployment `dep-db7a5mu7bikc73cpk2e0` became Live at approximately 22:32 BST on
+13 October. The first natural run at 06:00 BST on 14 October acquired
+`article_gen_2026101405` once on instance `dxknx` and completed in 130.00 seconds.
+It observed 1,513 all-feed and 212 local candidates; category retained/imported
+counters were Local 4, UK 4, Business 3, Tech 4 and Sports 0, not all-public
+publication counts. `scheduled_log_only` diagnostics included four
+`stage_transition_guard` and one `format_guard`; reporting-period conflict and
+statistical-release identity evidence did not occur in the observed set.
+
+Insertion continued, existing Manual Review remained independently authoritative,
+and no similarity-driven review, archive or deletion was observed. Final process
+RSS was 283.6 MB, current RSS 280.3 MB and heap peak 76.7 MB, with no fatal error,
+OOM, restart or duplicate execution observed. Acceptance was **PASS** for
+shadow-only operation. Aggregate skip/review/removal counts and lock release were
+not separately logged, and one run does not prove future classification or
+performance. Authoritative gating remains a separate unapproved phase.

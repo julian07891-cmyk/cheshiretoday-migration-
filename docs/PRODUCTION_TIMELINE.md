@@ -713,3 +713,42 @@ Top Stories remained satisfactory and intentionally unchanged. **Production
 acceptance: APPROVED.** This evidence covers the observed deployed homepage; it
 does not establish that future inventory can never expose another bounded
 classification or selection edge case.
+
+## 13–14 October 2026 — Editorial Similarity shadow hardening acceptance
+
+Commit `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf` deployed through Render
+`dep-db7a5mu7bikc73cpk2e0` on service `srv-d5virmm3jp1c73c9d6tg` and was Live
+from approximately 22:32 BST on 13 October. It added correction/revision and
+reporting-period safeguards, bounded analysis/explainer recognition, and
+multi-component IMF/Worldpanel statistical-release identity evidence while
+preserving numerical thresholds, comparison bounds and shadow-only authority.
+
+The first post-deployment natural import started at 06:00:00 BST on 14 October
+on instance `dxknx`, acquired `article_gen_2026101405`, completed hybrid import
+at 06:02:01, completed its wrapper at 06:02:09 and emitted the final checkpoint
+at 06:02:10. Exactly one acquisition, start, hybrid completion and wrapper
+completion were observed, with no overlapping execution. Discovery logged 1,513
+all-feed and 212 local candidates. Retained/imported category counters were Local
+4, UK 4, Business 3, Tech 4 and Sports 0; the total 15 is not a count of publicly
+visible articles.
+
+Shadow diagnostics remained bounded under `scheduled_log_only`. Contexts included
+`category_rss` and `local_rss_manual_review`; provenance included `active` and
+`same_run`. `stage_transition_guard` appeared four times and `format_guard` once.
+No `reporting_period_conflict` or `statistical_release_identity` diagnostic was
+observed, which is not a failure when no applicable pair is encountered. Existing
+Manual Review routing remained active independently. Insertion continued and no
+similarity-based review routing, archive or deletion was observed.
+
+The run took 130.00 seconds. Final process RSS was 283.6 MB, current RSS 280.3 MB,
+heap current 12.7 MB and heap peak 76.7 MB. No fatal error, OOM, restart or second
+execution was observed. The 5 October 12:00 success took 124.16 seconds, but the
+workloads are not fully equivalent and the comparison does not isolate shadow
+overhead. Lock release and aggregate duplicate-skip, Manual Review and cleanup-
+removal counts were not separately logged.
+
+**Acceptance: PASS for the deployed shadow-only hardening.** This runtime evidence
+is bounded to one run and is distinct from the architectural guarantee that the
+shadow evaluator has no write/routing authority. An authoritative duplicate-review
+gate remains unapproved and requires separate engineering approval, RED/GREEN QA
+and production acceptance.

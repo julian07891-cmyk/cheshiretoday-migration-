@@ -229,6 +229,23 @@ No secret is recorded. QA classifications/counts remain unchanged (combined 18:
   modules with Hero and Top Stories unchanged. This is bounded observed behavior,
   not proof against every future inventory edge case.
 
+## 14 October 2026 — Editorial Similarity shadow production acceptance
+
+- Production SHA `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf` was observed in its
+  first completed natural run after deployment.
+- The scheduled run acquired one lock and completed once in 130.00 seconds; no
+  fatal error, OOM, restart or overlapping execution was observed.
+- Bounded `scheduled_log_only` diagnostics exercised `stage_transition_guard`
+  four times and `format_guard` once. `reporting_period_conflict` and
+  `statistical_release_identity` were not exercised by the observed set; absence
+  is not treated as failure.
+- Insertion continued and no similarity-driven Manual Review, archive or deletion
+  was observed. This is production-observation evidence, not an automated test
+  result and not approval for authoritative routing.
+- Evidence limits: no explicit lock-release line or aggregate duplicate-skip,
+  Manual Review or cleanup-removal count; one run cannot establish every future
+  classification or performance outcome.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).
