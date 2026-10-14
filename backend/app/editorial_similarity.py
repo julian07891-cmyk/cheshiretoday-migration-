@@ -347,8 +347,15 @@ _FOUR_WEEK_RELEASE_PERIOD_RE = re.compile(
     rf"(20[0-9]{{2}})\b",
     re.I,
 )
+_FOUR_WEEK_RELEASE_PERIOD_WITHOUT_YEAR_RE = re.compile(
+    rf"\bfour(?:-|\s+)weeks?(?:\s+period)?\s+(?:ending|to)\s+"
+    rf"(?:on\s+)?([0-9]{{1,2}})\s+({_RELEASE_MONTH_PATTERN})"
+    rf"(?!\s+20[0-9]{{2}}\b)",
+    re.I,
+)
 _STATISTICAL_EVENT_PHRASES = frozenset(
     {
+        "imf_world_economic_outlook_release",
         "uk_economic_growth_release",
         "worldpanel_grocery_inflation_release",
     }
@@ -758,6 +765,17 @@ def _release_period_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
             except ValueError:
                 continue
             anchors.add(f"four_weeks_ending:{period_end.date().isoformat()}")
+        for day, month in _FOUR_WEEK_RELEASE_PERIOD_WITHOUT_YEAR_RE.findall(text):
+            try:
+                month_number = int(_RELEASE_MONTHS[month.casefold()])
+                day_number = int(day)
+                datetime(2000, month_number, day_number)
+            except ValueError:
+                continue
+            anchors.add(
+                "four_weeks_ending:"
+                f"{month_number:02d}-{day_number:02d}:year_unspecified"
+            )
     return _bounded_sorted(anchors, 6)
 
 
@@ -790,12 +808,26 @@ def _event_phrase_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
     ):
         anchors.add("uk_economic_growth_release")
     if (
+        "international monetary fund" in _statistical_issuer_anchors(article)
+        and "world economic outlook" in text
+        and tokens & {"economy", "gdp", "growth", "inflation", "forecast"}
+    ):
+        anchors.add("imf_world_economic_outlook_release")
+    if (
         "worldpanel" in tokens
         and "grocery" in tokens
         and "inflation" in tokens
         and set(_release_period_anchors(article))
     ):
         anchors.add("worldpanel_grocery_inflation_release")
+    quantities = set(_event_quantitative_anchors(article))
+    if (
+        has_all("kelly", "shea", "endometriosis", "bowel", "surgeon")
+        and tokens & {"operation", "operations", "surgery", "treatment"}
+        and tokens & {"carried", "done", "unable", "unavailable", "untreated"}
+        and "currency:gbp:20000" in quantities
+    ):
+        anchors.add("endometriosis_surgery_not_completed_account")
     if (
         "twitch" in tokens
         and tokens & {"ai", "artificial"}
@@ -807,7 +839,6 @@ def _event_phrase_anchors(article: Mapping[str, Any]) -> tuple[str, ...]:
         and tokens & {"content", "data", "streams"}
     ):
         anchors.add("twitch_ai_training_policy")
-    quantities = set(_event_quantitative_anchors(article))
     if (
         "crewe" in tokens
         and "count:2100:home" in quantities
@@ -974,13 +1005,28 @@ def _event_anchor_evidence(
     candidate_release_periods = set(_release_period_anchors(candidate))
     existing_release_periods = set(_release_period_anchors(existing))
     shared_release_periods = candidate_release_periods & existing_release_periods
+    candidate_explicit_release_periods = {
+        period
+        for period in candidate_release_periods
+        if not period.endswith(":year_unspecified")
+    }
+    existing_explicit_release_periods = {
+        period
+        for period in existing_release_periods
+        if not period.endswith(":year_unspecified")
+    }
+    shared_explicit_release_periods = (
+        candidate_explicit_release_periods & existing_explicit_release_periods
+    )
     shared_quantities.update(
         f"reporting_period:{period}" for period in shared_release_periods
     )
     release_period_conflict = bool(
-        candidate_release_periods
-        and existing_release_periods
-        and candidate_release_periods.isdisjoint(existing_release_periods)
+        candidate_explicit_release_periods
+        and existing_explicit_release_periods
+        and candidate_explicit_release_periods.isdisjoint(
+            existing_explicit_release_periods
+        )
     )
     stage_relation = _stage_relation(candidate, existing)
     format_relation = _format_relation(candidate, existing)
@@ -999,7 +1045,7 @@ def _event_anchor_evidence(
     statistical_release_identity = bool(
         shared_statistical_events
         and shared_statistical_issuers
-        and shared_release_periods
+        and shared_explicit_release_periods
         and shared_statistical_measures
     )
     non_statistical_event_identity = bool(
