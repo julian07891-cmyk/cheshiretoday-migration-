@@ -752,3 +752,34 @@ is bounded to one run and is distinct from the architectural guarantee that the
 shadow evaluator has no write/routing authority. An authoritative duplicate-review
 gate remains unapproved and requires separate engineering approval, RED/GREEN QA
 and production acceptance.
+
+### 14 October 2026 — reviewed-story evidence extraction acceptance
+
+Commit `78b7a5fb62461a796d15c8877eb7dd42498ab660` deployed through Render
+`dep-db7qp3ss728c73dhk330` on service `srv-d5virmm3jp1c73c9d6tg` and became Live
+at approximately 17:26 BST. The first qualifying natural run started at 18:00:00
+BST on instance `v7xh6`, acquired `article_gen_2026101417`, completed hybrid
+import at 18:02:28.854, completed its wrapper at 18:02:37.636 and emitted the
+final checkpoint at 18:02:37.759. One execution was observed; successful lock
+release was not separately logged.
+
+Discovery recorded 1,485 all-feed, 225 UK, 62 Finance and 210 local candidates.
+Category counters were Local 5, UK 4, Business 5, Tech 2 and Sports 0, not a count
+of publicly visible articles. Twenty-six bounded diagnostics used the unchanged
+`phase2a_event_anchors_v1` scorer and `scheduled_log_only`; ten carried
+`local_rss_manual_review`, independently of similarity. Scores were 0–47 and all
+bands were `low`. Two `stage_transition_guard` records appeared; no
+`format_guard`, `statistical_release_identity` or `reporting_period_conflict`
+record appeared. The logs did not establish that qualifying IMF, Worldpanel or
+surgery-account comparisons exercised the new extractors.
+
+Runtime was 157.76 seconds, with final process RSS 381.3 MB, current RSS 382.0 MB,
+heap current 18.4 MB and heap peak 84.3 MB. The earlier accepted 06:00 run was
+130.00 seconds with process/current RSS 283.6/280.3 MB and heap current/peak
+12.7/76.7 MB; differing workloads prevent attribution to similarity evaluation.
+Cleanup scanned 5,093 documents on each of two passes and removed zero records.
+No fatal error, OOM, restart, overlap or observed similarity-driven publication,
+review, archive or deletion occurred. Health and homepage were HTTP 200 on
+15 October. **Acceptance: PASS for safe shadow-only operation.** Aggregate skips
+and public-visible insertion totals were unavailable; authoritative routing
+remains unapproved.

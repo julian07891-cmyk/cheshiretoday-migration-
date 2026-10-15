@@ -396,18 +396,25 @@ describes the decision at current repository HEAD, not an unverified live claim.
 - **Status:** Active.
 - **Area:** Editorial Similarity operations.
 - **Evidence:** `214f3d0` added bounded release, period, format and stage evidence;
-  its first natural production run completed normally and emitted bounded
+  its first natural production run completed normally. `78b7a5f` added bounded
+  reviewed-story extraction without changing scoring or runtime authority; its
+  14 October 18:00 natural run also completed normally and emitted 26 bounded
   `scheduled_log_only` diagnostics without an observed publishing-state decision.
 - **Decision:** retain Editorial Similarity as advisory shadow evidence only.
-- **Rationale:** one accepted natural run verifies safe deployment and execution,
-  but does not establish sufficient classification precision or performance
+- **Rationale:** accepted natural runs verify safe deployment and execution,
+  but do not establish sufficient classification precision or performance
   evidence for an authoritative duplicate-review gate.
 - **Rejected interpretation:** production acceptance does not enable automatic
   suppression, Manual Review routing, archive, deletion or merge.
-- **Follow-up:** any authoritative gate requires separate engineering approval,
-  RED/GREEN regression coverage and production QA.
-- **Sources:** Git `214f3d0`; Render deployment `dep-db7a5mu7bikc73cpk2e0`;
-  14 October 2026 06:00 BST natural-run acceptance.
+- **Follow-up:** continue natural-run RSS/runtime observation and seek real
+  qualifying production exercise of the reviewed IMF, Worldpanel and surgery
+  evidence branches. Comparison-pool/shortlist false negatives and the stale
+  four-versus-five insertion-site structural test remain open. Any authoritative
+  gate requires separate engineering approval, RED/GREEN regression coverage and
+  production QA.
+- **Sources:** Git `214f3d0` and `78b7a5f`; Render deployments
+  `dep-db7a5mu7bikc73cpk2e0` and `dep-db7qp3ss728c73dhk330`; 14 October 2026
+  06:00 and 18:00 BST natural-run acceptances.
 
 ### CT-DEC-018 — Observe production memory before optimising
 

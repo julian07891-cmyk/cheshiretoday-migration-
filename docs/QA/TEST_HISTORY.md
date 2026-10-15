@@ -246,6 +246,28 @@ No secret is recorded. QA classifications/counts remain unchanged (combined 18:
   Manual Review or cleanup-removal count; one run cannot establish every future
   classification or performance outcome.
 
+### Reviewed-story evidence extraction production observation
+
+- Commit `78b7a5fb62461a796d15c8877eb7dd42498ab660`, deployed as
+  `dep-db7qp3ss728c73dhk330`, became Live at approximately 17:26 BST on
+  14 October.
+- Its first qualifying natural run started at 18:00 BST on instance `v7xh6`,
+  acquired `article_gen_2026101417` once and completed in 157.76 seconds without
+  a fatal error, OOM, restart or overlapping execution.
+- Twenty-six bounded diagnostics used `scheduled_log_only`; ten used
+  `local_rss_manual_review`. Scores were 0–47 and all bands were `low`.
+  `stage_transition_guard` appeared twice. `format_guard`,
+  `statistical_release_identity` and `reporting_period_conflict` were not
+  observed, and no qualifying IMF, Worldpanel or surgery-account comparison was
+  established.
+- Cleanup scanned 5,093 documents twice and removed zero. Final process/current
+  RSS was 381.3/382.0 MB and heap current/peak 18.4/84.3 MB. Comparison with the
+  130.00-second 06:00 run is non-equivalent and does not isolate scorer overhead.
+- **Production observation: PASS for safe shadow-only operation.** This is not an
+  automated-test result and does not approve similarity-based routing,
+  suppression, archive or deletion. Aggregate skips and public-visible insertion
+  totals remain unavailable.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Open Findings](OPEN_FINDINGS.md), [Completed Phases](COMPLETED_PHASES.md), [Roadmap Master](../ROADMAP_MASTER.md), and [Deployment](../OPERATIONS/DEPLOYMENT.md).

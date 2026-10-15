@@ -1219,3 +1219,26 @@ OOM, restart or duplicate execution observed. Acceptance was **PASS** for
 shadow-only operation. Aggregate skip/review/removal counts and lock release were
 not separately logged, and one run does not prove future classification or
 performance. Authoritative gating remains a separate unapproved phase.
+
+`78b7a5f` then added only bounded evidence extraction for the reviewed IMF World
+Economic Outlook relationship, Worldpanel four-week wording with an explicitly
+unspecified year, and one corroborated endometriosis surgery account. It did not
+change scores, bands, comparison bounds, insertion or routing. Deployment
+`dep-db7qp3ss728c73dhk330` became Live at approximately 17:26 BST on 14 October.
+The 18:00 natural run acquired `article_gen_2026101417` once on instance `v7xh6`
+and completed in 157.76 seconds. It logged 1,485 all-feed and 210 local candidates
+plus category counters Local 5, UK 4, Business 5, Tech 2 and Sports 0; these are
+not public-visible counts.
+
+Twenty-six bounded `scheduled_log_only` diagnostics used the unchanged scorer
+and comparison bounds; ten had the independently selected
+`local_rss_manual_review` context. Scores were 0–47, all `low`, and two diagnostics
+contained `stage_transition_guard`. No `format_guard`,
+`statistical_release_identity` or `reporting_period_conflict` appeared, and the
+logs did not prove that a qualifying IMF, Worldpanel or surgery comparison was
+encountered. Cleanup scanned 5,093 documents twice and removed zero. Final
+process/current RSS was 381.3/382.0 MB and heap current/peak 18.4/84.3 MB. The
+higher figures versus the non-equivalent 06:00 run cannot be attributed to the
+scorer. No fatal error, OOM, restart, overlap or similarity-driven publication,
+review, archive or deletion was observed. Acceptance was **PASS for safe
+shadow-only operation**; authoritative routing remains unapproved.

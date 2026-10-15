@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf` (`Harden editorial similarity release evidence in shadow mode`)
-> - **Last repository reconciliation:** 14 October 2026; this update records first-natural-run production acceptance of the shadow-only Editorial Similarity hardening at `214f3d0`.
-> - **Production-verification status:** **Current application acceptance PASS for the deployed shadow-only Editorial Similarity hardening.** The 14 October 06:00 BST natural run completed once in 130.00 seconds on instance `dxknx`; the evaluator emitted bounded `scheduled_log_only` diagnostics and did not produce an observed publishing, Manual Review, archive or deletion decision. This one run does not establish all future classification or performance behaviour and does not approve an authoritative duplicate-review gate. Earlier homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `78b7a5fb62461a796d15c8877eb7dd42498ab660` (`Improve editorial similarity evidence for reviewed stories`)
+> - **Last repository reconciliation:** 15 October 2026; this update records first-natural-run production acceptance of the shadow-only reviewed-story evidence extraction at `78b7a5f`.
+> - **Production-verification status:** **Current application acceptance PASS for safe shadow-only Editorial Similarity operation.** Deployment `dep-db7qp3ss728c73dhk330` became Live at approximately 17:26 BST on 14 October, and the 18:00 BST natural run completed once in 157.76 seconds on instance `v7xh6`. It emitted 26 bounded `scheduled_log_only` diagnostics without an observed similarity-driven publishing, Manual Review, archive or deletion decision. Ten diagnostics used the independently determined `local_rss_manual_review` context. The run did not establish that the new IMF, Worldpanel or surgery-account branches were exercised, does not establish all future classification or performance behaviour, and does not approve an authoritative duplicate-review gate. Earlier homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf`
-- **Verified deployed baseline:** `214f3d04ad78d6a1aa34d09a3afb1d16e4bed6cf`; deployment `dep-db7a5mu7bikc73cpk2e0` became Live on 13 October at approximately 22:32 BST and passed its first-natural-run shadow acceptance on 14 October.
-- **Latest application commit:** `Harden editorial similarity release evidence in shadow mode`
+- **Current application baseline:** `78b7a5fb62461a796d15c8877eb7dd42498ab660`
+- **Verified deployed baseline:** `78b7a5fb62461a796d15c8877eb7dd42498ab660`; deployment `dep-db7qp3ss728c73dhk330` became Live on 14 October at approximately 17:26 BST and passed its first-natural-run shadow acceptance at 18:00 BST.
+- **Latest application commit:** `Improve editorial similarity evidence for reviewed stories`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -212,6 +212,14 @@ corroborating components rather than a lone broad signal. The 14 October first
 natural run verified bounded diagnostics and safe advisory execution, not routing
 precision or permission to enable a gate. No threshold, UI or publication-state
 decision is approved.
+
+Commit `78b7a5f` subsequently added bounded reviewed-story evidence for an IMF
+World Economic Outlook release, a Worldpanel four-week period whose year remains
+explicitly unspecified, and one corroborated endometriosis surgery account. It
+did not change numerical scores, confidence bands, pool/shortlist bounds or the
+shadow-only integration. Its first natural production run completed safely, but
+the bounded diagnostics did not establish that any of those three new extraction
+branches encountered a qualifying comparison.
 
 See [Scheduler Operations](OPERATIONS/SCHEDULER.md),
 [Article Pipeline](ARCHITECTURE/ARTICLE_PIPELINE.md) and
@@ -1929,3 +1937,42 @@ performance or classification behaviour.
 **Production acceptance: PASS for shadow-only operation.** Editorial Similarity
 remains advisory. Any authoritative duplicate-review gate requires separate
 engineering approval, RED/GREEN regression coverage and production QA.
+
+### Reviewed-story evidence extraction follow-up — 14 October 2026
+
+`78b7a5fb62461a796d15c8877eb7dd42498ab660` added bounded event evidence for
+three human-reviewed relationships without changing numerical scoring or runtime
+authority. Render deployment `dep-db7qp3ss728c73dhk330` became Live at
+approximately 17:26 BST. The first qualifying natural run began at 18:00:00 BST
+on instance `v7xh6`, acquired `article_gen_2026101417`, completed hybrid import at
+18:02:28.854, completed the wrapper at 18:02:37.636 and recorded its final
+checkpoint at 18:02:37.759. One execution was observed, with no overlap, fatal
+error, OOM or restart. Successful lock release was not logged separately.
+
+The run logged 1,485 all-feed, 225 UK, 62 Finance and 210 local candidates.
+Category counters were Local 5, UK 4, Business 5, Tech 2 and Sports 0; they are
+not public-visible article counts. Twenty-six bounded diagnostics used
+`shadow_mode=scheduled_log_only`, the unchanged
+`phase2a_event_anchors_v1` scorer, and the 50 active + 50 archived comparison
+pool. Ten diagnostics used `local_rss_manual_review`, reflecting independently
+authoritative review routing. Scores were 0–47 and all bands were `low`.
+`stage_transition_guard` appeared twice; `format_guard`,
+`statistical_release_identity` and `reporting_period_conflict` did not appear.
+The logs did not establish a qualifying IMF, Worldpanel or surgery-account
+comparison, so this run is not runtime proof of those branches.
+
+Runtime was 157.76 seconds. Final process RSS was 381.3 MB, current RSS 382.0 MB,
+Python heap current 18.4 MB and heap peak 84.3 MB. The accepted 06:00 run took
+130.00 seconds with final process/current RSS of 283.6/280.3 MB and heap
+current/peak of 12.7/76.7 MB. The workloads differ, so attribution of the increase
+to Editorial Similarity is unsupported. Cleanup scanned 5,093 documents twice
+and removed zero records. Aggregate skips and public-visible insertion totals
+were unavailable. Health and homepage checks returned HTTP 200 on 15 October.
+
+**Production acceptance: PASS for safe shadow-only operation.** Continue
+natural-run RSS/runtime observation and seek real qualifying evidence for the new
+branches. Comparison-pool and shortlist false negatives remain unresolved, the
+structural-count test still expects four insertion sites rather than five, and
+the 14 October 12:00 opportunity remains a separate investigation. No
+authoritative duplicate detection, similarity-based suppression, automatic
+Manual Review routing, archive or deletion is approved.
