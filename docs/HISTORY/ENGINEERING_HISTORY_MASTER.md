@@ -1242,3 +1242,46 @@ higher figures versus the non-equivalent 06:00 run cannot be attributed to the
 scorer. No fatal error, OOM, restart, overlap or similarity-driven publication,
 review, archive or deletion was observed. Acceptance was **PASS for safe
 shadow-only operation**; authoritative routing remains unapproved.
+
+## 15 October 2026 — bounded M53 locality correction and production acceptance
+
+The Chester Standard Wallasey/Kingsway Tunnel collision exposed a bounded Local
+News false positive: a bare M53 reference could satisfy Cheshire specificity even
+though the reported incident and effects were confined to Liverpool and the
+Wirral corridor. QA-first work added a conjunction-based conflict rule and then
+resolved two independent-review blockers. Incidental Cheshire place references
+no longer bypass the conflict, and an out-of-area impact verb cannot be attributed
+to Cheshire merely because an unrelated Cheshire reference occurs in the same
+sentence. Explicit affirmative impacts on Hooton, Ellesmere Port or named Cheshire
+West services remain eligible; negated, speculative and background-only mentions
+remain conservative hidden Manual Review cases. The source-stage and final guard
+reuse `locality_ambiguous_out_of_area`; M53 remains in the general locality
+pattern, and unrelated locality/import/scheduler/cleanup behaviour was unchanged.
+
+Local verification passed 33 locality tests, 129 combined locality/feed/Manual
+Review/hybrid tests and 44 additional regressions, plus Python compilation and
+whitespace validation. The correction was committed as
+`9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df` and deployed as
+`dep-db8a8trm8hqs73bvfi4g`, Live at approximately 11:04 BST on 15 October.
+
+The first natural run began at 12:00 BST on instance `p9hcp`, acquired lock
+`article_gen_2026101511` at 11:00:00.254 UTC, completed hybrid import at
+11:02:35.183, completed the wrapper at 11:02:38.021 and reached its final
+checkpoint at 11:02:44.013. Runtime was 164.01 seconds. Final process/current RSS
+was 317.3/318.1 MB and Python heap current/peak was 24.3/92.0 MB. Category
+accounting was Cheshire 5, UK 3, Business 5, Tech 4 and Sports 0; the wrapper's
+28 total is importer accounting and not a public-visible count. No fatal error,
+OOM, restart, overlap or cleanup anomaly was observed; API health and homepage
+checks returned HTTP 200.
+
+**Production acceptance: PASS for deployment and natural-run operation.** The
+run did not encounter a fresh qualifying M53/Wirral candidate and therefore did
+not directly prove the exact `locality_ambiguous_out_of_area` branch in production.
+Passive observation remains open; the archived example must not be replayed or
+manually imported merely to manufacture runtime evidence.
+
+The same date brought a new Google Search Console “Alternate page with proper
+canonical tag” notification. It is recorded as a pending read-only investigation
+of affected URLs, canonicals, redirects, sitemap consistency, slug/ID variants
+and tracking parameters. No SEO defect, canonical change or indexing request is
+inferred from the notification alone.

@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `78b7a5fb62461a796d15c8877eb7dd42498ab660` (`Improve editorial similarity evidence for reviewed stories`)
-> - **Last repository reconciliation:** 15 October 2026; this update records first-natural-run production acceptance of the shadow-only reviewed-story evidence extraction at `78b7a5f`.
-> - **Production-verification status:** **Current application acceptance PASS for safe shadow-only Editorial Similarity operation.** Deployment `dep-db7qp3ss728c73dhk330` became Live at approximately 17:26 BST on 14 October, and the 18:00 BST natural run completed once in 157.76 seconds on instance `v7xh6`. It emitted 26 bounded `scheduled_log_only` diagnostics without an observed similarity-driven publishing, Manual Review, archive or deletion decision. Ten diagnostics used the independently determined `local_rss_manual_review` context. The run did not establish that the new IMF, Worldpanel or surgery-account branches were exercised, does not establish all future classification or performance behaviour, and does not approve an authoritative duplicate-review gate. Earlier homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df` (`Guard M53 locality against out-of-area incidents`)
+> - **Last repository reconciliation:** 15 October 2026; this update records deployment and first-natural-run operational acceptance of the bounded M53 locality correction at `9b529ca`.
+> - **Production-verification status:** **Current application acceptance PASS.** Deployment `dep-db8a8trm8hqs73bvfi4g` became Live at approximately 11:04 BST on 15 October, and the 12:00 BST natural run completed once in 164.01 seconds on instance `p9hcp`, with no observed fatal error, OOM, restart, overlap or cleanup anomaly. The run did not encounter a fresh qualifying M53/Wirral candidate, so it is operational acceptance of the deployment rather than direct runtime proof of the exact `locality_ambiguous_out_of_area` branch. The earlier safe shadow-only Editorial Similarity acceptance remains complete and does not approve authoritative duplicate routing. Homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `78b7a5fb62461a796d15c8877eb7dd42498ab660`
-- **Verified deployed baseline:** `78b7a5fb62461a796d15c8877eb7dd42498ab660`; deployment `dep-db7qp3ss728c73dhk330` became Live on 14 October at approximately 17:26 BST and passed its first-natural-run shadow acceptance at 18:00 BST.
-- **Latest application commit:** `Improve editorial similarity evidence for reviewed stories`
+- **Current application baseline:** `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df`
+- **Verified deployed baseline:** `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df`; deployment `dep-db8a8trm8hqs73bvfi4g` became Live on 15 October at approximately 11:04 BST and passed first-natural-run operational acceptance at 12:00 BST.
+- **Latest application commit:** `Guard M53 locality against out-of-area incidents`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -78,10 +78,25 @@ two impact-attribution cases then failed RED **2/2** and passed GREEN alongside
 four complete-conjunction positive controls (**6/6**). The full locality file
 passed **33 tests**; the combined locality/feed/Manual Review/hybrid regression
 gate passed **129 tests**; an additional RSS/synchronised/import guard gate passed
-**44 tests**. Python compilation and `git diff
---check` passed. This checkpoint is not committed or deployed. No production data,
-import, scheduler, configuration or deployment action occurred; production
-acceptance remains a separate gate.
+**44 tests**. Python compilation and `git diff --check` passed.
+
+The correction was committed as `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df`
+and deployed as `dep-db8a8trm8hqs73bvfi4g`, becoming Live at approximately
+11:04 BST on 15 October. The first natural run began at 12:00 BST on instance
+`p9hcp`, acquired `article_gen_2026101511` at 11:00:00.254 UTC, completed hybrid
+import at 11:02:35.183, completed the wrapper at 11:02:38.021 and recorded the
+final checkpoint at 11:02:44.013. Runtime was 164.01 seconds; final process RSS
+was 317.3 MB, current RSS 318.1 MB, and Python heap current/peak 24.3/92.0 MB.
+Category accounting was Cheshire 5, UK 3, Business 5, Tech 4 and Sports 0; the
+wrapper's 28 total is importer accounting, not a public-visible article count.
+No fatal error, OOM, restart, overlapping execution or cleanup anomaly was
+observed. API health and the homepage returned HTTP 200.
+
+**Production acceptance: PASS for deployment and natural-run operation.** No
+fresh qualifying M53/Wirral candidate emitted `locality_ambiguous_out_of_area`
+during the observed run, so this is not direct production proof of that exact
+branch. Keep passive observation open until a naturally occurring nonduplicate
+candidate exercises it; do not replay or manually import the archived example.
 
 ### CT-DEC-021 production acceptance — 23 September 2026
 
@@ -1495,6 +1510,13 @@ Highest-priority unresolved or monitoring items are:
   recrawl and recheck after a later report update or a newly crawled current
   mismatch; the detailed evidence is in
   [SEO and Crawler Architecture](ARCHITECTURE/SEO_AND_CRAWLERS.md).
+- **Search Console follow-up — pending read-only investigation:** on 15 October
+  2026 Google Search Console issued another “Alternate page with proper canonical
+  tag” notification. Investigate the affected URLs, canonical tags, redirects,
+  sitemap consistency, article slug/ID variants and tracking parameters before
+  drawing a conclusion. This notification is not itself proof of an SEO defect.
+  Do not change canonical tags or request indexing/validation until a current
+  mismatch is confirmed.
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
@@ -1584,7 +1606,9 @@ Security and reliability take precedence over speculative features.
   analytics or growth work;
 - monitor the 82-example Search Console canonical baseline after natural recrawl;
   inspect any newly crawled current mismatch before changing code or requesting
-  validation, and continue separate Google News and Discover review;
+  validation; include the 15 October “Alternate page with proper canonical tag”
+  notification in that read-only investigation, and continue separate Google
+  News and Discover review;
 - continue quality-first commercial SEO and affiliate guide development;
 - design evidence-backed dynamic affiliate inventory;
 - complete sponsor workflow readiness and reporting checks.
