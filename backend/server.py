@@ -19125,13 +19125,69 @@ LOCALITY_AMBIGUOUS_OUT_OF_AREA_REASON = "locality_ambiguous_out_of_area"
 
 
 def has_conflicting_local_location_detail(article: dict, content: str, title: str = "") -> bool:
-    """Catch the bounded Heswall/Wirral false-positive without banning road-name matches."""
+    """Catch bounded out-of-area false positives without banning regional links."""
     title_text = str(title or "")
     text = " ".join([
         title_text,
         str(article.get("summary") or ""),
         str(content or "")[:3500],
     ])
+
+    m53_liverpool_incident = bool(
+        re.search(r"\bLiverpool\b", text, re.I)
+        and re.search(r"\b(?:collision|crash|incident)\b", text, re.I)
+        and re.search(r"\bM53\b", text, re.I)
+        and re.search(
+            r"\b(?:Wallasey|Kingsway|Queensway|Birkenhead|Moreton Spur)\b",
+            text,
+            re.I,
+        )
+    )
+    if m53_liverpool_incident:
+        confirmed_cheshire_impact = False
+        impact_pattern = (
+            r"(?:affect(?:ed|ing)?|disrupt(?:ed|ing)?|delay(?:ed|ing)?|"
+            r"divert(?:ed|ing)?|extend(?:ed|ing)?|reach(?:ed|ing)?)"
+        )
+        impact_object_pattern = (
+            r"(?:a|an|the|named|traffic|journeys?|queues?|services?|transport|"
+            r"roads?|routes?|connections?|operations?|commuters?|passengers?|"
+            r"residents?|businesses?|schools?|towards?|to|in|at|through|around|"
+            r"across|for|on|into|near|from)"
+        )
+        local_pattern = LOCAL_SPECIFIC_LOCATION_PATTERN.pattern
+        for sentence in re.split(r"(?<=[.!?])\s+|\n+", text):
+            sentence_without_m53 = re.sub(r"\bM53\b", " ", sentence, flags=re.I)
+            has_attributed_cheshire_impact = bool(
+                re.search(
+                    rf"\b{impact_pattern}\b"
+                    rf"(?:\s+{impact_object_pattern}){{0,6}}\s+{local_pattern}",
+                    sentence_without_m53,
+                    re.I,
+                )
+                or re.search(
+                    rf"{local_pattern}"
+                    rf"(?:\s+{impact_object_pattern}){{0,4}}\s+"
+                    rf"(?:was|were|is|are|has\s+been|have\s+been)\s+"
+                    rf"\b{impact_pattern}\b",
+                    sentence_without_m53,
+                    re.I,
+                )
+            )
+            is_unconfirmed = bool(
+                re.search(
+                    r"\b(?:no|not|without|unaffected|may|might|could|potentially|"
+                    r"possible|possibly)\b",
+                    sentence,
+                    re.I,
+                )
+            )
+            if has_attributed_cheshire_impact and not is_unconfirmed:
+                confirmed_cheshire_impact = True
+                break
+
+        if not confirmed_cheshire_impact:
+            return True
 
     heswall_is_story_location = bool(
         re.search(r"\bHeswall\b", title_text, re.I)

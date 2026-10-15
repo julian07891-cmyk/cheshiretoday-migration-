@@ -44,6 +44,45 @@ instructions to this file.
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
 ran at `2f40374`, before later application and documentation revisions.
 
+### 15 October 2026 — bounded M53 locality correction implementation
+
+The retained Chester Standard article about a Hunter Street collision in Liverpool
+confirmed that a bare `M53` match could satisfy Local News specificity even when
+the reported effects were confined to Wallasey/Kingsway and Queensway tunnels,
+Birkenhead and the Moreton Spur–A59 section. The existing deterministic conflict
+helper now recognises only the conjunction of a Liverpool collision/crash/incident,
+an M53 reference and named Wirral-corridor evidence. Independent review found
+that the first implementation could still be bypassed by an incidental sentence
+such as “The M53 provides regional links towards Chester”. RED coverage reproduced
+that bypass, unrelated Cheshire-service references and negated/speculative impact.
+Independent pre-commit review then found a second blocker: an affirmative impact
+attributed to Birkenhead or Wallasey and an unrelated Chester or Cheshire-service
+reference could satisfy the former same-sentence co-occurrence rule. Two further
+RED cases reproduced that defect. The bounded helper now requires an explicit
+impact-to-Cheshire-locality construction, or a Cheshire locality followed by a
+passive impact construction; independent words in separate clauses are insufficient.
+Otherwise the candidate uses the existing
+`locality_ambiguous_out_of_area` hidden Manual Review path before generation and
+at final validation. `M53` remains an accepted locality term; Ellesmere Port,
+Hooton and explicit named Cheshire-service impacts remain eligible when the text
+confirms they were affected. Negated, speculative and background-only mentions
+do not establish material impact. The prior Heswall/Wirral Council/Chester Road
+rule is unchanged. This remains a deliberately bounded lexical rule rather than a
+general geographical or grammatical parser; affirmative impacts expressed outside
+the supported word order may conservatively require human review, and differently
+worded future cases may require another evidence-led test.
+
+Pre-commit verification: the review-blocker matrix first produced **4 intended
+failures / 2 passes**, then passed **6/6** after the first correction. Phase 4's
+two impact-attribution cases then failed RED **2/2** and passed GREEN alongside
+four complete-conjunction positive controls (**6/6**). The full locality file
+passed **33 tests**; the combined locality/feed/Manual Review/hybrid regression
+gate passed **129 tests**; an additional RSS/synchronised/import guard gate passed
+**44 tests**. Python compilation and `git diff
+--check` passed. This checkpoint is not committed or deployed. No production data,
+import, scheduler, configuration or deployment action occurred; production
+acceptance remains a separate gate.
+
 ### CT-DEC-021 production acceptance — 23 September 2026
 
 **FUNCTIONAL PRODUCTION ACCEPTANCE COMPLETE — UPSTREAM QUERY-LOG PRIVACY GATE OPEN.**
