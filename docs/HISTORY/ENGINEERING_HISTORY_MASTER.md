@@ -1281,7 +1281,22 @@ Passive observation remains open; the archived example must not be replayed or
 manually imported merely to manufacture runtime evidence.
 
 The same date brought a new Google Search Console “Alternate page with proper
-canonical tag” notification. It is recorded as a pending read-only investigation
-of affected URLs, canonicals, redirects, sitemap consistency, slug/ID variants
-and tracking parameters. No SEO defect, canonical change or indexing request is
-inferred from the notification alone.
+canonical tag” notification. The 15–16 October read-only investigation found no
+current canonical defect in the inspected examples. Historical March–April
+article records reflected the former UUID-canonical architecture: the historical
+UUID URLs redirect to current Mongo-ID article URLs, archived examples now
+self-canonicalise with `noindex, follow`, legacy homepage `?category=` views
+intentionally canonicalise to `/`, and dedicated category hubs self-canonicalise.
+
+Three current sitemap controls — Wilmslow tea-and-biscuits gatherings, Nantwich
+Christmas lights and the Runcorn pub refurbishment — returned HTTP 200 without
+redirect and emitted `index, follow`. Their requested URL, Mongo-ID canonical,
+`og:url`, JSON-LD `mainEntityOfPage` and sitemap URL matched exactly. Authenticated
+URL Inspection reported all three as **URL unknown to Google**, with no crawl date,
+user-declared canonical or Google-selected canonical. The evidence therefore
+closes the website implementation investigation as **PASS for the inspected
+examples**, with **Google discovery/indexing PENDING** and no confirmed current
+canonical defect. No indexing or validation request was made. A read-only recheck
+is scheduled for 23 October 2026 using the same three URLs and, if available, one
+currently active article with an established Google crawl record, with indexed,
+discovered, crawled-not-indexed and unknown states kept distinct.

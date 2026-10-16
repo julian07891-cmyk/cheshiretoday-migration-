@@ -1510,13 +1510,25 @@ Highest-priority unresolved or monitoring items are:
   recrawl and recheck after a later report update or a newly crawled current
   mismatch; the detailed evidence is in
   [SEO and Crawler Architecture](ARCHITECTURE/SEO_AND_CRAWLERS.md).
-- **Search Console follow-up — pending read-only investigation:** on 15 October
-  2026 Google Search Console issued another “Alternate page with proper canonical
-  tag” notification. Investigate the affected URLs, canonical tags, redirects,
-  sitemap consistency, article slug/ID variants and tracking parameters before
-  drawing a conclusion. This notification is not itself proof of an SEO defect.
-  Do not change canonical tags or request indexing/validation until a current
-  mismatch is confirmed.
+- **Search Console canonical follow-up — website PASS, Google discovery PENDING:**
+  the 15–16 October 2026 read-only investigation found no current canonical defect
+  in the inspected examples. March–April “Alternate page with proper canonical
+  tag” records reflected the former UUID-canonical architecture; those UUID URLs
+  redirect once to the current Mongo-ID article URLs, while archived examples now
+  self-canonicalise and correctly emit `noindex, follow`. The legacy homepage
+  `?category=` views intentionally canonicalise to `/`, and dedicated category
+  hubs self-canonicalise. Three active sitemap articles — Wilmslow tea-and-biscuits
+  gatherings, Nantwich Christmas lights and the Runcorn pub refurbishment — each
+  returned HTTP 200 without redirect, emitted `index, follow`, and had exact
+  agreement across requested URL, Mongo-ID canonical, `og:url`, JSON-LD
+  `mainEntityOfPage` and sitemap URL. Search Console nevertheless reported all
+  three as **URL unknown to Google**, with no crawl date, user-declared canonical
+  or Google-selected canonical. Classification: **website canonical implementation
+  PASS for inspected examples; Google discovery/indexing PENDING; confirmed current
+  canonical defects NONE.** Do not request indexing or validation. Repeat read-only
+  URL Inspection on 23 October 2026 for the same three URLs and, if available, one
+  currently active article with an established Google crawl record; distinguish
+  indexed, discovered, crawled-not-indexed and unknown states.
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
@@ -1604,11 +1616,12 @@ Security and reliability take precedence over speculative features.
 - complete event-level third-party consent verification when suitable isolated
   request-interception tooling is available; this does not block unrelated
   analytics or growth work;
-- monitor the 82-example Search Console canonical baseline after natural recrawl;
-  inspect any newly crawled current mismatch before changing code or requesting
-  validation; include the 15 October “Alternate page with proper canonical tag”
-  notification in that read-only investigation, and continue separate Google
-  News and Discover review;
+- repeat read-only Search Console URL Inspection on 23 October 2026 for the
+  Wilmslow gatherings, Nantwich lights and Runcorn pub active article URLs, plus
+  one currently active article with an established Google crawl record if
+  available; distinguish indexed, discovered, crawled-not-indexed and unknown
+  states, and do not change canonicals or request indexing/validation without a
+  current confirmed mismatch; continue separate Google News and Discover review;
 - continue quality-first commercial SEO and affiliate guide development;
 - design evidence-backed dynamic affiliate inventory;
 - complete sponsor workflow readiness and reporting checks.
