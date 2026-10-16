@@ -258,6 +258,61 @@ def test_archived_uuid_redirects_then_mongo_page_remains_noindex(monkeypatch):
     ) in html
 
 
+@pytest.mark.parametrize("archive_reason", ["admin_delete", None])
+def test_archived_collection_record_without_legacy_flag_remains_noindex(
+    monkeypatch,
+    archive_reason,
+):
+    archived = article_document()
+    archived.pop("archived")
+    if archive_reason is None:
+        archived.pop("archive_reason", None)
+    else:
+        archived["archive_reason"] = archive_reason
+    install_database(monkeypatch, archived=[archived])
+
+    response = asyncio.run(
+        server.serve_article_for_production_slug(
+            MONGO_ID,
+            SLUG,
+            request("Mozilla/5.0 (compatible; Googlebot/2.1)"),
+        )
+    )
+    html = response.body.decode("utf-8")
+
+    assert response.status_code == 200
+    assert f'<link rel="canonical" href="{CANONICAL_URL}">' in html
+    assert (
+        '<meta name="robots" '
+        'content="noindex, follow, max-image-preview:large">'
+    ) in html
+
+
+def test_active_public_article_remains_indexable(monkeypatch):
+    install_database(monkeypatch, active=[article_document()])
+
+    response = asyncio.run(server.serve_article_html(MONGO_ID))
+    html = response.body.decode("utf-8")
+
+    assert 'content="index, follow, max-image-preview:large"' in html
+    assert 'content="noindex, follow, max-image-preview:large"' not in html
+
+
+def test_force_live_archived_collection_record_without_flag_remains_indexable(
+    monkeypatch,
+):
+    archived = article_document(force_live=True)
+    archived.pop("archived")
+    archived["archive_reason"] = "admin_delete"
+    install_database(monkeypatch, archived=[archived])
+
+    response = asyncio.run(server.serve_article_html(MONGO_ID))
+    html = response.body.decode("utf-8")
+
+    assert 'content="index, follow, max-image-preview:large"' in html
+    assert 'content="noindex, follow, max-image-preview:large"' not in html
+
+
 def test_force_live_archived_article_remains_indexable(monkeypatch):
     install_database(
         monkeypatch,
@@ -334,7 +389,17 @@ def test_legacy_seo_article_uses_current_title_slug(monkeypatch):
         ),
         (
             "archived",
+            {},
+            "noindex, follow, max-image-preview:large",
+        ),
+        (
+            "archived",
             {"archived": True, "force_live": True},
+            "index, follow, max-image-preview:large",
+        ),
+        (
+            "archived",
+            {"force_live": True},
             "index, follow, max-image-preview:large",
         ),
     ],
@@ -363,6 +428,23 @@ def test_sitemap_continues_to_emit_only_mongo_article_identity(monkeypatch):
 
     assert CANONICAL_URL in xml
     assert INTERNAL_UUID not in xml
+
+
+def test_sitemap_does_not_emit_archived_collection_record_without_flag(monkeypatch):
+    archived_id = "6a619fe3d25f3963602b219b"
+    archived = article_document(
+        _id=ObjectId(archived_id),
+        id="18791001-fd2b-4973-923c-9f7035a0e12c",
+        title="Archived collection article",
+    )
+    archived.pop("archived")
+    install_database(monkeypatch, active=[article_document()], archived=[archived])
+
+    response = asyncio.run(server.generate_sitemap())
+    xml = response.body.decode("utf-8")
+
+    assert CANONICAL_URL in xml
+    assert archived_id not in xml
 
 
 def test_sensitive_query_values_are_not_forwarded(monkeypatch):

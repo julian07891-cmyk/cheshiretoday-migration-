@@ -5894,11 +5894,16 @@ async def get_article_share_page(article_id: str, request: Request):
 # =====================================================================================
 
 
-def _article_robots_directive(article: dict) -> str:
+def _article_robots_directive(
+    article: dict,
+    *,
+    from_archived_collection: bool = False,
+) -> str:
     """Return the shared crawler visibility directive for an article."""
     is_manual_review_hidden = article.get("manual_review_hidden_from_public") is True
     is_archived_without_force_live = (
-        article.get("archived") is True and article.get("force_live") is not True
+        (from_archived_collection or article.get("archived") is True)
+        and article.get("force_live") is not True
     )
     if is_manual_review_hidden or is_archived_without_force_live:
         return "noindex, follow, max-image-preview:large"
@@ -5915,25 +5920,9 @@ async def get_seo_article_page(article_id: str, request: Request):
     import json
 
     try:
-        # Search in main articles collection first
-        article = None
-        try:
-            article = await db.articles.find_one({"_id": ObjectId(article_id)})
-        except Exception:
-            pass
-
-        if not article:
-            article = await db.articles.find_one({"id": article_id})
-
-        # If not found, search in archived_articles collection
-        if not article:
-            try:
-                article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
-            except Exception:
-                pass
-
-        if not article:
-            article = await db.archived_articles.find_one({"id": article_id})
+        article, from_archived_collection = (
+            await _find_article_with_archive_provenance(article_id)
+        )
 
         if not article:
             return HTMLResponse(
@@ -5982,7 +5971,10 @@ async def get_seo_article_page(article_id: str, request: Request):
         published_date = str(article.get("publishedDate") or article.get("created_at") or "")
 
         canonical_url = _canonical_article_url(article)
-        robots_directive = _article_robots_directive(article)
+        robots_directive = _article_robots_directive(
+            article,
+            from_archived_collection=from_archived_collection,
+        )
 
         # Basic content formatting
         formatted_content = content.replace("\n\n", "</p><p>").replace("\n", "<br>")
@@ -16336,7 +16328,9 @@ async def serve_article_html(article_id: str, request=None):
 
     # Use the shared lookup helper so crawler/social HTML can serve both
     # active articles and archived/duplicate-preserved articles.
-    article = await _find_article_by_any_id(article_id)
+    article, from_archived_collection = (
+        await _find_article_with_archive_provenance(article_id)
+    )
 
     # If still missing, return 404 (never 500)
     if not article:
@@ -16578,7 +16572,10 @@ async def serve_article_html(article_id: str, request=None):
 
     # Archived/manual-review-hidden articles are kept reachable for old links.
     # Manually force-live articles are intentional public picks and can remain indexable.
-    robots_directive = _article_robots_directive(article)
+    robots_directive = _article_robots_directive(
+        article,
+        from_archived_collection=from_archived_collection,
+    )
 
     schema = {
         "@context": "https://schema.org",
@@ -16655,10 +16652,10 @@ async def serve_article_html(article_id: str, request=None):
     # Cache modestly to reduce scraper flapping
     return HTMLResponse(content=html_content, headers={"Cache-Control": "public, max-age=3600"})
 
-async def _find_article_by_any_id(article_id: str):
-    """Return an article from active/archive collections by public id or Mongo _id."""
+async def _find_article_with_archive_provenance(article_id: str):
+    """Return an article and whether it came from the archive collection."""
     if not article_id:
-        return None
+        return None, False
 
     article = None
     try:
@@ -16666,23 +16663,39 @@ async def _find_article_by_any_id(article_id: str):
     except Exception:
         article = None
 
-    if not article:
-        try:
-            article = await db.articles.find_one({"_id": ObjectId(article_id)})
-        except Exception:
-            article = None
+    if article:
+        return article, False
 
-    if not article:
-        try:
-            article = await db.archived_articles.find_one({"id": article_id})
-        except Exception:
-            article = None
+    try:
+        article = await db.articles.find_one({"_id": ObjectId(article_id)})
+    except Exception:
+        article = None
 
-    if not article:
-        try:
-            article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
-        except Exception:
-            article = None
+    if article:
+        return article, False
+
+    try:
+        article = await db.archived_articles.find_one({"id": article_id})
+    except Exception:
+        article = None
+
+    if article:
+        return article, True
+
+    try:
+        article = await db.archived_articles.find_one({"_id": ObjectId(article_id)})
+    except Exception:
+        article = None
+
+    if article:
+        return article, True
+
+    return None, False
+
+
+async def _find_article_by_any_id(article_id: str):
+    """Return an article from active/archive collections by public id or Mongo _id."""
+    article, _ = await _find_article_with_archive_provenance(article_id)
 
     return article
 
