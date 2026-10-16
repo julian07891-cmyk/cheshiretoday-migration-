@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df` (`Guard M53 locality against out-of-area incidents`)
-> - **Last repository reconciliation:** 15 October 2026; this update records deployment and first-natural-run operational acceptance of the bounded M53 locality correction at `9b529ca`.
-> - **Production-verification status:** **Current application acceptance PASS.** Deployment `dep-db8a8trm8hqs73bvfi4g` became Live at approximately 11:04 BST on 15 October, and the 12:00 BST natural run completed once in 164.01 seconds on instance `p9hcp`, with no observed fatal error, OOM, restart, overlap or cleanup anomaly. The run did not encounter a fresh qualifying M53/Wirral candidate, so it is operational acceptance of the deployment rather than direct runtime proof of the exact `locality_ambiguous_out_of_area` branch. The earlier safe shadow-only Editorial Similarity acceptance remains complete and does not approve authoritative duplicate routing. Homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2` (`Correct crawler indexing for archived articles`)
+> - **Last repository reconciliation:** 16 October 2026; this update records production acceptance of archive-collection-aware crawler indexing at `f70d5e2`.
+> - **Production-verification status:** **Current application acceptance PASS.** Deployment `dep-db946t6k1f9s73eqf5ug` became Live at 16:35:23 BST on 16 October on instance `srv-d5virmm3jp1c73c9d6tg-f5b956b64-mh7jt`. The confirmed archived Halton control returned HTTP 200 at its canonical Mongo-ID URL with `noindex, follow, max-image-preview:large`; the active Halton control returned HTTP 200 without redirect and retained `index, follow, max-image-preview:large`. Health and homepage returned HTTP 200, startup was clean, and no OOM, restart loop, crawler exception or scheduler/archive anomaly was observed. A second distinct historical missing-flag archive and an archived `force_live` production control were not independently exercised; automated regression coverage preserves both contracts. Google recrawling remains pending and no indexing or validation request is approved. The M53 passive observation remains open. The earlier safe shadow-only Editorial Similarity acceptance remains complete and does not approve authoritative duplicate routing. Homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -36,9 +36,9 @@ instructions to this file.
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df`
-- **Verified deployed baseline:** `9b529ca4f0dbd91b7fd4a4bdbb02c7105234c6df`; deployment `dep-db8a8trm8hqs73bvfi4g` became Live on 15 October at approximately 11:04 BST and passed first-natural-run operational acceptance at 12:00 BST.
-- **Latest application commit:** `Guard M53 locality against out-of-area incidents`
+- **Current application baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`
+- **Verified deployed baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`; deployment `dep-db946t6k1f9s73eqf5ug` became Live on 16 October at 16:35:23 BST and passed crawler-response production acceptance.
+- **Latest application commit:** `Correct crawler indexing for archived articles`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
@@ -97,6 +97,47 @@ fresh qualifying M53/Wirral candidate emitted `locality_ambiguous_out_of_area`
 during the observed run, so this is not direct production proof of that exact
 branch. Keep passive observation open until a naturally occurring nonduplicate
 candidate exercises it; do not replay or manually import the archived example.
+
+### 16 October 2026 — archived-article crawler indexing acceptance
+
+The Halton duplicate investigation confirmed that the earlier Runcorn & Widnes
+World article remained active while the later Cheshire Live report had already
+been administratively moved to `archived_articles`. That later record exposed an
+independent indexing defect: archive writers did not consistently preserve an
+`archived=true` field, while crawler robots logic previously relied on that field
+without considering collection provenance. No further editorial mutation was
+performed.
+
+`f70d5e26904357ab08661aab8b198cf096f608c2` made both crawler rendering paths
+carry active/archive collection provenance into their shared robots decision.
+Historical and administratively archived collection records now receive
+`noindex, follow` even when the legacy flag is absent; active articles, hidden
+Manual Review handling, canonical identity, routing, sitemap eligibility,
+archive/restore operations and the established archived `force_live` exception
+remain unchanged. Pre-deployment verification passed **148 focused and adjacent
+regression tests**, Python compilation and whitespace validation. No migration or
+historical data backfill was required.
+
+Render deployment `dep-db946t6k1f9s73eqf5ug` started at 16:32:04 BST on 16
+October, completed application startup at 16:35:18 and became Live at 16:35:23 on
+instance `srv-d5virmm3jp1c73c9d6tg-f5b956b64-mh7jt`. API health returned HTTP
+200 with a healthy response and the homepage returned HTTP 200. The archived
+Halton control `6ad066713c925a1c4cde08c7` returned HTTP 200 at its final
+self-referencing Mongo-ID canonical with
+`noindex, follow, max-image-preview:large`. The supplied longer slug redirected
+once with HTTP 301 to the existing bounded 80-character canonical slug; this was
+expected canonical normalisation. The active Halton control
+`6ace63f23b3f12b82f0b64f1` returned HTTP 200 without redirect, a self-referencing
+Mongo-ID canonical and `index, follow, max-image-preview:large`.
+
+**Production acceptance: PASS.** Startup was clean, expected scheduler jobs were
+registered, and no startup traceback, OOM, restart loop, crawler-rendering error
+or scheduler/archive anomaly was observed. A second distinct historical archive
+missing `archived=true` and an archived `force_live` production record were not
+independently available for runtime checks; both remain covered by automated
+regressions, and no record was mutated to manufacture evidence. Google recrawling
+remains pending. Do not request indexing or validation, and do not describe every
+historical archive as individually production-verified.
 
 ### CT-DEC-021 production acceptance — 23 September 2026
 

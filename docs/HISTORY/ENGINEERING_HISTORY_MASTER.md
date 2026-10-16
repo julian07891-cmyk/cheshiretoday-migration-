@@ -1300,3 +1300,41 @@ canonical defect. No indexing or validation request was made. A read-only rechec
 is scheduled for 23 October 2026 using the same three URLs and, if available, one
 currently active article with an established Google crawl record, with indexed,
 discovered, crawled-not-indexed and unknown states kept distinct.
+
+## 16 October 2026 — archive-provenance crawler indexing correction
+
+The Halton editorial duplicate investigation established that the earlier Runcorn
+& Widnes World report remained active and the later Cheshire Live report had
+already been administratively archived. The archived record exposed a separate
+crawler defect: records moved to `archived_articles` did not consistently carry
+`archived=true`, but both server-rendered article paths derived robots directives
+only from document fields. As a result, an administratively archived record could
+remain reachable as intended yet incorrectly emit `index, follow`.
+
+Commit `f70d5e26904357ab08661aab8b198cf096f608c2` made the shared article lookup
+return archive-collection provenance and supplied that provenance to both crawler
+renderers. Archive-collection records now emit `noindex, follow` even when the
+historical flag is absent. Active indexing, hidden Manual Review noindex,
+archived `force_live` exceptions, article routing, Mongo-ID canonical identity,
+sitemap eligibility, archive/restore operations, imports and scheduler behaviour
+were unchanged. QA passed 148 focused and adjacent regressions, Python compilation
+and whitespace validation. No database migration or backfill was required.
+
+Deployment `dep-db946t6k1f9s73eqf5ug` started at 16:32:04 BST on 16 October,
+completed startup at 16:35:18 and became Live at 16:35:23 on instance
+`srv-d5virmm3jp1c73c9d6tg-f5b956b64-mh7jt`. API health and the homepage returned
+HTTP 200. The archived Halton control `6ad066713c925a1c4cde08c7` emitted
+`noindex, follow, max-image-preview:large` at its self-referencing Mongo-ID
+canonical. Its supplied longer slug redirected once to the existing bounded
+80-character canonical, which was expected normalisation. The active control
+`6ace63f23b3f12b82f0b64f1` returned HTTP 200 without redirect and retained
+`index, follow, max-image-preview:large` with a self-referencing canonical.
+
+**Production acceptance: PASS.** Startup and scheduler registration were normal,
+with no observed startup traceback, OOM, restart loop, crawler-rendering exception
+or scheduler/archive anomaly. A second distinct historical missing-flag archive
+and an archived `force_live` production control were not independently exercised;
+automated regressions cover both contracts. Google recrawling remains pending,
+and no indexing or validation request was made. The M53 passive observation and
+23 October Search Console follow-up remain open, and Editorial Similarity remains
+shadow-only.
