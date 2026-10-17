@@ -87,6 +87,15 @@ class Perplexity:
         self.calls.append(copy.deepcopy(kwargs))
         return self.rewrites.get(kwargs["title"], kwargs["summary"])
 
+    async def generate_article_content_with_evidence(self, **kwargs):
+        return SimpleNamespace(
+            content=await self.generate_article_content(**kwargs),
+            evidence=SimpleNamespace(
+                classification="no_provider_evidence",
+                provider_status="success",
+            ),
+        )
+
     async def search_cheshire_news(self, **_kwargs):
         return []
 
@@ -119,6 +128,7 @@ def run_import(
     existing=None,
     archived_existing=None,
     provider_calls=None,
+    perplexity=None,
 ):
     articles = Collection(existing)
     archived = Collection(archived_existing)
@@ -131,7 +141,7 @@ def run_import(
     monkeypatch.setattr(
         server,
         "perplexity_service",
-        Perplexity(rewrites, calls=provider_calls),
+        perplexity or Perplexity(rewrites, calls=provider_calls),
     )
     monkeypatch.setattr(server, "ai_budget_available", lambda _amount: True)
     monkeypatch.setattr(
@@ -390,6 +400,49 @@ def test_clean_rewrite_at_200_words_can_remain_auto_screened(monkeypatch):
     assert result["public_imported"] == 1
     assert result["manual_review_imported"] == 0
     assert len(inserted) == 1
+    assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
+    assert inserted[0]["rewrite_status"] == "ai_rewritten"
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
+
+
+def test_source_evidence_observation_does_not_change_publication_state(monkeypatch):
+    story = candidate("Chester council approves plans for 50 new homes")
+    rewrite = rewrite_with_word_count(200)
+
+    class EvidenceAwarePerplexity:
+        def __init__(self):
+            self.result_calls = 0
+            self.legacy_calls = 0
+
+        async def generate_article_content_with_evidence(self, **_kwargs):
+            self.result_calls += 1
+            return SimpleNamespace(
+                content=rewrite,
+                evidence=SimpleNamespace(
+                    classification="no_provider_evidence",
+                    provider_status="success",
+                ),
+            )
+
+        async def generate_article_content(self, **_kwargs):
+            self.legacy_calls += 1
+            return rewrite
+
+        async def search_cheshire_news(self, **_kwargs):
+            return []
+
+    provider = EvidenceAwarePerplexity()
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        perplexity=provider,
+    )
+
+    assert provider.result_calls == 1
+    assert provider.legacy_calls == 0
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert inserted[0]["content"] == rewrite
     assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
     assert inserted[0]["rewrite_status"] == "ai_rewritten"
     assert inserted[0].get("manual_review_hidden_from_public") is not True

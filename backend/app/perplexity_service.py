@@ -8,13 +8,188 @@ import os
 import httpx
 import logging
 import re
+import hashlib
+from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
 PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
+SOURCE_EVIDENCE_REFERENCE_LIMIT = 20
+SOURCE_EVIDENCE_URL_LENGTH_LIMIT = 4096
+SOURCE_EVIDENCE_QUERY_FIELD_LIMIT = 50
+SOURCE_EVIDENCE_TRACKING_PARAMETERS = {
+    "fbclid",
+    "gclid",
+    "ref",
+}
+
+
+@dataclass(frozen=True)
+class ArticleSourceEvidence:
+    classification: str
+    primary_in_citations: bool
+    primary_in_search_results: bool
+    provider_status: str
+    citation_count: int
+    search_result_count: int
+    attempt: str
+    source_url_fingerprint: str = ""
+
+
+@dataclass(frozen=True)
+class ArticleContentResult:
+    content: str
+    evidence: ArticleSourceEvidence
+
+    def diagnostic_fields(self, *, context: str) -> Dict[str, Any]:
+        return {
+            "shadow_mode": "source_evidence_log_only",
+            "publication_effect": "none",
+            "context": str(context or "unknown")[:64],
+            "classification": self.evidence.classification,
+            "provider_status": self.evidence.provider_status,
+            "attempt": self.evidence.attempt,
+            "primary_in_citations": self.evidence.primary_in_citations,
+            "primary_in_search_results": self.evidence.primary_in_search_results,
+            "citation_count": self.evidence.citation_count,
+            "search_result_count": self.evidence.search_result_count,
+            "source_url_fingerprint": self.evidence.source_url_fingerprint,
+        }
+
+
+def _normalise_evidence_url(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    value = value.strip()
+    if not value or len(value) > SOURCE_EVIDENCE_URL_LENGTH_LIMIT:
+        return ""
+    try:
+        parsed = urlparse(value)
+        scheme = parsed.scheme.lower()
+        if scheme not in {"http", "https"} or not parsed.hostname:
+            return ""
+        port = parsed.port
+        host = parsed.hostname.lower()
+        if port and not ((scheme == "http" and port == 80) or (scheme == "https" and port == 443)):
+            host = f"{host}:{port}"
+        query = []
+        for key, item in parse_qsl(
+            parsed.query,
+            keep_blank_values=True,
+            max_num_fields=SOURCE_EVIDENCE_QUERY_FIELD_LIMIT,
+        ):
+            lowered = key.lower()
+            if lowered.startswith("utm_") or lowered in SOURCE_EVIDENCE_TRACKING_PARAMETERS:
+                continue
+            query.append((key, item))
+        query.sort()
+        path = parsed.path or "/"
+        return urlunparse((scheme, host, path, "", urlencode(query, doseq=True), ""))
+    except (TypeError, ValueError):
+        return ""
+
+
+def _provider_response_content(data: Any) -> tuple[str, bool]:
+    if not isinstance(data, dict):
+        return "", False
+    choices = data.get("choices", [{}])
+    if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+        return "", False
+    message = choices[0].get("message", {})
+    if not isinstance(message, dict):
+        return "", False
+    content = message.get("content", "")
+    if not isinstance(content, str):
+        return "", False
+    return content.strip(), True
+
+
+def _source_reference_evidence(
+    data: Any,
+    source_url: str,
+    *,
+    provider_status: str,
+    attempt: str,
+) -> ArticleSourceEvidence:
+    payload = data if isinstance(data, dict) else {}
+    citations = payload.get("citations")
+    citation_urls = []
+    if isinstance(citations, list):
+        citation_urls = [
+            normalised
+            for item in citations[:SOURCE_EVIDENCE_REFERENCE_LIMIT]
+            if (normalised := _normalise_evidence_url(item))
+        ]
+
+    search_results = payload.get("search_results")
+    search_urls = []
+    if isinstance(search_results, list):
+        search_urls = [
+            normalised
+            for item in search_results[:SOURCE_EVIDENCE_REFERENCE_LIMIT]
+            if isinstance(item, dict)
+            and (normalised := _normalise_evidence_url(item.get("url")))
+        ]
+
+    primary = _normalise_evidence_url(source_url)
+    primary_in_citations = bool(primary and primary in citation_urls)
+    primary_in_search_results = bool(primary and primary in search_urls)
+    if primary_in_citations or primary_in_search_results:
+        classification = "exact_primary_url_reference"
+    elif citation_urls or search_urls:
+        classification = "secondary_only"
+    else:
+        classification = "no_provider_evidence"
+
+    fingerprint = hashlib.sha256(primary.encode("utf-8")).hexdigest()[:16] if primary else ""
+    return ArticleSourceEvidence(
+        classification=classification,
+        primary_in_citations=primary_in_citations,
+        primary_in_search_results=primary_in_search_results,
+        provider_status=provider_status,
+        citation_count=len(citation_urls),
+        search_result_count=len(search_urls),
+        attempt=attempt,
+        source_url_fingerprint=fingerprint,
+    )
+
+
+def _article_content_result(
+    content: str,
+    source_url: str,
+    *,
+    provider_status: str,
+    attempt: str = "initial",
+    data: Any = None,
+) -> ArticleContentResult:
+    return ArticleContentResult(
+        content=str(content or ""),
+        evidence=_source_reference_evidence(
+            data,
+            source_url,
+            provider_status=provider_status,
+            attempt=attempt,
+        ),
+    )
+
+
+def log_source_evidence_diagnostic(
+    target_logger: Any,
+    result: ArticleContentResult,
+    *,
+    context: str,
+) -> bool:
+    try:
+        target_logger.info(
+            "Perplexity source evidence diagnostic: %s",
+            result.diagnostic_fields(context=context),
+        )
+        return True
+    except Exception:
+        return False
 
 
 def validate_fact_pack_people(
@@ -301,7 +476,42 @@ class PerplexityService:
         
         return articles
 
-    async def generate_article_content(self, title: str, summary: str, source: str, source_url: str = "") -> str:
+    async def generate_article_content(
+        self,
+        title: str,
+        summary: str,
+        source: str,
+        source_url: str = "",
+    ) -> str:
+        result = await self.generate_article_content_with_evidence(
+            title=title,
+            summary=summary,
+            source=source,
+            source_url=source_url,
+        )
+        return result.content
+
+    async def generate_article_content_with_evidence(
+        self,
+        title: str,
+        summary: str,
+        source: str,
+        source_url: str = "",
+    ) -> ArticleContentResult:
+        return await self._generate_article_content_result(
+            title=title,
+            summary=summary,
+            source=source,
+            source_url=source_url,
+        )
+
+    async def _generate_article_content_result(
+        self,
+        title: str,
+        summary: str,
+        source: str,
+        source_url: str = "",
+    ) -> ArticleContentResult:
 
         # =========================
         # HARD COST GUARD (DEFAULT OFF)
@@ -317,7 +527,11 @@ class PerplexityService:
                     fallback = f"{fallback}\n\nRead the full story at the source: {source_url}"
                 else:
                     fallback = f"Read the full story at the source: {source_url}"
-            return fallback or "Read the full story at the source."
+            return _article_content_result(
+                fallback or "Read the full story at the source.",
+                source_url,
+                provider_status="disabled_fallback",
+            )
         """
         Generate detailed article content using Perplexity's web search.
         Searches for real information about the news topic and creates a summary.
@@ -335,12 +549,20 @@ class PerplexityService:
         """
         if not self.api_key:
             logger.error("Perplexity API key not configured")
-            return ""  # No fallback articles: caller must skip weak/failed rewrites
+            return _article_content_result(
+                "",
+                source_url,
+                provider_status="not_configured",
+            )
 
         # Soft budget guard (optional hard cap via PERPLEXITY_HARD_CAP=1)
         if not ai_call_allowed(0.05):
             logger.warning("Perplexity budget guard: skipping generate_article_content() call")
-            return ""  # No fallback articles: caller must skip weak/failed rewrites
+            return _article_content_result(
+                "",
+                source_url,
+                provider_status="budget_blocked",
+            )
         
         try:
             async with httpx.AsyncClient() as client:
@@ -425,11 +647,22 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                 
                 if response.status_code != 200:
                     logger.error(f"Perplexity content generation error: {response.status_code}")
-                    return ""  # No fallback articles: caller must skip failed rewrites
+                    return _article_content_result(
+                        "",
+                        source_url,
+                        provider_status="http_error",
+                    )
                 
                 data = response.json()
-                content = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                
+                content, response_shape_valid = _provider_response_content(data)
+                if not response_shape_valid:
+                    return _article_content_result(
+                        "",
+                        source_url,
+                        provider_status="malformed_response",
+                        data=data,
+                    )
+
                 # Clean up content - remove markdown formatting and word counts
                 import re
                 content = re.sub(r'\[\d+\]', '', content)
@@ -472,7 +705,12 @@ Write clean plain text paragraphs. Aim for a useful article, but do not force 20
                 # Publication length and editorial quality decisions belong in server.py.
                 if content:
                     logger.info(f"Generated {len(content)} chars of content for: {title[:40]}...")
-                    return content
+                    return _article_content_result(
+                        content,
+                        source_url,
+                        provider_status="success",
+                        data=data,
+                    )
 
                 logger.warning(f"Perplexity returned empty content for: {title[:40]}... Retrying once.")
 
@@ -515,7 +753,17 @@ Every paragraph must add distinct verified information. Avoid generic filler, br
 
                 if retry_response.status_code == 200:
                     retry_data = retry_response.json()
-                    retry_content = retry_data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+                    retry_content, retry_shape_valid = _provider_response_content(
+                        retry_data
+                    )
+                    if not retry_shape_valid:
+                        return _article_content_result(
+                            "",
+                            source_url,
+                            provider_status="malformed_response",
+                            attempt="retry",
+                            data=retry_data,
+                        )
                     import re
                     retry_content = re.sub(r'\[\d+\]', '', retry_content)
                     retry_content = re.sub(r'\[\s*Source\s*:[^\]]+\]', '', retry_content, flags=re.IGNORECASE)
@@ -532,17 +780,40 @@ Every paragraph must add distinct verified information. Avoid generic filler, br
 
                     if not retry_refusal and retry_content:
                         logger.info(f"Retry generated {len(retry_content)} chars for: {title[:40]}...")
-                        return retry_content
+                        return _article_content_result(
+                            retry_content,
+                            source_url,
+                            provider_status="success",
+                            attempt="retry",
+                            data=retry_data,
+                        )
 
                 logger.warning(f"Retry returned no usable content for: {title[:40]}... Returning empty skip signal.")
-                return ""  # No fallback articles: caller must skip weak/failed rewrites
+                return _article_content_result(
+                    "",
+                    source_url,
+                    provider_status=(
+                        "http_error"
+                        if retry_response.status_code != 200
+                        else "empty_or_refusal"
+                    ),
+                    attempt="retry",
+                )
                     
         except httpx.TimeoutException:
             logger.error(f"Timeout generating content for: {title[:40]}...")
-            return ""
+            return _article_content_result(
+                "",
+                source_url,
+                provider_status="timeout",
+            )
         except Exception as e:
             logger.error(f"Error generating article content: {str(e)}")
-            return ""
+            return _article_content_result(
+                "",
+                source_url,
+                provider_status="provider_error",
+            )
 
     async def research_article_facts(
         self,

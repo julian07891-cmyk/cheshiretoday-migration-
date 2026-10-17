@@ -82,8 +82,41 @@ def test_importer_only_changes_summary_not_raw_detection_or_routing():
                 return self.generic_visit(node)
 
             def visit_Assign(self, node):
+                if (
+                    len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)
+                    and node.targets[0].id == "rewrite_result"
+                    and isinstance(node.value, ast.Await)
+                ):
+                    node.targets[0].id = "detailed_content"
+                    for child in ast.walk(node.value):
+                        if (
+                            isinstance(child, ast.Attribute)
+                            and child.attr == "generate_article_content_with_evidence"
+                        ):
+                            child.attr = "generate_article_content"
+                    return node
+                if (
+                    len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name)
+                    and node.targets[0].id == "detailed_content"
+                    and isinstance(node.value, ast.Attribute)
+                    and isinstance(node.value.value, ast.Name)
+                    and node.value.value.id == "rewrite_result"
+                    and node.value.attr == "content"
+                ):
+                    return None
                 if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "select_rss_excerpt":
                     summary_assignments.append(node.value)
+                    return None
+                return node
+
+            def visit_Expr(self, node):
+                if (
+                    isinstance(node.value, ast.Call)
+                    and isinstance(node.value.func, ast.Name)
+                    and node.value.func.id == "log_source_evidence_diagnostic"
+                ):
                     return None
                 return node
         fn = RemoveExcerptOnly().visit(fn)

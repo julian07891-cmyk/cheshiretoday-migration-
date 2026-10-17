@@ -57,12 +57,28 @@ class FakePerplexity:
     def __init__(self, rewrite):
         self.rewrite = rewrite
         self.rewrite_calls = 0
+        self.result_interface_calls = 0
+        self.legacy_interface_calls = 0
 
     async def generate_article_content(self, **_kwargs):
+        self.legacy_interface_calls += 1
         self.rewrite_calls += 1
         if isinstance(self.rewrite, Exception):
             raise self.rewrite
         return self.rewrite
+
+    async def generate_article_content_with_evidence(self, **_kwargs):
+        self.result_interface_calls += 1
+        self.rewrite_calls += 1
+        if isinstance(self.rewrite, Exception):
+            raise self.rewrite
+        return SimpleNamespace(
+            content=self.rewrite,
+            evidence=SimpleNamespace(
+                classification="no_provider_evidence",
+                provider_status="success",
+            ),
+        )
 
 
 def source_preview():
@@ -321,6 +337,26 @@ def test_complete_ai_rewrite_replaces_preview_and_remains_public(monkeypatch):
     article = inserted[0]
     assert article["content"] == rewrite
     assert article.get("manual_review_hidden_from_public") is not True
+
+
+def test_category_source_evidence_observation_is_publication_neutral(monkeypatch):
+    rewrite = complete_rewrite()
+    result, inserted, perplexity = run_hybrid(
+        monkeypatch,
+        ai_available=True,
+        rewrite=rewrite,
+    )
+
+    assert perplexity.result_interface_calls == 1
+    assert perplexity.legacy_interface_calls == 0
+    assert perplexity.rewrite_calls == 1
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert len(inserted) == 1
+    assert inserted[0]["content"] == rewrite
+    assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
+    assert inserted[0]["rewrite_status"] == "ai_rewritten"
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
 
 
 def test_complete_rss_content_without_marker_keeps_existing_sanitizer_contract():

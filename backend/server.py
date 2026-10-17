@@ -120,7 +120,11 @@ from app.resend_delivery_evidence import (
     normalize_resend_event,
     verify_resend_webhook,
 )
-from app.perplexity_service import perplexity_service, ai_budget_available
+from app.perplexity_service import (
+    ai_budget_available,
+    log_source_evidence_diagnostic,
+    perplexity_service,
+)
 from app.article_generation_observability import (
     log_article_generation_memory,
     prepare_article_generation_memory_observability,
@@ -2745,8 +2749,8 @@ async def _import_hybrid_news_internal(
                         # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                         logger.info(f"Generating content for {category_name} article: {title[:40]}...")
                         try:
-                            detailed_content = await asyncio.wait_for(
-                                perplexity_service.generate_article_content(
+                            rewrite_result = await asyncio.wait_for(
+                                perplexity_service.generate_article_content_with_evidence(
                                     title=title,
                                     summary=original_content,
                                     source=article.get('source', 'BBC News'),
@@ -2754,6 +2758,12 @@ async def _import_hybrid_news_internal(
                                 ),
                                 timeout=45
                             )
+                            log_source_evidence_diagnostic(
+                                logger,
+                                rewrite_result,
+                                context="category_rss",
+                            )
+                            detailed_content = rewrite_result.content
                             ai_rewrite_used = bool((detailed_content or "").strip() and detailed_content != original_content)
                             perplexity_cost_estimate += 0.005
                         except Exception as px_err:
@@ -3216,8 +3226,8 @@ async def _import_hybrid_news_internal(
                 # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                 logger.info(f"Generating full content for local article: {title[:40]}...")
                 try:
-                    detailed_content = await asyncio.wait_for(
-                        perplexity_service.generate_article_content(
+                    rewrite_result = await asyncio.wait_for(
+                        perplexity_service.generate_article_content_with_evidence(
                             title=title,
                             summary=original_content,
                             source=article.get('source', 'Cheshire Live'),
@@ -3225,6 +3235,12 @@ async def _import_hybrid_news_internal(
                         ),
                         timeout=45
                     )
+                    log_source_evidence_diagnostic(
+                        logger,
+                        rewrite_result,
+                        context="local_rss",
+                    )
+                    detailed_content = rewrite_result.content
                     ai_rewrite_used = bool((detailed_content or "").strip() and detailed_content != original_content)
                     perplexity_cost_estimate += 0.005
                 except Exception as px_err:
