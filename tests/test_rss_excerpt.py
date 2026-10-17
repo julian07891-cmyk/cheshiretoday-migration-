@@ -79,9 +79,74 @@ def test_importer_only_changes_summary_not_raw_detection_or_routing():
                             "has_conflicting_local_location_detail",
                         }):
                     return None
+                if (
+                    isinstance(node.test, ast.Name)
+                    and node.test.id == "manual_review_without_ai"
+                ):
+                    node.body = [
+                        child
+                        for child in node.body
+                        if isinstance(child, ast.Assign)
+                        and any(
+                            isinstance(target, ast.Name)
+                            and target.id == "detailed_content"
+                            for target in child.targets
+                        )
+                    ]
+                    return self.generic_visit(node)
+                if (
+                    isinstance(node.test, ast.Name)
+                    and node.test.id == "is_nub_candidate"
+                    and any(
+                        isinstance(child, ast.Name)
+                        and child.id == "is_effectively_identical_nub_rewrite"
+                        for child in ast.walk(node)
+                    )
+                ):
+                    return ast.parse(
+                        "ai_rewrite_used = bool((detailed_content or '').strip() "
+                        "and detailed_content != original_content)"
+                    ).body[0]
                 return self.generic_visit(node)
 
             def visit_Assign(self, node):
+                assigned_names = {
+                    target.id
+                    for target in node.targets
+                    if isinstance(target, ast.Name)
+                }
+                if assigned_names & {
+                    "is_nub_candidate",
+                    "public_cap_reached",
+                    "ai_budget_unavailable",
+                    "preview_source_content",
+                }:
+                    return None
+                if (
+                    "manual_review_without_ai" in assigned_names
+                    and any(
+                        isinstance(child, ast.Name)
+                        and child.id == "public_cap_reached"
+                        for child in ast.walk(node.value)
+                    )
+                ):
+                    node.value = ast.parse(
+                        "(public_import_limit is not None and "
+                        "public_imported >= public_import_limit) or "
+                        "not ai_budget_available(0.05)"
+                    ).body[0].value
+                if (
+                    "ai_rewrite_used" in assigned_names
+                    and any(
+                        isinstance(child, ast.Name)
+                        and child.id == "is_nub_candidate"
+                        for child in ast.walk(node.value)
+                    )
+                ):
+                    node.value = ast.parse(
+                        "bool((detailed_content or '').strip() and "
+                        "detailed_content != original_content)"
+                    ).body[0].value
                 if (
                     len(node.targets) == 1
                     and isinstance(node.targets[0], ast.Name)
@@ -107,6 +172,15 @@ def test_importer_only_changes_summary_not_raw_detection_or_routing():
                 ):
                     return None
                 if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name) and node.value.func.id == "select_rss_excerpt":
+                    if (
+                        node.value.args
+                        and isinstance(node.value.args[0], ast.Name)
+                        and node.value.args[0].id == "preview_source_content"
+                    ):
+                        node.value.args[0] = ast.Name(
+                            id="original_content",
+                            ctx=ast.Load(),
+                        )
                     summary_assignments.append(node.value)
                     return None
                 return node

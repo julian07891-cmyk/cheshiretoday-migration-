@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import logging
 import os
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -129,6 +130,8 @@ def run_import(
     archived_existing=None,
     provider_calls=None,
     perplexity=None,
+    ai_budget_available=True,
+    public_import_limit=None,
 ):
     articles = Collection(existing)
     archived = Collection(archived_existing)
@@ -143,7 +146,11 @@ def run_import(
         "perplexity_service",
         perplexity or Perplexity(rewrites, calls=provider_calls),
     )
-    monkeypatch.setattr(server, "ai_budget_available", lambda _amount: True)
+    monkeypatch.setattr(
+        server,
+        "ai_budget_available",
+        lambda _amount: ai_budget_available,
+    )
     monkeypatch.setattr(
         server,
         "resolve_imported_article_image",
@@ -163,6 +170,7 @@ def run_import(
                 business_articles=0,
                 tech_articles=0,
                 use_perplexity=True,
+                public_import_limit=public_import_limit,
             )
         )
     )
@@ -185,6 +193,40 @@ def rewrite_with_word_count(word_count):
     content = " ".join((words * ((word_count // len(words)) + 1))[:word_count]) + "."
     assert len(content.split()) == word_count
     return content
+
+
+def nub_candidate(title="Sandbach bypass work prompts council apology"):
+    body = (
+        "By Deborah Bowyer 16th Oct 2026\n\n"
+        + rewrite_with_word_count(230)
+        + "\n\nWould you like to know more about Sandbach?\n\n"
+        + "Free from clickbait, pop-up ads and unwanted surveys, Sandbach Nub News "
+        + "is a quality online newspaper for our town.\n\n"
+        + "Please consider following Sandbach Nub News on Facebook or Twitter\n\n"
+        + "We also have a weekly newsletter with the TOP FIVE stories of the week.\n\n"
+        + "Share:"
+    )
+    return candidate(
+        title,
+        content=body,
+        source="Nub News",
+        source_url="https://sandbach.nub.news/news/local-news/example-311563",
+        nub_hub="sandbach",
+        location="Sandbach",
+    )
+
+
+class FailingPerplexity:
+    def __init__(self, error):
+        self.error = error
+        self.calls = []
+
+    async def generate_article_content_with_evidence(self, **kwargs):
+        self.calls.append(copy.deepcopy(kwargs))
+        raise self.error
+
+    async def search_cheshire_news(self, **_kwargs):
+        return []
 
 
 def test_low_impact_non_crime_local_story_is_queued(monkeypatch):
@@ -403,6 +445,242 @@ def test_clean_rewrite_at_200_words_can_remain_auto_screened(monkeypatch):
     assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
     assert inserted[0]["rewrite_status"] == "ai_rewritten"
     assert inserted[0].get("manual_review_hidden_from_public") is not True
+
+
+def test_nub_article_without_ai_budget_is_hidden_without_provider_call(monkeypatch):
+    story = nub_candidate()
+    provider_calls = []
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        provider_calls=provider_calls,
+        ai_budget_available=False,
+    )
+
+    assert provider_calls == []
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+    assert inserted[0]["content"] == server.sanitize_rss_text(story["content"])
+
+
+@pytest.mark.parametrize(
+    "provider_error",
+    [TimeoutError("provider timed out"), RuntimeError("provider failed")],
+)
+def test_nub_provider_failure_does_not_publish_raw_source(
+    monkeypatch,
+    provider_error,
+):
+    story = nub_candidate()
+    provider = FailingPerplexity(provider_error)
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        perplexity=provider,
+    )
+
+    assert len(provider.calls) == 1
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+    assert inserted[0]["content"] == server.sanitize_rss_text(story["content"])
+
+
+def test_nub_identical_provider_output_does_not_auto_publish(monkeypatch):
+    story = nub_candidate()
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: story["content"]},
+    )
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+
+
+def test_nub_source_with_only_byline_and_footer_removed_is_not_a_distinct_rewrite(
+    monkeypatch,
+):
+    story = nub_candidate()
+    superficially_cleaned = server.clean_nub_news_text(story["content"])
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: superficially_cleaned},
+    )
+
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+
+
+def test_nub_empty_provider_output_remains_hidden(monkeypatch):
+    story = nub_candidate()
+    provider_calls = []
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: ""},
+        provider_calls=provider_calls,
+    )
+
+    assert len(provider_calls) == 1
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+
+
+def test_distinct_clean_nub_rewrite_remains_publication_eligible(monkeypatch):
+    story = nub_candidate()
+    rewrite = rewrite_with_word_count(210)
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: rewrite},
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert len(inserted) == 1
+    assert inserted[0]["content"] == rewrite
+    assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
+
+
+def test_non_nub_local_source_keeps_existing_no_ai_fallback_behaviour(monkeypatch):
+    story = candidate(
+        "Chester council approves plans for 50 new homes",
+        content=rewrite_with_word_count(230),
+    )
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        ai_budget_available=False,
+    )
+
+    assert result["public_imported"] == 1
+    assert result["manual_review_imported"] == 0
+    assert len(inserted) == 1
+    assert inserted[0].get("manual_review_hidden_from_public") is not True
+
+
+def test_nub_identity_accepts_benign_source_label_variation():
+    story = nub_candidate()
+    story["source"] = "Sandbach Nub News"
+
+    assert server.is_nub_news_candidate(story) is True
+
+
+def test_nub_label_variation_without_ai_budget_is_hidden_without_provider_call(
+    monkeypatch,
+):
+    story = nub_candidate()
+    story["source"] = "Sandbach Nub News"
+    provider_calls = []
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        provider_calls=provider_calls,
+        ai_budget_available=False,
+    )
+
+    assert provider_calls == []
+    assert result["public_imported"] == 0
+    assert result["manual_review_imported"] == 1
+    assert len(inserted) == 1
+    assert_hidden_manual_review(inserted[0])
+
+
+@pytest.mark.parametrize(
+    ("source_url", "nub_hub"),
+    [
+        ("https://unrelated.example/news/local-news/example", "sandbach"),
+        ("https://sandbach.nub.news/news/local-news/example", "unknown-town"),
+    ],
+)
+def test_untrusted_domain_or_unknown_hub_cannot_claim_nub_identity(
+    source_url,
+    nub_hub,
+):
+    story = nub_candidate()
+    story.update(
+        source="Nub News",
+        source_url=source_url,
+        nub_hub=nub_hub,
+    )
+
+    assert server.is_nub_news_candidate(story) is False
+
+
+def test_nub_preview_excludes_dated_byline_promotions_and_duplicate_opening(
+    monkeypatch,
+):
+    story = nub_candidate()
+    rewrite = rewrite_with_word_count(210)
+
+    _result, inserted = run_import(
+        monkeypatch,
+        [story],
+        rewrites={story["title"]: rewrite},
+    )
+
+    summary = inserted[0]["summary"]
+    assert not summary.startswith("By Deborah Bowyer")
+    assert "16th Oct 2026" not in summary
+    assert "Free from clickbait" not in summary
+    assert "weekly newsletter" not in summary
+    assert summary != rewrite.split(".", 1)[0] + "."
+
+
+def test_nub_budget_unavailable_log_is_distinct_from_public_cap(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="backend.server")
+    budget_story = nub_candidate("Sandbach bypass work prompts council apology")
+    run_import(
+        monkeypatch,
+        [budget_story],
+        ai_budget_available=False,
+    )
+    budget_messages = [record.getMessage() for record in caplog.records]
+    budget_diagnostics = [
+        message for message in budget_messages if "AI budget unavailable" in message
+    ]
+    assert budget_diagnostics
+    assert not any("Public import cap reached" in message for message in budget_messages)
+    assert not any(budget_story["title"] in message for message in budget_diagnostics)
+    assert not any(budget_story["source_url"] in message for message in budget_diagnostics)
+
+
+def test_nub_public_cap_log_is_distinct_from_budget_unavailable(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="backend.server")
+    capped_story = nub_candidate("Sandbach council approves plans for 50 new homes")
+    run_import(
+        monkeypatch,
+        [capped_story],
+        public_import_limit=0,
+    )
+    cap_messages = [record.getMessage() for record in caplog.records]
+    cap_diagnostics = [
+        message for message in cap_messages if "Public import cap reached" in message
+    ]
+    assert cap_diagnostics
+    assert not any("AI budget unavailable" in message for message in cap_messages)
+    assert not any(capped_story["title"] in message for message in cap_diagnostics)
+    assert not any(capped_story["source_url"] in message for message in cap_diagnostics)
 
 
 def test_source_evidence_observation_does_not_change_publication_state(monkeypatch):

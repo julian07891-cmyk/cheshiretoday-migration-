@@ -1,3 +1,5 @@
+import pytest
+
 import backend.app.news_feed_service as news_feed_module
 
 
@@ -37,6 +39,30 @@ ARTICLE_HTML = """
   <p>Please consider supporting us.</p>
   <p>Monthly supporters will enjoy an ad-free experience.</p>
 </main>
+</body>
+</html>
+"""
+
+
+CURRENT_NUB_ARTICLE_HTML = """
+<html>
+<head>
+  <meta property="og:title" content="Lorry disruption hits Sandbach as bypass work prompts council apology">
+  <meta property="og:description" content="Cheshire East Council apologised to residents over construction traffic.">
+  <meta property="article:published_time" content="2026-10-16T07:42:00+0100">
+</head>
+<body>
+<article>
+  <p>By Deborah Bowyer 16th Oct 2026</p>
+  <p>Cheshire East Council has apologised after residents complained about construction traffic in Sandbach.</p>
+  <p>The authority said deliveries would be reviewed while work continued on the bypass.</p>
+  <p>READ MORE: Council publishes updated timetable for bypass construction</p>
+  <p>Would you like to know more about Sandbach?</p>
+  <p>Free from clickbait, pop-up ads and unwanted surveys, Sandbach Nub News is a quality online newspaper for our town.</p>
+  <p>Please consider following Sandbach Nub News on Facebook or Twitter</p>
+  <p>We also have a weekly newsletter with the TOP FIVE stories of the week - sign up here</p>
+  <p>Share:</p>
+</article>
 </body>
 </html>
 """
@@ -87,6 +113,70 @@ def test_nub_article_removes_known_promotional_boilerplate():
     assert "Local news is in crisis" not in body
     assert "Please consider supporting us" not in body
     assert "Monthly supporters" not in body
+
+
+def test_nub_article_removes_current_dated_byline_and_promotional_footer():
+    article = news_feed_module.parse_nub_news_article_html(
+        CURRENT_NUB_ARTICLE_HTML,
+        "https://sandbach.nub.news/news/local-news/example-311563",
+        "sandbach",
+    )
+
+    body = article["content"]
+    assert "Cheshire East Council has apologised" in body
+    assert "deliveries would be reviewed" in body
+    assert "By Deborah Bowyer 16th Oct 2026" not in body
+    assert "READ MORE" not in body
+    assert "Would you like to know more" not in body
+    assert "Free from clickbait" not in body
+    assert "Please consider following" not in body
+    assert "weekly newsletter" not in body
+    assert "Share:" not in body
+
+
+def test_nub_current_cleanup_preserves_legitimate_reporting_after_promotions():
+    html = CURRENT_NUB_ARTICLE_HTML.replace(
+        "<p>Share:</p>",
+        "<p>The council said the scheme would retain access to nearby homes.</p><p>Share:</p>",
+    )
+    article = news_feed_module.parse_nub_news_article_html(
+        html,
+        "https://sandbach.nub.news/news/local-news/example-311564",
+        "sandbach",
+    )
+
+    assert "The council said the scheme would retain access to nearby homes." in article["content"]
+
+
+@pytest.mark.parametrize(
+    "guidance",
+    [
+        "Please consider following council guidance while the road remains closed.",
+        "Please consider following police guidance while emergency crews remain at the scene.",
+    ],
+)
+def test_nub_cleanup_preserves_legitimate_following_guidance(guidance):
+    html = CURRENT_NUB_ARTICLE_HTML.replace(
+        "<p>Share:</p>",
+        f"<p>{guidance}</p><p>Share:</p>",
+    )
+    article = news_feed_module.parse_nub_news_article_html(
+        html,
+        "https://sandbach.nub.news/news/local-news/example-311565",
+        "sandbach",
+    )
+
+    assert guidance in article["content"]
+
+
+def test_nub_cleanup_removes_explicit_social_follow_promotion():
+    article = news_feed_module.parse_nub_news_article_html(
+        CURRENT_NUB_ARTICLE_HTML,
+        "https://sandbach.nub.news/news/local-news/example-311566",
+        "sandbach",
+    )
+
+    assert "Please consider following Sandbach Nub News on Facebook or Twitter" not in article["content"]
 
 
 def test_nub_article_returns_empty_for_missing_html():

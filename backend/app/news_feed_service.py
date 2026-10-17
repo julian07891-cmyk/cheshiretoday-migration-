@@ -99,7 +99,54 @@ NUB_NEWS_BOILERPLATE_PREFIXES = (
     "local news is in crisis",
     "please consider supporting us",
     "monthly supporters will enjoy",
+    "read more:",
+    "would you like to know more about",
+    "free from clickbait, pop-up ads and unwanted surveys",
+    "we also have a weekly newsletter",
 )
+
+NUB_NEWS_DATED_BYLINE_RE = re.compile(
+    r"By\s+[A-Z][A-Za-z'’\-]+(?:\s+[A-Z][A-Za-z'’\-]+){0,7}\s+"
+    r"\d{1,2}(?:st|nd|rd|th)\s+[A-Z][a-z]{2,8}\s+\d{4}",
+)
+
+NUB_NEWS_SOCIAL_FOLLOW_RE = re.compile(
+    r"Please\s+consider\s+following\s+"
+    r"(?:[A-Za-z'’\-]+\s+){0,4}Nub\s+News\s+on\s+"
+    r"(?:Facebook|Twitter)(?:\s+or\s+(?:Facebook|Twitter))?[.!]?",
+    re.IGNORECASE,
+)
+
+
+def clean_nub_news_text(text: str) -> str:
+    """Remove bounded Nub News furniture while retaining reporting paragraphs."""
+    paragraphs = []
+    for raw_paragraph in re.split(r"\n\s*\n+", str(text or "")):
+        paragraph = _clean_ws(raw_paragraph)
+        if not paragraph:
+            continue
+
+        paragraph_l = paragraph.lower()
+        if any(
+            paragraph_l.startswith(prefix)
+            for prefix in NUB_NEWS_BOILERPLATE_PREFIXES
+        ):
+            continue
+        if re.fullmatch(r"share\s*:?\u200b?", paragraph, re.IGNORECASE):
+            continue
+        if NUB_NEWS_SOCIAL_FOLLOW_RE.fullmatch(paragraph):
+            continue
+        if NUB_NEWS_DATED_BYLINE_RE.fullmatch(paragraph):
+            continue
+        if re.fullmatch(
+            r"By\s+[^\W\d_][^\s\d]*(?:\s+[^\W\d_][^\s\d]*){0,7}",
+            paragraph,
+        ):
+            continue
+
+        paragraphs.append(paragraph)
+
+    return "\n\n".join(paragraphs)
 
 
 def extract_nub_news_homepage_urls(html: str, base_url: str) -> List[str]:
@@ -135,24 +182,11 @@ def _nub_news_clean_body(root) -> str:
     if root is None:
         return ""
 
-    paragraphs = []
-
-    for paragraph in root.find_all("p"):
-        text = _clean_ws(paragraph.get_text(" ", strip=True))
-        if not text:
-            continue
-
-        text_l = text.lower()
-
-        if any(text_l.startswith(prefix) for prefix in NUB_NEWS_BOILERPLATE_PREFIXES):
-            continue
-
-        if re.fullmatch(r"By\s+[^\W\d_][^\s\d]*(?:\s+[^\W\d_][^\s\d]*){0,7}", text):
-            continue
-
-        paragraphs.append(text)
-
-    return "\n\n".join(paragraphs)
+    paragraphs = [
+        _clean_ws(paragraph.get_text(" ", strip=True))
+        for paragraph in root.find_all("p")
+    ]
+    return clean_nub_news_text("\n\n".join(paragraphs))
 
 
 

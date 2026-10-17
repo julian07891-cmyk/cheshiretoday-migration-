@@ -26,6 +26,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from zoneinfo import ZoneInfo
 import asyncio
+from urllib.parse import urlsplit
 from pathlib import Path
 import sys
 _THIS_DIR = Path(__file__).resolve().parent
@@ -47,7 +48,11 @@ load_dotenv(ROOT_DIR / '.env')
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
 # Import services AFTER loading environment variables
 from app.email_service import email_service
-from app.news_feed_service import news_feed_service
+from app.news_feed_service import (
+    NUB_NEWS_HUBS,
+    clean_nub_news_text,
+    news_feed_service,
+)
 from app.article_image_resolver import resolve_imported_article_image
 from app.facebook_social_asset import (
     ArticleValidationError as SocialAssetArticleValidationError,
@@ -3217,10 +3222,27 @@ async def _import_hybrid_news_internal(
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             ai_rewrite_used = False
-            manual_review_without_ai = (public_import_limit is not None and public_imported >= public_import_limit) or not ai_budget_available(0.05)
+            is_nub_candidate = is_nub_news_candidate(article)
+            public_cap_reached = (
+                public_import_limit is not None
+                and public_imported >= public_import_limit
+            )
+            ai_budget_unavailable = (
+                not public_cap_reached and not ai_budget_available(0.05)
+            )
+            manual_review_without_ai = public_cap_reached or ai_budget_unavailable
             
             if manual_review_without_ai:
-                logger.info(f"Public import cap reached before AI rewrite; queueing local RSS candidate for manual review: {title[:60]}...")
+                if public_cap_reached:
+                    logger.info(
+                        "Public import cap reached before AI rewrite; queueing "
+                        "local RSS candidate for manual review"
+                    )
+                else:
+                    logger.info(
+                        "AI budget unavailable before rewrite; queueing local RSS "
+                        "candidate for manual review"
+                    )
                 detailed_content = original_content
             elif request.use_perplexity:
                 # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
@@ -3241,7 +3263,19 @@ async def _import_hybrid_news_internal(
                         context="local_rss",
                     )
                     detailed_content = rewrite_result.content
-                    ai_rewrite_used = bool((detailed_content or "").strip() and detailed_content != original_content)
+                    if is_nub_candidate:
+                        ai_rewrite_used = bool(
+                            (detailed_content or "").strip()
+                            and not is_effectively_identical_nub_rewrite(
+                                original_content,
+                                detailed_content,
+                            )
+                        )
+                    else:
+                        ai_rewrite_used = bool(
+                            (detailed_content or "").strip()
+                            and detailed_content != original_content
+                        )
                     perplexity_cost_estimate += 0.005
                 except Exception as px_err:
                     logger.warning(f"Perplexity rewrite failed/timed out for local article: {title[:60]}... | {px_err}")
@@ -3280,7 +3314,16 @@ async def _import_hybrid_news_internal(
             article['summary'] = sanitize_rss_text(article.get('summary',''), article.get('source_url',''), is_summary=True)
             article = attach_manual_review_editorial_metadata(article)
             # Select the display excerpt only after existing editorial decisions.
-            article['summary'] = select_rss_excerpt(original_content, article['content'], article.get('source_url', ''))
+            preview_source_content = (
+                clean_nub_news_text(original_content)
+                if is_nub_candidate
+                else original_content
+            )
+            article['summary'] = select_rss_excerpt(
+                preview_source_content,
+                article['content'],
+                article.get('source_url', ''),
+            )
             try:
                 await insert_hybrid_article(article, "local_rss")
             except DuplicateKeyError:
@@ -18958,6 +19001,12 @@ def find_weak_rss_public_review_reason(article: dict, content: str, ai_rewrite_u
     if not is_rss_or_fallback:
         return ""
 
+    if is_nub_news_candidate(article):
+        return (
+            "Nub News source content did not receive a distinct usable rewrite and "
+            "needs manual review before publication."
+        )
+
     text_blob = " ".join([
         str(content or "").strip(),
         str(article.get("summary") or "").strip(),
@@ -18971,6 +19020,37 @@ def find_weak_rss_public_review_reason(article: dict, content: str, ai_rewrite_u
         return "RSS/fallback article contains boilerplate or placeholder wording and needs manual review before publication."
 
     return ""
+
+
+def is_nub_news_candidate(article: dict) -> bool:
+    """Recognise configured Nub candidates from trusted adapter metadata."""
+    source_url = str(article.get("source_url") or "").strip()
+    try:
+        hostname = str(urlsplit(source_url).hostname or "").lower().rstrip(".")
+    except ValueError:
+        return False
+    has_nub_hostname = hostname == "nub.news" or hostname.endswith(".nub.news")
+    nub_hub = str(article.get("nub_hub") or "").strip().casefold()
+    return bool(
+        has_nub_hostname
+        and nub_hub in {hub.casefold() for hub in NUB_NEWS_HUBS}
+    )
+
+
+def is_effectively_identical_nub_rewrite(source_content: str, rewrite: str) -> bool:
+    """Compare cleaned Nub prose without making a semantic-similarity decision."""
+    source_clean = clean_nub_news_text(source_content)
+    rewrite_clean = clean_nub_news_text(rewrite)
+    normalise = lambda value: re.sub(
+        r"[^a-z0-9]+", " ", str(value or "").casefold()
+    ).strip()
+    source_normalised = normalise(source_clean)
+    rewrite_normalised = normalise(rewrite_clean)
+    return bool(
+        source_normalised
+        and rewrite_normalised
+        and source_normalised == rewrite_normalised
+    )
 
 
 def find_ai_manual_review_hits(content: str):
@@ -19318,7 +19398,9 @@ def apply_ai_manual_review_guard(article: dict, content: str, ai_rewrite_used: b
         article["manual_review_reason"] = " ".join(review_reasons)
         article["manual_review_created_at"] = now_iso
 
-        if below_auto_screen_word_floor:
+        if below_auto_screen_word_floor or (
+            weak_rss_reason and is_nub_news_candidate(article)
+        ):
             article.setdefault("archive_reason", "needs_manual_review")
 
         if (
