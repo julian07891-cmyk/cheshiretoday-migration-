@@ -17,6 +17,7 @@ from typing import List, Optional, Dict, Tuple
 import logging
 import httpx
 
+from app.article_generation_observability import log_weekly_roundup_memory
 from app.newsletter_management_email import NewsletterManagementEmailMessage
 from app.newsletter_delivery import (
     _NewsletterHeaders,
@@ -1582,7 +1583,8 @@ Cheshire Today Jobs Team
     def send_weekly_roundup(self, to_emails: List[str] = None, big_read: dict = None,
                             icymi_articles: List[dict] = None, property_of_week: dict = None,
                             food_review: dict = None, *, prepared_deliveries=None,
-                            token_service=None, preview: bool = False) -> Tuple[int, str]:
+                            token_service=None, preview: bool = False,
+                            memory_started_at=None) -> Tuple[int, str]:
         """
         Send The Weekly Roundup - Sunday morning at 09:00 AM
         
@@ -1827,6 +1829,16 @@ Cheshire Today Jobs Team
                     delivery, tracking_id, "WeeklyRoundup"
                 )
 
+        log_weekly_roundup_memory(
+            logger,
+            "message_rendering_completed",
+            memory_started_at,
+            {
+                "selected_count": len(recipients),
+                "message_count": len(batch_messages),
+            },
+        )
+
         if getattr(self, "resend_enabled", False):
             success_count = self._send_resend_batch(batch_messages)
         else:
@@ -1838,6 +1850,16 @@ Cheshire Today Jobs Team
                     self.last_accepted_recipients.append(
                         str(item.get("to") or "").strip()
                     )
+
+        log_weekly_roundup_memory(
+            logger,
+            "provider_returned",
+            memory_started_at,
+            {
+                "message_count": len(batch_messages),
+                "accepted_count": int(success_count or 0),
+            },
+        )
         
         logger.info(f"Weekly Roundup accepted {success_count}/{len(recipients)} prepared messages (tracking: {tracking_id})")
         return success_count, tracking_id

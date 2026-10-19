@@ -44,6 +44,42 @@ instructions to this file.
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
 ran at `2f40374`, before later application and documentation revisions.
 
+### 19 October 2026 — Stage 2P memory lifecycle correction and bounded observability (local only)
+
+Persistent process RSS growth across four natural imports justified a bounded
+engineering investigation, but did not by itself prove a leak. Local RED coverage
+confirmed one concrete lifetime defect: the hybrid importer retained the active
+and archived Mongo projection lists after deriving the scalar title, source-URL
+and image indexes. The local correction now releases those two list references
+before feed fetching; the scalar duplicate indexes remain authoritative and no
+query, import, cleanup or publication rule changed.
+
+Diagnostic-only checkpoints were also added around Weekly Roundup subscriber and
+analytics materialisation, recipient selection, delivery preparation, message
+rendering, provider return and function return. They expose only fixed phases,
+bounded numeric counts, current/process-high-water RSS, traced Python heap and
+elapsed time. A fixed-cardinality local-RSS Nub News summary now counts actual
+inventory, loop, rejection, cap/budget, rewrite, routing and insertion stages
+without titles, URLs, bodies, prompts or exception text. Neither diagnostic
+changes newsletter delivery, Nub eligibility, provider calls or publication.
+
+Stage 2Q independent review found that the projections were released before feed
+fetching but remained live while the scheduled-run Editorial Similarity shadow
+pool loaded. Stage 2R added a shadow-enabled lifetime regression, reproduced the
+defect with the projection records still reachable at shadow-loader entry, then
+moved the existing releases to immediately after scalar-index construction and
+before shadow loading. The new regression confirms both active and archived
+projection records are unreachable at shadow-loader entry while the scalar title
+index still rejects a duplicate without insertion.
+
+Local QA now passes **135 focused tests** and **440 adjacent tests with 12 existing
+skips**; Python compilation and `git diff --check` pass. This work remains
+**uncommitted and undeployed**. Production memory recovery is unproven, and Nub-
+specific production acceptance remains **INCONCLUSIVE** until a qualifying natural
+candidate reaches the observed guard. `python_heap_peak_mb` is cumulative since
+tracemalloc began; it is not a per-import or per-newsletter peak. Independent
+read-only review and later natural-run observation remain required.
+
 ### 15 October 2026 — bounded M53 locality correction implementation
 
 The retained Chester Standard article about a Hunter Street collision in Liverpool

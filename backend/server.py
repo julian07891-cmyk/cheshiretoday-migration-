@@ -131,8 +131,11 @@ from app.perplexity_service import (
     perplexity_service,
 )
 from app.article_generation_observability import (
+    NubPipelineCounters,
     log_article_generation_memory,
+    log_weekly_roundup_memory,
     prepare_article_generation_memory_observability,
+    start_weekly_roundup_memory_observability,
 )
 from app.editorial_similarity import (
     MAX_CONTENT_CHARACTERS as EDITORIAL_SIMILARITY_CONTENT_LIMIT,
@@ -2459,6 +2462,8 @@ async def _import_hybrid_news_internal(
         existing_source_urls = set()
         existing_articles = await db.articles.find({}, {'title': 1, 'image': 1, 'source_url': 1}).to_list(10000)
         archived_existing_articles = await db.archived_articles.find({}, {'title': 1, 'image': 1, 'source_url': 1}).to_list(10000)
+        active_record_count = len(existing_articles)
+        archived_record_count = len(archived_existing_articles)
         for a in existing_articles + archived_existing_articles:
             existing_titles.add(a.get('title', '').lower().strip())
             source_url = (a.get('source_url') or '').strip().lower()
@@ -2466,6 +2471,12 @@ async def _import_hybrid_news_internal(
                 existing_source_urls.add(source_url)
             if a.get('image'):
                 used_image_urls.add(a.get('image'))
+
+        # Only the scalar indexes are needed after this point. Release both
+        # projected Mongo result lists before loading the shadow comparison pool.
+        a = None
+        existing_articles = None
+        archived_existing_articles = None
 
         editorial_similarity_shadow_evaluator = None
         if enable_editorial_similarity_shadow:
@@ -2488,11 +2499,11 @@ async def _import_hybrid_news_internal(
                 "existing_record_index_completed",
                 memory_started_at,
                 {
-                    "active_record_count": len(existing_articles),
-                    "archived_record_count": len(archived_existing_articles),
+                    "active_record_count": active_record_count,
+                    "archived_record_count": archived_record_count,
                 },
             )
-        
+
         logger.info(f"Starting hybrid import. {len(existing_titles)} existing titles, {len(used_image_urls)} existing images")
         
         # ==========================================
@@ -2925,6 +2936,8 @@ async def _import_hybrid_news_internal(
                 if article.get('title', '').lower() not in existing_local_titles:
                     local_articles.append(article)
 
+        nub_pipeline_counters = NubPipelineCounters()
+
         if memory_started_at is not None:
             log_article_generation_memory(
                 logger,
@@ -2934,16 +2947,22 @@ async def _import_hybrid_news_internal(
             )
         
         # Only Cheshire articles WITH images
-        cheshire_with_images = [
-            a for a in local_articles 
-            if a.get('image') and a.get('title')
-        ]
+        cheshire_with_images = []
+        for local_inventory_article in local_articles:
+            if is_nub_news_candidate(local_inventory_article):
+                nub_pipeline_counters.increment("inventory_discovered")
+            if local_inventory_article.get('image') and local_inventory_article.get('title'):
+                cheshire_with_images.append(local_inventory_article)
         
         logger.info(f"Found {len(cheshire_with_images)} local articles with images")
         
         # Per-run local diversity caps so Local News does not become dominated
         # by one topic type such as planning/housing applications.
         local_topic_counts = {}
+
+        def record_nub_pre_rewrite_rejection(candidate: dict, reason: str) -> None:
+            if is_nub_news_candidate(candidate):
+                nub_pipeline_counters.increment("rejected_pre_rewrite", reason)
 
         def is_hard_reject_local_review_candidate(article: dict) -> bool:
             """Keep unsafe, promotional and unusable records out of Manual Review."""
@@ -3027,6 +3046,8 @@ async def _import_hybrid_news_internal(
                     "local_rss_manual_review",
                 )
             except DuplicateKeyError:
+                if is_nub_news_candidate(review_doc):
+                    nub_pipeline_counters.increment("duplicate_insert_skipped")
                 logger.info(f"⏭️ Duplicate skipped (local RSS manual review): {title[:60]}...")
                 return False
 
@@ -3035,6 +3056,8 @@ async def _import_hybrid_news_internal(
                 existing_source_urls.add(source_url_local)
             imported_articles.append(review_doc)
             count_inserted_article_visibility(review_doc)
+            if is_nub_news_candidate(review_doc):
+                nub_pipeline_counters.increment("routed_manual_review")
             logger.info(f"📝 Queued local RSS article for manual review: {title[:60]}... | {reason}")
             return True
         
@@ -3045,14 +3068,21 @@ async def _import_hybrid_news_internal(
             title = article.get('title', '').strip()
             rss_image = article.get('image', '').strip()
             source_url = (article.get('source_url') or '').strip().lower()
+            is_nub_candidate = is_nub_news_candidate(article)
+            if is_nub_candidate:
+                nub_pipeline_counters.increment("entered_local_loop")
             
             if not title or title.lower() in existing_titles:
+                record_nub_pre_rewrite_rejection(article, "duplicate_title")
                 continue
             if source_url and source_url in existing_source_urls:
+                record_nub_pre_rewrite_rejection(article, "duplicate_url")
                 continue
             if not rss_image:
+                record_nub_pre_rewrite_rejection(article, "missing_image")
                 continue
             if is_weak_generic_image(rss_image):
+                record_nub_pre_rewrite_rejection(article, "weak_image")
                 logger.info(f"Skipping weak generic RSS image: {title[:40]}...")
                 continue
 
@@ -3086,16 +3116,19 @@ async def _import_hybrid_news_internal(
             
             # Exclude Manchester sources entirely
             if is_manchester_source(article):
+                record_nub_pre_rewrite_rejection(article, "manchester_source")
                 continue
 
             # Hard block obituary / memorial notice-style content
             if is_obituary_like(article):
+                record_nub_pre_rewrite_rejection(article, "obituary")
                 continue
 
             # A feed-configured Cheshire-wide signal is useful for editorial
             # review but must never substitute a false town location or enter
             # the strict automatic-publication path.
             if article.get("county_wide_manual_review_candidate") is True:
+                record_nub_pre_rewrite_rejection(article, "county_wide_review")
                 if is_hard_reject_local_review_candidate(article):
                     logger.info(
                         "Skipping unsafe county-wide Local RSS candidate: "
@@ -3122,6 +3155,7 @@ async def _import_hybrid_news_internal(
                 continue
 
             if classify_reject_before_local_review(article):
+                record_nub_pre_rewrite_rejection(article, "editorial_reject")
                 logger.info(
                     "Skipping low-value Local RSS item before Manual Review: "
                     f"{title[:60]}..."
@@ -3131,6 +3165,7 @@ async def _import_hybrid_news_internal(
             # Keep promotional/spam material rejected, but let suitable soft
             # lifestyle or borderline editorial candidates reach Manual Review.
             if is_low_utility_article(article) and not is_high_value_local_civic_economic_article(article):
+                record_nub_pre_rewrite_rejection(article, "low_utility_review")
                 if await queue_local_rss_manual_review(
                     article,
                     title,
@@ -3142,6 +3177,7 @@ async def _import_hybrid_news_internal(
             # Hard block crime / police / court / mugshot-style content from going live.
             # This keeps the site aligned with the local economic intelligence strategy.
             if is_crime_like(article):
+                record_nub_pre_rewrite_rejection(article, "crime")
                 logger.info(f"Skipping crime-like local RSS article: {title[:40]}...")
                 continue
 
@@ -3149,6 +3185,7 @@ async def _import_hybrid_news_internal(
             # This keeps budget focused on planning, housing, council, business, schools,
             # health, energy, infrastructure and other public/economic impact stories.
             if not is_useful_local_article(article):
+                record_nub_pre_rewrite_rejection(article, "not_useful_review")
                 if await queue_local_rss_manual_review(
                     article,
                     title,
@@ -3166,6 +3203,7 @@ async def _import_hybrid_news_internal(
                 article.get("content", ""),
                 title,
             ):
+                record_nub_pre_rewrite_rejection(article, "locality_conflict_review")
                 if await queue_local_rss_manual_review(
                     article,
                     title,
@@ -3204,16 +3242,19 @@ async def _import_hybrid_news_internal(
 
             local_topic_cap = local_topic_caps.get(local_topic)
             if local_topic_cap is not None and local_topic_counts.get(local_topic, 0) >= local_topic_cap:
+                record_nub_pre_rewrite_rejection(article, "topic_cap_review")
                 if await queue_local_rss_manual_review(article, title, f"Local RSS article needs manual review: per-run topic cap reached ({local_topic})"):
                     continue
                 logger.info(f"Skipping local RSS article due to per-run topic cap ({local_topic}): {title[:60]}...")
                 continue
 
             if rss_image in used_image_urls:
+                record_nub_pre_rewrite_rejection(article, "duplicate_image")
                 continue
             
             # Freshness gate: allow slower-moving local planning/council stories, but block stale local filler.
             if not is_source_fresh_enough(article, 7):
+                record_nub_pre_rewrite_rejection(article, "stale_review")
                 if await queue_local_rss_manual_review(article, title, "Local RSS article needs manual review: older than automatic local RSS freshness gate"):
                     continue
                 logger.info(f"Skipping stale local RSS article before Perplexity/public import: {title[:60]}...")
@@ -3222,7 +3263,6 @@ async def _import_hybrid_news_internal(
             # Get content - either generate via Perplexity or use RSS content
             original_content = article.get('content', '')
             ai_rewrite_used = False
-            is_nub_candidate = is_nub_news_candidate(article)
             public_cap_reached = (
                 public_import_limit is not None
                 and public_imported >= public_import_limit
@@ -3230,6 +3270,10 @@ async def _import_hybrid_news_internal(
             ai_budget_unavailable = (
                 not public_cap_reached and not ai_budget_available(0.05)
             )
+            if is_nub_candidate:
+                nub_pipeline_counters.increment("reached_public_cap_check")
+                if not public_cap_reached:
+                    nub_pipeline_counters.increment("reached_ai_budget_check")
             manual_review_without_ai = public_cap_reached or ai_budget_unavailable
             
             if manual_review_without_ai:
@@ -3247,6 +3291,8 @@ async def _import_hybrid_news_internal(
             elif request.use_perplexity:
                 # Generate detailed content using Perplexity, but never let one rewrite stall the whole import.
                 logger.info(f"Generating full content for local article: {title[:40]}...")
+                if is_nub_candidate:
+                    nub_pipeline_counters.increment("rewrite_attempted")
                 try:
                     rewrite_result = await asyncio.wait_for(
                         perplexity_service.generate_article_content_with_evidence(
@@ -3271,6 +3317,14 @@ async def _import_hybrid_news_internal(
                                 detailed_content,
                             )
                         )
+                        if not (detailed_content or "").strip():
+                            nub_pipeline_counters.increment("unusable_output")
+                        elif ai_rewrite_used:
+                            nub_pipeline_counters.increment("distinct_rewrite")
+                        else:
+                            nub_pipeline_counters.increment(
+                                "identical_or_furniture_only"
+                            )
                     else:
                         ai_rewrite_used = bool(
                             (detailed_content or "").strip()
@@ -3278,6 +3332,8 @@ async def _import_hybrid_news_internal(
                         )
                     perplexity_cost_estimate += 0.005
                 except Exception as px_err:
+                    if is_nub_candidate:
+                        nub_pipeline_counters.increment("provider_failure")
                     logger.warning(f"Perplexity rewrite failed/timed out for local article: {title[:60]}... | {px_err}")
                     detailed_content = original_content
             else:
@@ -3327,6 +3383,8 @@ async def _import_hybrid_news_internal(
             try:
                 await insert_hybrid_article(article, "local_rss")
             except DuplicateKeyError:
+                if is_nub_candidate:
+                    nub_pipeline_counters.increment("duplicate_insert_skipped")
                 logger.info(f"⏭️ Duplicate skipped (local RSS insert): {title[:60]}...")
                 continue
             existing_titles.add(title.lower())
@@ -3336,6 +3394,11 @@ async def _import_hybrid_news_internal(
             local_topic_counts[local_topic] = local_topic_counts.get(local_topic, 0) + 1
             imported_articles.append(article)
             count_inserted_article_visibility(article)
+            if is_nub_candidate:
+                if article.get("manual_review_hidden_from_public") is True:
+                    nub_pipeline_counters.increment("routed_manual_review")
+                else:
+                    nub_pipeline_counters.increment("inserted_public")
             cheshire_from_rss += 1
             logger.info(f"✅ Imported local Cheshire article: {title[:50]}...")
 
@@ -3346,6 +3409,7 @@ async def _import_hybrid_news_internal(
                 memory_started_at,
                 {"local_imported_count": cheshire_from_rss},
             )
+        nub_pipeline_counters.log(logger)
         
         # ==========================================
         # STEP 2B: Import Business and Tech articles after Local RSS
@@ -20646,6 +20710,7 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
     Called by scheduler in safe Sunday morning batches.
     """
     from datetime import timedelta
+    weekly_memory_started_at = start_weekly_roundup_memory_observability()
     
     try:
         if not weekly_roundup_digest_index_ready:
@@ -20728,6 +20793,12 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 "provider_suppressed": 1,
             }
         ).to_list(15000)
+        log_weekly_roundup_memory(
+            logger,
+            "subscriber_materialisation_completed",
+            weekly_memory_started_at,
+            {"subscriber_count": len(subscribers)},
+        )
         
         if not subscribers:
             logger.info("No subscribers found for Weekly Roundup - skipping")
@@ -20780,6 +20851,12 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
             ]},
             {"_id": 0, "tracking_id": 1, "opens": 1, "clicks": 1}
         ).to_list(50000)
+        log_weekly_roundup_memory(
+            logger,
+            "analytics_materialisation_completed",
+            weekly_memory_started_at,
+            {"analytics_row_count": len(analytics_rows)},
+        )
 
         engaged_hashes = set()
         for row in analytics_rows:
@@ -20813,6 +20890,16 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
 
         subscriber_emails = (priority_for_this_batch + rotating_batch)[:weekly_send_cap]
         total_eligible = len(priority_emails) + rotating_total
+        log_weekly_roundup_memory(
+            logger,
+            "recipient_selection_completed",
+            weekly_memory_started_at,
+            {
+                "priority_count": len(priority_for_this_batch),
+                "engaged_count": len(rotating_batch),
+                "selected_count": len(subscriber_emails),
+            },
+        )
 
         if not subscriber_emails:
             logger.info(
@@ -20905,6 +20992,16 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                     break
         
         deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
+        log_weekly_roundup_memory(
+            logger,
+            "delivery_preparation_completed",
+            weekly_memory_started_at,
+            {
+                "selected_count": delivery_counts.get("selected_count"),
+                "prepared_count": delivery_counts.get("prepared_count"),
+                "skipped_count": delivery_counts.get("skipped_count"),
+            },
+        )
         sending_at = datetime.now(timezone.utc)
         sending_result = await db.digest_log.update_one(
             {"_id": claim["_id"], "instance_id": lock_id, "status": "claimed"},
@@ -20931,7 +21028,8 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
                 big_read=big_read,
                 icymi_articles=icymi_articles,
                 property_of_week=None,  # TODO: Add property integration
-                food_review=None  # TODO: Add food review integration
+                food_review=None,  # TODO: Add food review integration
+                memory_started_at=weekly_memory_started_at,
             )
         except Exception as provider_error:
             provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
@@ -21065,6 +21163,12 @@ async def send_weekly_roundup_email(batch_slot: int = 1):
         
     except Exception as e:
         logger.error("Weekly Roundup failed")
+    finally:
+        log_weekly_roundup_memory(
+            logger,
+            "function_returned",
+            weekly_memory_started_at,
+        )
 
 
 async def auto_fix_duplicate_images():

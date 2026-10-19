@@ -2,6 +2,8 @@ import asyncio
 import builtins
 import io
 import os
+import gc
+import weakref
 from types import SimpleNamespace
 
 import pytest
@@ -198,6 +200,69 @@ def test_python_heap_diagnostics_are_fixed_numeric_fields(monkeypatch):
         "python_allocated_blocks=12345 gc_gen0_count=10 gc_gen1_count=2 "
         "gc_gen2_count=1"
     ]
+
+
+def test_weekly_memory_checkpoint_is_bounded_and_privacy_safe(monkeypatch):
+    logger = RecordingLogger()
+    monkeypatch.setattr(observability.time, "monotonic", lambda: 8.0)
+    monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: 300.0)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: 250.0)
+    monkeypatch.setattr(
+        observability,
+        "_sample_python_heap_diagnostics",
+        lambda: {"python_heap_current_mb": 12.0, "python_heap_peak_mb": 18.0},
+    )
+
+    observability.log_weekly_roundup_memory(
+        logger,
+        "recipient_selection_completed",
+        3.0,
+        {
+            "priority_count": 2,
+            "engaged_count": 3,
+            "selected_count": 5,
+            "email": "private@example.invalid",
+            "message_body": "private body",
+            "provider_payload": {"secret": True},
+        },
+    )
+
+    assert logger.messages == [
+        "weekly_roundup_memory phase=recipient_selection_completed "
+        "elapsed_seconds=5.00 rss_mb=300.0 current_rss_mb=250.0 "
+        "python_heap_current_mb=12.0 python_heap_peak_mb=18.0 "
+        "priority_count=2 engaged_count=3 selected_count=5"
+    ]
+
+
+def test_weekly_memory_checkpoint_failure_is_non_fatal(monkeypatch):
+    monkeypatch.setattr(
+        observability,
+        "_sample_process_rss_mb",
+        lambda: (_ for _ in ()).throw(RuntimeError("sample unavailable")),
+    )
+
+    observability.log_weekly_roundup_memory(
+        RecordingLogger(fail=True),
+        "function_returned",
+        1.0,
+    )
+
+
+def test_nub_pipeline_counters_are_fixed_and_ignore_unapproved_values():
+    counters = observability.NubPipelineCounters()
+    counters.increment("inventory_discovered")
+    counters.increment("rejected_pre_rewrite", "crime")
+    counters.increment("rejected_pre_rewrite", "private_title")
+    counters.increment("not_approved")
+
+    snapshot = counters.snapshot()
+
+    assert snapshot["inventory_discovered"] == 1
+    assert snapshot["rejected_pre_rewrite"] == 2
+    assert snapshot["rejected_crime"] == 1
+    assert "rejected_private_title" not in snapshot
+    assert "not_approved" not in snapshot
 
 
 def test_prepare_starts_tracemalloc_once_with_minimum_depth(monkeypatch):
@@ -419,6 +484,167 @@ def test_hybrid_import_reaches_instrumented_phase_markers_in_order(monkeypatch):
         "business_tech_processing_completed",
         "visible_pool_cap_completed",
     ]
+
+
+def test_hybrid_import_releases_existing_record_projection_lists_before_feed_fetch(monkeypatch):
+    projected_refs = []
+    release_observations = []
+
+    class ProjectedRecord(dict):
+        pass
+
+    class Cursor:
+        async def to_list(self, _length):
+            record = ProjectedRecord(
+                {
+                    "title": "Mortgage rates fall for UK households",
+                    "source_url": "https://example.invalid/existing",
+                    "image": "https://example.invalid/image.jpg",
+                }
+            )
+            projected_refs.append(weakref.ref(record))
+            return [record]
+
+    class Collection:
+        def find(self, *_args, **_kwargs):
+            return Cursor()
+
+        async def insert_one(self, _article):
+            pytest.fail("released projections must leave the scalar duplicate index valid")
+
+    class NewsFeed:
+        async def fetch_all_feeds(self):
+            gc.collect()
+            release_observations.append(
+                all(reference() is None for reference in projected_refs)
+            )
+            return [
+                {
+                    "title": "Mortgage rates fall for UK households",
+                    "source_url": "https://example.invalid/new-copy",
+                    "image": "https://example.invalid/new-image.jpg",
+                    "category": "Finance",
+                    "content": "Mortgage and interest rate news for UK households.",
+                    "summary": "Mortgage and interest rate news for UK households.",
+                    "source": "Example News",
+                }
+            ]
+
+        async def fetch_local_feeds_only(self):
+            return []
+
+        async def fetch_local_news(self):
+            return []
+
+    async def fake_cap_visible_articles(keep):
+        assert keep == 100
+
+    monkeypatch.setattr(
+        server,
+        "db",
+        SimpleNamespace(articles=Collection(), archived_articles=Collection()),
+    )
+    monkeypatch.setattr(server, "news_feed_service", NewsFeed())
+    monkeypatch.setattr(server, "cap_visible_articles", fake_cap_visible_articles)
+
+    asyncio.run(
+        server._import_hybrid_news_internal(
+            server.HybridNewsRequest(
+                cheshire_articles=0,
+                uk_articles=1,
+                business_articles=0,
+                tech_articles=0,
+                use_perplexity=False,
+            )
+        )
+    )
+
+    assert release_observations == [True]
+
+
+def test_hybrid_import_releases_projection_lists_before_shadow_pool_load(monkeypatch):
+    projected_refs = []
+    shadow_release_observations = []
+
+    class ProjectedRecord(dict):
+        pass
+
+    class Cursor:
+        async def to_list(self, _length):
+            record = ProjectedRecord(
+                {
+                    "title": "Mortgage rates fall for UK households",
+                    "source_url": "https://example.invalid/existing",
+                    "image": "https://example.invalid/image.jpg",
+                }
+            )
+            projected_refs.append(weakref.ref(record))
+            return [record]
+
+    class Collection:
+        def find(self, *_args, **_kwargs):
+            return Cursor()
+
+        async def insert_one(self, _article):
+            pytest.fail("scalar duplicate indexes must remain valid after release")
+
+    class NewsFeed:
+        async def fetch_all_feeds(self):
+            return [
+                {
+                    "title": "Mortgage rates fall for UK households",
+                    "source_url": "https://example.invalid/new-copy",
+                    "image": "https://example.invalid/new-image.jpg",
+                    "category": "Finance",
+                    "content": "Mortgage and interest rate news for UK households.",
+                    "summary": "Mortgage and interest rate news for UK households.",
+                    "source": "Example News",
+                }
+            ]
+
+        async def fetch_local_feeds_only(self):
+            return []
+
+        async def fetch_local_news(self):
+            return []
+
+    async def fake_load_shadow_evaluator():
+        gc.collect()
+        shadow_release_observations.append(
+            all(reference() is None for reference in projected_refs)
+        )
+        return None
+
+    async def fake_cap_visible_articles(keep):
+        assert keep == 100
+
+    monkeypatch.setattr(
+        server,
+        "db",
+        SimpleNamespace(articles=Collection(), archived_articles=Collection()),
+    )
+    monkeypatch.setattr(server, "news_feed_service", NewsFeed())
+    monkeypatch.setattr(
+        server,
+        "_load_editorial_similarity_shadow_evaluator",
+        fake_load_shadow_evaluator,
+    )
+    monkeypatch.setattr(server, "cap_visible_articles", fake_cap_visible_articles)
+
+    asyncio.run(
+        server._import_hybrid_news_internal(
+            server.HybridNewsRequest(
+                cheshire_articles=0,
+                uk_articles=1,
+                business_articles=0,
+                tech_articles=0,
+                use_perplexity=False,
+            ),
+            enable_editorial_similarity_shadow=True,
+        )
+    )
+
+    assert shadow_release_observations == [True]
 
 
 def test_duplicate_cleanup_reaches_both_read_markers_in_order(monkeypatch):

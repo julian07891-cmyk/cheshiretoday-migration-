@@ -216,6 +216,19 @@ def nub_candidate(title="Sandbach bypass work prompts council apology"):
     )
 
 
+def nub_progress(caplog):
+    message = next(
+        record.getMessage()
+        for record in reversed(caplog.records)
+        if record.getMessage().startswith("nub_pipeline_progress ")
+    )
+    return {
+        key: int(value)
+        for field in message.split()[2:]
+        for key, value in [field.split("=", 1)]
+    }
+
+
 class FailingPerplexity:
     def __init__(self, error):
         self.error = error
@@ -447,7 +460,8 @@ def test_clean_rewrite_at_200_words_can_remain_auto_screened(monkeypatch):
     assert inserted[0].get("manual_review_hidden_from_public") is not True
 
 
-def test_nub_article_without_ai_budget_is_hidden_without_provider_call(monkeypatch):
+def test_nub_article_without_ai_budget_is_hidden_without_provider_call(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger=server.logger.name)
     story = nub_candidate()
     provider_calls = []
 
@@ -464,6 +478,14 @@ def test_nub_article_without_ai_budget_is_hidden_without_provider_call(monkeypat
     assert len(inserted) == 1
     assert_hidden_manual_review(inserted[0])
     assert inserted[0]["content"] == server.sanitize_rss_text(story["content"])
+    counters = nub_progress(caplog)
+    assert counters["inventory_discovered"] == 1
+    assert counters["entered_local_loop"] == 1
+    assert counters["reached_public_cap_check"] == 1
+    assert counters["reached_ai_budget_check"] == 1
+    assert counters["rewrite_attempted"] == 0
+    assert counters["routed_manual_review"] == 1
+    assert counters["inserted_public"] == 0
 
 
 @pytest.mark.parametrize(
@@ -473,7 +495,9 @@ def test_nub_article_without_ai_budget_is_hidden_without_provider_call(monkeypat
 def test_nub_provider_failure_does_not_publish_raw_source(
     monkeypatch,
     provider_error,
+    caplog,
 ):
+    caplog.set_level(logging.INFO, logger=server.logger.name)
     story = nub_candidate()
     provider = FailingPerplexity(provider_error)
 
@@ -489,9 +513,15 @@ def test_nub_provider_failure_does_not_publish_raw_source(
     assert len(inserted) == 1
     assert_hidden_manual_review(inserted[0])
     assert inserted[0]["content"] == server.sanitize_rss_text(story["content"])
+    counters = nub_progress(caplog)
+    assert counters["rewrite_attempted"] == 1
+    assert counters["provider_failure"] == 1
+    assert counters["routed_manual_review"] == 1
+    assert counters["inserted_public"] == 0
 
 
-def test_nub_identical_provider_output_does_not_auto_publish(monkeypatch):
+def test_nub_identical_provider_output_does_not_auto_publish(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger=server.logger.name)
     story = nub_candidate()
 
     result, inserted = run_import(
@@ -504,6 +534,7 @@ def test_nub_identical_provider_output_does_not_auto_publish(monkeypatch):
     assert result["manual_review_imported"] == 1
     assert len(inserted) == 1
     assert_hidden_manual_review(inserted[0])
+    assert nub_progress(caplog)["identical_or_furniture_only"] == 1
 
 
 def test_nub_source_with_only_byline_and_footer_removed_is_not_a_distinct_rewrite(
@@ -542,7 +573,8 @@ def test_nub_empty_provider_output_remains_hidden(monkeypatch):
     assert_hidden_manual_review(inserted[0])
 
 
-def test_distinct_clean_nub_rewrite_remains_publication_eligible(monkeypatch):
+def test_distinct_clean_nub_rewrite_remains_publication_eligible(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger=server.logger.name)
     story = nub_candidate()
     rewrite = rewrite_with_word_count(210)
 
@@ -558,6 +590,34 @@ def test_distinct_clean_nub_rewrite_remains_publication_eligible(monkeypatch):
     assert inserted[0]["content"] == rewrite
     assert inserted[0]["verification_status"] == "ai_rewrite_auto_screened"
     assert inserted[0].get("manual_review_hidden_from_public") is not True
+    counters = nub_progress(caplog)
+    assert counters["distinct_rewrite"] == 1
+    assert counters["inserted_public"] == 1
+    assert counters["routed_manual_review"] == 0
+
+
+def test_nub_pre_rewrite_rejection_is_not_counted_as_provider_failure(
+    monkeypatch,
+    caplog,
+):
+    caplog.set_level(logging.INFO, logger=server.logger.name)
+    story = nub_candidate("Sandbach man jailed after court hearing")
+    provider_calls = []
+
+    result, inserted = run_import(
+        monkeypatch,
+        [story],
+        provider_calls=provider_calls,
+    )
+
+    assert provider_calls == []
+    assert inserted == []
+    assert result["public_imported"] == 0
+    counters = nub_progress(caplog)
+    assert counters["rejected_pre_rewrite"] == 1
+    assert counters["rejected_crime"] == 1
+    assert counters["rewrite_attempted"] == 0
+    assert counters["provider_failure"] == 0
 
 
 def test_non_nub_local_source_keeps_existing_no_ai_fallback_behaviour(monkeypatch):

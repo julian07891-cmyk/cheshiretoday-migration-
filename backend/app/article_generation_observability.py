@@ -16,6 +16,8 @@ except ImportError:  # pragma: no cover - exercised through the None fallback
 
 
 LOG_PREFIX = "article_generation_memory"
+WEEKLY_LOG_PREFIX = "weekly_roundup_memory"
+NUB_LOG_PREFIX = "nub_pipeline_progress"
 
 APPROVED_PHASES = frozenset(
     {
@@ -63,6 +65,70 @@ _PYTHON_HEAP_FIELD_ORDER = (
     "gc_gen2_count",
 )
 _python_heap_diagnostics_enabled = False
+
+WEEKLY_ROUNDUP_PHASES = frozenset(
+    {
+        "subscriber_materialisation_completed",
+        "analytics_materialisation_completed",
+        "recipient_selection_completed",
+        "delivery_preparation_completed",
+        "message_rendering_completed",
+        "provider_returned",
+        "function_returned",
+    }
+)
+
+WEEKLY_ROUNDUP_COUNT_FIELDS = frozenset(
+    {
+        "subscriber_count",
+        "analytics_row_count",
+        "priority_count",
+        "engaged_count",
+        "selected_count",
+        "prepared_count",
+        "skipped_count",
+        "message_count",
+        "accepted_count",
+    }
+)
+
+NUB_PIPELINE_EVENTS = frozenset(
+    {
+        "inventory_discovered",
+        "entered_local_loop",
+        "rejected_pre_rewrite",
+        "reached_public_cap_check",
+        "reached_ai_budget_check",
+        "rewrite_attempted",
+        "distinct_rewrite",
+        "provider_failure",
+        "unusable_output",
+        "identical_or_furniture_only",
+        "routed_manual_review",
+        "inserted_public",
+        "duplicate_insert_skipped",
+    }
+)
+
+NUB_PRE_REWRITE_REASONS = frozenset(
+    {
+        "duplicate_title",
+        "duplicate_url",
+        "missing_image",
+        "weak_image",
+        "manchester_source",
+        "obituary",
+        "county_wide_review",
+        "editorial_reject",
+        "low_utility_review",
+        "crime",
+        "not_useful_review",
+        "locality_conflict_review",
+        "topic_cap_review",
+        "duplicate_image",
+        "stale_review",
+    }
+)
 
 
 def prepare_article_generation_memory_observability() -> None:
@@ -214,3 +280,95 @@ def log_article_generation_memory(
         logger.info(" ".join(fields))
     except Exception:
         return
+
+
+def start_weekly_roundup_memory_observability() -> float | None:
+    """Start bounded heap tracing when needed and return a monotonic origin."""
+    try:
+        prepare_article_generation_memory_observability()
+        return time.monotonic()
+    except Exception:
+        return None
+
+
+def log_weekly_roundup_memory(
+    logger,
+    phase: str,
+    started_at: float | None,
+    counts: Mapping[str, object] | None = None,
+) -> None:
+    """Emit one privacy-safe Weekly Roundup memory checkpoint, fail-open."""
+    try:
+        if phase not in WEEKLY_ROUNDUP_PHASES or started_at is None:
+            return
+        fields = [
+            WEEKLY_LOG_PREFIX,
+            f"phase={phase}",
+            f"elapsed_seconds={max(0.0, time.monotonic() - float(started_at)):.2f}",
+        ]
+        high_water = _sample_process_rss_mb()
+        current_rss = _sample_current_rss_mb()
+        if high_water is not None:
+            fields.append(f"rss_mb={high_water:.1f}")
+        if current_rss is not None:
+            fields.append(f"current_rss_mb={current_rss:.1f}")
+        diagnostics = _sample_python_heap_diagnostics()
+        for key in ("python_heap_current_mb", "python_heap_peak_mb"):
+            value = diagnostics.get(key)
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and value >= 0
+                and math.isfinite(float(value))
+            ):
+                fields.append(f"{key}={float(value):.1f}")
+        for key, value in (counts or {}).items():
+            if key in WEEKLY_ROUNDUP_COUNT_FIELDS and isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                fields.append(f"{key}={value}")
+        logger.info(" ".join(fields))
+    except Exception:
+        return
+
+
+class NubPipelineCounters:
+    """Fixed-cardinality counters for one local-feed processing pass."""
+
+    def __init__(self) -> None:
+        self._counts = {event: 0 for event in NUB_PIPELINE_EVENTS}
+        self._rejection_counts = {
+            reason: 0 for reason in NUB_PRE_REWRITE_REASONS
+        }
+
+    def increment(self, event: str, reason: str | None = None) -> None:
+        try:
+            if event not in NUB_PIPELINE_EVENTS:
+                return
+            self._counts[event] += 1
+            if event == "rejected_pre_rewrite" and reason in NUB_PRE_REWRITE_REASONS:
+                self._rejection_counts[reason] += 1
+        except Exception:
+            return
+
+    def snapshot(self) -> dict[str, int]:
+        try:
+            result = dict(self._counts)
+            result.update(
+                {
+                    f"rejected_{reason}": count
+                    for reason, count in self._rejection_counts.items()
+                    if count
+                }
+            )
+            return result
+        except Exception:
+            return {}
+
+    def log(self, logger) -> None:
+        try:
+            fields = [NUB_LOG_PREFIX, "scope=local_rss"]
+            fields.extend(
+                f"{key}={value}" for key, value in self.snapshot().items()
+            )
+            logger.info(" ".join(fields))
+        except Exception:
+            return

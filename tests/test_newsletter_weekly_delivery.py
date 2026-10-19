@@ -79,6 +79,49 @@ def test_weekly_isolation_at_chunk_boundary(monkeypatch, transport):
     assert service.last_accepted_recipients == [a.context.email for a in prepared]
 
 
+def test_weekly_memory_checkpoints_preserve_selection_and_provider_calls(monkeypatch):
+    rows = [subscriber(1, priority_daily_brief=True), subscriber(2)]
+    db, service = runtime(monkeypatch, rows)
+    phases = []
+    provider_calls = []
+
+    def record(_logger, phase, started_at, counts=None):
+        assert started_at == 10.0
+        phases.append((phase, dict(counts or {})))
+
+    def smtp(to, *_args, **_kwargs):
+        service.last_provider_contacted = True
+        provider_calls.append(to)
+        return True
+
+    monkeypatch.setattr(server, "start_weekly_roundup_memory_observability", lambda: 10.0)
+    monkeypatch.setattr(server, "log_weekly_roundup_memory", record)
+    monkeypatch.setattr("app.email_service.log_weekly_roundup_memory", record)
+    monkeypatch.setattr(service, "_send_email", smtp)
+
+    asyncio.run(server.send_weekly_roundup_email(1))
+
+    assert provider_calls == [row["email"] for row in rows]
+    assert [phase for phase, _counts in phases] == [
+        "subscriber_materialisation_completed",
+        "analytics_materialisation_completed",
+        "recipient_selection_completed",
+        "delivery_preparation_completed",
+        "message_rendering_completed",
+        "provider_returned",
+        "function_returned",
+    ]
+    assert phases[2][1]["selected_count"] == 2
+    assert phases[3][1] == {
+        "selected_count": 2,
+        "prepared_count": 2,
+        "skipped_count": 0,
+    }
+    assert phases[4][1]["message_count"] == 2
+    assert phases[5][1]["accepted_count"] == 2
+    assert db.digest_log.documents[0]["status"] == "sent"
+
+
 @pytest.mark.parametrize("resend", [False, True])
 @pytest.mark.parametrize("kind", ["swap", "human", "native", "malformed", "forged", "version"])
 def test_entire_weekly_batch_rejected_before_contact(monkeypatch, resend, kind):
