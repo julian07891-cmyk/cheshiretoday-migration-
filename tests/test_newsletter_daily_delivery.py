@@ -404,6 +404,7 @@ def test_scheduled_prepared_but_transport_unavailable_is_not_provider_contact(
     monkeypatch.setenv("HOSTNAME", "offline")
 
     service = EmailService()
+    phases = []
     if transport == "smtp_disabled":
         service.resend_enabled = False
         service.smtp_enabled = False
@@ -413,6 +414,13 @@ def test_scheduled_prepared_but_transport_unavailable_is_not_provider_contact(
         service.from_email = "sender@synthetic.invalid"
 
     monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(
+        server,
+        "log_daily_brief_memory",
+        lambda _logger, phase, _started_at, counts=None: phases.append(
+            (phase, dict(counts or {}))
+        ),
+    )
     asyncio.run(server.send_scheduled_news_digest())
 
     fields = {}
@@ -430,6 +438,17 @@ def test_scheduled_prepared_but_transport_unavailable_is_not_provider_contact(
     assert not db.email_send_opportunities.updates
     assert service.last_accepted_recipients == []
     assert "provider failure" not in caplog.text.lower()
+    phase_counts = dict(phases)
+    assert phase_counts["acceptance_evidence_snapshot_completed"] == {
+        "acceptance_evidence_count": 0,
+        "accepted_recipient_count": 0,
+    }
+    assert phase_counts["acceptance_evidence_persistence_completed"] == {
+        "attempted_evidence_count": 0,
+        "inserted_evidence_count": 0,
+    }
+    assert "send_ledger_persistence_completed" not in phase_counts
+    assert "batch_cursor_persistence_completed" not in phase_counts
 
 
 @pytest.mark.parametrize("invalid_priority,expected", [
@@ -585,6 +604,203 @@ def test_accepted_snapshot_survives_other_send_during_persistence(monkeypatch):
     assert accepted == [subscriber()["email"]]
 
 
+def test_daily_acceptance_snapshots_precede_first_persistence_await(monkeypatch):
+    original_email = subscriber()["email"]
+    replacement_email = "replacement@synthetic.invalid"
+    original_evidence = {
+        "provider_message_id": "provider-original",
+        "campaign_id": "campaign-original",
+        "newsletter_family": "DailyBrief",
+        "recipient_id": "recipient-original",
+    }
+    db = SimpleNamespace(
+        subscribers=Collection([subscriber()]),
+        articles=Collection([ARTICLE]),
+        digest_log=Collection(),
+        email_batch_cursors=Collection(),
+        email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    service.resend_enabled = True
+    captured_evidence = []
+    captured_ledger = []
+
+    def send(**_kwargs):
+        service.last_accepted_recipients = [original_email]
+        service.last_resend_acceptances = [original_evidence]
+        service.last_provider_contacted = True
+        service.resend_last_error = None
+        service.resend_last_successful_chunks = 1
+        service.resend_last_failed_chunks = 0
+        return 1, "campaign-original"
+
+    async def persist_acceptances(
+        *, rows=None, run_fields=None, include_completion=False
+    ):
+        assert include_completion is True
+        assert run_fields["digest_time"] == "DailyBrief"
+        assert len(run_fields["date_key"]) == 8
+        service.last_accepted_recipients = [replacement_email]
+        original_evidence["campaign_id"] = "campaign-mutated"
+        service.last_resend_acceptances = [{
+            **original_evidence,
+            "provider_message_id": "provider-replacement",
+        }]
+        service.last_provider_contacted = False
+        service.resend_last_error = "replacement send failed"
+        service.resend_last_successful_chunks = 0
+        service.resend_last_failed_chunks = 1
+        captured_evidence.extend(rows or ())
+        return True, len(rows or ())
+
+    async def persist_ledger(_kind, _tracking, recipients, _provider):
+        captured_ledger.extend(recipients)
+        return len(recipients)
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(service, "send_daily_brief", send)
+    monkeypatch.setattr(server, "_save_last_resend_acceptances", persist_acceptances)
+    monkeypatch.setattr(server, "_save_email_send_opportunities", persist_ledger)
+    monkeypatch.setenv("HOSTNAME", "offline")
+
+    asyncio.run(server.send_scheduled_news_digest())
+
+    assert captured_evidence == [{
+        "provider_message_id": "provider-original",
+        "campaign_id": "campaign-original",
+        "newsletter_family": "DailyBrief",
+        "recipient_id": "recipient-original",
+    }]
+    assert captured_ledger == [original_email]
+    final_fields = {}
+    for _query, update in db.digest_log.updates:
+        final_fields.update(update.get("$set", {}))
+    assert final_fields["success_count"] == 1
+    assert final_fields["accepted_count"] == 1
+    assert final_fields["provider_contacted"] is True
+    assert final_fields["provider_error"] is None
+    assert final_fields["resend_successful_chunks"] == 1
+    assert final_fields["resend_failed_chunks"] == 0
+
+
+def test_daily_evidence_checkpoint_distinguishes_attempted_from_inserted(monkeypatch):
+    rows = [subscriber(1), subscriber(2)]
+    db = SimpleNamespace(
+        subscribers=Collection(rows),
+        articles=Collection([ARTICLE]),
+        digest_log=Collection(),
+        email_batch_cursors=Collection(),
+        email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    service.resend_enabled = True
+    phases = []
+    provider_calls = []
+
+    def send(**_kwargs):
+        provider_calls.append(True)
+        service.last_accepted_recipients = [row["email"] for row in rows]
+        service.last_resend_acceptances = [
+            {
+                "provider_message_id": f"provider-{index}",
+                "campaign_id": "campaign",
+                "newsletter_family": "DailyBrief",
+                "recipient_id": f"recipient-{index}",
+            }
+            for index in range(2)
+        ]
+        service.last_provider_contacted = True
+        return 2, "campaign"
+
+    async def persist_acceptances(
+        *, rows, run_fields=None, include_completion=False
+    ):
+        assert include_completion is True
+        assert len(rows) == 2
+        return True, 1
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(service, "send_daily_brief", send)
+    monkeypatch.setattr(server, "_save_last_resend_acceptances", persist_acceptances)
+    monkeypatch.setattr(
+        server,
+        "log_daily_brief_memory",
+        lambda _logger, phase, _started_at, counts=None: phases.append(
+            (phase, dict(counts or {}))
+        ),
+    )
+    monkeypatch.setenv("HOSTNAME", "offline")
+
+    asyncio.run(server.send_scheduled_news_digest())
+
+    assert provider_calls == [True]
+    phase_counts = dict(phases)
+    assert phase_counts["acceptance_evidence_snapshot_completed"] == {
+        "acceptance_evidence_count": 2,
+        "accepted_recipient_count": 2,
+    }
+    assert phase_counts["acceptance_evidence_persistence_completed"] == {
+        "attempted_evidence_count": 2,
+        "inserted_evidence_count": 1,
+    }
+
+
+def test_daily_evidence_partial_persistence_failure_omits_success_phase(monkeypatch):
+    rows = [subscriber(1)]
+    db = SimpleNamespace(
+        subscribers=Collection(rows),
+        articles=Collection([ARTICLE]),
+        digest_log=Collection(),
+        email_batch_cursors=Collection(),
+        email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    service.resend_enabled = True
+    phases = []
+
+    def send(**_kwargs):
+        service.last_accepted_recipients = [rows[0]["email"]]
+        service.last_resend_acceptances = [{
+            "provider_message_id": "provider-one",
+            "campaign_id": "campaign",
+            "newsletter_family": "DailyBrief",
+            "recipient_id": "recipient-one",
+        }]
+        service.last_provider_contacted = True
+        return 1, "campaign"
+
+    async def persist_acceptances(
+        *, rows, run_fields=None, include_completion=False
+    ):
+        assert include_completion is True
+        return False, None
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(service, "send_daily_brief", send)
+    monkeypatch.setattr(server, "_save_last_resend_acceptances", persist_acceptances)
+    monkeypatch.setattr(
+        server,
+        "log_daily_brief_memory",
+        lambda _logger, phase, _started_at, counts=None: phases.append(
+            (phase, dict(counts or {}))
+        ),
+    )
+    monkeypatch.setenv("HOSTNAME", "offline")
+
+    asyncio.run(server.send_scheduled_news_digest())
+
+    phase_counts = dict(phases)
+    assert "acceptance_evidence_persistence_completed" not in phase_counts
+    assert phase_counts["completion_persistence_completed"] == {
+        "accepted_count": 1
+    }
+    assert db.email_send_opportunities.updates
+    assert db.email_batch_cursors.updates
+
+
 def test_scheduled_daily_memory_checkpoints_are_ordered_and_bounded(monkeypatch):
     rows = [subscriber(1, priority_daily_brief=True), subscriber(2)]
     db = SimpleNamespace(
@@ -626,6 +842,11 @@ def test_scheduled_daily_memory_checkpoints_are_ordered_and_bounded(monkeypatch)
         "article_selection_completed",
         "delivery_preparation_completed",
         "provider_returned",
+        "acceptance_evidence_snapshot_completed",
+        "acceptance_evidence_persistence_completed",
+        "digest_result_persistence_completed",
+        "send_ledger_persistence_completed",
+        "batch_cursor_persistence_completed",
         "completion_persistence_completed",
         "function_returned",
     ]
@@ -639,7 +860,21 @@ def test_scheduled_daily_memory_checkpoints_are_ordered_and_bounded(monkeypatch)
         "selected_count": 2, "prepared_count": 2, "skipped_count": 0,
     }
     assert phases[6][1] == {"accepted_count": 2}
-    assert phases[7][1] == {"accepted_count": 2}
+    assert phases[7][1] == {
+        "acceptance_evidence_count": 0,
+        "accepted_recipient_count": 2,
+    }
+    assert phases[8][1] == {
+        "attempted_evidence_count": 0,
+        "inserted_evidence_count": 0,
+    }
+    assert phases[9][1] == {}
+    assert phases[10][1] == {
+        "accepted_recipient_count": 2,
+        "ledger_row_count": 2,
+    }
+    assert phases[11][1] == {}
+    assert phases[12][1] == {"accepted_count": 2}
     final_fields = {}
     for _query, update in db.digest_log.updates:
         final_fields.update(update.get("$set", {}))
@@ -647,7 +882,16 @@ def test_scheduled_daily_memory_checkpoints_are_ordered_and_bounded(monkeypatch)
     assert final_fields["accepted_count"] == 2
 
 
-def test_daily_memory_diagnostic_failure_preserves_delivery_and_completion(monkeypatch):
+@pytest.mark.parametrize("failed_phase", [
+    "acceptance_evidence_snapshot_completed",
+    "acceptance_evidence_persistence_completed",
+    "digest_result_persistence_completed",
+    "send_ledger_persistence_completed",
+    "batch_cursor_persistence_completed",
+])
+def test_daily_memory_diagnostic_failure_preserves_delivery_and_completion(
+    monkeypatch, failed_phase,
+):
     rows = [subscriber(1, priority_daily_brief=True), subscriber(2)]
     db = SimpleNamespace(
         subscribers=Collection(rows), articles=Collection([ARTICLE]),
@@ -658,8 +902,12 @@ def test_daily_memory_diagnostic_failure_preserves_delivery_and_completion(monke
     service.resend_enabled = False
     provider_calls = []
 
-    def fail_diagnostic(*_args, **_kwargs):
-        raise RuntimeError("private diagnostic exception")
+    observed_phases = []
+
+    def fail_diagnostic(_logger, phase, _started_at, _counts=None):
+        observed_phases.append(phase)
+        if phase == failed_phase:
+            raise RuntimeError("private diagnostic exception")
 
     def smtp(to, *_args, **_kwargs):
         service.last_provider_contacted = True
@@ -684,3 +932,6 @@ def test_daily_memory_diagnostic_failure_preserves_delivery_and_completion(monke
     assert final_fields["status"] == "sent"
     assert final_fields["success_count"] == 2
     assert final_fields["accepted_count"] == 2
+    assert failed_phase in observed_phases
+    assert db.email_send_opportunities.updates
+    assert db.email_batch_cursors.updates

@@ -296,6 +296,28 @@ def test_daily_brief_memory_checkpoint_is_bounded_privacy_safe_and_cumulative(mo
     assert "article_body=" not in message
     assert "provider_payload=" not in message
 
+    observability.log_daily_brief_memory(
+        logger,
+        "acceptance_evidence_persistence_completed",
+        10.0,
+        {
+            "attempted_evidence_count": 1000,
+            "inserted_evidence_count": 999,
+            "recipient_id": "private-recipient-id",
+            "provider_message_id": "private-provider-message-id",
+            "url": "https://example.invalid/private?token=secret",
+            "exception": "private exception text",
+        },
+    )
+    persistence_message = logger.messages[1]
+    assert "attempted_evidence_count=1000" in persistence_message
+    assert "inserted_evidence_count=999" in persistence_message
+    assert "private" not in persistence_message
+    assert "recipient_id=" not in persistence_message
+    assert "provider_message_id=" not in persistence_message
+    assert "url=" not in persistence_message
+    assert "exception=" not in persistence_message
+
 
 def test_daily_brief_memory_checkpoint_failure_is_non_fatal(monkeypatch):
     monkeypatch.setattr(

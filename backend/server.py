@@ -19994,18 +19994,25 @@ def _resend_delivery_evidence_repository():
     )
 
 
-async def _save_last_resend_acceptances(*, run_fields=None):
+async def _save_last_resend_acceptances(
+    *, rows=None, run_fields=None, include_completion=False
+):
     """Persist complete provider-ID mappings without changing send accounting."""
-    rows = tuple(getattr(email_service, "last_resend_acceptances", ()) or ())
+    if rows is None:
+        rows = getattr(email_service, "last_resend_acceptances", ()) or ()
+    rows = tuple(rows)
     if not rows:
-        return 0
+        return (True, 0) if include_completion else 0
     try:
-        return await _resend_delivery_evidence_repository().save_acceptances(
+        inserted_count = await _resend_delivery_evidence_repository().save_acceptances(
             rows, run_fields=run_fields
         )
+        if include_completion:
+            return True, inserted_count
+        return inserted_count
     except Exception:
         logger.error("Resend acceptance evidence persistence failed")
-        return 0
+        return (False, None) if include_completion else 0
 
 
 async def _ensure_resend_delivery_evidence_indexes():
@@ -20660,19 +20667,58 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             {"accepted_count": int(success_count or 0)},
         )
 
-        await _save_last_resend_acceptances(run_fields={
-            "digest_time": "DailyBrief",
-            "date_key": date_key,
-        })
+        acceptance_evidence = tuple(
+            {
+                field: row.get(field)
+                for field in (
+                    "provider_message_id",
+                    "campaign_id",
+                    "newsletter_family",
+                    "recipient_id",
+                )
+            }
+            for row in (getattr(email_service, "last_resend_acceptances", ()) or ())
+            if isinstance(row, dict)
+        )
+        accepted_recipients = tuple(
+            getattr(email_service, "last_accepted_recipients", ()) or ()
+        )
+        provider_name = "resend" if getattr(email_service, "resend_enabled", False) else "smtp"
+        provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
+        provider_last_error = getattr(email_service, "resend_last_error", None)
+        resend_successful_chunks = getattr(
+            email_service, "resend_last_successful_chunks", None
+        )
+        resend_failed_chunks = getattr(email_service, "resend_last_failed_chunks", None)
+        daily_memory_checkpoint(
+            "acceptance_evidence_snapshot_completed",
+            {
+                "acceptance_evidence_count": len(acceptance_evidence),
+                "accepted_recipient_count": len(accepted_recipients),
+            },
+        )
+
+        evidence_persistence_completed, inserted_evidence_count = (
+            await _save_last_resend_acceptances(
+                rows=acceptance_evidence,
+                run_fields={
+                    "digest_time": "DailyBrief",
+                    "date_key": date_key,
+                },
+                include_completion=True,
+            )
+        )
+        if evidence_persistence_completed:
+            daily_memory_checkpoint(
+                "acceptance_evidence_persistence_completed",
+                {
+                    "attempted_evidence_count": len(acceptance_evidence),
+                    "inserted_evidence_count": int(inserted_evidence_count or 0),
+                },
+            )
         
         logger.info(f"✅ Daily Brief sent to {success_count}/{len(subscriber_emails)} subscribers")
 
-        # Snapshot before awaiting persistence: another send must not overwrite
-        # this attempt's accepted-recipient evidence on the shared service.
-        accepted_recipients = list(getattr(email_service, "last_accepted_recipients", []) or [])
-
-        provider_name = "resend" if getattr(email_service, "resend_enabled", False) else "smtp"
-        provider_contacted = bool(getattr(email_service, "last_provider_contacted", False))
         provider_error = None
         final_status = "sent"
 
@@ -20692,7 +20738,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 )
             else:
                 provider_error = (
-                    getattr(email_service, "resend_last_error", None)
+                    provider_last_error
                     or "Daily Brief email service returned zero successful sends"
                 )
                 logger.error(
@@ -20711,11 +20757,12 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 "provider": provider_name,
                 "provider_contacted": provider_contacted,
                 "provider_error": provider_error,
-                "resend_successful_chunks": getattr(email_service, "resend_last_successful_chunks", None),
-                "resend_failed_chunks": getattr(email_service, "resend_last_failed_chunks", None),
+                "resend_successful_chunks": resend_successful_chunks,
+                "resend_failed_chunks": resend_failed_chunks,
                 "completed_at": datetime.now(timezone.utc)
             }}
         )
+        daily_memory_checkpoint("digest_result_persistence_completed")
         
         if success_count > 0:
             ledger_count = await _save_email_send_opportunities(
@@ -20729,6 +20776,13 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                     f"Daily Brief accepted-recipient mismatch: "
                     f"success_count={success_count} ledger_count={ledger_count}"
                 )
+            daily_memory_checkpoint(
+                "send_ledger_persistence_completed",
+                {
+                    "accepted_recipient_count": len(accepted_recipients),
+                    "ledger_row_count": int(ledger_count or 0),
+                },
+            )
 
             await _save_email_batch_cursor(
                 "DailyBrief",
@@ -20737,6 +20791,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 len(subscriber_emails),
                 total_eligible
             )
+            daily_memory_checkpoint("batch_cursor_persistence_completed")
             logger.info(f"✅ Daily Brief batch cursor advanced to {batch_next}")
         else:
             logger.warning("Daily Brief batch cursor not advanced because success_count was 0")

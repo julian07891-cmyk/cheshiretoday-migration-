@@ -1608,7 +1608,7 @@ Highest-priority unresolved or monitoring items are:
   indexed, discovered, crawled-not-indexed and unknown states.
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
-### 20 October 2026 — Stage 2Z-A Daily Brief memory observability (local only)
+### 20 October 2026 — Stage 2Z-A Daily Brief memory observability
 
 Stage 2X multi-run memory acceptance **FAILED** after same-instance process RSS
 reached 1,086.6 MiB. Stage 2Y classified a bounded Daily Brief observability
@@ -1631,9 +1631,52 @@ directly related newsletter/memory tests and 1,974 broader newsletter tests.
 Python compilation and diff validation are recorded with the local handoff.
 Subscriber queries and limits, recipient calculation and order, rendering,
 provider batching/calls, retry handling, persistence and scheduler behaviour are
-unchanged. No production memory improvement is yet proven. Nub fallback
-production acceptance remains partially inconclusive. This implementation is
-uncommitted and undeployed.
+unchanged. The implementation was committed as
+`f12d63532014f7b871a6e10e7deebb60194831e7` and deployed to production; deployment
+`dep-dbc4k45g1s2s738dl4ig` became the observation baseline on instance `kgcpr`.
+No production memory improvement was established by deployment. Nub fallback
+production acceptance remains partially inconclusive.
+
+### 21 October 2026 — Stage 2Z-C/D production observation and investigation
+
+Stage 2Z-C observed the first natural Daily Brief with Stage 2Z-A. Delivery
+acceptance **PASSED**, but memory acceptance **FAILED**: provider return occurred
+after 10.75 seconds and completion persistence after 1,031.52 seconds, while
+current RSS rose from 174.2 to 520.6 MiB and cumulative traced Python heap peak
+reached 693.6 MiB. Current traced heap returned to 20.1 MiB. The observation does
+not establish a leak or a production memory improvement.
+
+Stage 2Z-D investigation completed and identified a confirmed high-cardinality
+path of at least approximately
+3,000 sequential awaited database operations for 1,000 Resend acceptances and a
+shared-service snapshot ordering risk.
+
+### 21 October 2026 — Stage 2Z-E/E1 post-provider diagnostics (local only)
+
+Stage 2Z-E now snapshots the four bounded
+provider-evidence fields and accepted-recipient strings before the first
+post-provider persistence await. Later mutation of the shared email service can
+no longer change the current Daily Brief's evidence or recipient ledger input.
+No recipient selection, provider request, batching, accepted-send accounting,
+digest completion, ledger eligibility, cursor advancement, database query or
+schema contract changed.
+
+Five new fail-open checkpoints distinguish acceptance snapshot, provider-evidence
+persistence, final digest persistence, send-ledger persistence and batch-cursor
+persistence. They retain the existing current/high-water RSS and
+current/cumulative-peak Python-heap semantics and emit only fixed phase names and
+allowlisted integer counts. RED evidence reproduced the snapshot race and missing
+phase sequence. GREEN verification passed 128 focused tests and 1,981 broader
+newsletter tests; existing warning debt remained. Python compilation and diff
+validation are recorded with the local handoff. The per-recipient persistence
+architecture was deliberately not optimised. Stage 2Z-E1 corrects two independent
+QA blockers before commit: the successful persistence diagnostic is named
+`inserted_evidence_count`, and a repository exception after possible partial
+persistence now makes that count unknown and omits the completion phase rather
+than emitting a false zero. Successfully completed idempotent or empty operations
+still report zero new inserts. Stage 2Z-E and E1 remain uncommitted and undeployed;
+Stage 2X memory stability remains unresolved and requires a separate deployment
+and natural Daily Brief observation.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
 production-verified. Legacy Python compilation and the original external-test

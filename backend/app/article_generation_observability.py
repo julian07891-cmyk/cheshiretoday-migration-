@@ -102,6 +102,11 @@ DAILY_BRIEF_PHASES = frozenset(
         "article_selection_completed",
         "delivery_preparation_completed",
         "provider_returned",
+        "acceptance_evidence_snapshot_completed",
+        "acceptance_evidence_persistence_completed",
+        "digest_result_persistence_completed",
+        "send_ledger_persistence_completed",
+        "batch_cursor_persistence_completed",
         "completion_persistence_completed",
         "function_returned",
     }
@@ -118,6 +123,11 @@ DAILY_BRIEF_COUNT_FIELDS = frozenset(
         "prepared_count",
         "skipped_count",
         "accepted_count",
+        "acceptance_evidence_count",
+        "accepted_recipient_count",
+        "attempted_evidence_count",
+        "inserted_evidence_count",
+        "ledger_row_count",
     }
 )
 

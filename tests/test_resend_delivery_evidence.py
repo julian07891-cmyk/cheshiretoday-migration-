@@ -250,6 +250,99 @@ def test_acceptance_storage_is_immutable_and_contains_no_plaintext_email():
     assert "email" not in stored
 
 
+def test_acceptance_storage_characterises_per_recipient_database_operations():
+    class CountingCollection(FakeCollection):
+        def __init__(self):
+            super().__init__()
+            self.find_one_calls = 0
+            self.find_calls = 0
+            self.update_one_calls = 0
+
+        async def find_one(self, query):
+            self.find_one_calls += 1
+            return await super().find_one(query)
+
+        def find(self, query):
+            self.find_calls += 1
+            return super().find(query)
+
+        async def update_one(self, query, update, upsert=False):
+            self.update_one_calls += 1
+            return await super().update_one(query, update, upsert=upsert)
+
+    messages = CountingCollection()
+    events = CountingCollection()
+    repo = ResendDeliveryEvidenceRepository(messages, events)
+    rows = [
+        {
+            "provider_message_id": f"provider-{index}",
+            "campaign_id": "campaign",
+            "newsletter_family": "DailyBrief",
+            "recipient_id": f"recipient-{index}",
+        }
+        for index in range(3)
+    ]
+
+    assert asyncio.run(repo.save_acceptances(rows)) == 3
+    assert messages.update_one_calls == 3
+    assert messages.find_one_calls == 3
+    assert events.find_calls == 3
+
+
+@pytest.mark.parametrize("inserted_count", [0, 2])
+def test_acceptance_persistence_reports_completed_insert_count(
+    monkeypatch, inserted_count,
+):
+    class Repository:
+        async def save_acceptances(self, rows, run_fields=None):
+            assert len(rows) == 2
+            assert run_fields == {"date_key": "2026-10-21"}
+            return inserted_count
+
+    monkeypatch.setattr(
+        app_server, "_resend_delivery_evidence_repository", lambda: Repository()
+    )
+    result = asyncio.run(app_server._save_last_resend_acceptances(
+        rows=[{"provider_message_id": "one"}, {"provider_message_id": "two"}],
+        run_fields={"date_key": "2026-10-21"},
+        include_completion=True,
+    ))
+    assert result == (True, inserted_count)
+
+
+def test_empty_acceptance_persistence_is_completed_zero_insert_noop():
+    result = asyncio.run(app_server._save_last_resend_acceptances(
+        rows=[], run_fields={"date_key": "2026-10-21"}, include_completion=True
+    ))
+    assert result == (True, 0)
+
+
+def test_partial_acceptance_persistence_failure_reports_unknown_count(
+    monkeypatch, caplog,
+):
+    class Repository:
+        def __init__(self):
+            self.persisted = []
+
+        async def save_acceptances(self, rows, run_fields=None):
+            self.persisted.append(rows[0]["provider_message_id"])
+            raise RuntimeError("private provider identifier")
+
+    repository = Repository()
+    monkeypatch.setattr(
+        app_server, "_resend_delivery_evidence_repository", lambda: repository
+    )
+    result = asyncio.run(app_server._save_last_resend_acceptances(
+        rows=[{"provider_message_id": "private-one"},
+              {"provider_message_id": "private-two"}],
+        include_completion=True,
+    ))
+    assert repository.persisted == ["private-one"]
+    assert result == (False, None)
+    assert "private-one" not in caplog.text
+    assert "private provider identifier" not in caplog.text
+
+
 def test_event_idempotency_correlation_and_unknown_message_isolation():
     repo, messages, events = repository()
     normalized = normalize_resend_event(event(), "msg_same")
