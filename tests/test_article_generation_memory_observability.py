@@ -249,6 +249,71 @@ def test_weekly_memory_checkpoint_failure_is_non_fatal(monkeypatch):
     )
 
 
+def test_daily_brief_memory_checkpoint_is_bounded_privacy_safe_and_cumulative(monkeypatch):
+    logger = RecordingLogger()
+    monkeypatch.setattr(observability.time, "monotonic", lambda: 15.0)
+    monkeypatch.setattr(observability, "_sample_process_rss_mb", lambda: 321.5)
+    monkeypatch.setattr(observability, "_sample_current_rss_mb", lambda: 300.25)
+    monkeypatch.setattr(
+        observability,
+        "_sample_python_heap_diagnostics",
+        lambda: {
+            "python_heap_current_mb": 12.5,
+            "python_heap_peak_mb": 681.8,
+        },
+    )
+
+    observability.log_daily_brief_memory(
+        logger,
+        "recipient_selection_completed",
+        10.0,
+        {
+            "subscriber_count": 15000,
+            "priority_count": 12,
+            "rotating_count": 988,
+            "selected_count": 1000,
+            "email": "private@example.invalid",
+            "article_body": "private article body",
+            "provider_payload": "private payload",
+        },
+    )
+
+    message = logger.messages[0]
+    assert message.startswith(
+        "daily_brief_memory phase=recipient_selection_completed elapsed_seconds=5.00"
+    )
+    assert "rss_mb=321.5" in message
+    assert "current_rss_mb=300.2" in message
+    assert "python_heap_current_mb=12.5" in message
+    assert "python_heap_peak_mb=681.8" in message
+    assert "subscriber_count=15000" in message
+    assert "priority_count=12" in message
+    assert "rotating_count=988" in message
+    assert "selected_count=1000" in message
+    assert "cumulative" in observability.log_daily_brief_memory.__doc__.lower()
+    assert "private" not in message
+    assert "email=" not in message
+    assert "article_body=" not in message
+    assert "provider_payload=" not in message
+
+
+def test_daily_brief_memory_checkpoint_failure_is_non_fatal(monkeypatch):
+    monkeypatch.setattr(
+        observability,
+        "_sample_process_rss_mb",
+        lambda: (_ for _ in ()).throw(OSError("missing proc")),
+    )
+    monkeypatch.setattr(
+        observability,
+        "_sample_python_heap_diagnostics",
+        lambda: (_ for _ in ()).throw(RuntimeError("tracemalloc unavailable")),
+    )
+
+    observability.log_daily_brief_memory(
+        RecordingLogger(fail=True), "function_returned", 1.0
+    )
+
+
 def test_nub_pipeline_counters_are_fixed_and_ignore_unapproved_values():
     counters = observability.NubPipelineCounters()
     counters.increment("inventory_discovered")

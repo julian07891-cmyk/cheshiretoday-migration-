@@ -583,3 +583,104 @@ def test_accepted_snapshot_survives_other_send_during_persistence(monkeypatch):
     monkeypatch.setenv("HOSTNAME", "offline")
     asyncio.run(server.send_scheduled_news_digest())
     assert accepted == [subscriber()["email"]]
+
+
+def test_scheduled_daily_memory_checkpoints_are_ordered_and_bounded(monkeypatch):
+    rows = [subscriber(1, priority_daily_brief=True), subscriber(2)]
+    db = SimpleNamespace(
+        subscribers=Collection(rows), articles=Collection([ARTICLE]),
+        digest_log=Collection(), email_batch_cursors=Collection(),
+        email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    service.resend_enabled = False
+    provider_calls = []
+    phases = []
+
+    def record(_logger, phase, started_at, counts=None):
+        assert started_at == 10.0
+        phases.append((phase, dict(counts or {})))
+
+    def smtp(to, *_args, **_kwargs):
+        service.last_provider_contacted = True
+        provider_calls.append(to)
+        return True
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(
+        server, "start_daily_brief_memory_observability", lambda: 10.0, raising=False
+    )
+    monkeypatch.setattr(server, "log_daily_brief_memory", record, raising=False)
+    monkeypatch.setattr(service, "_send_email", smtp)
+    monkeypatch.setenv("HOSTNAME", "offline")
+
+    asyncio.run(server.send_scheduled_news_digest())
+
+    assert provider_calls == [row["email"] for row in rows]
+    assert [phase for phase, _counts in phases] == [
+        "scheduled_start",
+        "subscriber_materialisation_completed",
+        "candidate_context_preparation_completed",
+        "recipient_selection_completed",
+        "article_selection_completed",
+        "delivery_preparation_completed",
+        "provider_returned",
+        "completion_persistence_completed",
+        "function_returned",
+    ]
+    assert phases[1][1] == {"subscriber_count": 2}
+    assert phases[2][1] == {"candidate_count": 2}
+    assert phases[3][1] == {
+        "priority_count": 1, "rotating_count": 1, "selected_count": 2,
+    }
+    assert phases[4][1] == {"article_count": 1}
+    assert phases[5][1] == {
+        "selected_count": 2, "prepared_count": 2, "skipped_count": 0,
+    }
+    assert phases[6][1] == {"accepted_count": 2}
+    assert phases[7][1] == {"accepted_count": 2}
+    final_fields = {}
+    for _query, update in db.digest_log.updates:
+        final_fields.update(update.get("$set", {}))
+    assert final_fields["status"] == "sent"
+    assert final_fields["accepted_count"] == 2
+
+
+def test_daily_memory_diagnostic_failure_preserves_delivery_and_completion(monkeypatch):
+    rows = [subscriber(1, priority_daily_brief=True), subscriber(2)]
+    db = SimpleNamespace(
+        subscribers=Collection(rows), articles=Collection([ARTICLE]),
+        digest_log=Collection(), email_batch_cursors=Collection(),
+        email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    service.resend_enabled = False
+    provider_calls = []
+
+    def fail_diagnostic(*_args, **_kwargs):
+        raise RuntimeError("private diagnostic exception")
+
+    def smtp(to, *_args, **_kwargs):
+        service.last_provider_contacted = True
+        provider_calls.append(to)
+        return True
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(
+        server, "start_daily_brief_memory_observability", lambda: 10.0, raising=False
+    )
+    monkeypatch.setattr(server, "log_daily_brief_memory", fail_diagnostic, raising=False)
+    monkeypatch.setattr(service, "_send_email", smtp)
+    monkeypatch.setenv("HOSTNAME", "offline")
+
+    asyncio.run(server.send_scheduled_news_digest())
+
+    assert provider_calls == [row["email"] for row in rows]
+    final_fields = {}
+    for _query, update in db.digest_log.updates:
+        final_fields.update(update.get("$set", {}))
+    assert final_fields["status"] == "sent"
+    assert final_fields["success_count"] == 2
+    assert final_fields["accepted_count"] == 2

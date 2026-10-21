@@ -1608,6 +1608,33 @@ Highest-priority unresolved or monitoring items are:
   indexed, discovered, crawled-not-indexed and unknown states.
 - **Active:** documentation reconstruction and pending-source reconciliation.
 
+### 20 October 2026 — Stage 2Z-A Daily Brief memory observability (local only)
+
+Stage 2X multi-run memory acceptance **FAILED** after same-instance process RSS
+reached 1,086.6 MiB. Stage 2Y classified a bounded Daily Brief observability
+phase as **READY**: the Daily Brief ran between the morning and noon article
+imports while cumulative traced Python heap peak rose from 79.2 to 681.8 MiB,
+but that timing does not prove causation.
+
+Stage 2Z-A adds log-only, fail-open Daily Brief memory checkpoints at scheduled
+start, subscriber materialisation, candidate/context preparation, recipient
+selection, article selection, delivery preparation, provider return, completion
+persistence and function return. Each marker contains only its fixed phase,
+elapsed time, current/process-high-water RSS, current Python heap, cumulative
+process tracing peak and allowlisted integer counts. It does not log subscriber
+identity, article content, unsubscribe credentials, provider payloads or
+exceptions, and does not reset the process-wide tracing peak.
+
+RED evidence was three intended failures: two missing-helper failures and one
+missing nine-phase sequence. GREEN verification passed 4 focused tests, 219
+directly related newsletter/memory tests and 1,974 broader newsletter tests.
+Python compilation and diff validation are recorded with the local handoff.
+Subscriber queries and limits, recipient calculation and order, rendering,
+provider batching/calls, retry handling, persistence and scheduler behaviour are
+unchanged. No production memory improvement is yet proven. Nub fallback
+production acceptance remains partially inconclusive. This implementation is
+uncommitted and undeployed.
+
 Rendered public metadata duplication is recorded as remediated, deployed and
 production-verified. Legacy Python compilation and the original external-test
 mutation boundary are remediated at repository level. These closures do not

@@ -17,6 +17,7 @@ except ImportError:  # pragma: no cover - exercised through the None fallback
 
 LOG_PREFIX = "article_generation_memory"
 WEEKLY_LOG_PREFIX = "weekly_roundup_memory"
+DAILY_BRIEF_LOG_PREFIX = "daily_brief_memory"
 NUB_LOG_PREFIX = "nub_pipeline_progress"
 
 APPROVED_PHASES = frozenset(
@@ -88,6 +89,34 @@ WEEKLY_ROUNDUP_COUNT_FIELDS = frozenset(
         "prepared_count",
         "skipped_count",
         "message_count",
+        "accepted_count",
+    }
+)
+
+DAILY_BRIEF_PHASES = frozenset(
+    {
+        "scheduled_start",
+        "subscriber_materialisation_completed",
+        "candidate_context_preparation_completed",
+        "recipient_selection_completed",
+        "article_selection_completed",
+        "delivery_preparation_completed",
+        "provider_returned",
+        "completion_persistence_completed",
+        "function_returned",
+    }
+)
+
+DAILY_BRIEF_COUNT_FIELDS = frozenset(
+    {
+        "subscriber_count",
+        "candidate_count",
+        "priority_count",
+        "rotating_count",
+        "selected_count",
+        "article_count",
+        "prepared_count",
+        "skipped_count",
         "accepted_count",
     }
 )
@@ -324,6 +353,59 @@ def log_weekly_roundup_memory(
                 fields.append(f"{key}={float(value):.1f}")
         for key, value in (counts or {}).items():
             if key in WEEKLY_ROUNDUP_COUNT_FIELDS and isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                fields.append(f"{key}={value}")
+        logger.info(" ".join(fields))
+    except Exception:
+        return
+
+
+def start_daily_brief_memory_observability() -> float | None:
+    """Start the existing bounded heap tracing for one scheduled Daily Brief."""
+    try:
+        prepare_article_generation_memory_observability()
+        return time.monotonic()
+    except Exception:
+        return None
+
+
+def log_daily_brief_memory(
+    logger,
+    phase: str,
+    started_at: float | None,
+    counts: Mapping[str, object] | None = None,
+) -> None:
+    """Emit a safe Daily Brief checkpoint; heap peak is process-cumulative."""
+    try:
+        if phase not in DAILY_BRIEF_PHASES or started_at is None:
+            return
+        fields = [
+            DAILY_BRIEF_LOG_PREFIX,
+            f"phase={phase}",
+            f"elapsed_seconds={max(0.0, time.monotonic() - float(started_at)):.2f}",
+        ]
+        high_water = _sample_process_rss_mb()
+        current_rss = _sample_current_rss_mb()
+        if high_water is not None:
+            fields.append(f"rss_mb={high_water:.1f}")
+        if current_rss is not None:
+            fields.append(f"current_rss_mb={current_rss:.1f}")
+        diagnostics = _sample_python_heap_diagnostics()
+        for key in ("python_heap_current_mb", "python_heap_peak_mb"):
+            value = diagnostics.get(key)
+            if (
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and value >= 0
+                and math.isfinite(float(value))
+            ):
+                fields.append(f"{key}={float(value):.1f}")
+        for key, value in (counts or {}).items():
+            if (
+                key in DAILY_BRIEF_COUNT_FIELDS
+                and isinstance(value, int)
+                and not isinstance(value, bool)
+                and value >= 0
+            ):
                 fields.append(f"{key}={value}")
         logger.info(" ".join(fields))
     except Exception:

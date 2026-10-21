@@ -133,8 +133,10 @@ from app.perplexity_service import (
 from app.article_generation_observability import (
     NubPipelineCounters,
     log_article_generation_memory,
+    log_daily_brief_memory,
     log_weekly_roundup_memory,
     prepare_article_generation_memory_observability,
+    start_daily_brief_memory_observability,
     start_weekly_roundup_memory_observability,
 )
 from app.editorial_similarity import (
@@ -20110,6 +20112,23 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
     """
     from datetime import timedelta
     email_service.last_accepted_recipients = []
+    try:
+        daily_memory_started_at = start_daily_brief_memory_observability()
+    except Exception:
+        daily_memory_started_at = None
+
+    def daily_memory_checkpoint(phase: str, counts: dict = None) -> None:
+        try:
+            log_daily_brief_memory(
+                logger,
+                phase,
+                daily_memory_started_at,
+                counts,
+            )
+        except Exception:
+            pass
+
+    daily_memory_checkpoint("scheduled_start")
     
     try:
         now = datetime.now(timezone.utc)
@@ -20237,11 +20256,19 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 "provider_suppressed": 1,
             }
         ).to_list(15000)
+        daily_memory_checkpoint(
+            "subscriber_materialisation_completed",
+            {"subscriber_count": len(subscribers)},
+        )
         if not subscribers:
             logger.info("No subscribers found with daily_brief preference - skipping")
             return
         
         candidates = _newsletter_candidate_contexts(subscribers)
+        daily_memory_checkpoint(
+            "candidate_context_preparation_completed",
+            {"candidate_count": len(candidates)},
+        )
         # Preserve original audience slots after validating the full candidate set.
         import re
         email_regex = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
@@ -20288,6 +20315,14 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
 
         subscriber_emails = (priority_emails + rotating_batch)[:daily_send_cap]
         total_eligible = len(priority_emails) + rotating_total
+        daily_memory_checkpoint(
+            "recipient_selection_completed",
+            {
+                "priority_count": len(priority_emails),
+                "rotating_count": len(rotating_batch),
+                "selected_count": len(subscriber_emails),
+            },
+        )
 
         logger.info(
             f"Found {len(subscriber_emails)} Daily Brief subscribers "
@@ -20571,6 +20606,10 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                     break
 
         unique_articles = selected_articles
+        daily_memory_checkpoint(
+            "article_selection_completed",
+            {"article_count": len(unique_articles)},
+        )
 
         local_count = len([a for a in unique_articles if _is_local(a)])
         business_count = len([a for a in unique_articles if _is_business(a)])
@@ -20590,6 +20629,14 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         
         # Send the Daily Brief using new template
         deliveries, delivery_counts, token_service = _prepare_selected_newsletter_deliveries(subscriber_emails, candidates)
+        daily_memory_checkpoint(
+            "delivery_preparation_completed",
+            {
+                "selected_count": delivery_counts.get("selected_count"),
+                "prepared_count": delivery_counts.get("prepared_count"),
+                "skipped_count": delivery_counts.get("skipped_count"),
+            },
+        )
         await db.digest_log.update_one(
             {"digest_time": digest_time, "date_key": date_key, "instance_id": instance_id},
             {"$set": delivery_counts},
@@ -20608,6 +20655,10 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             success_count, tracking_id = success_count
         else:
             tracking_id = None
+        daily_memory_checkpoint(
+            "provider_returned",
+            {"accepted_count": int(success_count or 0)},
+        )
 
         await _save_last_resend_acceptances(run_fields={
             "digest_time": "DailyBrief",
@@ -20690,6 +20741,10 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         else:
             logger.warning("Daily Brief batch cursor not advanced because success_count was 0")
 
+        daily_memory_checkpoint(
+            "completion_persistence_completed",
+            {"accepted_count": int(success_count or 0)},
+        )
         logger.info(f"✅ Digest log updated for {digest_time} ({date_key})")
         
     except Exception as e:
@@ -20702,6 +20757,8 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
             )
         except:
             pass
+    finally:
+        daily_memory_checkpoint("function_returned")
 
 
 async def send_weekly_roundup_email(batch_slot: int = 1):
