@@ -1651,7 +1651,7 @@ path of at least approximately
 3,000 sequential awaited database operations for 1,000 Resend acceptances and a
 shared-service snapshot ordering risk.
 
-### 21 October 2026 — Stage 2Z-E/E1 post-provider diagnostics (local only)
+### 21 October 2026 — Stage 2Z-E/E1 post-provider diagnostics (committed and deployed)
 
 Stage 2Z-E now snapshots the four bounded
 provider-evidence fields and accepted-recipient strings before the first
@@ -1674,9 +1674,36 @@ QA blockers before commit: the successful persistence diagnostic is named
 `inserted_evidence_count`, and a repository exception after possible partial
 persistence now makes that count unknown and omits the completion phase rather
 than emitting a false zero. Successfully completed idempotent or empty operations
-still report zero new inserts. Stage 2Z-E and E1 remain uncommitted and undeployed;
-Stage 2X memory stability remains unresolved and requires a separate deployment
-and natural Daily Brief observation.
+still report zero new inserts. Stage 2Z-E/E1 was committed as
+`a02993605e12d943f57cb25d09a27c741326661e` and deployed successfully. The
+23 October Stage 2Z-F natural Daily Brief passed delivery safety and diagnostic
+acceptance: 1,000 recipients were prepared and provider-accepted, 1,000 evidence
+rows were newly inserted and 1,000 accepted-recipient ledger rows were recorded.
+Evidence persistence took approximately 1,070.8 seconds while current RSS rose
+from 370.6 to 661.3 MiB. Memory stability therefore remains **INCONCLUSIVE**;
+delivery and diagnostic acceptance do not establish a memory improvement.
+
+### 23 October 2026 — Stage 2Z-I retained-event lookup index (local only)
+
+Stage 2Z-G/H traced the existing acceptance-evidence path and historical design.
+For 1,000 valid acceptance rows with no retained events, the implementation makes
+at least 3,000 sequential awaited database interactions: one message upsert, one
+message readback and one retained-event lookup per row. Repository history contains
+no prior implementation, rejection or removal of a retained-event lookup index.
+
+Stage 2Z-I locally adds one non-unique compound event index, in existing query-key
+order: `(provider, provider_message_id, correlated)`, named
+`newsletter_provider_event_retained_lookup`. It uses the existing declaration and
+startup `ensure_indexes()` path. The retained-event query, persistence algorithm,
+event correlation, delivery accounting and failure behavior are unchanged. This
+is a query-plan improvement only: it does not reduce the sequential-await count
+and is not evidence of production memory recovery. Two focused tests failed RED
+solely because the index declaration and provisioning were absent; the existing
+fail-open initialization test passed. GREEN verification passed all 37 delivery-
+evidence tests and 1,981 broader newsletter/provider/scheduler tests with 12
+existing skips. Python compilation and diff validation passed. The change is
+uncommitted and undeployed; actual production indexes remain unverified and
+require a separately authorised read-only inventory before rollout assessment.
 
 Rendered public metadata duplication is recorded as remediated, deployed and
 production-verified. Legacy Python compilation and the original external-test

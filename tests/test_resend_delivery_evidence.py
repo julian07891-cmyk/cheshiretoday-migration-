@@ -447,6 +447,86 @@ def test_index_contracts_are_minimal_and_unique():
     assert any(i.unique for i in PROVIDER_EVENT_INDEXES)
 
 
+def test_retained_event_lookup_index_matches_existing_query_contract():
+    indexes_by_name = {index.name: index for index in PROVIDER_EVENT_INDEXES}
+
+    retained_lookup = indexes_by_name["newsletter_provider_event_retained_lookup"]
+    assert retained_lookup.keys == (
+        ("provider", 1),
+        ("provider_message_id", 1),
+        ("correlated", 1),
+    )
+    assert retained_lookup.unique is False
+
+    unique_identity = indexes_by_name["newsletter_provider_event_unique"]
+    assert unique_identity.keys == (("provider", 1), ("provider_event_id", 1))
+    assert unique_identity.unique is True
+
+    reporting = indexes_by_name["newsletter_provider_event_campaign"]
+    assert reporting.keys == (
+        ("campaign_id", 1),
+        ("event_type", 1),
+        ("occurred_at", 1),
+    )
+    assert reporting.unique is False
+
+
+def test_index_provisioning_includes_retained_lookup_and_is_repeatable():
+    class IdempotentIndexCollection(FakeCollection):
+        def __init__(self):
+            super().__init__()
+            self.indexes_by_name = {}
+
+        async def create_index(self, keys, **options):
+            name = options["name"]
+            definition = (tuple(keys), dict(options))
+            existing = self.indexes_by_name.get(name)
+            if existing is not None:
+                assert existing == definition
+            self.indexes_by_name[name] = definition
+            return name
+
+    messages = IdempotentIndexCollection()
+    events = IdempotentIndexCollection()
+    repo = ResendDeliveryEvidenceRepository(messages, events)
+
+    asyncio.run(repo.ensure_indexes())
+    asyncio.run(repo.ensure_indexes())
+
+    assert set(messages.indexes_by_name) == {
+        "newsletter_provider_message_unique",
+        "newsletter_provider_message_campaign",
+    }
+    assert set(events.indexes_by_name) == {
+        "newsletter_provider_event_unique",
+        "newsletter_provider_event_campaign",
+        "newsletter_provider_event_retained_lookup",
+    }
+    retained_keys, retained_options = events.indexes_by_name[
+        "newsletter_provider_event_retained_lookup"
+    ]
+    assert retained_keys == (
+        ("provider", 1),
+        ("provider_message_id", 1),
+        ("correlated", 1),
+    )
+    assert retained_options == {"name": "newsletter_provider_event_retained_lookup"}
+
+
+def test_index_initialisation_failure_remains_fail_open(monkeypatch, caplog):
+    class Repository:
+        async def ensure_indexes(self):
+            raise RuntimeError("private index detail")
+
+    monkeypatch.setattr(
+        app_server, "_resend_delivery_evidence_repository", lambda: Repository()
+    )
+
+    assert asyncio.run(app_server._ensure_resend_delivery_evidence_indexes()) is False
+    assert "Resend delivery evidence indexes unavailable" in caplog.text
+    assert "private index detail" not in caplog.text
+
+
 def test_webhook_verification_requires_secret_and_exact_raw_body(monkeypatch):
     raw = b'{"type":"email.delivered","data":{"email_id":"email-one"}}'
     seen = {}

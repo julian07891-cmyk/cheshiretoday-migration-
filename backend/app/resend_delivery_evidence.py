@@ -48,6 +48,10 @@ PROVIDER_EVENT_INDEXES: Final = (
         keys=(("campaign_id", 1), ("event_type", 1), ("occurred_at", 1)),
         name="newsletter_provider_event_campaign",
     ),
+    IndexDefinition(
+        keys=(("provider", 1), ("provider_message_id", 1), ("correlated", 1)),
+        name="newsletter_provider_event_retained_lookup",
+    ),
 )
 
 
