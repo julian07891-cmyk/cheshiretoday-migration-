@@ -27,7 +27,6 @@ DUPLICATE_PROJECTION = {
     "updated_at": 1,
     "created_at": 1,
     "publishedDate": 1,
-    "content": 1,
 }
 SHORT_CONTENT_PROJECTION = {
     "_id": 1,
@@ -120,6 +119,10 @@ class CleanupCursor:
             self.collection.projected_content_refs.append(
                 weakref.ref(projected_content)
             )
+            if self.read_number == 1:
+                self.collection.duplicate_projected_content_refs.append(
+                    weakref.ref(projected_content)
+                )
         return projected
 
 
@@ -142,6 +145,7 @@ class CleanupArticles:
         self.duplicate_scan_refs = []
         self.short_scan_refs = []
         self.projected_content_refs = []
+        self.duplicate_projected_content_refs = []
         self.duplicate_projection = None
         self.short_projection = None
         self.duplicate_scan_iterated = False
@@ -198,12 +202,15 @@ class CleanupArticles:
 
 
 class CleanupArchive:
-    def __init__(self, events, *, fail=False):
+    def __init__(self, events, *, fail=False, before_insert=None):
         self.events = events
         self.inserted = []
         self.fail = fail
+        self.before_insert = before_insert
 
     async def insert_one(self, article):
+        if self.before_insert:
+            self.before_insert(article)
         if self.fail:
             raise RuntimeError("archive unavailable")
         self.events.append(("archive", article.get("title")))
@@ -233,6 +240,7 @@ def run_cleanup(
     archive_fails=False,
     delete_count=1,
     delete_raises=False,
+    before_archive_insert=None,
 ):
     events = []
     articles = CleanupArticles(
@@ -243,7 +251,11 @@ def run_cleanup(
         delete_count=delete_count,
         delete_raises=delete_raises,
     )
-    archive = CleanupArchive(events, fail=archive_fails)
+    archive = CleanupArchive(
+        events,
+        fail=archive_fails,
+        before_insert=before_archive_insert,
+    )
     monkeypatch.setattr(
         server,
         "db",
@@ -552,11 +564,11 @@ def test_content_length_breaks_only_later_tie(monkeypatch):
 
     assert result["duplicates_removed"] == 1
     assert [item["_id"] for item in active.records] == ["longer"]
+    assert active.find_one_calls == ["shorter", "longer"]
+    assert active.events == [("archive", "Shorter"), ("delete", "shorter")]
 
 
-def test_first_pass_streams_exact_projection_and_releases_projected_content(
-    monkeypatch,
-):
+def test_first_pass_projection_excludes_full_content(monkeypatch):
     result, active, archive = run_cleanup(
         monkeypatch,
         [article("singleton", "Unique", content=TrackedContent(LONG_CONTENT))],
@@ -564,10 +576,14 @@ def test_first_pass_streams_exact_projection_and_releases_projected_content(
 
     assert result["success"] is True
     assert active.duplicate_projection == DUPLICATE_PROJECTION
+    assert active.duplicate_projection["_id"] == 1
+    assert active.duplicate_projection["title"] == 1
+    assert active.duplicate_projection["source_url"] == 1
+    assert "content" not in active.duplicate_projection
     assert active.duplicate_scan_iterated is True
     assert active.find_one_calls == []
     assert all(ref() is None for ref in active.duplicate_scan_refs)
-    assert all(ref() is None for ref in active.projected_content_refs)
+    assert active.duplicate_projected_content_refs == []
     assert archive.inserted == []
 
 
@@ -789,6 +805,59 @@ def test_three_member_group_recomputes_latest_winner(monkeypatch):
     assert result["duplicates_removed"] == 2
     assert [item["_id"] for item in active.records] == ["oldest"]
     assert {item["title"] for item in archive.inserted} == {"Middle", "Newest"}
+
+
+def test_three_member_group_fetches_every_complete_record_before_mutation(monkeypatch):
+    records = [
+        article(
+            "first",
+            "First",
+            source_url="https://same.test/all-current",
+            publishedDate="1",
+        ),
+        article(
+            "winner",
+            "Winner",
+            source_url="https://same.test/all-current",
+            publishedDate="3",
+        ),
+        article(
+            "second",
+            "Second",
+            source_url="https://same.test/all-current",
+            publishedDate="2",
+        ),
+    ]
+    expected_fetches = ["first", "winner", "second"]
+    articles_holder = {}
+
+    def assert_revalidation_completed_before_archive(_article):
+        assert articles_holder["active"].find_one_calls == expected_fetches
+
+    events = []
+    active = CleanupArticles(records, events)
+    archive = CleanupArchive(
+        events,
+        before_insert=assert_revalidation_completed_before_archive,
+    )
+    articles_holder["active"] = active
+    monkeypatch.setattr(
+        server,
+        "db",
+        SimpleNamespace(articles=active, archived_articles=archive),
+    )
+
+    result = asyncio.run(server._remove_duplicates_internal())
+
+    assert result["duplicates_removed"] == 2
+    assert active.find_one_calls[:3] == expected_fetches
+    assert [item["_id"] for item in active.records] == ["winner"]
+    assert active.events == [
+        ("archive", "Second"),
+        ("delete", "second"),
+        ("archive", "First"),
+        ("delete", "first"),
+    ]
 
 
 def test_duplicate_archive_preserves_complete_latest_loser(monkeypatch):

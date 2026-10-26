@@ -4110,7 +4110,6 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
             "updated_at": 1,
             "created_at": 1,
             "publishedDate": 1,
-            "content": 1,
         }
 
         def duplicate_group_key(article):
@@ -4160,7 +4159,6 @@ async def _remove_duplicates_internal(memory_started_at: Optional[float] = None)
             duplicate_group["members"].append(
                 {
                     "id": projected_duplicate.get("_id"),
-                    "keep_score": duplicate_keep_score(projected_duplicate),
                     "scan_order": first_read_count,
                 }
             )
