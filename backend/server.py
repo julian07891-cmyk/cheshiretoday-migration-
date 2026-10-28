@@ -20374,7 +20374,11 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 "author": {"$first": "$author"},
                 "image": {"$first": "$image"},
                 "publishedDate": {"$first": "$publishedDate"},
-                "source": {"$first": "$source"}
+                "source": {"$first": "$source"},
+                "summary": {"$first": "$summary"},
+                "source_url": {"$first": "$source_url"},
+                "is_local_source": {"$first": "$is_local_source"},
+                "force_live": {"$first": "$force_live"}
             }},
             {"$sort": {"publishedDate": -1}},
             {"$limit": 80}
@@ -20402,12 +20406,23 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                     "author": {"$first": "$author"},
                     "image": {"$first": "$image"},
                     "publishedDate": {"$first": "$publishedDate"},
-                    "source": {"$first": "$source"}
+                    "source": {"$first": "$source"},
+                    "summary": {"$first": "$summary"},
+                    "source_url": {"$first": "$source_url"},
+                    "is_local_source": {"$first": "$is_local_source"},
+                    "force_live": {"$first": "$force_live"}
                 }},
                 {"$sort": {"publishedDate": -1}},
                 {"$limit": 20}
             ]
             recent_articles = await db.articles.aggregate(fallback_pipeline).to_list(20)
+
+        # Apply the existing public editorial veto before scoring or topic dedupe;
+        # both selection fallbacks must use only this eligible candidate pool.
+        recent_articles = [
+            article for article in recent_articles
+            if is_public_article_editorially_eligible(article)
+        ]
 
         for article in recent_articles:
             if article.get("mongo_id"):
@@ -20416,9 +20431,32 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
                 article["id"] = str(article["custom_id"])
             article.pop("mongo_id", None)
             article.pop("custom_id", None)
+            # Summary is eligibility evidence only. The committed scheduled
+            # renderer input omitted it, keeping secondary excerpts body-derived.
+            article.pop("summary", None)
 
         if not recent_articles:
             logger.warning("No articles available for digest")
+            try:
+                completion_result = await db.digest_log.update_one(
+                    {"digest_time": digest_time, "date_key": date_key,
+                     "instance_id": instance_id, "status": "sending"},
+                    {"$set": {
+                        "status": "failed",
+                        "completed_at": datetime.now(timezone.utc),
+                        "articles_count": 0,
+                        "success_count": 0,
+                        "accepted_count": 0,
+                        "provider_contacted": False,
+                        "provider_error": "No eligible articles were found before provider contact",
+                    }},
+                )
+                if completion_result.matched_count != 1:
+                    logger.warning("Daily Brief no-article finalisation not confirmed")
+            except Exception:
+                # Never retry through the general failure handler: ownership may
+                # have changed, or the completion write may be indeterminate.
+                logger.error("Daily Brief no-article finalisation failed")
             return
 
         def _term_match(blob: str, term: str) -> bool:

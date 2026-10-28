@@ -1,9 +1,11 @@
 """Daily Slice 1: synthetic storage, credentials and providers only."""
 import asyncio
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID
 from urllib.parse import parse_qs, urlsplit
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -18,6 +20,7 @@ from app.newsletter_delivery import (
     prepare_direct_delivery,
 )
 from app.newsletter_token_service import NewsletterTokenService
+from app.public_article_eligibility import is_public_article_editorially_eligible
 
 
 def subscriber(index=1, **changes):
@@ -291,6 +294,511 @@ class Collection:
     async def update_one(self, query, update, **kwargs):
         self.updates.append((query, update))
         return SimpleNamespace(matched_count=1)
+
+
+# Exercise the real scheduled selector, including the fields actually emitted by
+# its aggregation. The older general-purpose Collection intentionally does not
+# emulate aggregation and cannot detect dropped editorial metadata.
+EDITORIAL_NOW = datetime(2026, 10, 28, 7, 30, tzinfo=timezone.utc)
+PAPERS_TITLE = (
+    "The Papers: 'Budget for a difficult moment' and Netanyahu's 'fate in balance'"
+)
+
+
+def editorial_article(index, **changes):
+    return {
+        "_id": f"mongo-{index}", "id": f"uuid-{index}",
+        "title": "Cheshire business investment brings 20 jobs",
+        "summary": "New investment supports Cheshire employers.",
+        "content": "Cheshire business investment supports jobs and savings.",
+        "category": "Business", "source": "Synthetic publisher",
+        "source_url": f"https://publisher.invalid/news/{index}",
+        "publishedDate": EDITORIAL_NOW - timedelta(hours=2),
+        "author": "Synthetic author", "image": "", "is_local_source": False,
+        "force_live": False, "archived": False,
+        "manual_review_hidden_from_public": False, **changes,
+    }
+
+
+class EditorialArticleCollection(Collection):
+    """Bounded implementation of only the selector's current Mongo stages."""
+    def __init__(self, rows):
+        super().__init__(rows)
+        self.pipelines = []
+
+    @staticmethod
+    def matches(row, query):
+        for field, condition in query.items():
+            if field == "$or":
+                if not any(EditorialArticleCollection.matches(row, part)
+                           for part in condition):
+                    return False
+            elif isinstance(condition, dict) and "$ne" in condition:
+                if row.get(field) == condition["$ne"]:
+                    return False
+            elif isinstance(condition, dict) and "$gte" in condition:
+                value, boundary = row.get(field), condition["$gte"]
+                # Mongo comparisons are type-bracketed; each date representation
+                # is tested against its corresponding real query branch.
+                if isinstance(value, datetime) and isinstance(boundary, datetime):
+                    if value.replace(tzinfo=None) < boundary.replace(tzinfo=None):
+                        return False
+                elif isinstance(value, str) and isinstance(boundary, str):
+                    if value < boundary:
+                        return False
+                else:
+                    return False
+            else:
+                raise AssertionError(f"Unsupported synthetic predicate: {field}")
+        return True
+
+    def aggregate(self, pipeline):
+        self.pipelines.append(deepcopy(pipeline))
+        rows = deepcopy(self.rows)
+        for stage in pipeline:
+            if "$match" in stage:
+                rows = [row for row in rows if self.matches(row, stage["$match"])]
+            elif "$sort" in stage:
+                for field, direction in reversed(list(stage["$sort"].items())):
+                    rows.sort(key=lambda row: str(row.get(field) or ""),
+                              reverse=direction < 0)
+            elif "$group" in stage:
+                spec, grouped = stage["$group"], {}
+                for row in rows:
+                    key = row.get(spec["_id"][1:])
+                    if key in grouped:
+                        continue
+                    grouped[key] = {"_id": key}
+                    for field, expression in spec.items():
+                        if field != "_id":
+                            grouped[key][field] = row.get(expression["$first"][1:])
+                rows = list(grouped.values())
+            elif "$limit" in stage:
+                rows = rows[:stage["$limit"]]
+            else:
+                raise AssertionError("Unsupported synthetic aggregation stage")
+        return Cursor(rows)
+
+
+@pytest.fixture
+def scheduled_editorial_run(monkeypatch):
+    class FixedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return EDITORIAL_NOW.astimezone(tz) if tz else EDITORIAL_NOW.replace(tzinfo=None)
+
+        @classmethod
+        def utcnow(cls):
+            return EDITORIAL_NOW.replace(tzinfo=None)
+
+    monkeypatch.setattr(server, "datetime", FixedClock)
+    monkeypatch.setenv("HOSTNAME", "offline-editorial")
+    monkeypatch.setenv("DAILY_BRIEF_SEND_CAP", "2")
+
+    def run(articles):
+        rows = [subscriber(1, priority_daily_brief=True), subscriber(2), subscriber(3)]
+        db = SimpleNamespace(
+            subscribers=Collection(rows), articles=EditorialArticleCollection(articles),
+            digest_log=Collection(), email_batch_cursors=Collection(),
+            email_send_opportunities=Collection(),
+        )
+        captured = []
+        service = EmailService()
+        service.resend_enabled = False
+
+        def send(**kwargs):
+            captured.append(deepcopy(kwargs["articles"]))
+            service.last_accepted_recipients = [
+                delivery.context.email for delivery in kwargs["prepared_deliveries"]
+            ]
+            service.last_provider_contacted = True
+            return len(service.last_accepted_recipients), "synthetic-editorial-campaign"
+
+        monkeypatch.setattr(server, "db", db)
+        monkeypatch.setattr(server, "email_service", service)
+        monkeypatch.setattr(service, "send_daily_brief", send)
+        asyncio.run(server.send_scheduled_news_digest())
+        fields = {}
+        for _, update in db.digest_log.updates:
+            fields.update(update.get("$set", {}))
+        # Ensure failures are about editorial selection, not swallowed job errors,
+        # missing recipients, transport, or changed persistence/accounting.
+        assert len(captured) == 1
+        assert fields["status"] == "sent"
+        assert fields["selected_count"] == fields["prepared_count"] == 2
+        assert fields["accepted_count"] == 2
+        assert service.last_accepted_recipients == [subscriber(1)["email"], subscriber(2)["email"]]
+        assert len(db.email_batch_cursors.updates) == 1
+        assert len(db.email_send_opportunities.updates) == 1
+        return captured[0], db
+
+    return run
+
+
+@pytest.mark.parametrize("selection_path", ["fresh", "minimum_two", "no_fresh"])
+def test_scheduled_editorial_veto_excludes_papers_in_every_selection_path(
+    scheduled_editorial_run, selection_path,
+):
+    papers = editorial_article(
+        1, title=PAPERS_TITLE, category="UK News",
+        content="Budget changes affect jobs, mortgages and savings.",
+    )
+    legitimate = editorial_article(2)
+    if selection_path == "minimum_two":
+        # Score below 30, but not banned by the legacy weak-topic list. One
+        # legitimate candidate makes the actual minimum-two branch reachable.
+        papers["content"] = "Budget discussion accompanies police coverage."
+    if selection_path == "no_fresh":
+        for row in (papers, legitimate):
+            row["publishedDate"] = EDITORIAL_NOW - timedelta(days=3)
+    assert is_public_article_editorially_eligible(papers) is False
+    sent, db = scheduled_editorial_run([papers, legitimate])
+    assert len(db.articles.pipelines) == (2 if selection_path == "no_fresh" else 1)
+    assert legitimate["_id"] in {row["id"] for row in sent}
+    assert papers["_id"] not in {row["id"] for row in sent}
+    assert all(row["title"] != PAPERS_TITLE for row in sent)
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_scheduled_editorial_aggregation_preserves_shared_policy_metadata(
+    monkeypatch, scheduled_editorial_run, fallback,
+):
+    row = editorial_article(1)
+    if fallback:
+        row["publishedDate"] = EDITORIAL_NOW - timedelta(days=3)
+    evaluated = []
+
+    def capture_eligibility(article):
+        evaluated.append(deepcopy(article))
+        return is_public_article_editorially_eligible(article)
+
+    monkeypatch.setattr(server, "is_public_article_editorially_eligible", capture_eligibility)
+    sent, db = scheduled_editorial_run([row])
+    required = {"summary", "source_url", "is_local_source", "force_live"}
+    for pipeline in db.articles.pipelines:
+        group = next(stage["$group"] for stage in pipeline if "$group" in stage)
+        expected = required | {
+            "title", "content", "category", "publishedDate", "source", "author", "image",
+        }
+        missing = sorted(field for field in expected
+                         if group.get(field) != {"$first": f"${field}"})
+        assert missing == [], f"Editorial fields dropped by aggregation: {missing}"
+        assert group["mongo_id"] == {"$first": "$_id"}
+        assert group["custom_id"] == {"$first": "$id"}
+        assert pipeline[0]["$match"]["archived"] == {"$ne": True}
+        assert pipeline[0]["$match"]["manual_review_hidden_from_public"] == {"$ne": True}
+    assert sent[0]["id"] == row["_id"]
+    assert len(evaluated) == 1
+    assert evaluated[0]["summary"] == row["summary"]
+    assert "summary" not in sent[0]  # Preserve the committed renderer input.
+    for field in required:
+        if field != "summary":
+            assert sent[0][field] == row[field]
+
+
+@pytest.mark.parametrize("metadata", [
+    {"summary": "The Papers: a newspaper front-page roundup"},
+    {"source_url": "https://publisher.invalid/video/budget"},
+])
+def test_scheduled_editorial_veto_uses_summary_and_source_url(scheduled_editorial_run, metadata):
+    rejected = editorial_article(1, **metadata)
+    assert is_public_article_editorially_eligible(rejected) is False
+    sent, _ = scheduled_editorial_run([
+        rejected, editorial_article(2, title="UK tax rules affect Cheshire employers"),
+    ])
+    assert rejected["_id"] not in {row["id"] for row in sent}
+
+
+@pytest.mark.parametrize("title,category", [
+    ("UK Budget effects on Cheshire households", "UK News"),
+    ("Tax changes affecting Cheshire businesses", "Finance"),
+    ("Crewe employment investment creates new jobs", "Local News"),
+    ("Bank of England interest rates reshape UK mortgage costs", "UK News"),
+])
+def test_scheduled_editorial_legitimate_reporting_remains_eligible(
+    scheduled_editorial_run, title, category,
+):
+    row = editorial_article(1, title=title, category=category)
+    assert is_public_article_editorially_eligible(row) is True
+    sent, _ = scheduled_editorial_run([row])
+    assert [article["id"] for article in sent] == [row["_id"]]
+
+
+@pytest.mark.parametrize("exception", ["force_live", "is_local_source"])
+def test_scheduled_editorial_preserves_existing_shared_policy_exceptions(
+    scheduled_editorial_run, exception,
+):
+    # These are existing helper contracts, not new rescue rules. The metadata
+    # contract above prevents a future veto from losing their provenance.
+    row = editorial_article(1, title=PAPERS_TITLE, category="UK News",
+                            **{exception: True})
+    assert is_public_article_editorially_eligible(row) is True
+    sent, _ = scheduled_editorial_run([row])
+    assert [article["id"] for article in sent] == [row["_id"]]
+
+
+@pytest.mark.parametrize("iso_date", [False, True])
+def test_scheduled_editorial_keeps_existing_scoring_and_date_representations(
+    scheduled_editorial_run, iso_date,
+):
+    national = editorial_article(
+        1, title="Bank of England mortgage rates outlook", category="UK News",
+        content="Mortgage rates affect household bills.", summary="Mortgage costs.",
+    )
+    local = editorial_article(
+        2, title="Crewe factory investment creates 20 jobs", category="Local News",
+        content="Crewe factory investment supports jobs.", summary="Local investment.",
+    )
+    if iso_date:
+        for row in (national, local):
+            row["publishedDate"] = row["publishedDate"].isoformat()
+    assert all(is_public_article_editorially_eligible(row) for row in (national, local))
+    sent, db = scheduled_editorial_run([national, local])
+    # Existing local/business scoring outranks the national money-only item.
+    assert [row["id"] for row in sent] == [local["_id"], national["_id"]]
+    assert len(db.articles.pipelines) == 1
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_scheduled_editorial_status_freshness_and_topic_dedupe_controls(
+    scheduled_editorial_run, fallback,
+):
+    winner = editorial_article(1)
+    duplicate = editorial_article(2, title="Cheshire business investment brings 20 new jobs")
+    hidden = editorial_article(3, title="Tax savings for households", manual_review_hidden_from_public=True)
+    archived = editorial_article(4, title="UK mortgage rates and prices", archived=True)
+    stale = editorial_article(5, title="Nantwich housing plan supports growth",
+                              publishedDate=EDITORIAL_NOW - timedelta(days=4))
+    rows = [winner, duplicate, hidden, archived]
+    if fallback:
+        for row in rows:
+            row["publishedDate"] = EDITORIAL_NOW - timedelta(days=3)
+    else:
+        rows.append(stale)
+    sent, db = scheduled_editorial_run(rows)
+    assert [row["id"] for row in sent] == [winner["_id"]]
+    assert len(db.articles.pipelines) == (2 if fallback else 1)
+
+
+@pytest.mark.parametrize("pool", ["fresh_rejected", "fallback_rejected", "empty"])
+def test_scheduled_zero_eligible_finalises_owned_digest_without_delivery(
+    monkeypatch, scheduled_editorial_run, pool,
+):
+    # Reuse the fixed clock/environment setup, not the successful-send-only
+    # runner: an empty eligible pool must never enter that runner's send mock.
+    rows = [] if pool == "empty" else [editorial_article(
+        1, title=PAPERS_TITLE, category="UK News",
+    )]
+    if pool == "fallback_rejected":
+        rows[0]["publishedDate"] = EDITORIAL_NOW - timedelta(days=3)
+    assert all(not is_public_article_editorially_eligible(row) for row in rows)
+    db = SimpleNamespace(
+        subscribers=Collection([subscriber(1), subscriber(2)]),
+        articles=EditorialArticleCollection(rows), digest_log=Collection(),
+        email_batch_cursors=Collection(), email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    service.resend_enabled = False
+    send_calls, phases = [], []
+
+    def unexpected_send(**kwargs):
+        # Return normally so an erroneous send cannot masquerade as a passing
+        # pre-provider failure through the outer exception handler.
+        send_calls.append(kwargs)
+        return 0, None
+
+    evidence = AsyncMock(return_value=(True, 0))
+    ledger = AsyncMock(return_value=0)
+    cursor = AsyncMock()
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(service, "send_daily_brief", unexpected_send)
+    monkeypatch.setattr(server, "_save_last_resend_acceptances", evidence)
+    monkeypatch.setattr(server, "_save_email_send_opportunities", ledger)
+    monkeypatch.setattr(server, "_save_email_batch_cursor", cursor)
+    monkeypatch.setattr(
+        server, "log_daily_brief_memory",
+        lambda _logger, phase, _started_at, counts=None: phases.append(phase),
+    )
+    asyncio.run(server.send_scheduled_news_digest())
+
+    assert send_calls == []
+    evidence.assert_not_awaited()
+    ledger.assert_not_awaited()
+    cursor.assert_not_awaited()
+    assert db.email_send_opportunities.updates == []
+    assert db.email_batch_cursors.updates == []
+    assert service.last_accepted_recipients == []
+    assert len(db.articles.pipelines) == (1 if pool == "fresh_rejected" else 2)
+    assert len(db.digest_log.inserts) == 1
+    claim = db.digest_log.inserts[0]
+    fields = dict(claim)
+    for _, update in db.digest_log.updates:
+        fields.update(update.get("$set", {}))
+    # Existing Daily Brief zero-acceptance completion uses failed/completed_at;
+    # Weekly Roundup independently establishes failed for no articles pre-send.
+    assert fields["status"] == "failed", "No-send digest left in an in-progress state"
+    assert fields["success_count"] == fields["accepted_count"] == 0
+    assert fields["provider_contacted"] is False
+    assert fields["articles_count"] == 0
+    assert isinstance(fields.get("completed_at"), datetime)
+    assert fields["completed_at"] == EDITORIAL_NOW
+    terminal_query, _ = next(
+        (query, update) for query, update in reversed(db.digest_log.updates)
+        if update.get("$set", {}).get("status") == "failed"
+    )
+    assert terminal_query["instance_id"] == claim["instance_id"]
+    assert terminal_query["digest_time"] == claim["digest_time"]
+    assert terminal_query["date_key"] == claim["date_key"]
+    assert "provider_returned" not in phases
+    assert "send_ledger_persistence_completed" not in phases
+    assert "batch_cursor_persistence_completed" not in phases
+    assert phases[-1] == "function_returned"
+
+
+@pytest.mark.parametrize("scenario", [
+    "exception", "different_owner", "sent", "failed", "partial", "ambiguous",
+    "zero_match", "owned_sending",
+])
+def test_zero_eligible_completion_preserves_owner_and_terminal_state(
+    monkeypatch, scheduled_editorial_run, caplog, scenario,
+):
+    caplog.set_level("INFO", logger="backend.server")
+
+    class OwnershipDigest(Collection):
+        def __init__(self):
+            super().__init__()
+            self.record = None
+            self.before_completion = None
+            self.completion_attempts = []
+
+        async def insert_one(self, record):
+            self.record = deepcopy(record)
+            return await super().insert_one(record)
+
+        async def find_one(self, query):
+            if self.record and all(self.record.get(k) == v for k, v in query.items()):
+                return {"_id": "claim", **self.record}
+            return None
+
+        async def update_one(self, query, update, **kwargs):
+            fields = update.get("$set", {})
+            if fields.get("status") == "failed":
+                self.completion_attempts.append(deepcopy(query))
+                if self.before_completion is None:
+                    if scenario in {"exception", "different_owner"}:
+                        self.record["instance_id"] = "replacement-owner"
+                        self.record["status"] = "sent"
+                    elif scenario in {"sent", "failed", "partial", "ambiguous"}:
+                        self.record["status"] = scenario
+                    elif scenario == "zero_match":
+                        self.record["status"] = "cancelled"
+                    self.before_completion = deepcopy(self.record)
+                    if scenario == "exception":
+                        raise RuntimeError("PRIVATE_EXCEPTION reader@synthetic.invalid")
+            matched = int(all(self.record.get(k) == v for k, v in query.items()))
+            self.updates.append((deepcopy(query), deepcopy(update)))
+            if matched:
+                self.record.update(deepcopy(fields))
+            return SimpleNamespace(matched_count=matched)
+
+    digest = OwnershipDigest()
+    db = SimpleNamespace(
+        subscribers=Collection([subscriber()]),
+        articles=EditorialArticleCollection([editorial_article(1, title=PAPERS_TITLE)]),
+        digest_log=digest, email_batch_cursors=Collection(),
+        email_send_opportunities=Collection(),
+    )
+    service = EmailService()
+    send_calls, phases = [], []
+
+    def forbidden_send(**kwargs):
+        send_calls.append(True)
+        return 0, None
+
+    evidence, ledger, cursor = AsyncMock(), AsyncMock(), AsyncMock()
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "email_service", service)
+    monkeypatch.setattr(service, "send_daily_brief", forbidden_send)
+    monkeypatch.setattr(server, "_save_last_resend_acceptances", evidence)
+    monkeypatch.setattr(server, "_save_email_send_opportunities", ledger)
+    monkeypatch.setattr(server, "_save_email_batch_cursor", cursor)
+    monkeypatch.setattr(server, "log_daily_brief_memory",
+                        lambda _l, phase, _s, counts=None: phases.append(phase))
+    asyncio.run(server.send_scheduled_news_digest())
+
+    assert send_calls == []
+    evidence.assert_not_awaited()
+    ledger.assert_not_awaited()
+    cursor.assert_not_awaited()
+    assert len(db.articles.pipelines) == 1
+    assert len(digest.completion_attempts) == 1, "Completion retried through outer handler"
+    guard = digest.completion_attempts[0]
+    assert guard == {
+        "digest_time": "DailyBrief", "date_key": "20261028",
+        "instance_id": digest.inserts[0]["instance_id"], "status": "sending",
+    }
+    assert "PRIVATE_EXCEPTION" not in caplog.text
+    assert "reader@synthetic.invalid" not in caplog.text
+    assert "provider_returned" not in phases
+    assert "completion_persistence_completed" not in phases
+    assert phases[-1] == "function_returned"
+    if scenario == "owned_sending":
+        assert digest.record["status"] == "failed"
+        assert digest.record["completed_at"] == EDITORIAL_NOW
+        assert digest.record["accepted_count"] == digest.record["success_count"] == 0
+        assert digest.record["provider_contacted"] is False
+    else:
+        assert digest.record == digest.before_completion
+        assert "completed_at" not in digest.record
+        assert "Digest log updated" not in caplog.text
+        expected = ("Daily Brief no-article finalisation failed" if scenario == "exception"
+                    else "Daily Brief no-article finalisation not confirmed")
+        assert expected in caplog.text
+
+
+@pytest.mark.parametrize("format_index", [0, 1], ids=["html", "plain_text"])
+def test_scheduled_secondary_excerpt_preserves_committed_body_derived_output(
+    monkeypatch, scheduled_editorial_run, format_index,
+):
+    hero = editorial_article(1)
+    secondary = editorial_article(
+        2, title="UK mortgage rates outlook", category="UK News",
+        content="Mortgage bills affect households. Further verified reporting follows.",
+        summary="A different stored summary must not replace the existing newsletter excerpt.",
+    )
+    assert is_public_article_editorially_eligible(secondary)
+    selected, _ = scheduled_editorial_run([hero, secondary])
+    assert [row["id"] for row in selected] == [hero["_id"], secondary["_id"]]
+    # HEAD's two aggregation branches omitted summary. Reconstruct that exact
+    # presentation input, not a different version of the shared email renderer.
+    committed_input = [{key: value for key, value in row.items() if key != "summary"}
+                       for row in selected]
+    renderer = EmailService()
+    renderer.resend_enabled = False
+    messages = []
+
+    def capture(_to, _subject, html, text, **kwargs):
+        messages.append((html, text))
+        return True
+
+    monkeypatch.setattr(renderer, "_send_email", capture)
+    monkeypatch.setattr(renderer, "_generate_tracking_id", lambda *_: "fixed-excerpt-test")
+    prepared = deliveries(1)
+    for articles in (committed_input, selected):
+        assert renderer.send_daily_brief(
+            prepared_deliveries=prepared, token_service=TOKEN_SERVICE, articles=articles,
+        )[0] == 1
+    assert len(messages) == 2
+    expected_html, expected_text = messages[0]
+    actual_html, actual_text = messages[1]
+    assert "Mortgage bills affect households." in expected_html
+    assert "Mortgage bills affect households." in expected_text
+    assert "A different stored summary" not in expected_html
+    assert "A different stored summary" not in expected_text
+    assert messages[1][format_index] == messages[0][format_index], (
+        "Eligibility metadata changed the secondary excerpt"
+    )
 
 
 @pytest.mark.parametrize("manual", [False, True])
