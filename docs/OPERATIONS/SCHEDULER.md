@@ -58,7 +58,19 @@ Do not trigger imports or sends for ordinary QA, delete locks, edit job times, e
 
 ## Known limitations
 
-APScheduler runs inside the web process and depends on eligible process topology. Article lock acquisition exceptions currently warn and continue, making database/lock observability important. Committed schedules do not prove a particular run executed.
+APScheduler runs inside the web process and depends on eligible process topology. Article lock seed/acquisition exceptions log an error and skip generation and cleanup (the accepted `d8943e8` fail-closed correction). Committed schedules do not prove a particular run executed.
+
+The local Stage 2Z-AO foundation adds authenticated `GET /api/admin/active-operations`
+diagnostics for the fixed `active_operations_v1` manifest only. It reports this
+process's active execution counters through persistence, cleanup and return, not
+distributed lock ownership, pending executor work or all application activity.
+Every read validates wrapper and HTTP route wiring before refreshing coverage;
+raw snapshots become stale after 30 seconds without revalidation. Missing or
+failed coverage is unknown, never inferred idle. Tracking integrity failures
+remain unknown for that registry instance. `scope=process_local` and
+`all_instances_covered=false` are unconditional: a load-balanced response cannot
+clear a deployment-wide release gate. This implementation is local, uncommitted
+and undeployed; production acceptance requires separate approval.
 
 ## Related documents
 

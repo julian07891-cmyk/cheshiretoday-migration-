@@ -451,7 +451,11 @@ def test_slice6_campaign_interface_guards_remain():
     old_endpoint = next(node for node in ast.walk(old) if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_send_campaign_email")
     current_endpoint = next(node for node in ast.walk(current) if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_send_campaign_email")
     assert ast.dump(old_endpoint.args, include_attributes=False) == ast.dump(current_endpoint.args, include_attributes=False)
-    assert [ast.dump(node, include_attributes=False) for node in old_endpoint.decorator_list] == [ast.dump(node, include_attributes=False) for node in current_endpoint.decorator_list]
+    # Keep every historical route declaration pinned; permit only the exact
+    # Stage 2Z-AO transparent diagnostic wrapper, not arbitrary extra decorators.
+    tracking = ast.parse('_observe_active_operation("manual_newsletter")', mode="eval").body
+    expected_decorators = old_endpoint.decorator_list + [tracking]
+    assert [ast.dump(node, include_attributes=False) for node in expected_decorators] == [ast.dump(node, include_attributes=False) for node in current_endpoint.decorator_list]
 
     service = ast.parse(Path("backend/app/email_service.py").read_text())
     cls = next(node for node in service.body if isinstance(node, ast.ClassDef) and node.name == "EmailService")

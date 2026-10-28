@@ -44,6 +44,66 @@ instructions to this file.
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance
 ran at `2f40374`, before later application and documentation revisions.
 
+### 28 October 2026 — Stage 2Z-AO active-operation foundation (local only)
+
+Repository baseline is `a5c80b2a00f8ffeca1901cdfc8ac96c327fb6f42`, with the
+local origin tracking reference at `fe20ed42f69b6e0b5abe8d471ccf579820f9dde3`.
+The Stage 2Z-AM/AN investigation established that schedules, stale locks and
+terminal digest records cannot prove every operation has returned. The bounded
+local implementation adds eight fixed operation counters covering the exact
+28-entry-point `active_operations_v1` manifest: article generation/import and
+maintenance, scheduled Daily/Weekly, manual newsletter/diagnostic sends, Admin AI
+and provider-evidence ingestion. Same-task nesting counts once under the outer
+operation; independent child tasks count separately. Tracking lasts through
+persistence, cleanup, exception/cancellation handling and final return.
+
+Authenticated `GET /api/admin/active-operations` validates actual wrappers and
+HTTP route bindings before refreshing monotonic coverage age. Snapshots include
+only fixed metadata, process/instance identity, UTC time and detached counters;
+responses are private/no-store. Missing, unsupported, stale or unavailable
+coverage returns unknown with `active_counts=null`. Diagnostic integrity failures
+remain unknown for that registry instance and cannot interrupt or retry business
+work. The existing scheduler-status response is unchanged. This is not a lock,
+database registry or distributed heartbeat: `scope=process_local` and
+`all_instances_covered=false` are unconditional. It cannot establish all-instance
+inactivity, pending scheduler work, or coverage beyond the declared manifest.
+
+The original Stage 2Z-AN 53 expected failures/one control pass are now **54/54
+GREEN** without changing that test file. Additional endpoint, signature,
+cancellation, Weekly final-persistence and AST-parity checks bring focused QA to
+**90 passed**. The historical manual-campaign decorator snapshot permits only the
+exact new diagnostic decorator while preserving every historical route/argument
+assertion. All pre-existing top-level server function definitions, including
+duplicate names, match the committed baseline after removing only the approved
+tracking decorators. No business body, scheduler/lock, database/index, recipient,
+provider-call, publication or cleanup decision changed. The scheduler operations
+guide now reflects the already accepted `d8943e8` fail-closed lock behaviour.
+
+Final local QA: **90 focused passed (13 warnings)** and **682 expanded adjacent
+passed (36 warnings)**, with zero failures or skips. Existing warning categories
+are framework deprecations, `utcnow()` and gzip cleanup warnings. Python
+compilation and tracked/new-file whitespace checks pass. Synthetic Mongo settings
+and mocked transports were used; new observability tests forbid socket connects.
+
+Stage 2Z-AP independent review then found a P2 false-idle path: FastAPI executes
+`route.dependant.call`, but validation checked only the module and `route.endpoint`
+bindings. Stage 2Z-AQ reproduced six genuine RED failures with one normal-binding
+control pass, including a real authenticated ASGI request suspended in mocked AI
+work. Three added validation lines now also require the executable binding to be
+the approved wrapper. Missing/replaced bindings invalidate coverage without
+repairing routes or changing business execution; invalidation remains sticky
+after restoration. All previous tests remain intact. Focused QA now passes
+**97 tests (30 reported warnings)**; the expanded adjacent gate passes **682 tests
+(36 warnings)**, with zero failures/skips. Compilation and whitespace checks pass.
+The existing gzip cleanup warning also appeared during focused-run shutdown.
+This correction remains local and requires independent read-only verification.
+
+This work is **local, uncommitted and undeployed**. Independent read-only review
+is required. No live production/provider/database operation was performed.
+Production memory recovery remains unproven and the existing Nub fallback
+acceptance limitations remain open. The foundation does not relax any release
+gate or authorise a push, deployment, restart or manual job.
+
 ### 19 October 2026 — Stage 2P memory lifecycle correction and bounded observability (local only)
 
 Persistent process RSS growth across four natural imports justified a bounded

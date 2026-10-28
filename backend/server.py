@@ -46,6 +46,27 @@ except ModuleNotFoundError:
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 LOCAL_DEV_NO_DB = os.getenv("LOCAL_DEV_NO_DB") == "1"
+from app.active_operation_observability import (
+    ActiveOperationRegistry,
+    COVERAGE_VERSION as ACTIVE_OPERATION_COVERAGE_VERSION,
+    REQUIRED_ENTRY_POINTS as ACTIVE_OPERATION_ENTRY_POINTS,
+    is_observed_operation,
+    observe_operation,
+)
+
+active_operation_registry = ActiveOperationRegistry(
+    instance_id=os.environ.get("HOSTNAME", ""), process_id=os.getpid(),
+)
+
+
+def _active_operation_registry_provider():
+    return active_operation_registry
+
+
+def _observe_active_operation(kind):
+    return observe_operation(kind, _active_operation_registry_provider)
+
+
 # Import services AFTER loading environment variables
 from app.email_service import email_service
 from app.news_feed_service import (
@@ -1966,6 +1987,7 @@ async def seed_authority_pages(auth: bool = Depends(get_admin_auth)):
 
 # =====================================================================================
 
+@_observe_active_operation("article_generation")
 async def _generate_articles_internal(
     request: GenerateArticlesRequest,
     memory_started_at: Optional[float] = None,
@@ -2018,6 +2040,7 @@ async def _generate_articles_internal(
 
 
 @api_router.post("/generate-articles", response_model=GenerateArticlesResponse)
+@_observe_active_operation("article_generation")
 async def generate_articles(
     request: GenerateArticlesRequest,
     authorized: bool = Depends(get_admin_auth),
@@ -2077,6 +2100,7 @@ async def get_local_real_news(limit: int = 20):
 
 
 @api_router.post("/import-real-news")
+@_observe_active_operation("article_import")
 async def import_real_news(
     limit: int = 20,
     category: Optional[str] = None,
@@ -2389,6 +2413,7 @@ def is_guardian_politics_liveblog(source_url: str) -> bool:
         return False
 
 
+@_observe_active_operation("article_import")
 async def _import_hybrid_news_internal(
     request: HybridNewsRequest,
     memory_started_at: Optional[float] = None,
@@ -3724,6 +3749,7 @@ async def _import_hybrid_news_internal(
 
 
 @api_router.post("/import-hybrid-news")
+@_observe_active_operation("article_import")
 async def import_hybrid_news(
     request: HybridNewsRequest = HybridNewsRequest(),
     authorized: bool = Depends(get_admin_auth),
@@ -3732,6 +3758,7 @@ async def import_hybrid_news(
 
 
 @api_router.post("/admin/clear-and-refresh")
+@_observe_active_operation("article_maintenance")
 async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
     """
     Archive all articles and import fresh news using hybrid approach.
@@ -3805,6 +3832,7 @@ async def clear_and_refresh_news(authorized: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/admin/perplexity-rewrite-test")
+@_observe_active_operation("admin_ai")
 async def admin_perplexity_rewrite_test(
     title: str = Body(...),
     summary: str = Body(""),
@@ -3852,6 +3880,7 @@ async def admin_perplexity_rewrite_test(
 
 
 @api_router.post("/admin/regenerate-recent-content")
+@_observe_active_operation("article_maintenance")
 async def regenerate_recent_article_content(authorized: bool = Depends(get_admin_auth)):
     """
     Regenerate recent articles using Perplexity, regardless of current content length.
@@ -3984,6 +4013,7 @@ async def regenerate_recent_article_content(authorized: bool = Depends(get_admin
 
 
 @api_router.post("/admin/regenerate-content")
+@_observe_active_operation("article_maintenance")
 async def regenerate_article_content(authorized: bool = Depends(get_admin_auth)):
     """
     Regenerate content for all existing articles using Perplexity.
@@ -4092,6 +4122,7 @@ async def clean_article_content(authorized: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@_observe_active_operation("article_maintenance")
 async def _remove_duplicates_internal(memory_started_at: Optional[float] = None):
     """
     Internal helper function to remove duplicate articles.
@@ -9697,6 +9728,7 @@ Rules:
 
 
 @api_router.post("/admin/articles/{article_id}/ai-review")
+@_observe_active_operation("admin_ai")
 async def admin_ai_review_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
     """Admin-only ChatGPT/OpenAI article review. Flags risk; does not auto-edit/archive/hide."""
     try:
@@ -9737,6 +9769,7 @@ async def admin_ai_review_article(article_id: str, authorized: bool = Depends(ge
 
 
 @api_router.post("/admin/articles/{article_id}/openai-rewrite-draft")
+@_observe_active_operation("admin_ai")
 async def admin_openai_rewrite_draft(article_id: str, authorized: bool = Depends(get_admin_auth)):
     """Admin-only OpenAI rewrite draft. Returns draft text only; does not save, publish, unhide or update."""
     try:
@@ -13790,6 +13823,7 @@ def _prepare_selected_newsletter_deliveries(selected_emails, candidates):
 
 
 @api_router.post("/send-digest")
+@_observe_active_operation("manual_newsletter")
 async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
     """Manually trigger sending news digest to all subscribers (for testing)"""
     try:
@@ -14070,6 +14104,7 @@ async def send_digest_now(authorized: bool = Depends(get_admin_auth)):
         raise HTTPException(status_code=500, detail="Daily Brief unavailable") from None
 
 @api_router.post("/send-digest-test")
+@_observe_active_operation("manual_newsletter")
 async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_preview_links: bool = False, auth: bool = Depends(get_admin_auth)):
     """
     TEST ENDPOINT: Send digest to a SINGLE email address for testing.
@@ -14181,6 +14216,7 @@ async def send_digest_test(test_email: str = "news@cheshiretoday.co.uk", use_pre
 
 
 @api_router.post("/send-weekly-roundup-test")
+@_observe_active_operation("manual_newsletter")
 async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk", auth: bool = Depends(get_admin_auth)):
     """
     TEST ENDPOINT: Send Weekly Roundup to a SINGLE email address for testing.
@@ -14279,6 +14315,7 @@ async def send_weekly_roundup_test(test_email: str = "news@cheshiretoday.co.uk",
 
 
 @api_router.post("/send-weekly-roundup-batch-test")
+@_observe_active_operation("manual_newsletter")
 async def send_weekly_roundup_batch_test(cap: int = 25, auth: bool = Depends(get_admin_auth)):
     """
     DIAGNOSTIC ENDPOINT: Send Weekly Roundup to a small rotating batch.
@@ -14425,6 +14462,7 @@ class BreakingNewsRequest(BaseModel):
     article_url: Optional[str] = None  # Link to live updates
 
 @api_router.post("/send-breaking-news")
+@_observe_active_operation("manual_newsletter")
 async def send_breaking_news_alert(request: BreakingNewsRequest, auth: bool = Depends(get_admin_auth)):
     """
     Send Breaking News Alert to all subscribers with breaking_news preference.
@@ -14522,6 +14560,7 @@ async def get_digest_log(limit: int = 50, auth: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/webhooks/resend", status_code=204)
+@_observe_active_operation("provider_evidence")
 async def receive_resend_webhook(request: Request):
     """Verify and retain bounded Resend delivery evidence."""
     max_body_bytes = 256 * 1024
@@ -14899,6 +14938,7 @@ async def get_email_analytics_trends(auth: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/send-announcement-email")
+@_observe_active_operation("manual_newsletter")
 async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
     """
     Send one-time announcement email to ALL subscribers about the new email strategy.
@@ -14968,6 +15008,7 @@ async def send_migration_announcement(auth: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/send-site-update-part1")
+@_observe_active_operation("manual_newsletter")
 async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
     """Send Site Update (Part 1) to ALL subscribers. Requires admin authentication."""
     try:
@@ -15025,6 +15066,7 @@ async def send_site_update_part1(auth: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/send-site-update-part2")
+@_observe_active_operation("manual_newsletter")
 async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
     """Send Site Update (Part 2) to ALL subscribers. Requires admin authentication."""
     try:
@@ -15081,6 +15123,7 @@ async def send_site_update_part2(auth: bool = Depends(get_admin_auth)):
 
 
 @api_router.post("/admin/run-onboarding-emails")
+@_observe_active_operation("manual_newsletter")
 async def admin_run_onboarding_emails(dry_run: int = 1, auth: bool = Depends(get_admin_auth)):
     """
     Run onboarding emails based on subscriber age:
@@ -15271,6 +15314,7 @@ class CampaignEmailRequest(BaseModel):
 
 
 @api_router.post("/admin/send-campaign-email")
+@_observe_active_operation("manual_newsletter")
 async def admin_send_campaign_email(request: CampaignEmailRequest, auth: bool = Depends(get_admin_auth)):
     """Send a manual campaign email. mode=test sends only to test_email; mode=all sends to all subscribers."""
     subject = (request.subject or "").strip()
@@ -17388,6 +17432,7 @@ async def api_ads_txt():
 
 
 @api_router.post("/trigger-daily-generation")
+@_observe_active_operation("article_generation")
 async def trigger_daily_generation(authorized: bool = Depends(get_admin_auth)):
     """Manually trigger daily article generation (admin endpoint)"""
     try:
@@ -18164,6 +18209,48 @@ async def fix_duplicate_images():
     except Exception as e:
         logger.error(f"Error fixing duplicate images: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/admin/active-operations")
+async def get_active_operations(response: Response, auth: bool = Depends(get_admin_auth)):
+    """Read-only diagnostic for this process and the fixed v1 manifest only."""
+    response.headers["Cache-Control"] = "private, no-store"
+    try:
+        validated = {}
+        internal_only = {
+            "_generate_articles_internal", "_import_hybrid_news_internal",
+            "_remove_duplicates_internal", "cap_visible_articles",
+            "daily_article_generation", "send_scheduled_news_digest",
+            "send_weekly_roundup_email",
+        }
+        for name, kind in ACTIVE_OPERATION_ENTRY_POINTS.items():
+            function = globals().get(name)
+            if not is_observed_operation(function, kind, _active_operation_registry_provider):
+                break
+            # For HTTP entry points also validate the callable FastAPI actually
+            # invokes, not merely the module's current binding.
+            routes = [route for route in app.routes if getattr(route, "name", None) == name]
+            if (name not in internal_only and len(routes) != 1) or any(
+                route.endpoint is not function for route in routes
+            ) or any(
+                getattr(getattr(route, "dependant", None), "call", None) is not function
+                for route in routes
+            ):
+                break
+            validated[name] = kind
+        if validated != ACTIVE_OPERATION_ENTRY_POINTS:
+            active_operation_registry.mark_unavailable()
+        active_operation_registry.confirm_coverage(
+            validated, version=ACTIVE_OPERATION_COVERAGE_VERSION,
+        )
+        return active_operation_registry.snapshot(max_age_seconds=30)
+    except Exception:
+        try:
+            active_operation_registry.mark_unavailable()
+        except Exception:
+            pass
+        # No exception text, credentials, requests or payloads enter diagnostics.
+        return ActiveOperationRegistry(instance_id="", process_id=os.getpid()).snapshot()
+
 
 @api_router.get("/scheduler-status")
 async def get_scheduler_status():
@@ -19601,6 +19688,7 @@ def _plan_visible_pool_scalars(eligible: list, protected_ids: set, keep: int) ->
     }
 
 
+@_observe_active_operation("article_maintenance")
 async def cap_visible_articles(keep: int = 200):
     """
     Keep the newest eligible records visible while protecting owner-approved work.
@@ -19745,6 +19833,7 @@ async def cap_visible_articles(keep: int = 200):
         logger.error(f"cap_visible_articles error: {str(e)}")
         return {"success": False, "error": str(e)}
 
+@_observe_active_operation("article_generation")
 async def daily_article_generation(count: int = 12):
     """Generate new articles daily with fault tolerance and distributed locking"""
     prepare_article_generation_memory_observability()
@@ -20107,6 +20196,7 @@ async def _claim_weekly_roundup_batch(
         return None, "claim_race_lost"
 
 
+@_observe_active_operation("daily_brief")
 async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
     """
     Send The Daily Brief to all subscribers with daily_brief preference.
@@ -20852,6 +20942,7 @@ async def send_scheduled_news_digest(digest_time: str = "DailyBrief"):
         daily_memory_checkpoint("function_returned")
 
 
+@_observe_active_operation("weekly_roundup")
 async def send_weekly_roundup_email(batch_slot: int = 1):
     """
     Send The Weekly Roundup to all subscribers with weekly_roundup preference.
