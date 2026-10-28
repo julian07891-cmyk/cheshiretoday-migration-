@@ -4935,6 +4935,43 @@ async def get_articles_by_location(
         logger.error(f"Error getting articles by location: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+async def _local_category_chronological_page(query, projection, skip, limit):
+    """Select a bounded Local page at UTC millisecond precision, then revalidate."""
+    date_key = {
+        "$switch": {
+            "branches": [
+                {"case": {"$eq": [{"$type": "$publishedDate"}, "date"]},
+                 "then": "$publishedDate"},
+                {"case": {"$eq": [{"$type": "$publishedDate"}, "string"]},
+                 "then": {"$convert": {"input": "$publishedDate", "to": "date",
+                                          "onError": None, "onNull": None}}},
+            ],
+            "default": None,
+        }
+    }
+    selected = await db.articles.aggregate(
+        [
+            {"$match": query},
+            {"$project": {"_id": 1, "publishedDate": 1}},
+            {"$set": {"_local_publication_ms": date_key}},
+            {"$sort": {"_local_publication_ms": -1, "_id": 1}},
+            {"$skip": skip},
+            {"$limit": limit},
+        ],
+        maxTimeMS=2000,
+        allowDiskUse=False,
+    ).to_list(limit)
+    selected_ids = [item["_id"] for item in selected]
+    if not selected_ids:
+        return []
+    # Visibility/locality may change across awaits. Do not refill short pages.
+    hydrated = await db.articles.find(
+        {"$and": [query, {"_id": {"$in": selected_ids}}]}, projection,
+    ).max_time_ms(2000).limit(limit).to_list(limit)
+    by_id = {item["_id"]: item for item in hydrated}
+    return [by_id[identifier] for identifier in selected_ids if identifier in by_id]
+
+
 @api_router.get("/articles")
 async def get_articles(
     category: Optional[str] = None, 
@@ -4987,6 +5024,19 @@ async def get_articles(
         "dedupe_removed_count": 0,
         "final_count": 0,
     } if homepage_timing_enabled else None
+    local_hub = _public_category_hub_for_value(category) if category else None
+    local_chronology = (
+        not include_archived and not (search and len(search) >= 2)
+        and local_hub is not None and local_hub["canonical_category"] == "Local News"
+    )
+    if local_chronology and (
+        type(skip) is not int or type(limit) is not int
+        or not 0 <= skip <= 599 or not 1 <= limit <= 30 or skip + limit > 600
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Local pagination requires skip 0-599, limit 1-30, and skip + limit <= 600",
+        )
     try:
         # Check cache for default homepage request (most common)
         cache_key = f"articles:{category}:{skip}:{limit}:{source_type}:{include_archived}:{with_total}:{search or ''}"
@@ -5076,7 +5126,9 @@ async def get_articles(
 
         # The exact homepage list response does not expose or otherwise consume a total.
         # Other request shapes retain the existing pagination/UI count contract.
-        if not exact_homepage_list_request:
+        if local_chronology:
+            total_count = await db.articles.count_documents(query, maxTimeMS=2000)
+        elif not exact_homepage_list_request:
             try:
                 count_started = time.perf_counter() if homepage_timing_enabled else None
                 total_count = await db.articles.count_documents(query)
@@ -5545,9 +5597,7 @@ async def get_articles(
                 articles = articles[skip:]
         else:
             # Query with projection to fetch only required fields for better performance
-            articles = await db.articles.find(
-                query,
-                {
+            projection = {
                     '_id': 1,
                     'title': 1,
                     'content': 1,
@@ -5563,7 +5613,12 @@ async def get_articles(
                     'scope': 1,
                     'is_local_source': 1
                 }
-            ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
+            if local_chronology:
+                articles = await _local_category_chronological_page(query, projection, skip, limit)
+            else:
+                articles = await db.articles.find(
+                    query, projection,
+                ).sort('publishedDate', -1).skip(skip).limit(limit).to_list(limit)
         
         # Helper function to clean word count from content
         def clean_word_count(content):
@@ -5755,6 +5810,14 @@ async def get_articles(
             return {"articles": unique_articles, "total": total_count, "skip": skip, "limit": limit, "category": category, "include_archived": include_archived}
         return unique_articles
     except Exception as e:
+        if local_chronology:
+            from pymongo.errors import ConnectionFailure, ExecutionTimeout
+
+            if isinstance(e, (ConnectionFailure, ExecutionTimeout)) or getattr(e, "timeout", False):
+                logger.warning("local_category_query_failed reason=database_unavailable")
+                raise HTTPException(status_code=503, detail="Local articles temporarily unavailable") from None
+            logger.error("local_category_query_failed reason=unexpected")
+            raise HTTPException(status_code=500, detail="Unable to retrieve Local articles") from None
         logging.error(f"Error getting articles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
