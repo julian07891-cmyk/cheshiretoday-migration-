@@ -4949,27 +4949,35 @@ async def _local_category_chronological_page(query, projection, skip, limit):
             "default": None,
         }
     }
-    selected = await db.articles.aggregate(
+    candidates = db.articles.aggregate(
         [
             {"$match": query},
-            {"$project": {"_id": 1, "publishedDate": 1}},
+            {"$project": {"_id": 1, "publishedDate": 1, "title": 1,
+                          "summary": 1, "category": 1, "source": 1,
+                          "source_url": 1, "is_local_source": 1, "force_live": 1}},
             {"$set": {"_local_publication_ms": date_key}},
             {"$sort": {"_local_publication_ms": -1, "_id": 1}},
-            {"$skip": skip},
-            {"$limit": limit},
         ],
         maxTimeMS=2000,
         allowDiskUse=False,
-    ).to_list(limit)
-    selected_ids = [item["_id"] for item in selected]
+    ).batch_size(250)
+    selected_ids = []
+    eligible_total = 0
+    async for item in candidates:
+        if not is_public_article_editorially_eligible(item):
+            continue
+        if skip <= eligible_total < skip + limit:
+            selected_ids.append(item["_id"])
+        eligible_total += 1
     if not selected_ids:
-        return []
+        return [], eligible_total
     # Visibility/locality may change across awaits. Do not refill short pages.
     hydrated = await db.articles.find(
         {"$and": [query, {"_id": {"$in": selected_ids}}]}, projection,
     ).max_time_ms(2000).limit(limit).to_list(limit)
-    by_id = {item["_id"]: item for item in hydrated}
-    return [by_id[identifier] for identifier in selected_ids if identifier in by_id]
+    by_id = {item["_id"]: item for item in hydrated
+             if is_public_article_editorially_eligible(item)}
+    return [by_id[identifier] for identifier in selected_ids if identifier in by_id], eligible_total
 
 
 @api_router.get("/articles")
@@ -5126,9 +5134,7 @@ async def get_articles(
 
         # The exact homepage list response does not expose or otherwise consume a total.
         # Other request shapes retain the existing pagination/UI count contract.
-        if local_chronology:
-            total_count = await db.articles.count_documents(query, maxTimeMS=2000)
-        elif not exact_homepage_list_request:
+        if not local_chronology and not exact_homepage_list_request:
             try:
                 count_started = time.perf_counter() if homepage_timing_enabled else None
                 total_count = await db.articles.count_documents(query)
@@ -5614,7 +5620,8 @@ async def get_articles(
                     'is_local_source': 1
                 }
             if local_chronology:
-                articles = await _local_category_chronological_page(query, projection, skip, limit)
+                projection["force_live"] = 1
+                articles, total_count = await _local_category_chronological_page(query, projection, skip, limit)
             else:
                 articles = await db.articles.find(
                     query, projection,

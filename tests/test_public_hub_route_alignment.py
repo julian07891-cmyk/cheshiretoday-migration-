@@ -840,6 +840,30 @@ def _be_selected_ids(query):
 
 
 class _BEReadCursor(LocalChronologyCursor):
+    def batch_size(self, count):
+        assert 0 < count <= 250, "Eligibility metadata batches must remain bounded"
+        self.read["batch_size"] = count
+        return self
+
+    def __aiter__(self):
+        self.read["iterated"] = True
+        self._iteration_index = 0
+        return self
+
+    async def __anext__(self):
+        if self._iteration_index == 1 and self.collection.__dict__.get("iteration_failure"):
+            raise self.collection.iteration_failure
+        if self._iteration_index >= len(self.documents):
+            self.read["returned"] = len(self.documents)
+            self.read["body_documents"] = sum("content" in item for item in self.documents)
+            if self.read.get("aggregate") and self.collection.after_selection:
+                hook, self.collection.after_selection = self.collection.after_selection, None
+                hook(self.collection)
+            raise StopAsyncIteration
+        item = copy.deepcopy(self.documents[self._iteration_index])
+        self._iteration_index += 1
+        return item
+
     def max_time_ms(self, milliseconds):
         self.read["maxTimeMS"] = milliseconds
         return self
@@ -996,21 +1020,23 @@ def test_be_resource_contract_and_body_hydration_bound(be_database):
     assert _be_request(limit=30).status_code == 200
     selections = [read for read in collection.reads if read.get("aggregate")]
     hydrations = [read for read in collection.reads if not read.get("aggregate")]
-    assert len(selections) == len(hydrations) == len(collection.counts) == 1
+    assert len(selections) == len(hydrations) == 1
+    assert collection.counts == []
     selection, hydration = selections[0], hydrations[0]
     assert selection["maxTimeMS"] == 2000 and selection["allowDiskUse"] is False
     assert "content" not in selection["sort_fields"]
     first_project = next(stage["$project"] for stage in selection["pipeline"] if "$project" in stage)
-    assert first_project == {"_id": 1, "publishedDate": 1}
-    assert selection["to_list"] <= 30 and selection["returned"] <= 30
+    assert first_project == dict.fromkeys(("_id", "publishedDate", "title", "summary", "category", "source", "source_url", "is_local_source", "force_live"), 1)
+    assert selection["iterated"] and "to_list" not in selection
+    assert 0 < selection["batch_size"] <= 250
     assert len(_be_selected_ids(hydration["query"])) <= 30
     assert hydration["maxTimeMS"] == 2000
     assert hydration["limit"] <= 30 and hydration["to_list"] <= 30
-    assert collection.counts[0]["maxTimeMS"] == 2000
+    assert collection.counts == []
     assert "sort" not in hydration  # restore selected order, not raw BSON order
 
 
-@pytest.mark.parametrize("phase", ["count", "selection", "hydration"])
+@pytest.mark.parametrize("phase", ["selection", "hydration"])
 @pytest.mark.parametrize("kind,status", [("timeout", 503), ("unavailable", 503), ("unexpected", 500)])
 def test_be_failures_are_truthful_private_and_never_retry(be_database, phase, kind, status):
     from pymongo.errors import ExecutionTimeout, ServerSelectionTimeoutError
@@ -1121,13 +1147,16 @@ def test_bh_ineffective_search_keeps_local_chronology_and_query_bounds(be_databa
     assert data["total"] == 66
     assert _local_ids(data) == [str(item["_id"]) for item in [recent, *old[:29]]]
     assert collection.documents == before
-    assert collection.counts[0]["maxTimeMS"] == 2000
-    assert collection.attempts == {"count": 1, "selection": 1, "hydration": 1}
+    assert collection.counts == []
+    assert collection.attempts == {"count": 0, "selection": 1, "hydration": 1}
     selection, hydration = collection.reads
     assert selection["aggregate"] is True
     assert selection["maxTimeMS"] == 2000 and selection["allowDiskUse"] is False
     assert "content" not in selection["sort_fields"]
-    assert selection["to_list"] <= 30 and selection["returned"] <= 30
+    assert selection["iterated"] and "to_list" not in selection
+    assert 0 < selection["batch_size"] <= 250
+    project = next(stage["$project"] for stage in selection["pipeline"] if "$project" in stage)
+    assert project == dict.fromkeys(("_id", "publishedDate", "title", "summary", "category", "source", "source_url", "is_local_source", "force_live"), 1)
     assert hydration["maxTimeMS"] == 2000
     assert len(_be_selected_ids(hydration["query"])) == 30
     assert hydration["limit"] == hydration["to_list"] == 30
@@ -1142,7 +1171,7 @@ def test_bh_one_character_search_cannot_bypass_pagination(be_database, parameter
     assert collection.reads == [] and collection.counts == []
 
 
-@pytest.mark.parametrize("phase", ["count", "selection", "hydration"])
+@pytest.mark.parametrize("phase", ["selection", "hydration"])
 @pytest.mark.parametrize("kind,status", [("timeout", 503), ("unavailable", 503), ("unexpected", 500)])
 def test_bh_one_character_search_keeps_truthful_private_errors(be_database, phase, kind, status):
     from pymongo.errors import ExecutionTimeout, ServerSelectionTimeoutError
@@ -1191,3 +1220,186 @@ def test_bh_nonlocal_and_archive_inclusive_paths_remain_unchanged(be_database, s
     assert len(collection.reads) == 1 and not collection.reads[0].get("aggregate")
     assert collection.reads[0]["sort"] == [("publishedDate", -1)]
     assert "maxTimeMS" not in collection.counts[0]
+
+
+# Stage 2Z-BY: shared eligibility must be evaluated against the globally ordered
+# Local metadata stream before eligible skip/limit. These tests intentionally do
+# not translate the shared Python policy into Mongo predicates.
+def test_by_editorial_veto_precedes_pagination_across_multiple_raw_pages(be_database):
+    newest = datetime(2026, 10, 29, 12, tzinfo=timezone.utc)
+    prohibited = [
+        _local_story(
+            1000 + index,
+            newest - timedelta(minutes=index),
+            title=f"Chester opinion: council services {index}",
+        )
+        for index in range(65)
+    ]
+    eligible = [
+        _local_story(index + 1, newest - timedelta(days=1, minutes=index))
+        for index in range(35)
+    ]
+    assert all(not server.is_public_article_editorially_eligible(item) for item in prohibited)
+    collection = be_database([*prohibited, *eligible])
+
+    response = _be_request(limit=30)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == len(eligible)
+    assert _local_ids(response.json()) == [str(item["_id"]) for item in eligible[:30]]
+    assert max(len(_be_selected_ids(read["query"])) for read in collection.reads if not read.get("aggregate")) <= 30
+
+
+@pytest.mark.parametrize("kind,status", [("timeout", 503), ("unavailable", 503), ("unexpected", 500)])
+def test_cm_midstream_failure_never_returns_partial_success(be_database, kind, status):
+    from pymongo.errors import ExecutionTimeout, ServerSelectionTimeoutError
+    collection = be_database([_local_story(i, "2026-10-28T12:00:00Z") for i in range(1, 4)])
+    errors = {"timeout": ExecutionTimeout, "unavailable": ServerSelectionTimeoutError, "unexpected": RuntimeError}
+    collection.iteration_failure = errors[kind]("CM_PRIVATE_FAILURE")
+    response = _be_request(limit=2)
+    assert response.status_code == status
+    assert "CM_PRIVATE_FAILURE" not in response.text
+    assert "articles" not in response.json() and "total" not in response.json()
+    assert collection.attempts["selection"] == 1
+    assert collection.attempts["hydration"] == 0
+
+
+def test_by_skip_and_limit_apply_to_the_eligible_sequence_with_exact_total(be_database):
+    newest = datetime(2026, 10, 29, 12, tzinfo=timezone.utc)
+    eligible = []
+    documents = []
+    for index in range(8):
+        documents.append(_local_story(
+            100 + index,
+            newest - timedelta(minutes=index * 2),
+            title=f"Chester editorial: excluded item {index}",
+        ))
+        accepted = _local_story(index + 1, newest - timedelta(minutes=index * 2 + 1))
+        eligible.append(accepted)
+        documents.append(accepted)
+    be_database(documents)
+
+    response = _be_request(skip=2, limit=3)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 8
+    assert _local_ids(response.json()) == [str(item["_id"]) for item in eligible[2:5]]
+
+
+def test_by_selection_streams_only_complete_eligibility_metadata_in_bounded_batches(be_database):
+    documents = [_local_story(index, "2026-10-28T12:00:00Z") for index in range(1, 66)]
+    collection = be_database(documents)
+
+    response = _be_request(limit=30)
+
+    assert response.status_code == 200
+    selection = next(read for read in collection.reads if read.get("aggregate"))
+    project = next(stage["$project"] for stage in selection["pipeline"] if "$project" in stage)
+    required = {
+        "_id", "publishedDate", "title", "summary", "category", "source",
+        "source_url", "is_local_source", "force_live",
+    }
+    assert required <= {field for field, included in project.items() if included}
+    assert "content" not in project
+    assert selection["iterated"] is True
+    assert "to_list" not in selection
+    assert 0 < selection["batch_size"] <= 250
+    assert not any("$skip" in stage or "$limit" in stage for stage in selection["pipeline"])
+    assert selection["maxTimeMS"] == 2000 and selection["allowDiskUse"] is False
+
+    hydration = next(read for read in collection.reads if not read.get("aggregate"))
+    assert len(_be_selected_ids(hydration["query"])) <= 30
+    assert hydration["limit"] <= 30 and hydration["to_list"] <= 30
+    assert hydration["maxTimeMS"] == 2000
+
+
+def test_by_local_source_and_force_live_exceptions_survive_pre_pagination_filter(be_database):
+    published = datetime(2026, 10, 29, 12, tzinfo=timezone.utc)
+    local_exception = _local_story(
+        1, published,
+        title="The Papers: Budget national press roundup",
+        is_local_source=True,
+    )
+    force_live_exception = _local_story(
+        2, published - timedelta(minutes=1),
+        title="Scotland council funding announcement",
+        is_local_source=False,
+        scope="cheshire",
+        force_live=True,
+    )
+    assert server.is_public_article_editorially_eligible(local_exception) is True
+    assert server.is_public_article_editorially_eligible(force_live_exception) is True
+    be_database([force_live_exception, local_exception])
+
+    response = _be_request(limit=2)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 2
+    assert _local_ids(response.json()) == [
+        str(local_exception["_id"]), str(force_live_exception["_id"]),
+    ]
+
+
+def test_by_visibility_guards_and_mixed_date_ties_precede_eligible_pagination(be_database):
+    instant = "2026-10-29T12:00:00.123999Z"
+    first = _local_story(1, instant)
+    second = _local_story(2, datetime(2026, 10, 29, 12, 0, 0, 123001, tzinfo=timezone.utc))
+    excluded = [
+        _local_story(10, "2027-01-01T00:00:00Z", archived=True),
+        _local_story(11, "2027-01-01T00:00:00Z", manual_review_hidden_from_public=True),
+    ]
+    be_database([second, *excluded, first])
+
+    response = _be_request(limit=2)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 2
+    assert _local_ids(response.json()) == [str(first["_id"]), str(second["_id"])]
+
+
+def test_by_hydration_revalidates_editorial_eligibility_without_refill(be_database):
+    documents = [
+        _local_story(index, "2026-10-29T12:00:00Z")
+        for index in range(1, 5)
+    ]
+    collection = be_database(documents)
+
+    def make_selected_record_ineligible(current):
+        target = next(item for item in current.documents if item["_id"] == documents[0]["_id"])
+        target["title"] = "Chester opinion: changed during hydration"
+
+    collection.after_selection = make_selected_record_ineligible
+    response = _be_request(limit=3)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 4
+    assert _local_ids(response.json()) == [str(documents[1]["_id"]), str(documents[2]["_id"])]
+    hydration = next(read for read in collection.reads if not read.get("aggregate"))
+    assert set(_be_selected_ids(hydration["query"])) == {item["_id"] for item in documents[:3]}
+    assert documents[3]["_id"] not in _be_selected_ids(hydration["query"])
+    assert collection.attempts["hydration"] == 1
+
+
+@pytest.mark.parametrize("kind,status", [
+    ("timeout", 503), ("unavailable", 503), ("unexpected", 500),
+])
+def test_by_selection_failures_remain_private_without_raw_sort_fallback(be_database, kind, status):
+    from pymongo.errors import ExecutionTimeout, ServerSelectionTimeoutError
+
+    collection = be_database([_local_story(1, "2026-10-29T12:00:00Z")])
+    errors = {
+        "timeout": ExecutionTimeout,
+        "unavailable": ServerSelectionTimeoutError,
+        "unexpected": RuntimeError,
+    }
+    collection.phase = "selection"
+    collection.failure = errors[kind]("BY_PRIVATE_DATABASE_SENTINEL")
+
+    response = _be_request(limit=1)
+
+    assert response.status_code == status
+    assert "BY_PRIVATE_DATABASE_SENTINEL" not in response.text
+    assert "articles" not in response.json() and "total" not in response.json()
+    assert collection.attempts["selection"] == 1
+    assert not any(not read.get("aggregate") and _be_selected_ids(read.get("query", {})) is None
+                   for read in collection.reads)

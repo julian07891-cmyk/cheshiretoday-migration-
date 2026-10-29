@@ -34,6 +34,28 @@ instructions to this file.
 
 ## 2. Current repository state
 
+### Stage 2Z-CM — Local editorial eligibility correction (local, review pending)
+
+The Local chronology metadata cursor now evaluates the existing shared editorial
+helper before eligible pagination, counts the eligible sequence exactly, retains
+at most 30 selected IDs, and revalidates eligibility after bounded hydration.
+Metadata batches are 250; bodies are not projected into the sorting stream.
+Dates, chronology, archive/locality predicates and other surfaces are unchanged.
+Database sorting and exact-total evaluation remain collection-proportional; no
+new performance measurement or production acceptance is claimed. The redundant
+raw Local count was removed; other category/search/archive counts are unchanged.
+The three historical resource cases now assert the exact eligibility projection,
+streaming/batch bounds and unchanged body-hydration limits. Failure tests no longer
+inject the removed count phase. Mid-stream timeout, unavailable and unexpected
+failure cases already passed against CK and require no production error-handler
+change; no genuine production RED is claimed for that already-safe condition.
+Final isolated QA: 129 public-hub tests passed (32 warnings), and 238 adjacent
+eligibility, Admin date, homepage, canonical/sitemap, Manual Review, newsletter,
+cleanup and visible-cap tests passed (27 warnings), with no failures or skips.
+Warnings include existing framework/datetime deprecations and gzip cleanup noise.
+Independent read-only review is required before commit or release. Full-population
+database sort/metadata transfer and production concurrency cost remain unverified.
+
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
 - **Current application baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`
