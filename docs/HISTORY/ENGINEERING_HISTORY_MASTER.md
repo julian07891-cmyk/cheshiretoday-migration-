@@ -1338,3 +1338,110 @@ automated regressions cover both contracts. Google recrawling remains pending,
 and no indexing or validation request was made. The M53 passive observation and
 23 October Search Console follow-up remain open, and Editorial Similarity remains
 shadow-only.
+
+## 29 October 2026 — Stage 2Z discovery, eligibility and release reconciliation
+
+DC reconciles Git facts and conversation acceptance evidence without repeating
+production operations. Owner-supplied Render facts are not agent-observed facts.
+Earlier history and existing CT-DEC-002/007/008 remain authoritative.
+
+### Preceding memory and newsletter corrections
+
+`fe20ed42f69b6e0b5abe8d471ccf579820f9dde3` removed content and unused preliminary
+keeper scores from duplicate first-scan materialisation, preserving every ID,
+ordinal, complete current-record final scoring and archival. Supplied27 October
+scan deltas +0.1/+8.7 MiB and final301.8 MiB are observations, not causal or
+cross-run proof. `a5c80b2a00f8ffeca1901cdfc8ac96c327fb6f42` enforced shared
+Daily Brief eligibility across normal/fallback paths, preserved historical
+body-derived secondary excerpts and guarded zero-eligible failed finalisation.
+Owner/status mismatches and completion exceptions cannot use an unguarded retry.
+The29 October07:30 run initially showed11,033 eligible,7 priority+993 rotating,
+1,000 prepared and five articles; provider HTTP200 alone did not prove final
+ledger/cursor persistence. Missing natural completion evidence is not fabricated.
+
+### AZ0–BI: Local chronology
+
+Mixed BSON Date/string sorting buried recent Nub records. Historical review
+preserved d56bda8 Admin normalization,032a11c creation-first homepage,70057e1 bounded
+materialisation,ccecaa9 candidate-expansion reversal,c4a977b date comparison and
+CT-DEC-007/008. BA added genuine RED cases; BE specified precision, pagination,
+resource/error and hydration-race contracts. BF implemented ordinary public Local
+retrieval only. BG found one-character search escaped the route; BH aligned the
+predicate to existing effective-search length>=2. BI independent review approved.
+`9928b243a0ca315524077d102f0a95f4d97e9072` committed server/public-hub tests:
+UTC milliseconds, invalid/missing last, ascending_id ties, global sort before
+pagination,600-position window, page<=30/default20, metadata sort/ID hydration,
+2000ms database limits and allowDiskUse=false. No source-date rewriting, migration,
+index, homepage allocation or cleanup change. Two editorial RED cases remained.
+
+### BC3–CI: evidence boundaries and failed approaches
+
+BC3 reached100 synthetic records then failed in mongosh summaries() receiver
+binding. BC4 corrected that helper only. BC5 startup exit100 lacked retained
+evidence; BC6 started and used about100 MiB tmpfs. BC7 completed100/1,000/6,000/
+12,000 chronology datasets: at12,000 normalized first-page median55.878ms,
+window600 median57.578ms, no spill. These are isolated chronology measurements,
+not Python eligibility-stream/exact-total or production-concurrency measurements.
+
+BZ0 distinguished Admin to_list(None), Most Read iteration and cleanup batch
+precedents from the unmeasured delta. BZ1 never ran its prepared delta harness:
+192 MiB startup ENOSPC stopped before data creation. CB root-run wrapper reproduced
+failure but missed transient allocation; retained one100 MiB log and sparse
+prelogs did not establish peak. Its initial root-cause/256 MiB sufficiency claim
+was overstated. CC normal-entrypoint256 MiB failed on sizeStorer.wt/ENOSPC/abort.
+CD required coordinated sampling. CE sampler completed before launch, capturing
+no startup peak/UID; retained files proved two allocated100 MiB log/prelog files
+and a temporary log, not the transient cause. CF/CG mock coordination/log/memory
+improvements and CH/CI host adapters remained incomplete (bounded traversal,
+parsed metrics and full fake-CLI lifecycle QA). No editorial delta benchmark or
+validated diagnostic adapter was completed. Do not repeat these attempts or
+increase tmpfs arbitrarily. Containers were removed; temporary artifacts are not
+durable repository evidence. CK explicitly ended Docker/adapter work.
+
+### BX–CO: Local shared eligibility
+
+BX identified the existing policy bypass. BY preserved both original RED cases
+and added pre-pagination veto, multiple prohibited pages, eligible totals/skip,
+exceptions, chronology/ties, streaming/batching and hydration revalidation.
+Reported RED gate:6 intended failures/5 controls. CK used the unchanged shared
+helper over metadata batches250, retained<=30 IDs and revalidated hydration;
+129 passed/3 older resource cases failed. CL approved precise reconciliation.
+CM removed the overwritten raw Local count, reconciled date-only/page-limited
+metadata assertions to exact helper projection/streaming, and removed obsolete
+count failure phases. Three after-first-record failure cases already passed on
+CK: no manufactured production RED. A new fixture optional lookup initially
+triggered fail-closed __getattr__; dictionary lookup fixed only the fixture.
+
+Final CM synthetic gate:129 passed/32 warnings and238 adjacent passed/27 warnings,
+zero failures/skips. CN independently reviewed the full diff, AST-confirmed both
+original editorial cases unchanged, reran129 passed/33 warnings and found no
+P0/P1/P2 blocker. Compilation/whitespace passed. CO committed
+`cf3431c119c95049976f9d586db8b68cebc68f40`, only server/test/Project State.
+Exact totals count scanned eligible documents before response title deduplication;
+concurrent changes permit short pages. Python retention is batch-bounded but
+database sort, transfer and helper work remain collection-proportional.
+
+### AO–DB: observability and separate release acceptance
+
+`23079ccc317b2a77455dbf8f568fcbb9c1f0163d` contains the seven-file AO/AQ foundation:
+eight types,28 entry points, bounded process-local counts, same-task nesting,
+independent child tasks and exception/cancellation cleanup. AP found endpoint
+validation omitted FastAPI dependant.call; AQ corrected module/endpoint/executable
+identity checks with sticky unknown. AR approved and AS committed. Reported QA:
+97 focused/682 adjacent passed. This never proves all-instance inactivity.
+
+Owner-coordinated quiet windows were accepted without demanding universal
+technical inactivity proof; counters/owner confirmation are not that proof.
+Browser route failure was not assumed to be expired authentication. CR pushed
+only23079ccc from a5c80b2; CX only9928b243; DA onlycf3431c, all explicit non-force
+SHA refspecs. No manual deploy/restart/job was triggered. Owner supplied Live,
+startup,eight-job,headroom acceptance. Agent observed unauthenticated endpoint401;
+authenticated200/private-no-store/valid counters were owner-confirmed.
+
+CW consulted official Render rollback/deploy documentation: retained-artifact
+rollback creates a new deployment; dashboard rollback disables auto-deploy, API
+does not; configuration can partly follow the target, database/external side
+effects do not reverse. Missing current-Live rollback button is not a defect.
+Production Timeline records CY/DB results and recovery IDs. DC preserves open
+memory/concurrency/counter-lifecycle questions and planned30 October06:00 import/
+07:30 Daily Brief as pending, not completed.

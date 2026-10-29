@@ -69,8 +69,11 @@ raw snapshots become stale after 30 seconds without revalidation. Missing or
 failed coverage is unknown, never inferred idle. Tracking integrity failures
 remain unknown for that registry instance. `scope=process_local` and
 `all_instances_covered=false` are unconditional: a load-balanced response cannot
-clear a deployment-wide release gate. This implementation is local, uncommitted
-and undeployed; production acceptance requires separate approval.
+clear a deployment-wide release gate. Commit23079ccc was separately released on
+29 October2026; owner confirmed startup/eight jobs and authenticated endpoint
+acceptance, while the agent observed unauthenticated401. Natural-job counter
+lifecycle remains unobserved. Next checkpoints are30 October06:00 import and
+07:30 Daily Brief (GMT), pending actual execution evidence.
 
 ## Related documents
 

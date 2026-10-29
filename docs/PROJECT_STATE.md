@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2` (`Correct crawler indexing for archived articles`)
-> - **Last repository reconciliation:** 16 October 2026; this update records production acceptance of archive-collection-aware crawler indexing at `f70d5e2`.
-> - **Production-verification status:** **Current application acceptance PASS.** Deployment `dep-db946t6k1f9s73eqf5ug` became Live at 16:35:23 BST on 16 October on instance `srv-d5virmm3jp1c73c9d6tg-f5b956b64-mh7jt`. The confirmed archived Halton control returned HTTP 200 at its canonical Mongo-ID URL with `noindex, follow, max-image-preview:large`; the active Halton control returned HTTP 200 without redirect and retained `index, follow, max-image-preview:large`. Health and homepage returned HTTP 200, startup was clean, and no OOM, restart loop, crawler exception or scheduler/archive anomaly was observed. A second distinct historical missing-flag archive and an archived `force_live` production control were not independently exercised; automated regression coverage preserves both contracts. Google recrawling remains pending and no indexing or validation request is approved. The M53 passive observation remains open. The earlier safe shadow-only Editorial Similarity acceptance remains complete and does not approve authoritative duplicate routing. Homepage-sidebar, article-depth, retail-offence and desktop Further reading acceptances remain complete; regional-feed acceptance remains **APPROVED WITH OBSERVATIONS**. CT-DEC-021 functional acceptance remains complete with upstream **POTENTIAL QUERY LOG EXPOSURE** open; provider suppression hygiene is reconciled, Gmail placement/FBL remain under investigation, and unrelated QA gates remain unchanged.
+> - **Application baseline:** `cf3431c119c95049976f9d586db8b68cebc68f40` (`Enforce Local category editorial eligibility`)
+> - **Last repository reconciliation:** 29 October 2026, Stage 2Z-DC. Current handover is section 2; older dated checkpoints below are historical and do not override it.
+> - **Production-verification status:** Owner confirms Live `cf3431c`, startup/eight jobs and acceptable last-observed headroom. Direct bounded public API acceptance passed for chronology and editorial eligibility on 29 October; this is not exhaustive or long-term performance acceptance. Final Render deployment ID is unverified. Historical crawler, newsletter/security, M53 and shadow-only similarity qualifications remain unchanged; see Open Findings and the current handover below.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -34,6 +34,87 @@ instructions to this file.
 
 ## 2. Current repository state
 
+### Current handover — 29 October 2026, Stage 2Z-DC
+
+**Identity and strategy.** Cheshire Today is an established local publication:
+40% Cheshire local news, 40% business/finance/property, 20% AI/technology.
+Priorities are affiliate-first monetisation, Facebook acquisition, newsletter
+growth, SEO/authority and sponsor readiness with a clean, non-intrusive reader
+experience. Avoid crime-heavy or weak national filler, exaggerated headlines,
+intrusive advertising and unnecessary infrastructure work.
+
+**Repository and production.** Repository root is
+`~/Downloads/CT29january26-new-website-migration`, branch `full-scrape-prod`.
+Application HEAD and actual remote were verified equal at
+`cf3431c119c95049976f9d586db8b68cebc68f40` before this documentation commit;
+tracked tree/index were clean. A later documentation-only local commit may be
+ahead of that application SHA: verify rather than hard-code its identity.
+Owner confirms the same application SHA Live on service `srv-d5virmm3jp1c73c9d6tg`.
+Final deployment ID is not verified. Final instance supplied for acceptance was
+`srv-d5virmm3jp1c73c9d6tg-6bfcd94746-bvrc7`; public API responses do not prove it.
+
+**Completed.** Separate reviewed commits/release sequence:
+`23079ccc317b2a77455dbf8f568fcbb9c1f0163d` (process-local observability),
+`9928b243a0ca315524077d102f0a95f4d97e9072` (Local mixed-date chronology), then
+`cf3431c119c95049976f9d586db8b68cebc68f40` (Local shared editorial eligibility).
+All were pushed separately using explicit non-force SHA refspecs; no manual
+deployment/job was triggered. CN independent review approved the final local
+correction; CO committed it. CY/DB public API acceptance passed. Detailed
+chronology, rejected diagnostic claims and QA provenance are in Engineering
+History; deployment evidence is in Production Timeline.
+
+**Acceptance evidence.** Owner reports eight scheduled jobs, accepted authenticated
+active-operations HTTP 200/private-no-store, valid process-local counters, and no
+unexpected restart/OOM/failed deployment at final acceptance. Agent directly
+observed unauthenticated endpoint 401; authenticated checks were owner-performed.
+DB made exactly two sequential public Local requests (skip 0/5, limit 5,
+with_total=true): HTTP 200 at 1.040/0.848 seconds, five records each, eligible total
+256, ten distinct IDs in descending normalized chronology, all passing the shared
+helper on returned metadata. No 500/503 in that sample. This does not identify
+the excluded records or prove every exception, tie or hidden/archive case.
+Latest chronology baseline was 1.010/0.697 seconds, total 259. No performance
+trigger fired. Recovery baseline is chronology commit `9928b243`, Render deployment
+`dep-dbhqj6i9lscs73a6ban0`; rollback needs separate approval and retained artifacts.
+
+**Architecture and decisions.** React SPA, FastAPI `backend/server.py`, Motor/Mongo,
+Render build/start and in-process APScheduler remain unchanged. CT-DEC-002/007/008
+control changes, shared editorial policy and archive/owner safety. Local-only
+normal retrieval uses UTC milliseconds, ascending `_id` ties, skip 0–599,
+limit 1–30/default 20, skip+limit <=600. Exact eligible totals require a complete
+metadata stream in batches of 250; <=30 IDs/bodies are retained/hydrated, with
+visibility/locality and editorial revalidation and no refill. No date rewriting,
+new index/schema, homepage allocation, shared helper, newsletter or cleanup change.
+
+**Automation.** Article imports run at 06:00/12:00/18:00 Europe/London;
+Daily Brief Mon–Sat 07:30; Weekly Sunday 09:00/10:00/11:00/12:00: eight jobs.
+Existing locks, owner guards and fail-closed article-lock acquisition remain.
+Never manually import/send to manufacture acceptance. Existing automation is not
+authority for new manual publication or admin-only draft rewriting changes.
+
+**Open risks and next priorities.** Full-population blocking sort, metadata
+transfer and helper evaluation remain collection-proportional; concurrent-request
+performance and long-term RSS are unverified. maxTimeMS=2000/allowDiskUse=false
+are not a two-second HTTP deadline. Totals count eligible documents before
+downstream title deduplication; concurrent changes may produce short pages.
+Observability is always process_local/all_instances_covered=false; natural-job
+counter lifecycle remains unobserved. Preserve older unrelated open findings.
+The next planned checkpoints are 30 October 2026 06:00 import and 07:30 Daily Brief
+(GMT); neither is marked completed without execution evidence. Prefer passive
+natural-job memory/counter observation, then practical article discovery/growth
+work. Do not restart the abandoned Docker benchmark/adapter work by default.
+
+**Safe workflow / exact first action in a new chat.** Read Project Master and this
+file, verify branch/HEAD/actual remote/status/index without reading protected
+`AGENTS.md` or `docs/ARCHIVE/PROJECT_STATE_FULL_2026-08-06.md`. Determine current
+time, then request existing privacy-safe owner logs for the next natural import
+and Daily Brief if already run. Record only observed completion, memory and
+counter evidence; do not trigger jobs. No release or production mutation is
+authorised by this handover. Obtain explicit scoped approval for changes,
+commits, pushes, deployments and recovery separately; inspect diffs and use
+synthetic QA. Do not extract credentials or rely on broken browser attachment.
+
+### Earlier implementation checkpoints (historical; superseded by handover above)
+
 ### Stage 2Z-CM — Local editorial eligibility correction (local, review pending)
 
 The Local chronology metadata cursor now evaluates the existing shared editorial
@@ -58,9 +139,9 @@ database sort/metadata transfer and production concurrency cost remain unverifie
 
 - **Repository:** `CT29january26-new-website-migration`
 - **Reconstruction branch:** `full-scrape-prod`
-- **Current application baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`
-- **Verified deployed baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`; deployment `dep-db946t6k1f9s73eqf5ug` became Live on 16 October at 16:35:23 BST and passed crawler-response production acceptance.
-- **Latest application commit:** `Correct crawler indexing for archived articles`
+- **Historical 16 October application baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`
+- **Historical deployed baseline:** `f70d5e26904357ab08661aab8b198cf096f608c2`; deployment `dep-db946t6k1f9s73eqf5ug` passed crawler-response production acceptance.
+- **Historical application commit:** `Correct crawler indexing for archived articles`
 - **Documentation reconciliation:** `109134b` committed the seven-file October reconciliation. The September UK investigation was followed by the separately bounded Stage A fix, not a general filter-policy relaxation. [Production Timeline](PRODUCTION_TIMELINE.md#5-october-2026--mixed-date-hotfix-production-acceptance) records the original failure, corrective deployment and completed natural-run acceptance.
 
 The CT-DEC-021 acceptance record below is historical: that controlled acceptance

@@ -37,13 +37,23 @@ Required categories include Mongo connection/database, public/backend URLs, Admi
 
 ## Build and deployment checks
 
-Use project commands from `AGENTS.md`: `python3 -m pytest ...`, `npm --prefix frontend test -- --watchAll=false`, and `REACT_APP_BACKEND_URL=https://cheshiretoday.co.uk npm --prefix frontend run build` when appropriate. Do not run `npm start` for deployment verification. Render deployment is manual; verify the deployed commit in Render rather than assuming it from GitHub.
+Use established commands: `python3 -m pytest ...`, `npm --prefix frontend test -- --watchAll=false`, and `REACT_APP_BACKEND_URL=https://cheshiretoday.co.uk npm --prefix frontend run build` when appropriate. Do not run `npm start` for deployment verification. October evidence confirms normal GitHub-triggered Render auto-deploy: production-branch pushes are release operations. Reverify current settings and exact Live SHA rather than assuming deployment from GitHub. Do not inspect protected untracked files.
 
 ## Post-deploy verification
 
 Confirm deployment success and startup logs, then `/api/health` or the current health alias returns HTTP 200. Verify the changed surface with settled browser/server evidence. For scheduler-sensitive changes, observe normal scheduled runs rather than triggering one. Search logs for traceback, 5xx, restart, OOM/SIGKILL, bundle failures and subsystem-specific errors.
 
 ## Rollback principles
+
+Stage2Z-CW verified [official rollback semantics](https://render.com/docs/rollbacks)
+and [deployment controls](https://render.com/docs/deploys): a previous successful
+retained artifact is selected by deployment identity and creates a new deploy.
+Current Live need not show its own Rollback button. Dashboard rollback disables
+auto-deploy; API rollback does not. Some target configuration is reused, but
+database/external side effects are not reversed. Recheck retention, target SHA,
+configuration compatibility and current docs at recovery time. No automatic
+rollback or job replay. Final29 October baseline:9928b243 deployment
+`dep-dbhqj6i9lscs73a6ban0`, subject to separate authority.
 
 Preserve evidence first. Prefer reverting the smallest deployment commit and redeploying through the normal path. Do not reset production data, delete collections, change environment variables or restart repeatedly without an approved incident plan.
 

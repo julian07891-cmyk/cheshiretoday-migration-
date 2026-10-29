@@ -19,6 +19,24 @@ describes the decision at current repository HEAD, not an unverified live claim.
 
 ## Decision entries
 
+### 29 October 2026 — Stage 2Z application of existing decisions
+
+CT-DEC-002/007/008 remain unchanged. The Local correction atcf3431c applies the
+existing shared helper before pagination, not a new policy or Mongo predicate
+translation. Exact totals require a complete metadata stream; Python state is
+batch-bounded, <=30 bodies hydrated, no raw-count duplication/refill, no new
+index/schema/date backfill. Production cost remains collection-proportional.
+Homepage creation-first/bounded allocation, newsletter eligibility and archive/
+owner/cleanup protections remain separate and unchanged.
+
+Owner-coordinated administrative quiet plus fresh identity, workload, headroom,
+rollback and acceptance evidence is the accepted controlled-release procedure.
+Neither owner confirmation nor process-local counters prove universal inactivity.
+Explicit SHA refspecs preserve separate commits/releases; no force push/history
+rewrite. Phase2Z-CW recovery uses retained deployment artifacts with separate
+approval, not data reversal or job replay. See Production Timeline and current
+Project State. These records do not grant future production authority.
+
 ### CT-DEC-001 — Repository operational documentation is the source of truth
 
 - **ID:** CT-DEC-001

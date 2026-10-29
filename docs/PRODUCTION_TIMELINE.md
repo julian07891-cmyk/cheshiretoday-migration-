@@ -1,5 +1,42 @@
 # Cheshire Today — Production Timeline
 
+## 29 October 2026 — Stage 2Z production releases
+
+Git-verified separate non-force pushes: CR23079ccc, CX9928b243, DAcf3431c.
+Owner confirmed Live/startup/eight jobs, acceptable last-observed memory/CPU and
+no unexpected restart/OOM. Observability deployment: `dep-dbhpajk9v7es73bn25ag`.
+Chronology deployment: `dep-dbhqj6i9lscs73a6ban0`. Final editorial deployment ID
+is unverified; owner supplied instance `srv-d5virmm3jp1c73c9d6tg-6bfcd94746-bvrc7`.
+No manual deploy/restart/import/send or rollback was executed by the agent.
+
+Agent observed unauthenticated active-operations401. Owner confirmed authenticated
+200, private/no-store, known/ok and valid eight process-local counters/identity.
+Natural production counter lifecycle and all-instance coverage are not proven.
+
+Each API gate made exactly two sequential ordinary Local requests, skip0/5,
+limit5, with_total=true, no retries or concurrency:
+
+| Gate | Page1/page2 latency seconds | HTTP | Returned | Total |
+|---|---|---|---|---|
+| CU pre-chronology | 1.603 / 0.579 | 200 / 200 | 5 / 5 | 259 |
+| CY chronology | 1.010 / 0.697 | 200 / 200 | 5 / 5 | 259 |
+| DB eligibility | 1.040 / 0.848 | 200 / 200 | 5 / 5 | 256 |
+
+CY/DB showed descending normalized UTC and ten unique IDs/no short pages. All ten
+DB records passed the shared helper on returned title/summary/source metadata;
+all were Local News/local-source, no prohibited opinion/roundup appeared. No
+force_live=true, equal-date tie or exception-dependent rescue was exercised;
+absent hidden/archive flags cannot independently prove exclusion. Total256 is
+reported eligible accounting, not an independently exhaustive count or proof of
+which three records were excluded. Zero500/503 in two requests is not an error
+rate. Bounded API acceptance PASS, not production-concurrency/memory acceptance.
+
+Owner accepted review triggers: either matched request>3s, or both>2x the
+1.010/0.697s baseline; neither fired. Triggers require investigation, not automatic
+rollback. Final recovery baseline:9928b243, `dep-dbhqj6i9lscs73a6ban0`; reverify
+artifact retention/config compatibility before separately approved recovery.
+30 October06:00 import/07:30 Daily Brief remain planned, not completed evidence.
+
 ## 5 October 2026 — mixed-date hotfix production acceptance
 
 **APPROVED WITH OBSERVATIONS — production accepted on the first post-hotfix

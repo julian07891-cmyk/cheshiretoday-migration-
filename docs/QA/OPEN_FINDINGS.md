@@ -16,6 +16,24 @@ Work highest current severity first. Update an entry only when evidence changes;
 
 ## Original QA findings
 
+### Stage 2Z-DC reconciliation — 29 October 2026
+
+Local chronology and shared-editorial pagination defects are implemented,
+independently reviewed and separately released at9928b243/cf3431c. CM synthetic
+QA129 focused/238 adjacent passed; CN focused129 passed. CY/DB bounded production
+API checks passed; see Production Timeline for timings/provenance. Original
+editorial tests remain; no outstanding two-case RED debt remains atcf3431c.
+
+Open limitations: collection-proportional metadata scan/blocking sort/transfer,
+unknown concurrent-request cost and long-term RSS, unobserved natural-job counter
+lifecycle, no deployment-wide coverage and non-exhaustive ten-record acceptance.
+No completed editorial streaming benchmark exists. CB root-cause/256 MiB
+sufficiency was overstated; CC disproved sufficiency, CE missed peak and CF–CI
+adapter remained incomplete. CK ended diagnostic work; do not reopen by default.
+Close performance/lifecycle questions only on qualifying passive evidence, not
+fresh-process memory or process-local zero counts.30 October06:00/07:30 observations
+remain pending. Existing unrelated findings are not closed by this reconciliation.
+
 ### QA-SEC-001
 
 - **Original severity:** Critical
