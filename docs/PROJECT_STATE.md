@@ -418,6 +418,71 @@ Preserve intentional untracked records and unrelated user changes.
   wording failed before the patch; 41 helper tests and 43 combined helper/Admin
   tests passed afterward. Read-only production acceptance is recorded below.
 
+### 30 October 2026 — Stage 2Z Scheduled Production Acceptance
+
+Evidence provenance: the owner supplied the following verified production
+execution and authenticated snapshot evidence. No production requests or jobs
+were executed for this documentation update. This dated entry supersedes the
+29 October handover's pending status for these two scheduled executions only;
+all earlier history and broader monitoring qualifications remain preserved.
+Production application baseline: `cf3431c119c95049976f9d586db8b68cebc68f40`.
+
+**Scheduled article generation — PASS (initial production execution).**
+
+- Scheduled 06:00 GMT; completed 06:02:15 GMT; reported duration 135.36 seconds.
+  APScheduler reported successful execution.
+- Hybrid import breakdown: 4 Cheshire, 0 UK, 1 Business, 5 Tech, 0 Sports
+  (category subtotal 10). A separate generation summary reported 21 total.
+  The difference between 21 and 10 remains an unresolved accounting distinction;
+  neither figure is substituted for the other and no cause is inferred.
+- Duplicate/short-article cleanup removed 0 and read 6,137 documents in each
+  of two passes. Public visibility cap completed; ratio rebalancing was
+  explicitly disabled. Some imported RSS candidates were hidden for Manual Review.
+- Final RSS approximately 297.4 MB; reported Python heap peak 79.5 MB.
+
+**Scheduled Daily Brief — PASS (initial production execution).**
+
+- Scheduled 07:30 GMT; completed 07:45:28 GMT; reported duration 928.27 seconds.
+  APScheduler reported successful execution.
+- Sending path accepted 1,000/1,000 recipients. Recipient evidence persisted
+  1,000/1,000; email send ledger persisted 1,000 rows. Digest result and completion
+  persisted; batch cursor advanced to 1,895.
+- Final RSS approximately 635 MB; reported Python heap peak 687.9 MB.
+  Recipient tracking activity was observed after the send.
+- These counts establish application-level sending-path acceptance and
+  persistence, not final inbox delivery for all recipients. Tracking activity
+  does not establish delivery or human readership for the entire audience.
+
+Reported Python heap peaks are cumulative traced high-water values, not proven
+per-job allocation peaks. RSS observations alone do not establish memory stability.
+
+**Active-operation snapshot — PASS for current process-local idle.**
+
+At 08:39:06 GMT, an authenticated production
+`GET /api/admin/active-operations` returned HTTP 200, `status=known`, `reason=ok`,
+`coverage_version=active_operations_v1`, with a fresh snapshot and negligible
+coverage age. All eight active counters were integer zero:
+
+- `article_generation`: 0
+- `article_import`: 0
+- `article_maintenance`: 0
+- `daily_brief`: 0
+- `weekly_roundup`: 0
+- `manual_newsletter`: 0
+- `admin_ai`: 0
+- `provider_evidence`: 0
+
+Instance: `srv-d5virmm3jp1c73c9d6tg-6bfcd94746-bvrc7`; process ID: 60.
+`all_instances_covered=false`: this proves current process-local idle, not
+deployment-wide idle. The historical counter increment/decrement sequence was
+not directly observed, and the scheduler process identity was not independently
+matched to this snapshot process. Long-term memory stability, concurrent-request
+behaviour and restart continuity remain under monitoring.
+
+**Conclusion:** both 30 October scheduled jobs passed initial production execution
+acceptance; the current process-local idle-counter snapshot also passed. Broader
+Stage 2Z long-term monitoring remains open; no deployment-wide coverage is claimed.
+
 ## 3. Current production architecture
 
 Cheshire Today currently consists of:
