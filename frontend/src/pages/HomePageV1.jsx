@@ -1136,6 +1136,7 @@ return (
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                         variant="editorial"
+                        mobileCompact
                       />
                     </div>
                   ))}
@@ -1161,6 +1162,7 @@ return (
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                         variant="editorial"
+                        mobileCompact
                       />
                     </div>
                   ))}
@@ -1202,6 +1204,7 @@ return (
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                         variant="editorial"
+                        mobileCompact
                       />
                     </div>
                   ))}
@@ -1220,6 +1223,7 @@ return (
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                         variant="editorial"
+                        mobileCompact
                       />
                     </div>
                   ))}
@@ -1254,6 +1258,7 @@ return (
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                         variant="editorial"
+                        mobileCompact
                       />
                     </div>
                   ))}
@@ -1272,6 +1277,7 @@ return (
                         onClick={() => navigate(a.url || buildArticleUrl(a))}
                         article={a}
                         variant="editorial"
+                        mobileCompact
                       />
                     </div>
                   ))}

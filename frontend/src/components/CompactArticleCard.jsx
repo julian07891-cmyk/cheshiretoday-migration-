@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, BookOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const CompactArticleCard = ({
   article,
@@ -7,6 +8,7 @@ const CompactArticleCard = ({
   horizontal = false,
   priority = false,
   variant = "default",
+  mobileCompact = false,
 }) => {
   const [imageError, setImageError] = React.useState(false);
   const [imageLoaded, setImageLoaded] = React.useState(false);
@@ -53,19 +55,20 @@ const formatDate = (dateString) => {
   };
 
   if (variant === "editorial") {
+    const Wrapper = mobileCompact ? Link : 'article';
     const category =
       String(article?.displayCategory || article?.category || "").trim();
     const location =
       String(article?.town || article?.location || "").trim();
 
     return (
-      <article
-        className="group cursor-pointer overflow-hidden rounded-xl border border-slate-200/70 bg-white transition-colors hover:border-slate-300 dark:border-gray-700 dark:bg-gray-800/70 dark:hover:border-gray-600"
-        onClick={() => onClick(article)}
+      <Wrapper
+        {...(mobileCompact ? { to: article.url } : { onClick: () => onClick(article) })}
+        className={`group cursor-pointer overflow-hidden rounded-xl border border-slate-200/70 bg-white transition-colors hover:border-slate-300 dark:border-gray-700 dark:bg-gray-800/70 dark:hover:border-gray-600 ${mobileCompact ? 'flex gap-3 p-3 sm:block sm:p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700' : ''}`}
         data-testid={`article-card-${article.id}`}
       >
         {article.image ? (
-          <div className="relative aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-gray-700">
+          <div className={`relative overflow-hidden bg-slate-100 dark:bg-gray-700 ${mobileCompact ? 'w-[88px] h-[66px] shrink-0 rounded sm:rounded-none sm:w-auto sm:h-auto sm:aspect-[16/10]' : 'aspect-[16/10]'}`}>
             {!imageLoaded && (
               <div className="absolute inset-0 animate-pulse bg-slate-200 dark:bg-gray-700" />
             )}
@@ -86,7 +89,7 @@ const formatDate = (dateString) => {
           </div>
         ) : null}
 
-        <div className="p-4">
+        <div className={mobileCompact ? 'min-w-0 flex-1 sm:p-4' : 'p-4'}>
           {(category || location) ? (
             <div className="mb-2 flex flex-wrap items-center gap-x-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
               {category ? (
@@ -107,11 +110,11 @@ const formatDate = (dateString) => {
             </div>
           ) : null}
 
-          <h3 className="font-headline text-xl font-semibold leading-[1.18] tracking-[-0.02em] text-slate-950 transition-colors line-clamp-3 group-hover:text-[#1E3A8A] dark:text-white dark:group-hover:text-blue-300">
+          <h3 className={`font-headline font-semibold tracking-[-0.02em] text-slate-950 transition-colors group-hover:text-[#1E3A8A] dark:text-white dark:group-hover:text-blue-300 ${mobileCompact ? 'text-[17px] leading-[21px] sm:text-xl sm:leading-[1.18] sm:line-clamp-3' : 'text-xl leading-[1.18] line-clamp-3'}`}>
             {article.title}
           </h3>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-gray-400">
+          <div className={`${mobileCompact ? 'mt-2 sm:mt-4' : 'mt-4'} flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-gray-400`}>
             <span className="flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" aria-hidden="true" />
               {formatDate(article.publishedDate)}
@@ -122,7 +125,7 @@ const formatDate = (dateString) => {
             </span>
           </div>
         </div>
-      </article>
+      </Wrapper>
     );
   }
 

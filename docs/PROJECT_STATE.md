@@ -485,6 +485,28 @@ Stage 2Z long-term monitoring remains open; no deployment-wide coverage is claim
 
 ## 3. Current production architecture
 
+### 30 October 2026 — mobile compact list prototype (local only, concept accepted)
+
+Opt-in `mobileCompact` presentation on the six homepage Latest/Business & Finance/
+More Stories card render sites uses 88x66 thumbnails, 12px gaps/padding, 17px/21px
+headlines and natural mobile headline height. Existing editorial styling resumes
+at640px; Hero/Top Stories, selection, chronology, reservations, counts and commercial
+positions are unchanged. Opt-in cards use native router links with visible focus.
+Historical3c1ce55/f07c792 consistency,8ed336f Hero breakpoint and609d9d5/6afb0b3
+mobile commercial/newsletter decisions were preserved. Focused four-suite QA46
+passed and frontend production build succeeded. No screenshot or viewport geometry
+acceptance is claimed: bundled Playwright lacks its browser executable; nothing
+was installed. Long text/enlargement, dark mode, real focus/navigation, image-state
+geometry and desktop pixel parity still require local browser verification.
+Owner subsequently reviewed the working iPhone preview at192.168.4.86:3001 and
+accepted the compact horizontal concept. Final source review found no demonstrated
+spacing defect requiring a further layout change. Focused QA was rerun:46 tests
+across four suites passed; production build and whitespace validation passed.
+This owner acceptance is not independent320/375/390/430px geometry or1024/1440px
+pixel-parity verification. Those checks, enlarged text/dark mode and real keyboard
+interaction remain outstanding. No additional application refinement was made.
+Prototype remains uncommitted/undeployed; concept acceptance does not authorise release.
+
 Cheshire Today currently consists of:
 
 - a React 18/CRACO single-page frontend;
