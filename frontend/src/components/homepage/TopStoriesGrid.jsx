@@ -54,9 +54,9 @@ export default function TopStoriesGrid({ stories = [] }) {
           <Link
             key={story.id || story._id || story.url || story.title || index}
             to={href}
-            className="group grid grid-cols-[7rem_minmax(0,1fr)] gap-4 py-5 first:pt-1 last:pb-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
+            className="group flex flex-wrap gap-4 py-5 first:pt-1 last:pb-1 lg:grid lg:grid-cols-[7rem_minmax(0,1fr)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E3A8A] focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900"
           >
-            <div className="aspect-[4/3] w-28 overflow-hidden rounded-lg bg-slate-100 dark:bg-gray-800">
+            <div className="aspect-[4/3] w-28 max-w-full shrink-0 self-start overflow-hidden rounded-lg bg-slate-100 dark:bg-gray-800 lg:max-w-none lg:shrink lg:self-auto">
               {story.image ? (
                 <img
                   src={story.image}
@@ -70,7 +70,8 @@ export default function TopStoriesGrid({ stories = [] }) {
               ) : null}
             </div>
 
-            <div className="min-w-0 self-center">
+            {/* Font-relative basis permits a full-width second row when text needs more space. */}
+            <div className="min-w-[min(100%,10em)] flex-[1_1_10em] self-center text-[1.05rem] [overflow-wrap:anywhere] lg:min-w-0 lg:flex-none lg:text-base lg:[overflow-wrap:normal]">
               <div className="mb-2 flex flex-wrap items-center gap-x-2 text-[10px] font-semibold uppercase tracking-[0.11em]">
                 <span className="text-emerald-700 dark:text-emerald-400">
                   {category}
@@ -96,13 +97,13 @@ export default function TopStoriesGrid({ stories = [] }) {
 
               <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500 dark:text-gray-400">
                 {published ? (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" aria-hidden="true" />
+                  <span className="flex min-w-0 max-w-full items-center gap-1 lg:min-w-[auto] lg:max-w-none">
+                    <Clock className="h-3 w-3 shrink-0 lg:shrink" aria-hidden="true" />
                     {published}
                   </span>
                 ) : null}
-                <span className="flex items-center gap-1">
-                  <BookOpen className="h-3 w-3" aria-hidden="true" />
+                <span className="flex min-w-0 max-w-full items-center gap-1 lg:min-w-[auto] lg:max-w-none">
+                  <BookOpen className="h-3 w-3 shrink-0 lg:shrink" aria-hidden="true" />
                   {readTime} min read
                 </span>
               </div>

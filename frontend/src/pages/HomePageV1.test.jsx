@@ -464,6 +464,22 @@ test("Latest uses the editorial card variant before and after the guide strip", 
   expect(compactCards.every((card) => card.getAttribute("data-card-variant") === "editorial")).toBe(true);
 });
 
+test('mobile lists have no headline-mode controls and preserve Show more and commercial placements', async () => {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+  await renderHomepage(Array.from({ length: 33 }, (_, index) => makeArticle(index)));
+  expect(container.querySelector('button[aria-pressed]')).toBeNull();
+  expect(container.textContent).not.toMatch(/Full headlines|Compact headlines/i);
+  const latestIds = () => sectionCards('Latest').map(card => card.dataset.cardId);
+  const originalIds = latestIds();
+  const sponsors = Array.from(container.querySelectorAll('[data-sponsor-placement]')).map(node => node.outerHTML);
+  await clickButton(sectionByTitle('Latest'), 'Show more');
+  expect(sectionCards('Latest').length).toBeGreaterThan(4);
+  expect(latestIds().slice(0, originalIds.length)).toEqual(originalIds);
+  expect(container.querySelector('button[aria-pressed]')).toBeNull();
+  expect(Array.from(container.querySelectorAll('[data-sponsor-placement]')).map(node => node.outerHTML)).toEqual(sponsors);
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+});
+
 test("guide strips retain selection props and distinct measurement placements", async () => {
   await renderHomepage(Array.from({ length: 12 }, (_, index) => makeArticle(index)));
   const strips = Array.from(container.querySelectorAll('[data-guide-strip]')).map(el => JSON.parse(el.dataset.guideStrip));

@@ -189,16 +189,16 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
           {searchStatus}
         </p>
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between py-3 md:py-4">
+          <div className="flex flex-wrap items-center justify-between gap-y-2 py-3 md:flex-nowrap md:gap-y-0 md:py-4">
             {/* Logo - Compact on mobile */}
-            <a href="/" aria-label="Cheshire Today home" className="flex items-center space-x-2 md:space-x-3 min-w-0">
+            <a href="/" aria-label="Cheshire Today home" className="flex max-w-full shrink-0 items-center space-x-2 md:max-w-none md:shrink md:space-x-3 min-w-0">
               <img
                 src="/logo.png"
                 alt="Cheshire Today"
                 className="h-8 md:h-10 w-auto flex-shrink-0"
               />
               <div className="min-w-0">
-                <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white truncate">Cheshire Today</h1>
+                <h1 className="font-headline text-xl md:text-3xl font-bold text-[#1E3A8A] dark:text-white [overflow-wrap:anywhere] md:[overflow-wrap:normal] md:truncate">Cheshire Today</h1>
                 <p className="hidden md:block text-sm font-medium text-slate-600 dark:text-gray-300 tracking-wide">Local · Business · Finance</p>
               </div>
             </a>
@@ -290,7 +290,7 @@ const navCategories = (categories || []).filter(c => NAV_CATEGORY_NAMES.has(c.na
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="flex items-center gap-2 md:hidden">
+            <div className="flex shrink-0 items-center gap-2 md:hidden">
               <a
                 href={FACEBOOK_PAGE_URL}
                 target="_blank"

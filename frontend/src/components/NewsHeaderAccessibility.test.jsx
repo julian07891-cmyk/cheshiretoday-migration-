@@ -73,6 +73,21 @@ const focusInput = async (input) => {
 
 const status = () => container.querySelector('[role="status"]');
 
+test('mobile branding can reflow without truncation while desktop keeps its layout', async () => {
+  await renderHeader();
+  const brand = container.querySelector('a[aria-label="Cheshire Today home"]');
+  const title = brand.querySelector('h1');
+  expect(title.textContent).toBe('Cheshire Today');
+  expect(title.classList.contains('truncate')).toBe(false);
+  expect(title.classList.contains('md:truncate')).toBe(true);
+  expect(brand.parentElement.classList.contains('flex-wrap')).toBe(true);
+  expect(brand.parentElement.classList.contains('md:flex-nowrap')).toBe(true);
+  expect(brand.classList.contains('max-w-full')).toBe(true);
+  const controls = brand.parentElement.querySelector('.md\\:hidden');
+  expect(controls.classList.contains('shrink-0')).toBe(true);
+  expect(controls.querySelector('a').getAttribute('aria-label')).toBe('Follow Cheshire Today on Facebook');
+});
+
 test('desktop and mobile search inputs have durable names and preserve visual contracts', async () => {
   await renderHeader();
 

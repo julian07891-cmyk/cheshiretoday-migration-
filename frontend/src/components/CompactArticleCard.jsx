@@ -63,12 +63,12 @@ const formatDate = (dateString) => {
 
     return (
       <Wrapper
-        {...(mobileCompact ? { to: article.url } : { onClick: () => onClick(article) })}
-        className={`group cursor-pointer overflow-hidden rounded-xl border border-slate-200/70 bg-white transition-colors hover:border-slate-300 dark:border-gray-700 dark:bg-gray-800/70 dark:hover:border-gray-600 ${mobileCompact ? 'flex gap-3 p-3 sm:block sm:p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700' : ''}`}
+        {...(mobileCompact ? { to: article.url, 'aria-label': article.title } : { onClick: () => onClick(article) })}
+        className={`group cursor-pointer overflow-hidden rounded-xl border border-slate-200/70 bg-white transition-colors hover:border-slate-300 dark:border-gray-700 dark:bg-gray-800/70 dark:hover:border-gray-600 ${mobileCompact ? 'flex gap-3 p-3 sm:block sm:p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 dark:focus-visible:outline-blue-300' : ''}`}
         data-testid={`article-card-${article.id}`}
       >
         {article.image ? (
-          <div className={`relative overflow-hidden bg-slate-100 dark:bg-gray-700 ${mobileCompact ? 'w-[88px] h-[66px] shrink-0 rounded sm:rounded-none sm:w-auto sm:h-auto sm:aspect-[16/10]' : 'aspect-[16/10]'}`}>
+          <div className={`relative overflow-hidden bg-slate-100 dark:bg-gray-700 ${mobileCompact ? 'w-[88px] h-[90px] shrink-0 rounded sm:rounded-none sm:w-auto sm:h-auto sm:aspect-[16/10]' : 'aspect-[16/10]'}`}>
             {!imageLoaded && (
               <div className="absolute inset-0 animate-pulse bg-slate-200 dark:bg-gray-700" />
             )}
@@ -89,9 +89,9 @@ const formatDate = (dateString) => {
           </div>
         ) : null}
 
-        <div className={mobileCompact ? 'min-w-0 flex-1 sm:p-4' : 'p-4'}>
+        <div className={mobileCompact ? 'min-w-0 flex-1 text-[16px] [overflow-wrap:anywhere] sm:p-4 sm:text-base sm:[overflow-wrap:normal]' : 'p-4'}>
           {(category || location) ? (
-            <div className="mb-2 flex flex-wrap items-center gap-x-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
+            <div className={`mb-2 flex flex-wrap items-center gap-x-2 text-[10px] font-semibold uppercase tracking-[0.12em] ${mobileCompact ? '[overflow-wrap:normal] [word-break:normal]' : ''}`}>
               {category ? (
                 <span className="text-emerald-700 dark:text-emerald-400">
                   {category}
@@ -110,17 +110,17 @@ const formatDate = (dateString) => {
             </div>
           ) : null}
 
-          <h3 className={`font-headline font-semibold tracking-[-0.02em] text-slate-950 transition-colors group-hover:text-[#1E3A8A] dark:text-white dark:group-hover:text-blue-300 ${mobileCompact ? 'text-[17px] leading-[21px] sm:text-xl sm:leading-[1.18] sm:line-clamp-3' : 'text-xl leading-[1.18] line-clamp-3'}`}>
+          <h3 className={`font-headline font-semibold tracking-[-0.02em] text-slate-950 transition-colors group-hover:text-[#1E3A8A] dark:text-white dark:group-hover:text-blue-300 ${mobileCompact ? 'text-[16px] leading-[1.25] line-clamp-3 sm:text-xl sm:leading-[1.18] sm:line-clamp-3' : 'text-xl leading-[1.18] line-clamp-3'}`}>
             {article.title}
           </h3>
 
-          <div className={`${mobileCompact ? 'mt-2 sm:mt-4' : 'mt-4'} flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-gray-400`}>
-            <span className="flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+          <div className={`${mobileCompact ? 'pt-2 sm:pt-0 sm:mt-4' : 'mt-4'} flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-gray-400`}>
+            <span className={mobileCompact ? 'flex min-w-0 max-w-full items-center gap-1 sm:min-w-[auto] sm:max-w-none' : 'flex items-center gap-1'}>
+              <Clock className={`h-3.5 w-3.5 ${mobileCompact ? 'shrink-0 sm:shrink' : ''}`} aria-hidden="true" />
               {formatDate(article.publishedDate)}
             </span>
-            <span className="flex items-center gap-1">
-              <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className={mobileCompact ? 'flex min-w-0 max-w-full items-center gap-1 sm:min-w-[auto] sm:max-w-none' : 'flex items-center gap-1'}>
+              <BookOpen className={`h-3.5 w-3.5 ${mobileCompact ? 'shrink-0 sm:shrink' : ''}`} aria-hidden="true" />
               {readTime} min read
             </span>
           </div>
