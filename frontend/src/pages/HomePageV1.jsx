@@ -331,7 +331,14 @@ const navigate = useNavigate();
       if (/\b(collectible|coffee\s+machines?)\b/.test(t)) return false;
 
       // Hard-block soft lifestyle / local leisure fluff
-      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|pub|cafe|bar|garden\s+centre|miniature\s+railway|train\s+rides?|secret\s+play\s+area|ice\s+cream|golf\s+buggies|tearoom|limited\s+edition\s+menu|chester\s+races\s+menu|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|food\s+tour|food\s+tours|walking\s+food\s+tours?|food\s+and\s+drink\s+festival|arts\s+festival|festival\s+returns?)\b/.test(t)) return false;
+      if (/\b(top\s+chef|restaurant\s+review|afternoon\s+tea|chicken\s+and\s+chips|beer|cafe|bar|garden\s+centre|miniature\s+railway|train\s+rides?|secret\s+play\s+area|ice\s+cream|golf\s+buggies|tearoom|limited\s+edition\s+menu|chester\s+races\s+menu|walton\s+hall\s+and\s+gardens|gardens\s+hailed|best\s+places\s+to\s+live|market\s+town\s+named|charming\s+cottage|dream\s+home|period\s+home|house\s+for\s+sale|farmhouse\s+for\s+sale|food\s+tour|food\s+tours|walking\s+food\s+tours?|food\s+and\s+drink\s+festival|arts\s+festival|festival\s+returns?)\b/.test(t)) return false;
+
+      if (/\bpub\b/.test(t)) {
+        if (a?.is_local_source !== true || String(a?.scope || "").trim().toLowerCase() !== "cheshire") return false;
+        const conversion = /^plans\s+(?:submitted|resubmitted)\s+to\s+(?:turn|convert)\s+(?:(?:a|the)\s+)?former\s+((?:(?!(?:pub|near|next|opposite|beside|behind|by|at|outside|adjacent|overlooking|across|from|alongside|within|close|and|or)\b)[\w'’&-]+\s+){0,8})pub\s+(?:in\s+[\w'’&-]+(?:\s+[\w'’&-]+){0,5}\s+)?into\s+(?:a\s+)?(?:convenience\s+store|shop)\.?$/i.exec(String(a?.title || "").trim());
+        // Between "former" and "pub", accept only an optional capitalised venue name, not prose about another property.
+        if (!conversion || !/^(?:[A-Z][\w'’&-]*\s+)*$/.test(conversion[1])) return false;
+      }
 
       // Hard-block weak nature/science/oddity tech unless it has clear AI, business, money or public-impact relevance
       if (/\b(dragonflies?|frogs?|birds?|wetlands?|sewage|underwater\s+forests?|dinosaur|skull|squirrels?|ospreys?|habitat\s+powerhouses?|soviet\s+science|symbols\s+of\s+soviet|anne\s+boleyn|different\s+dads|super\s+weird|super\s+odd|super\s+rare)\b/.test(t)) {
