@@ -562,3 +562,124 @@ test("Latest keeps approved unique stories only and hides an unnecessary toggle"
   expect(container.textContent).not.toContain("Police investigate a burglary");
   expect(container.textContent).not.toContain("Duplicate identifier should not render");
 });
+
+const makeCounterArticle = (id, category, hoursAgo, overrides = {}) => makeArticle(900, {
+  id: `article-${id}`,
+  category,
+  scope: category === "Local News" ? "cheshire" : "uk",
+  title: `${category} public service bulletin ${id}`,
+  summary: "A public service update for readers.",
+  publishedDate: hoursBeforeSidebarNow(hoursAgo),
+  created_at: hoursBeforeSidebarNow(hoursAgo),
+  ...overrides,
+});
+
+const topCounterIds = () => Array.from(
+  container.querySelector("[data-top-stories]").querySelectorAll("[data-card-id]")
+).map(card => card.dataset.cardId);
+
+const counterSupport = () => [
+  makeCounterArticle("business-a", "Business", 4),
+  makeCounterArticle("business-b", "Business", 5),
+  makeCounterArticle("tech", "Tech", 6),
+];
+
+const propertyHero = () => makeCounterArticle("hero", "Local News", 0, {
+  title: "Planning application approved for Cheshire homes",
+});
+
+test("Top Stories counter: the Local Hero does not consume either Local card", async () => {
+  const hero = makeCounterArticle("hero", "Local News", 0);
+  const localA = makeCounterArticle("local-a", "Local News", 1);
+  const localB = makeCounterArticle("local-b", "Local News", 2);
+  await renderHomepage([hero, localA, localB, ...counterSupport()]);
+
+  expect(container.querySelector("[data-hero-title]").dataset.heroTitle).toBe(hero.title);
+  expect(topCounterIds()).toEqual([
+    localA.id, localB.id, "article-business-a", "article-business-b", "article-tech",
+  ]);
+  expect(topCounterIds()).not.toContain(hero.id);
+});
+
+test.each(["identifier", "title"])("Top Stories counter: rejected Local duplicate %s leaves its slot available", async duplicateKind => {
+  const localA = makeCounterArticle("local-a", "Local News", 1);
+  const duplicate = makeCounterArticle("duplicate", "Local News", 1.5, duplicateKind === "identifier"
+    ? { id: localA.id }
+    : { title: `  ${localA.title.toUpperCase()}  ` });
+  const localB = makeCounterArticle("local-b", "Local News", 2);
+  await renderHomepage([propertyHero(), localA, duplicate, localB, ...counterSupport()]);
+
+  expect(topCounterIds()).toEqual([
+    localA.id, localB.id, "article-business-a", "article-business-b", "article-tech",
+  ]);
+  expect(new Set(topCounterIds()).size).toBe(5);
+});
+
+test.each(["identifier", "title"])("Top Stories counter: rejected Business duplicate %s leaves its slot available", async duplicateKind => {
+  const [businessA, businessB, tech] = counterSupport();
+  const duplicate = makeCounterArticle("duplicate", "Business", 4.5, duplicateKind === "identifier"
+    ? { id: businessA.id }
+    : { title: `  ${businessA.title.toUpperCase()}  ` });
+  const localA = makeCounterArticle("local-a", "Local News", 1);
+  const localB = makeCounterArticle("local-b", "Local News", 2);
+  await renderHomepage([propertyHero(), localA, localB, businessA, duplicate, businessB, tech]);
+
+  expect(topCounterIds()).toEqual([localA.id, localB.id, businessA.id, businessB.id, tech.id]);
+});
+
+test("Top Stories counter: a Business-overlap Hero does not consume a Business card", async () => {
+  const hero = makeCounterArticle("hero", "Local News", 0, {
+    title: "Cheshire business investment creates jobs",
+    featured: true,
+  });
+  const localA = makeCounterArticle("local-a", "Local News", 1);
+  const localB = makeCounterArticle("local-b", "Local News", 2);
+  await renderHomepage([hero, localA, localB, ...counterSupport()]);
+
+  expect(container.querySelector("[data-hero-title]").dataset.heroTitle).toBe(hero.title);
+  expect(topCounterIds()).toEqual([
+    localA.id, localB.id, "article-business-a", "article-business-b", "article-tech",
+  ]);
+});
+
+test("Top Stories counter: an AI/Tech Hero does not consume the AI/Tech card", async () => {
+  const hero = makeCounterArticle("hero", "Tech", 0);
+  const tech = makeCounterArticle("tech-next", "Tech", 1);
+  const [businessA, businessB] = counterSupport().map(a => ({ ...a, content: "Short article." }));
+  const ukA = makeCounterArticle("uk-a", "UK News", 7, { content: "Short article." });
+  const ukB = makeCounterArticle("uk-b", "UK News", 8, { content: "Short article." });
+  await renderHomepage([hero, tech, businessA, businessB, ukA, ukB]);
+
+  expect(container.querySelector("[data-hero-title]").dataset.heroTitle).toBe(hero.title);
+  expect(topCounterIds()).toEqual([businessA.id, businessB.id, tech.id, ukA.id, ukB.id]);
+});
+
+test("Top Stories counter: a Property Hero does not consume the Finance card", async () => {
+  const hero = propertyHero();
+  const localA = makeCounterArticle("local-a", "Local News", 1);
+  const localB = makeCounterArticle("local-b", "Local News", 2);
+  const [businessA, businessB] = counterSupport();
+  const property = makeCounterArticle("property", "Finance", 6, {
+    title: "Planning application approved for new homes",
+  });
+  const uk = makeCounterArticle("uk", "UK News", 7);
+  await renderHomepage([hero, localA, localB, businessA, businessB, property, uk]);
+
+  expect(container.querySelector("[data-hero-title]").dataset.heroTitle).toBe(hero.title);
+  expect(topCounterIds()).toEqual([localA.id, localB.id, businessA.id, businessB.id, property.id]);
+});
+
+test("Top Stories counter: a UK Hero does not consume the UK card before safety fill", async () => {
+  const hero = makeCounterArticle("hero", "UK News", 0);
+  const business = counterSupport().slice(0, 2).map(a => ({ ...a, featured: true, content: "Short article." }));
+  const tech = makeCounterArticle("tech", "Tech", 6, { content: "Short article." });
+  const property = makeCounterArticle("property", "Finance", 7, {
+    title: "Planning application approved for new homes", content: "Short article.",
+  });
+  const uk = makeCounterArticle("uk-next", "UK News", 8, { content: "Short article." });
+  const filler = makeCounterArticle("filler", "Business", 1, { content: "Short article." });
+  await renderHomepage([hero, filler, ...business, tech, property, uk]);
+
+  expect(container.querySelector("[data-hero-title]").dataset.heroTitle).toBe(hero.title);
+  expect(topCounterIds()).toEqual([business[0].id, business[1].id, tech.id, property.id, uk.id]);
+});

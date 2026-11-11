@@ -672,8 +672,8 @@ const navigate = useNavigate();
     };
 
     const pushTop = (a, overrideCategory = null) => {
-      if (topStoriesCards.length >= 5) return;
-      if (!mark(a)) return;
+      if (topStoriesCards.length >= 5) return false;
+      if (!mark(a)) return false;
       topStoriesCards.push(
         toCard(
           a,
@@ -681,6 +681,7 @@ const navigate = useNavigate();
           overrideCategory ? { category: overrideCategory } : {}
         )
       );
+      return true;
     };
 
     // Pass 1: Local (2) — exclude Tech/Business/Property so those slots remain available
@@ -691,8 +692,7 @@ const navigate = useNavigate();
       if (isAiTech(a)) continue;
       if (isBusinessishTop(a)) continue;
       if (isPropertyishTop(a)) continue;
-      pushTop(a, "Local News");
-      counts.local += 1;
+      if (pushTop(a, "Local News")) counts.local += 1;
     }
 
     // Pass 2: Business (2) — exclude Tech/Property, pick best-scoring candidates
@@ -702,8 +702,7 @@ const navigate = useNavigate();
       if (isAiTech(a)) continue;
       if (isPropertyishTop(a)) continue;
       if (!isBusinessishTop(a)) continue;
-      pushTop(a, "Business");
-      counts.business += 1;
+      if (pushTop(a, "Business")) counts.business += 1;
     }
 
     // Pass 3: AI/Tech (1)
@@ -711,8 +710,7 @@ const navigate = useNavigate();
       if (!isTopStoryAllowed(a)) continue;
       if (counts.tech >= 1) break;
       if (!isAiTech(a)) continue;
-      pushTop(a, "AI & Tech");
-      counts.tech += 1;
+      if (pushTop(a, "AI & Tech")) counts.tech += 1;
     }
 
     // Pass 4: Property (1) — ensure it is actually property-ish
@@ -721,8 +719,7 @@ const navigate = useNavigate();
       if (counts.finance >= 1) break;
       if (isAiTech(a)) continue;
       if (!isPropertyishTop(a)) continue;
-      pushTop(a, "Finance");
-      counts.finance += 1;
+      if (pushTop(a, "Finance")) counts.finance += 1;
     }
 
     // Pass 5: UK News (1) — explicitly UK, exclude Local/Business/Property/Tech
@@ -734,8 +731,7 @@ const navigate = useNavigate();
       if (isLocal(a)) continue;
       if (isBusinessishTop(a)) continue;
       if (isPropertyishTop(a)) continue;
-      pushTop(a, "UK News");
-      counts.uk += 1;
+      if (pushTop(a, "UK News")) counts.uk += 1;
     }
 
     // Safety fill: if we still have <5 (rare), fill with newest non-tech
