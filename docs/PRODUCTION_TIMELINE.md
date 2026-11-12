@@ -1,5 +1,39 @@
 # Cheshire Today — Production Timeline
 
+## 12 November 2026 — homepage Latest completeness production acceptance
+
+**LIVE — PRODUCTION ACCEPTED; scoped completeness defect CLOSED.** This entry
+records completed observations and the owner's acceptance, not a new deployment,
+query, test run or blanket performance/SEO acceptance by this documentation pass.
+
+| Evidence | Accepted value |
+|---|---|
+| Production branch / application SHA | `full-scrape-prod` / `b69fc844f6a78e77ec5f1b1473da1fa61c434e78` |
+| Previous revision / sole parent | `73cdf41652421dab946004302586bb09c779b11a` |
+| Render service | `srv-d5virmm3jp1c73c9d6tg` |
+| Render deployment | `dep-dbr1v8m8bjmc7395b470`, Live; independently observed and owner-accepted |
+| Acceptance date | 12 November 2026 (GMT); exact deployment/startup/Live timestamps not captured in this record |
+| Local verification | 92 targeted tests passed; independent review, syntax and whitespace passed |
+| Pre-release exact-pipeline Atlas explain, one execution | Cursor-stage reported execution 10 ms; 1,010 documents/727 index keys examined; 100 candidates; sort limit 100; estimated sort data 113,142 bytes; zero spills/usedDisk=false; cleanup PASS |
+| Explain qualifications | Two-second maxTimeMS, allowDiskUse=false, verified TLS and disabled retries; wall time 1,170.967 ms includes connection/network; not a whole-handler, peak-RSS or concurrent-load measurement |
+| Homepage public API, one request | HTTP 200, 79 articles; all ten previously missing IDs recovered |
+| Local category public API, one request | HTTP 200, 30 articles; the same ten IDs present |
+| Connected iPhone Safari | Expanded Latest 36 cards all uniquely matched to API records, newest-first with no publication-date inversions or duplicate IDs; active Santa's sleigh Hero excluded |
+| Recovered cards versus Latest cap | Seven of ten visible; three correctly older than the 36-card window ending 6 November 15:30 |
+
+Missing `created_at` had buried recent Local records before the 100-candidate
+cutoff. Only the exact homepage Local retrieval now normalises valid creation
+dates with valid publication-date fallback and deterministic `_id` ties before
+the unchanged cap. October's Local category chronology correction was a separate
+scope and intentionally did not change this read. No backfill, migration, index,
+editorial-policy or 40/40/20 strategy change. Latest remains newest-first without
+category rotation; UK/force-live retrieval, allocation and frontend behaviour
+remain unchanged. See [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md#12-november-2026--homepage-local-effective-date-completeness-correction)
+for implementation and ten-ID positions and [Open Findings](QA/OPEN_FINDINGS.md#12-november-2026--homepage-latest-completeness-closed)
+for the scoped closure. Broader latency, memory/concurrency and existing indexing
+or other QA statuses are not closed. Recovery still requires separate approval
+and fresh target/artifact verification; no rollback was performed.
+
 ## 29 October 2026 — Stage 2Z production releases
 
 Git-verified separate non-force pushes: CR23079ccc, CX9928b243, DAcf3431c.

@@ -3,9 +3,9 @@
 > - **Status:** Concise operational source of truth; Version 1 is complete and the current stage is production hardening, QA and evidence-led reliability monitoring
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
-> - **Application baseline:** `cf3431c119c95049976f9d586db8b68cebc68f40` (`Enforce Local category editorial eligibility`)
-> - **Last repository reconciliation:** 29 October 2026, Stage 2Z-DC. Current handover is section 2; older dated checkpoints below are historical and do not override it.
-> - **Production-verification status:** Owner confirms Live `cf3431c`, startup/eight jobs and acceptable last-observed headroom. Direct bounded public API acceptance passed for chronology and editorial eligibility on 29 October; this is not exhaustive or long-term performance acceptance. Final Render deployment ID is unverified. Historical crawler, newsletter/security, M53 and shadow-only similarity qualifications remain unchanged; see Open Findings and the current handover below.
+> - **Application baseline:** `b69fc844f6a78e77ec5f1b1473da1fa61c434e78` (`Fix homepage Local candidate effective-date ordering`)
+> - **Last repository reconciliation:** 12 November 2026, homepage Latest completeness production acceptance. Section 2 supersedes older dated handovers below.
+> - **Production-verification status:** Live on Render deployment `dep-dbr1v8m8bjmc7395b470`, independently observed and owner-accepted on 12 November. Both public feeds recovered all ten previously omitted article IDs; expanded iPhone Safari Latest passed chronology, Hero exclusion and deduplication. Single-query performance evidence does not close concurrent-load, long-term memory, indexing or unrelated QA findings.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
 > - **QA register:** [QA Master](QA/QA_MASTER.md) and [Open Findings](QA/OPEN_FINDINGS.md)
@@ -34,41 +34,59 @@ instructions to this file.
 
 ## 2. Current repository state
 
-### 12 November 2026 — homepage Local candidate dates (isolated, not released)
+### Current acceptance — 12 November 2026, homepage Latest completeness
 
-Remote `full-scrape-prod` and Render Live were independently verified at
-`73cdf41652421dab946004302586bb09c779b11a` before this work. The original checkout
-remains at `b25bc92b` with its unfinished work preserved. A fresh detached worktree
-at the production revision contains only the Local retrieval correction, focused
-tests, the existing timing fake's aggregate-query support and this state note.
-Nothing has been staged, committed, pushed or deployed.
+**Production checkpoint.** `full-scrape-prod` is at
+`b69fc844f6a78e77ec5f1b1473da1fa61c434e78`, parent
+`73cdf41652421dab946004302586bb09c779b11a`. Render service
+`srv-d5virmm3jp1c73c9d6tg` is Live on `dep-dbr1v8m8bjmc7395b470`;
+the dashboard was independently observed and the owner accepted the release.
+The actual remote branch was reverified at the same SHA for this documentation
+closure. The original checkout remains at `b25bc92b` with unrelated unfinished
+work preserved; this documentation update is isolated and uncommitted.
 
-Only the exact homepage `/api/articles?limit=80` Local candidate read now uses a
-type-guarded UTC BSON-date key: valid `created_at` first, otherwise valid
-`publishedDate`, otherwise null/last; ascending `_id` resolves ties. Sorting
-precedes the unchanged 100-candidate cap. Metadata projection, batch/to_list 100,
-maxTimeMS=2000 and allowDiskUse=false prevent unbounded application materialisation
-or disk spilling. The computed key is removed before return. UK/force-live reads,
-other request shapes, editorial policy, allocation, response shaping and all
-frontend selection/chronology/layout remain unchanged; source dates are not written.
+**Closed defect and contract.** Missing `created_at` values buried recent
+eligible Local articles before the homepage's 100-candidate cutoff. October's
+`9928b243` Local category chronology correction deliberately left homepage
+retrieval unchanged; that was a separate accepted scope. Only the exact homepage
+Local candidate read now sorts by valid UTC-normalised BSON Date/ISO `created_at`,
+falling back to valid `publishedDate` when creation is missing/invalid. If neither
+date is usable, the key is null/last. Ascending `_id` resolves ties before the
+unchanged limit of 100. The internal key is projected out.
+No stored-date rewrite, backfill, migration, new index or editorial-policy change.
+UK/force-live retrieval, API schema, allocation, Latest publication-date ordering,
+Hero exclusion, deduplication and layout remain unchanged. Preserve the 40/40/20
+editorial strategy; Latest remains newest-first without category rotation.
 
-Offline contracts cover the ten previously diagnosed missing-date IDs, date
-types/fallbacks, UTC ties, cap100, visibility, editorial filtering, failure
-propagation and unchanged surrounding code. Their before/after rankings are
-synthetic conditional evidence, not a new production snapshot: final homepage
-placement and current live top100 membership are not claimed. Mongo's adjacent
-sort/limit top-K optimisation and no-spill limit provide structural bounds; no
-new Mongo benchmark or execution plan was obtained. Computed-key evaluation is
-collection-proportional, cannot use the old creation-date index for ordering,
-and may hit the database deadline. This is not proof of production latency,
-concurrent-request headroom or total Render memory safety in the 2 GB service.
-Final network-blocked targeted verification: 32 new effective-date contracts plus
-60 existing homepage timing/UK eligibility regressions passed (92 total, 4.00s,
-five existing dependency/deprecation warnings). Syntax and whitespace passed.
-The date matrix was verified RED before implementation; two initial fake-only
-BSON type gaps were corrected rather than counted as demonstrated product defects.
+**Verification.** 92 targeted tests passed (32 new/60 existing, 4.00 seconds,
+five existing dependency/deprecation warnings); independent review, syntax and
+whitespace checks passed. Before release, one authorised exact-pipeline Atlas
+`executionStats` explain reported cursor-stage execution of 10 ms, 1,010 documents and
+727 index keys examined, 100 candidates, estimated sort data of 113,142 bytes,
+zero spills/usedDisk=false and cleanup PASS. maxTimeMS=2000, allowDiskUse=false,
+verified TLS and disabled retries were preserved. These are not new measurements
+or tests performed by this documentation update.
 
-### Current handover — 29 October 2026, Stage 2Z-DC
+**Live acceptance — PASS.** Each public feed was read once: homepage HTTP 200 / 79
+articles; Local category HTTP 200 / 30. All ten previously missing IDs were in both.
+On connected iPhone Safari, seven appeared in expanded Latest; three older
+articles correctly fell outside its 36-story window. All 36 cards matched unique
+API records in non-increasing publication order, with displayed dates from
+12 November 11:20 to 6 November 15:30. The active Santa's sleigh Hero was absent;
+no duplicate IDs.
+See [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md#12-november-2026--homepage-local-effective-date-completeness-correction)
+for the ten-ID evidence and [Production Timeline](PRODUCTION_TIMELINE.md#12-november-2026--homepage-latest-completeness-production-acceptance)
+for the deployment record.
+
+**Limits of closure.** Only the homepage Local candidate-completeness defect is
+closed. The one-query measurement is not an HTTP benchmark, peak-RSS measurement,
+concurrent-load test or proof of 2 GB Render memory safety. Computed-date scanning
+remains collection-proportional; maxTimeMS is not an end-to-end HTTP deadline.
+Broader QA-PERF-001 latency, QA-OPS-001 memory and existing search/indexing,
+newsletter and other QA statuses remain unchanged. No new diagnostic framework
+or repeat investigation is authorised by this closure.
+
+### Historical handover — 29 October 2026, Stage 2Z-DC
 
 **Identity and strategy.** Cheshire Today is an established local publication:
 40% Cheshire local news, 40% business/finance/property, 20% AI/technology.

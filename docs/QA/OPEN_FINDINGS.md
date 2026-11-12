@@ -1,6 +1,6 @@
 # Cheshire Today — Open Findings Register
 
-> **Reconstruction status:** Live finding register at HEAD `03a6abb`. It includes all original identifiers exactly once, even when closed at repository level.
+> **Reconstruction status:** Original finding identifiers retained from reconstruction at `03a6abb`. Scoped homepage Latest completeness closure reconciled on 12 November 2026 at `b69fc84`; unrelated finding statuses remain unchanged.
 
 ## Document purpose
 
@@ -162,7 +162,7 @@ remain pending. Existing unrelated findings are not closed by this reconciliatio
 - **Area:** Performance
 - **Original finding:** Public article-list TTFB was consistently around 1.4–1.5 seconds warm, with slower larger request and visible homepage skeleton delay.
 - **Current status:** **MATERIAL IMPROVEMENT — QA-PERF-001 OPTIMISATION VERIFIED.** The original homepage database/materialisation defect is remediated and production-verified; this does not close site-wide performance or explain the remaining client-observed latency.
-- **Current-code evidence:** For only the exact public `GET /api/articles?limit=80` list shape (`skip=0`, `with_total=False`, no category/search/source filter, archived disabled), commit `70057e1` skips unused `count_documents()` and caps Local and UK materialisation at 100 each. Force-live/fallback caps and semantics, visibility, Mongo predicates, projections, sorting, editorial/noise filtering, 2:2 interleaving, crime/incident handling, pinning, boosting, dedupe, slicing and response contracts are unchanged.
+- **September implementation evidence:** For only the exact public `GET /api/articles?limit=80` list shape (`skip=0`, `with_total=False`, no category/search/source filter, archived disabled), commit `70057e1` skipped unused `count_documents()` and capped Local and UK materialisation at 100 each, preserving the then-existing sorting and other contracts. These bounds remain; the separate 12 November Local effective-date correction is recorded below and does not supersede the historical measurements.
 - **Fixing commits:** Diagnostic baseline `15695cb`; bounded optimisation `70057e1b9e67bc74d89f23261271246b957cd065`.
 - **Test evidence:** Focused deterministic tests cover the exact optimisation predicate, count bypass, 100/100 candidate caps, unchanged force/fallback limits, other request shapes and timing eligibility. Candidate-sufficiency replay found deepest contributing Local/UK positions 42/58; 100/100 preserved the exact ordered baseline with better headroom than matching 60/60 or 80/80 alternatives.
 - **Deployment evidence:** Optimisation deployment `dep-dabrjseq1p3s73fsvf7g`, initially verified on instance `xmx4p`, Standard 1 CPU / 2 GB. The gated comparison ran on deployment `dep-dad5jv2jnfac73ehqh20`, instance `cs5n2`; the gate was then removed by `dep-dad5pcgn74is73dd4mj0`, leaving SHA `70057e1` live on instance `gldsq` with HTTP 200 health.
@@ -171,6 +171,15 @@ remain pending. Existing unrelated findings are not closed by this reconciliatio
 - **Closure criteria:** Met for the original confirmed database/materialisation remediation. Any broader performance closure requires independent measurement and evidence for the remaining client residual.
 - **Owner/documentation responsibility:** Backend/performance owner; monitoring record.
 - **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `15695cb`, `70057e1`, [Monitoring](../OPERATIONS/MONITORING.md), bounded production comparison 4 September 2026.
+
+#### 12 November 2026 — homepage Latest completeness (closed)
+
+- **Scoped status:** **CLOSED — PRODUCTION VERIFIED.** This related candidate-completeness defect is closed; QA-PERF-001's broader latency qualification/residual and QA-OPS-001's memory status remain unchanged.
+- **Cause:** Missing `created_at` placed recent eligible Local records beyond the 100-candidate cutoff. October's `9928b243` Local category chronology work deliberately did not change homepage retrieval; the accepted frontend Latest sorter was not the cause.
+- **Correction:** `b69fc844f6a78e77ec5f1b1473da1fa61c434e78`, parent `73cdf41652421dab946004302586bb09c779b11a`, uses valid UTC-normalised BSON Date/ISO creation dates with valid publication fallback when creation is missing/invalid; if neither date is usable, null/last. Ascending `_id` resolves ties before the unchanged 100 cap. No backfill, migration, index, editorial-policy, category allocation, Hero/deduplication or layout change; Latest remains publication-newest-first, without category rotation, and 40/40/20 is preserved.
+- **Verification:** 92 targeted tests/independent review passed. One exact-pipeline production Atlas explain reported cursor-stage 10 ms, documents 1,010, keys 727, candidates 100, estimated sort data 113,142 bytes, no disk use/zero spills and cleanup PASS, under maxTimeMS=2000/allowDiskUse=false and disabled retries. These are one-query figures, not peak-memory, HTTP or concurrency evidence.
+- **Production acceptance:** Live `dep-dbr1v8m8bjmc7395b470` on 12 November 2026. Each public feed read once: homepage HTTP 200 / 79 and Local HTTP 200 / 30; all ten IDs recovered in both. All 36 expanded iPhone Safari Latest cards were uniquely matched to API records with no date inversions or duplicates; active Hero absent. Seven recovered cards were inside Latest; three older records were correctly beyond the 36-card window ending 6 November 15:30, not remaining omissions.
+- **Closure limits:** No site-wide indexing, long-term memory, concurrent-load or wider performance closure. No tests, database queries or deployment were repeated for this documentation amendment. Detailed IDs/provenance: [Engineering History](../HISTORY/ENGINEERING_HISTORY_MASTER.md#12-november-2026--homepage-local-effective-date-completeness-correction); release: [Production Timeline](../PRODUCTION_TIMELINE.md#12-november-2026--homepage-latest-completeness-production-acceptance).
 
 ### QA-OPS-001
 

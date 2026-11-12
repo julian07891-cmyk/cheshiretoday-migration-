@@ -1445,3 +1445,87 @@ effects do not reverse. Missing current-Live rollback button is not a defect.
 Production Timeline records CY/DB results and recovery IDs. DC preserves open
 memory/concurrency/counter-lifecycle questions and planned30 October06:00 import/
 07:30 Daily Brief as pending, not completed.
+
+## 12 November 2026 — homepage Local effective-date completeness correction
+
+**Root cause and historical boundary.** Ten recent eligible Local records lacked
+`created_at`. Homepage candidate retrieval sorted raw creation dates first, so
+those records fell beyond the existing 100-Local-candidate cutoff even though
+the public Local category feed exposed them. Individual article availability did
+not establish homepage inclusion. The accepted October `9928b243` correction
+normalised Local category chronology; it deliberately did not change homepage
+retrieval. The November defect is distinct, not evidence that October's scoped
+correction failed or that Latest's accepted publication-date sorter was wrong.
+The prior candidate-depth expansion/reversal remains authoritative: no cap increase.
+
+**Implementation and preservation.** `b69fc844f6a78e77ec5f1b1473da1fa61c434e78`
+(`Fix homepage Local candidate effective-date ordering`) has sole parent
+`73cdf41652421dab946004302586bb09c779b11a`. The exact homepage request's Local
+read uses valid UTC-normalised BSON Date/ISO `created_at`, otherwise valid
+`publishedDate`, otherwise null/last; sorting is effective-date descending then
+`_id` ascending, before the limit of 100. Projection/batch/materialisation stay
+bounded; the computed key is removed before response shaping. maxTimeMS=2000 and
+allowDiskUse=false are explicit. Stored dates, indexes, UK/force-live retrieval,
+other request shapes, editorial guards, API schema, allocation, frontend Latest,
+Hero/deduplication and layout are unchanged. No backfill, migration, policy change
+or speculative query-depth expansion. The 40/40/20 strategy does not impose
+category rotation on Latest. Isolated preparation excluded unrelated local
+commits and preserved original/protected unfinished work.
+
+**Offline and pre-release performance evidence.** 92 targeted tests passed
+(32 effective-date contracts/60 existing timing and UK eligibility regressions,
+4.00s, five existing dependency/deprecation warnings); independent review, syntax
+and whitespace passed. Two initial fake-only BSON-type gaps were corrected, not
+counted as production defects. One authorised production Atlas explain executed
+the exact committed aggregation while `73cdf416` was Live: cursor-stage reported
+execution of 10 ms, last-stage execution estimate of 4 ms, 1,010 documents/727
+index keys examined, 100 candidates, sort limit 100, estimated sort data of
+113,142 bytes, usedDisk=false / spills=0 and cleanup PASS. Wall time of
+1,170.967 ms included connection/network overhead. Sort memory-limit/other
+total-size fields were unavailable, not zero.
+TLS verification, primary reads, disabled retries and the two-second/no-spill
+limits remained active. No standalone aggregation, second measurement or write.
+This is not a whole-handler timing, peak-memory or production-concurrency result;
+do not equate estimated sort bytes with retained heap or Render RSS. October's
+12,000-record synthetic benchmark and September homepage timings remain historical
+context, not measurements of this exact production query. Abandoned Docker/
+benchmark-adapter work was not reopened.
+
+**Release and live acceptance.** Render service `srv-d5virmm3jp1c73c9d6tg`
+was independently observed Live at `b69fc844f6a78e77ec5f1b1473da1fa61c434e78`,
+deployment `dep-dbr1v8m8bjmc7395b470`, and owner-accepted on 12 November 2026.
+One public request per feed returned homepage HTTP 200 / 79 articles and Local
+category HTTP 200 / 30; all ten IDs appeared in both. The following are observed
+response/card positions in that acceptance snapshot, not permanent rankings:
+
+| Recovered public article ID | Homepage API position | Expanded iPhone Latest position |
+|---|---:|---:|
+| `6af4adb70812ba809f33afcc` | 14 | 8 |
+| `6af35c365fb0a2a6c96d4d43` | 22 | 16 |
+| `6af35c3d5fb0a2a6c96d4d45` | 25 | 17 |
+| `6af2b34b514d46f9776d1c9a` | 30 | 20 |
+| `6af161e0514d46f9776d0b37` | 37 | 27 |
+| `6aee161e514d46f9776ce2b3` | 45 | 35 |
+| `6aee1623514d46f9776ce2b4` | 46 | 36 |
+| `6aee1629514d46f9776ce2b6` | 48 | Outside 36 |
+| `6aec1c0ba1c3522d784a1a30` | 57 | Outside 36 |
+| `6aec1c13a1c3522d784a1a32` | 60 | Outside 36 |
+
+All 36 expanded iPhone Safari Latest cards were visually inspected and uniquely
+matched to API records, with no publication-date inversions or duplicate IDs.
+The displayed range was 12 November 11:20 to 6 November 15:30. The Crewe app
+record dated 6 November 14:35 and the two 4 November records were correctly older than the
+36-card cutoff, not remaining upstream omissions. The active Santa's sleigh Hero
+(`6af5aa960812ba809f33b86f`) was excluded from Latest. No remaining omission among
+the ten diagnosed IDs was observed. Existing editorial safeguards were preserved,
+not exhaustively retested in production.
+
+**Closure boundary and provenance.** Homepage Local candidate completeness:
+**CLOSED — PRODUCTION VERIFIED**. Source: exact Git diff/92-pass snapshot,
+independent review, the single approved aggregate explain result, authenticated
+Render deployment observation, one-read-per-feed comparison and interactive
+iPhone Mirroring acceptance, reiterated by the owner's 12 November closure brief.
+The documentation pass ran no tests, database/performance queries or deployment.
+QA-PERF-001's broader latency residual, QA-OPS-001 memory stability, indexing and
+unrelated findings retain their existing status. See [Production Timeline](../PRODUCTION_TIMELINE.md#12-november-2026--homepage-latest-completeness-production-acceptance)
+and the scoped [QA amendment](../QA/OPEN_FINDINGS.md#12-november-2026--homepage-latest-completeness-closed).
