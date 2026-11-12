@@ -5177,14 +5177,42 @@ async def get_articles(
 
             local_started = time.perf_counter() if homepage_timing_enabled else None
             local_candidate_limit = 100 if exact_homepage_list_request else limit * 6
-            local_articles = await db.articles.find(local_q,
-                {
-                    '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
-                    'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
-                    'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
-                    'location': 1, 'priority_location': 1
-                }
-            ).sort([('created_at', -1), ('publishedDate', -1)]).limit(local_candidate_limit).to_list(local_candidate_limit)
+            local_projection = {
+                '_id': 1, 'title': 1, 'summary': 1, 'category': 1,
+                'author': 1, 'publishedDate': 1, 'created_at': 1, 'image': 1, 'tags': 1,
+                'featured': 1, 'source': 1, 'source_url': 1, 'scope': 1, 'is_local_source': 1,
+                'location': 1, 'priority_location': 1
+            }
+            if exact_homepage_list_request:
+                # As in Local chronology, accept only BSON dates/parseable strings.
+                # A valid creation date stays authoritative, even if publication is newer.
+                def normalised_date(field):
+                    return {"$switch": {"branches": [
+                        {"case": {"$eq": [{"$type": field}, "date"]}, "then": field},
+                        {"case": {"$eq": [{"$type": field}, "string"]},
+                         "then": {"$convert": {"input": field, "to": "date",
+                                                "onError": None, "onNull": None}}},
+                    ], "default": None}}
+
+                local_articles = await db.articles.aggregate(
+                    [
+                        {"$match": local_q},
+                        {"$project": local_projection},
+                        {"$set": {"_homepage_local_effective_date": {"$ifNull": [
+                            normalised_date("$created_at"), normalised_date("$publishedDate"),
+                        ]}}},
+                        # Adjacent sort/limit permits Mongo's bounded top-K sort.
+                        {"$sort": {"_homepage_local_effective_date": -1, "_id": 1}},
+                        {"$limit": local_candidate_limit},
+                        {"$project": local_projection},
+                    ],
+                    maxTimeMS=2000,
+                    allowDiskUse=False,
+                ).batch_size(local_candidate_limit).to_list(local_candidate_limit)
+            else:
+                local_articles = await db.articles.find(local_q, local_projection).sort(
+                    [('created_at', -1), ('publishedDate', -1)]
+                ).limit(local_candidate_limit).to_list(local_candidate_limit)
             if homepage_timing_enabled:
                 homepage_timing["local_materialise_ms"] = (time.perf_counter() - local_started) * 1000
                 homepage_timing["local_candidates_before_filter"] = len(local_articles)

@@ -34,6 +34,40 @@ instructions to this file.
 
 ## 2. Current repository state
 
+### 12 November 2026 — homepage Local candidate dates (isolated, not released)
+
+Remote `full-scrape-prod` and Render Live were independently verified at
+`73cdf41652421dab946004302586bb09c779b11a` before this work. The original checkout
+remains at `b25bc92b` with its unfinished work preserved. A fresh detached worktree
+at the production revision contains only the Local retrieval correction, focused
+tests, the existing timing fake's aggregate-query support and this state note.
+Nothing has been staged, committed, pushed or deployed.
+
+Only the exact homepage `/api/articles?limit=80` Local candidate read now uses a
+type-guarded UTC BSON-date key: valid `created_at` first, otherwise valid
+`publishedDate`, otherwise null/last; ascending `_id` resolves ties. Sorting
+precedes the unchanged 100-candidate cap. Metadata projection, batch/to_list 100,
+maxTimeMS=2000 and allowDiskUse=false prevent unbounded application materialisation
+or disk spilling. The computed key is removed before return. UK/force-live reads,
+other request shapes, editorial policy, allocation, response shaping and all
+frontend selection/chronology/layout remain unchanged; source dates are not written.
+
+Offline contracts cover the ten previously diagnosed missing-date IDs, date
+types/fallbacks, UTC ties, cap100, visibility, editorial filtering, failure
+propagation and unchanged surrounding code. Their before/after rankings are
+synthetic conditional evidence, not a new production snapshot: final homepage
+placement and current live top100 membership are not claimed. Mongo's adjacent
+sort/limit top-K optimisation and no-spill limit provide structural bounds; no
+new Mongo benchmark or execution plan was obtained. Computed-key evaluation is
+collection-proportional, cannot use the old creation-date index for ordering,
+and may hit the database deadline. This is not proof of production latency,
+concurrent-request headroom or total Render memory safety in the 2 GB service.
+Final network-blocked targeted verification: 32 new effective-date contracts plus
+60 existing homepage timing/UK eligibility regressions passed (92 total, 4.00s,
+five existing dependency/deprecation warnings). Syntax and whitespace passed.
+The date matrix was verified RED before implementation; two initial fake-only
+BSON type gaps were corrected rather than counted as demonstrated product defects.
+
 ### Current handover — 29 October 2026, Stage 2Z-DC
 
 **Identity and strategy.** Cheshire Today is an established local publication:

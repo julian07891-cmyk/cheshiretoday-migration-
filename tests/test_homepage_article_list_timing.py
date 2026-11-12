@@ -80,6 +80,10 @@ class FakeCursor:
         self.operations.append(("skip", value))
         return self
 
+    def batch_size(self, value):
+        self.operations.append(("batch_size", value))
+        return self
+
     def limit(self, value):
         self.operations.append(("limit", value))
         self.documents = self.documents[:value]
@@ -101,6 +105,14 @@ class FakeArticlesCollection:
     async def count_documents(self, query):
         self.calls.append(("count_documents", copy.deepcopy(query)))
         return len(self.local) + len(self.uk)
+
+    def aggregate(self, pipeline, **kwargs):
+        # Like find/sort below, this timing fake preserves fixture order. The
+        # effective-date suite separately checks query semantics and boundaries.
+        operations = []
+        self.calls.append(("aggregate", copy.deepcopy(pipeline), dict(kwargs), operations))
+        cap = next(stage["$limit"] for stage in pipeline if "$limit" in stage)
+        return FakeCursor(self.local[:cap], operations)
 
     def find(self, query, projection):
         query_copy = copy.deepcopy(query)
@@ -208,8 +220,15 @@ def test_exact_homepage_avoids_count_and_uses_bounded_candidate_caps(monkeypatch
 
     assert not any(call[0] == "count_documents" for call in collection.calls)
     assert ("limit", 400) in _find_call(collection, "force")[3]
-    assert ("limit", 100) in _find_call(collection, "local")[3]
-    assert ("to_list", 100) in _find_call(collection, "local")[3]
+    local_reads = [call for call in collection.calls if call[0] == "aggregate"]
+    assert len(local_reads) == 1
+    assert local_reads[0][1][3:5] == [
+        {"$sort": {"_homepage_local_effective_date": -1, "_id": 1}},
+        {"$limit": 100},
+    ]
+    assert local_reads[0][2] == {"maxTimeMS": 2000, "allowDiskUse": False}
+    assert ("batch_size", 100) in local_reads[0][3]
+    assert ("to_list", 100) in local_reads[0][3]
     assert ("limit", 100) in _find_call(collection, "uk")[3]
     assert ("to_list", 100) in _find_call(collection, "uk")[3]
     expected_ids = []
