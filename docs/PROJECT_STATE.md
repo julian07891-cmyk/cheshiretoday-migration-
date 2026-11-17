@@ -4,7 +4,7 @@
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
 > - **Application baseline:** `b69fc844f6a78e77ec5f1b1473da1fa61c434e78` (`Fix homepage Local candidate effective-date ordering`)
-> - **Last repository reconciliation:** 12 November 2026, homepage Latest completeness production acceptance. Section 2 supersedes older dated handovers below.
+> - **Last repository reconciliation:** 17 November 2026, approved Admin refresh investigation recorded; correction PENDING. The 12 November homepage production acceptance remains unchanged. Section 2 supersedes older dated handovers below.
 > - **Production-verification status:** Live on Render deployment `dep-dbr1v8m8bjmc7395b470`, independently observed and owner-accepted on 12 November. Both public feeds recovered all ten previously omitted article IDs; expanded iPhone Safari Latest passed chronology, Hero exclusion and deduplication. Single-query performance evidence does not close concurrent-load, long-term memory, indexing or unrelated QA findings.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
@@ -33,6 +33,30 @@ Do not append chat transcripts, historical checkpoints or temporary resume
 instructions to this file.
 
 ## 2. Current repository state
+
+### 17 November 2026 — Admin saved-risk-review refresh correction PENDING
+
+The owner approved recording the historical investigation, not implementation
+or release. Actual remote `full-scrape-prod` was verified at
+`fb5fc4bc277b7571ddf0dc9415f9aae99dd33cc7`, a documentation-only successor to
+the application baseline above. No fresh Render Live verification is claimed.
+This four-file documentation amendment is isolated from the original `b25bc92b`
+checkout and its protected unfinished work; no commit or deployment occurred.
+
+Successful saved AI risk reviews still invoke the broad dashboard loader,
+unnecessarily reloading subscribers. Earlier selective article refresh work was
+not a fix for this exact path; no documented failed/reverted exact correction
+was found. This is confirmed Admin inefficiency, not a proven leak or cause of
+persistent RSS growth. **QA-OPS-001 remains HIGH OPEN.**
+
+Prospective work is **PENDING — NOT IMPLEMENTED OR ACCEPTED**: focused offline
+RED coverage, minimal article-only refresh/state update, related frontend
+regressions/build and independent review, followed by fresh production-baseline
+checks and separately authorised release gates. Preserve authentication,
+initial/explicit dashboard loading, post-unsubscribe refresh, subscriber
+lifecycle/history, article context and draft-only editorial safeguards.
+See the [history and exact gates](HISTORY/ENGINEERING_HISTORY_MASTER.md#17-november-2026--admin-saved-risk-review-refresh-reconciliation)
+and [related QA observation](QA/OPEN_FINDINGS.md#17-november-2026--related-admin-refresh-inefficiency-correction-pending).
 
 ### Current acceptance — 12 November 2026, homepage Latest completeness
 

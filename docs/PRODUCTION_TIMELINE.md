@@ -1,5 +1,40 @@
 # Cheshire Today — Production Timeline
 
+## 13 November 2026 — inter-job activity (reconciled 17 November)
+
+**Provenance:** Previously inspected authenticated Render application/access logs
+for service `srv-d5virmm3jp1c73c9d6tg`, instance `k8gdh`, under the previously
+confirmed `fb5fc4bc277b7571ddf0dc9415f9aae99dd33cc7` production revision.
+The owner approved this reconciliation for documentation on 17 November.
+No logs, production endpoints, database queries or jobs were re-executed for
+this amendment. The remote branch was freshly verified at `fb5fc4b`; Render
+Live status was not freshly verified. This entry is not a release or fix.
+
+| 13 November GMT | Previously observed evidence |
+|---|---|
+| 06:02:18.472 / .473 | Import completion memory marker: current RSS 283.7 MiB, traced current heap 17.3 MiB; APScheduler then reported successful completion. |
+| Across 06:02:18–07:30 | Public article/homepage traffic and periodic health/article-list reads. No additional APScheduler event was found beyond morning completion; this does not establish absence of other work. |
+| 06:43:44 onward | Admin dashboard reads included articles, stats, subscribers and jobs. |
+| 06:49:17–25; 06:52:33–42 | Dense successful AI-review and repeated dashboard/subscriber request bursts. |
+| 06:55–07:04 | Draft rewriting, outgoing provider calls and article updates were logged. |
+| 07:03:26–29; 07:05:37–41 | Dozens of successful requests to `DELETE /api/articles/{id}`; database effects were not queried and hard deletion is not inferred from the HTTP method. |
+| 07:30:00.004 | Daily Brief start: current RSS 527.0 MiB, traced current heap 7.8 MiB. |
+
+The same-instance endpoint difference is **+243.3 MiB current RSS**, not a
+peak/high-water comparison. No intervening memory checkpoint identified where
+that growth occurred. Confirmed non-scheduled activity overlaps the interval,
+but allocation ownership, abnormal overall traffic volume, a memory leak and
+the contribution of any single endpoint remain **UNKNOWN**. The import's
+successful completion does not make the intervening interval idle.
+
+The separate source review confirms that saved article risk-review success
+unnecessarily reloads subscriber data through `fetchAllData()`. The approved
+history is in [Engineering History](HISTORY/ENGINEERING_HISTORY_MASTER.md#17-november-2026--admin-saved-risk-review-refresh-reconciliation).
+Its correction is **PENDING — NOT IMPLEMENTED OR ACCEPTED**. Request reduction
+would be an Admin efficiency improvement, not established OOM remediation.
+**QA-OPS-001 remains HIGH OPEN**; no restart, scaling, configuration or scheduler
+change, deployment or production acceptance is recorded here.
+
 ## 12 November 2026 — homepage Latest completeness production acceptance
 
 **LIVE — PRODUCTION ACCEPTED; scoped completeness defect CLOSED.** This entry

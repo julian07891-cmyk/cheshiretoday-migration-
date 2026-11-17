@@ -1,5 +1,85 @@
 # Cheshire Today — Engineering History Master
 
+## 17 November 2026 — Admin saved-risk-review refresh reconciliation
+
+**Authority and status.** The owner approved the historical investigation for
+documentation on 17 November. The prospective correction is **PENDING — NOT
+IMPLEMENTED OR ACCEPTED**. The actual remote `full-scrape-prod` was verified at
+`fb5fc4bc277b7571ddf0dc9415f9aae99dd33cc7`, a documentation-only successor to
+application revision `b69fc84`. This amendment uses a clean detached worktree;
+the original `b25bc92b` checkout and protected unfinished work are preserved.
+No fresh Render Live verification, application request, database query, test,
+configuration change or release was performed for this documentation stage.
+
+### Commit-backed February–August history
+
+| Date in 2026 | Commit | Relevant implementation and boundary |
+|---|---|---|
+| 1 February | `789e9c8` | Introduced `fetchAllData()` for authenticated dashboard loading: stats, subscribers and articles, followed by jobs/options. Login and explicit refresh use it. The initial snapshot already comments that an authentication-effect re-fetch caused races/duplicate fetches; the earlier removal is not independently available in Git. |
+| 14 February | `58c29d8` | Hardened token-argument handling; broad dashboard fetching remained. |
+| 22 April | `12ce044` | Article saves replaced a full dashboard refresh with local article-state updates. This selective pattern remains present. |
+| 24 April | `d22407d` | Added the article-only `fetchAdminArticlesPage()` search/pagination helper. It did not change subscriber fetching. |
+| 16 May | `9158e03` | Suppressed duplicate article-search fetches with the current-search reference; not a subscriber-fetch optimisation. |
+| 26 May | `ecd4a30`, `a7aa5ea` | Added saved risk-review metadata and its UI. Successful `handleAIReviewArticle()` called `fetchAllData()` from introduction; function-history inspection found that handler unchanged through `fb5fc4b`. |
+| 30 May | `6b3c304` | Extended saved risk-review controls to Manual Review and Archive. |
+| 22 June / 17 July | `ad131c7`, `9d1d961` | Added separate no-write draft rewriting; Archive retained a distinct saved-risk-review action. Draft creation is not saved risk review. |
+| 24 July | `f8858ec`, `a2421d6` | Preserved refreshes after archive operations and safe soft-unsubscribe. Successful unsubscribe explicitly refreshes subscriber data/counts without removing the row locally. |
+| 24 August | `fa9ffe9` | Added bounded Manual Review pagination, in-flight protection and mutation refreshes; not the present subscriber-refetch correction. |
+
+No implementation or documented failure/reversion of this exact post-risk-review
+correction was found in the available Git/history review. The earlier selective
+patterns remain present, not abandoned. The redacted archive's 1 June subscriber
+pagination/true-total proposal was deferred backlog, not an implemented or
+rejected version of this correction. Do not reconstruct missing reasons or treat
+unrelated editorial-verification rollbacks as evidence against selective refresh.
+
+### Confirmed behaviour, safeguards and evidence limits
+
+At `fb5fc4b`, successful saved article risk reviews reload subscriber data even
+outside the Subscribers tab. `GET /api/admin/subscribers` returns at most 1,000
+records via `find({}, {"_id": 0}).to_list(1000)`; this is not deliberate whole-
+collection materialisation or a response-byte/driver-buffer guarantee. Repeated
+reads and serialization are confirmed avoidable work. Previously inspected
+13 November request bursts overlap the unexplained RSS interval, but do not
+identify allocation ownership, a memory leak or the size of any resulting RSS
+benefit. See the [production observation](../PRODUCTION_TIMELINE.md#13-november-2026--inter-job-activity-reconciled-17-november).
+**QA-OPS-001 remains HIGH OPEN.**
+
+Preserve authenticated initial loading, explicit full refresh, logout/expired-
+session handling, and the accepted post-unsubscribe refresh. Management UUIDs,
+soft-inactive rows, consent/preferences/history, verified-link reactivation and
+the no-email/hard-delete fallback safeguard remain unchanged. Keep saved review
+and unsaved draft flows distinct, with no automatic content edit/publication.
+Article/Archive display, search and pagination context must remain correct; a
+blind helper substitution can reset context or alter authentication handling.
+Do not globally remove subscriber fetching from `fetchAllData()`.
+
+### Required gates — prospective work only
+
+1. Separately authorise focused offline RED regressions: successful/repeated
+   saved reviews update article review display without subscriber reloads;
+   failed reviews/authentication errors remain explicit; initial load, explicit
+   full refresh and successful unsubscribe retain their accepted behaviour.
+   Cover applicable article/archive context and search/pagination preservation.
+2. Authorise the smallest article-only refresh/state-update correction using
+   existing functionality. No backend pagination/schema, subscriber lifecycle,
+   scheduler, editorial-policy or diagnostic-framework expansion.
+3. Require focused and related frontend regressions/build, diff/scope and
+   preservation checks, then independent review. No test result is supplied by
+   this documentation amendment and no assertion may be weakened.
+4. Before any release, freshly verify remote and Render Live identity, isolate
+   the approved change, and obtain separate commit/push/deployment authority.
+   Request reduction is not production memory acceptance or QA-OPS-001 closure.
+
+Sources: `frontend/src/components/AdminDashboard.jsx`, `backend/server.py`, the
+commits above, `adminSubscriberLifecycle.test.js`, the existing Admin Articles,
+Manual Review pagination and Mobile Safari tests; the
+[redacted historical archive](../ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
+(1 June backlog; 24 July subscriber lifecycle),
+[July engineering log](ENGINEERING_LOG_JULY_2026.md), and existing
+[CT-DEC-002/004/009](../DECISION_REGISTER.md) safeguards. These are historical
+source/test contracts, not tests or production observations repeated here.
+
 ## 5 October 2026 reconciliation boundary
 
 This continuation records committed engineering through

@@ -198,6 +198,15 @@ remain pending. Existing unrelated findings are not closed by this reconciliatio
 - **Owner/documentation responsibility:** Production operations owner; [Monitoring](../OPERATIONS/MONITORING.md).
 - **Sources:** [29 July report](QA_REPORT_2026-07-29.md), Git `42736f9`, `49e5fe4`, `c06c837`, `cd3f093`, `0cdc089`, `1811430`, `6ffcede`, `0052b68`, `b3550c0`, [Production Timeline](../PRODUCTION_TIMELINE.md).
 
+#### 17 November 2026 — related Admin refresh inefficiency (correction PENDING)
+
+- **Status:** Historical reconciliation approved for documentation only. Correction **PENDING — NOT IMPLEMENTED OR ACCEPTED**; QA-OPS-001 remains **HIGH OPEN** with its existing closure criteria.
+- **Confirmed implementation:** Saved article risk-review success calls `fetchAllData()`, including `GET /api/admin/subscribers`, regardless of active tab. This handler is unchanged since `a7aa5ea`; earlier selective article work (`12ce044`, `d22407d`, `9158e03`) remains present. No documented failed or reverted exact correction was found. Subscriber pagination/true totals were separate deferred backlog, not this fix.
+- **Production evidence boundary:** Prior 13 November logs on `k8gdh` show Admin/subscriber reads, reviews/rewrites and article operations between import completion and Daily Brief. Current RSS rose 283.7 to 527.0 MiB (+243.3), without intervening memory samples. These correlated activities do not attribute the increase to this endpoint, establish a leak or quantify prospective savings. No production request/query or new measurement was made for this amendment.
+- **Safeguards:** Keep initial/explicit full loading, authentication/session handling and `a2421d6` post-unsubscribe refresh; preserve management-ID soft unsubscribe, inactive rows, consent/history and verified-link reactivation. Do not change `fetchAllData()` globally, broaden backend scope or alter editorial/draft policy.
+- **Required gates:** Separately authorised focused RED tests, smallest context-preserving article-only correction, related frontend regressions/build, preservation/diff checks and independent review; then fresh remote/Live verification and separate release authority. No new test pass or memory-recovery claim is recorded.
+- **Sources:** [Approved historical reconciliation and source/test references](../HISTORY/ENGINEERING_HISTORY_MASTER.md#17-november-2026--admin-saved-risk-review-refresh-reconciliation); [prior production log observation](../PRODUCTION_TIMELINE.md#13-november-2026--inter-job-activity-reconciled-17-november). The documentation worktree is based on `fb5fc4b`; this is not a production correction or a new deployment.
+
 ### QA-DOC-001
 
 - **Original severity:** Low
