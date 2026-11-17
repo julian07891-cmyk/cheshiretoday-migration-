@@ -4,7 +4,7 @@
 > - **Operational authority:** This file, governed by [Project Master](PROJECT_MASTER.md)
 > - **Primary branch:** `full-scrape-prod`
 > - **Application baseline:** `b69fc844f6a78e77ec5f1b1473da1fa61c434e78` (`Fix homepage Local candidate effective-date ordering`)
-> - **Last repository reconciliation:** 17 November 2026, approved Admin refresh investigation recorded; correction PENDING. The 12 November homepage production acceptance remains unchanged. Section 2 supersedes older dated handovers below.
+> - **Last repository reconciliation:** 17 November 2026, approved Admin refresh and Archive AI-review persistence investigations recorded; corrections remain pending acceptance. The 12 November homepage production acceptance remains unchanged. Section 2 supersedes older dated handovers below.
 > - **Production-verification status:** Live on Render deployment `dep-dbr1v8m8bjmc7395b470`, independently observed and owner-accepted on 12 November. Both public feeds recovered all ten previously omitted article IDs; expanded iPhone Safari Latest passed chronology, Hero exclusion and deduplication. Single-query performance evidence does not close concurrent-load, long-term memory, indexing or unrelated QA findings.
 > - **Historical archive:** [Privacy-safe Project State archive](ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md)
 > - **Project master:** [Project Master](PROJECT_MASTER.md)
@@ -33,6 +33,28 @@ Do not append chat transcripts, historical checkpoints or temporary resume
 instructions to this file.
 
 ## 2. Current repository state
+
+### 17 November 2026 — Archive AI-review persistence PENDING
+
+The approved historical reconciliation establishes saved Archive risk review as
+an existing metadata-only operation. At reviewed baseline `fb5fc4b`, lookup can
+resolve `archived_articles`, but the writer targets only `articles` and can return
+success after matching nothing. Legacy archived records still in `articles` are
+distinct from archive-only storage. Existing local evidence is **two valid RED
+cases and six passing controls**, not rerun for this documentation amendment.
+No previous equivalent fix or deliberate retention decision was found in available
+reachable history. Existing storage provenance can be reused without a new framework.
+
+Backend correction is **PENDING — NOT IMPLEMENTED OR ACCEPTED**. Any correction
+must update review metadata only in the resolved existing collection, require an
+acknowledged match, allow matched-but-unmodified success and fail safely on target
+loss without upsert, cross-collection fallback, restore, publication or content
+changes. Independent review and separate implementation/release authority remain
+required. The local frontend refresh GREEN is not accepted on mocked Archive
+persistence alone. No application/test/production operation or release occurred
+for this amendment; **QA-OPS-001 remains HIGH OPEN** without a memory-benefit claim.
+See [history and evidence](HISTORY/ENGINEERING_HISTORY_MASTER.md#17-november-2026--archived-ai-review-persistence-reconciliation)
+and the [distinct P2 finding](QA/OPEN_FINDINGS.md#admin-archive-saved-review-persistence--p2-open).
 
 ### 17 November 2026 — Admin saved-risk-review refresh correction PENDING
 

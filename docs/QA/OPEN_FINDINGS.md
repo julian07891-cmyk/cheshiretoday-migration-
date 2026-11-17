@@ -384,6 +384,19 @@ remain pending. Existing unrelated findings are not closed by this reconciliatio
 - **Boundary:** The real component exports the named helper. This failure predates and is unrelated to `0e4c408`; it was not fixed or counted as a sidebar regression. No production metadata, homepage or runtime failure is inferred.
 - **Smallest closure:** Extend that test mock to preserve/provide the named export, then rerun the focused metadata suite without changing production code.
 
+## Admin Archive saved-review persistence — P2 OPEN
+
+- **Status:** **OPEN — IMPLEMENTATION PENDING, NOT ACCEPTED.** Historical reconciliation approved for documentation on 17 November 2026; this is a separate Admin correctness finding, not QA-OPS-001 remediation.
+- **Accepted operation:** Archive saved risk review was explicitly added in `6b3c304` and retained separately from no-write drafting in `9d1d961`. Review metadata may be saved without changing content, publication or archive lifecycle state.
+- **Cause at `fb5fc4b`:** Shared lookup resolves active or archived records, but the endpoint writes only to `db.articles` and ignores the update result. Legacy archived records in `articles` can match; archive-only records in `archived_articles` can receive false success with no saved metadata.
+- **Historical review:** No equivalent fix, failed attempt, intentional rejection or reversion was found in available reachable Git/records. Manual Review projection fixes and unrelated archive-feed/import reversions are not evidence of a persistence correction. `f70d5e2` supplies reusable provenance, not a fixed review writer.
+- **Existing evidence:** Local-only `tests/test_admin_archived_ai_review_red.py` produced two valid RED failures (UUID and Mongo-ID) and six passing controls. Both REDs observed active matched count zero, zero archive writes and `success=True`. Controls include legitimate matched-but-unmodified success. These production-body/synthetic-fixture results were not rerun here and do not establish live impact, HTTP integration or MongoDB race safety; exact test hash/provenance is in the linked history.
+- **Required correction boundary:** Update only review metadata in the resolved existing collection; require acknowledged matching, not a positive modified count. No upsert, replacement copy, restore, publication, content change or write fallback to another collection after target loss. Preserve identity precedence, authentication, operation tracking and draft/lifecycle safeguards.
+- **Closure gates:** Separately authorised implementation; unchanged RED/control coverage plus relevant disappearance/move/error regressions; independent review and release verification. The local frontend refresh correction is not accepted on mocked persistence evidence alone. No deployment or production acceptance is recorded by this amendment.
+- **Memory boundary:** No RSS benefit or OOM cause is established. **QA-OPS-001 remains HIGH OPEN** with unchanged closure criteria.
+- **Owner/documentation responsibility:** Backend/Admin owner; retain a distinct correctness record rather than changing the memory finding's severity or scope.
+- **Sources:** [Approved historical reconciliation, commit references and existing RED evidence](../HISTORY/ENGINEERING_HISTORY_MASTER.md#17-november-2026--archived-ai-review-persistence-reconciliation); `backend/server.py`; CT-DEC-004/005/008.
+
 ## Related documents
 
 [QA Master](QA_MASTER.md), [Completed Phases](COMPLETED_PHASES.md), [Test History](TEST_HISTORY.md), [Roadmap Master](../ROADMAP_MASTER.md), and [29 July QA report](QA_REPORT_2026-07-29.md).

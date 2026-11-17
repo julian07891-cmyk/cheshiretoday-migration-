@@ -1,5 +1,78 @@
 # Cheshire Today — Engineering History Master
 
+## 17 November 2026 — Archived AI-review persistence reconciliation
+
+**Authority and status.** The owner approved this historical reconciliation for
+documentation. The persistence correction is **PENDING — NOT IMPLEMENTED OR
+ACCEPTED**. Reviewed application baseline: `fb5fc4bc277b7571ddf0dc9415f9aae99dd33cc7`;
+the earlier Admin refresh reconciliation at `f6709fc` is preserved separately below.
+This amendment changes documentation only. No test, production request, database
+operation, commit, push or deployment was performed for it.
+
+### Accepted history and distinction from earlier work
+
+| Date in 2026 | Commit | Relevant evidence |
+|---|---|---|
+| 25 April | `193910e` | Added shared UUID/ObjectId lookup across `articles` and `archived_articles`. |
+| 26 May | `ecd4a30` | Added saved AI review. Lookup could resolve Archive records, but metadata writes targeted only `db.articles` and did not check the update result. |
+| 30 May | `6b3c304` | Explicitly added the existing saved-review action to Archive. |
+| 30–31 May | `906c2b2`, `2375037` | Added AI-review fields to the Manual Review response projection; these were not archive-persistence fixes. |
+| 22 June / 17 July | `ad131c7`, `9d1d961` | Added no-write draft rewriting; Archive retained a separate saved-risk-review action. |
+| 16 October | `f70d5e2` | Added `_find_article_with_archive_provenance()` for crawler handling. The compatibility wrapper discards provenance; the review writer remained active-only. |
+| 28 October | `23079cc` | Added active-operation observability without correcting review persistence. |
+
+No equivalent collection-aware review-persistence fix, failed attempt, deliberate
+rejection or reversion was found in the available reachable Git history and
+relevant records. Historical shell-quoting and Manual Review projection failures
+were corrected but were different defects. March archive-feed and May import/
+Gemini reversions were unrelated. This is an evidence-bounded absence finding,
+not proof that unavailable external history is complete.
+
+### Storage contract and existing RED evidence
+
+Saved risk review is an accepted, Admin-only metadata operation in Archive, not
+permission to rewrite content, restore, publish or change lifecycle state. Legacy
+archived records remain in `articles`; archive-only records reside in
+`archived_articles`. The resolved storage provenance must determine the write
+target. The existing provenance helper is reusable; a new lookup framework is
+unnecessary.
+
+Previously executed local-only `tests/test_admin_archived_ai_review_red.py`
+(SHA-256 `dcd6a3ffdfe3c791ba404541e4519d6aba5a80a228232068d7637c5f53485528`)
+produced **two valid RED failures and six passing controls**. UUID and Mongo-ID
+archive-only lookups both resolved the intended fixture; the active update
+matched zero records, Archive received no write, and the endpoint returned
+`success=True`. Controls preserved active and legacy-archive success, matched-
+but-unmodified success, missing-record 404, database-failure handling and the
+static Admin-authentication dependency. One dependency warning was reported.
+
+The test executes production function bodies and real lookup helpers with
+synthetic collections/provider results, without application startup. It is not
+HTTP/decorator integration, real MongoDB concurrency or production-impact evidence.
+The test remains in the isolated implementation worktree, not this documentation
+worktree. Neither it nor the earlier 93 frontend passes was rerun here; mocked
+frontend success does not establish backend persistence.
+
+### Pending implementation and acceptance safeguards
+
+Any separately authorised correction must reuse existing storage provenance and
+update only review metadata on the resolved existing record. Require an
+acknowledged, matched update before claiming persistence; `modified_count=0` is
+valid when an already-identical record matched. Fail safely if the target moves
+or disappears during review: no upsert, replacement active copy, cross-collection
+fallback, automatic restore/publication or content change. Preserve UUID/ObjectId
+lookup precedence, authentication, operation tracking and existing draft/lifecycle
+safeguards. Retain the RED cases and controls, verify relevant race/error paths,
+and require independent review plus separately authorised release gates.
+
+This is a distinct P2 Admin correctness defect, not proven OOM remediation.
+**QA-OPS-001 remains HIGH OPEN.** See the [scoped finding](../QA/OPEN_FINDINGS.md#admin-archive-saved-review-persistence--p2-open)
+and [current pending status](../PROJECT_STATE.md#17-november-2026--archive-ai-review-persistence-pending).
+Sources: the commits above; `backend/server.py` review endpoint, lookup helpers
+and Archive retrieval; the local RED test; accepted historical investigation;
+[privacy-safe archive](../ARCHIVE/PROJECT_STATE_REDACTED_2026-08-06.md), May review
+and July draft records; CT-DEC-004/005/008. No protected archive was inspected.
+
 ## 17 November 2026 — Admin saved-risk-review refresh reconciliation
 
 **Authority and status.** The owner approved the historical investigation for
