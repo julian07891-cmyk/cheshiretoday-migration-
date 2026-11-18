@@ -1308,13 +1308,28 @@ const AdminDashboard = ({ onBack }) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        if (!data.review || typeof data.review !== 'object' || Array.isArray(data.review)) {
+          throw new Error('Saved review details unavailable. Refresh the dashboard to verify the result.');
+        }
         const risk = data.review?.risk_level || 'unknown';
         const action = data.review?.recommended_action || 'reviewed';
+        // Merge the saved result without replacing searched/appended pages or Archive state.
+        const updateReview = (items) => items.map(article => (
+          String(article._id || article.id) === String(articleId) ? {
+            ...article,
+            ai_review_status: 'reviewed',
+            ai_review_result: data.review,
+            ai_review_risk_level: data.review.risk_level,
+            ai_review_recommended_action: data.review.recommended_action,
+            ai_review_safe_to_keep_live: data.review.safe_to_keep_live,
+          } : article
+        ));
+        setArticles(updateReview);
+        setArchivedArticles(updateReview);
         toast({
           title: "✅ ChatGPT review complete",
           description: `Risk: ${risk} · Action: ${action}`
         });
-        fetchAllData();
       } else {
         toast({
           title: "❌ ChatGPT review failed",
