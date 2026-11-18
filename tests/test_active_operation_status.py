@@ -94,7 +94,7 @@ def test_active_http_operation_uses_executable_binding_for_coverage(
         entered = asyncio.Event()
         finish = asyncio.Event()
         async def find_article(_article_id):
-            return {"_id": "synthetic", "title": "Synthetic"}
+            return {"_id": "synthetic", "title": "Synthetic"}, False
         async def review(_article):
             events.append("business")
             entered.set()
@@ -102,8 +102,8 @@ def test_active_http_operation_uses_executable_binding_for_coverage(
             return {"risk_level": "low"}
         async def persist(*args, **kwargs):
             events.append("persist")
-            return SimpleNamespace(matched_count=1)
-        monkeypatch.setattr(server, "_find_article_by_any_id", find_article)
+            return SimpleNamespace(acknowledged=True, matched_count=1)
+        monkeypatch.setattr(server, "_find_article_with_archive_provenance", find_article)
         monkeypatch.setattr(server, "run_openai_article_review", review)
         monkeypatch.setattr(server, "db", SimpleNamespace(
             articles=SimpleNamespace(update_one=persist),

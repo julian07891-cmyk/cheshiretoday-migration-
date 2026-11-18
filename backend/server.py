@@ -9830,7 +9830,7 @@ Rules:
 async def admin_ai_review_article(article_id: str, authorized: bool = Depends(get_admin_auth)):
     """Admin-only ChatGPT/OpenAI article review. Flags risk; does not auto-edit/archive/hide."""
     try:
-        article = await _find_article_by_any_id(article_id)
+        article, from_archived_collection = await _find_article_with_archive_provenance(article_id)
         if not article:
             raise HTTPException(status_code=404, detail="Article not found")
 
@@ -9847,10 +9847,18 @@ async def admin_ai_review_article(article_id: str, authorized: bool = Depends(ge
             "ai_review_safe_to_keep_live": review.get("safe_to_keep_live"),
         }
 
+        collection = db.archived_articles if from_archived_collection else db.articles
         if article.get("_id"):
-            await db.articles.update_one({"_id": article["_id"]}, {"$set": review_doc})
+            result = await collection.update_one({"_id": article["_id"]}, {"$set": review_doc})
         elif article.get("id"):
-            await db.articles.update_one({"id": article["id"]}, {"$set": review_doc})
+            result = await collection.update_one({"id": article["id"]}, {"$set": review_doc})
+        else:
+            raise HTTPException(status_code=404, detail="Article not found")
+
+        if not result.acknowledged:
+            raise HTTPException(status_code=500, detail="Could not confirm AI review persistence")
+        if result.matched_count <= 0:
+            raise HTTPException(status_code=404, detail="Article not found")
 
         return {
             "success": True,
